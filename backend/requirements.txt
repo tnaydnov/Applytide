@@ -16,3 +16,4 @@ lxml
 python-multipart
 pypdf
 python-docx
+anyio
