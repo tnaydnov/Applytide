@@ -18,7 +18,9 @@ export default function JobsPage() {
   async function loadJobs() { 
     setLoading(true);
     try {
-      const data = await api.listJobs();
+      const response = await api.listJobs();
+      // Handle both paginated response (new) and direct array (old)
+      const data = response.items || response;
       setJobs(data);
     } catch (err) {
       toast.error("Failed to load jobs");
@@ -29,7 +31,9 @@ export default function JobsPage() {
 
   async function loadResumes() { 
     try {
-      const data = await api.listResumes();
+      const response = await api.listResumes();
+      // Handle both paginated response (new) and direct array (old)
+      const data = response.items || response;
       setResumes(data);
     } catch (err) {
       toast.error("Failed to load resumes");
@@ -83,7 +87,7 @@ export default function JobsPage() {
     }
   }
 
-  const filteredJobs = jobs
+  const filteredJobs = (Array.isArray(jobs) ? jobs : [])
     .filter(job => 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (job.company_name && job.company_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -201,7 +205,7 @@ export default function JobsPage() {
             className="flex-1"
           >
             <option value="">(No resume selected)</option>
-            {resumes.map(r => (
+            {Array.isArray(resumes) && resumes.map(r => (
               <option key={r.id} value={r.id}>{r.label}</option>
             ))}
           </Select>
