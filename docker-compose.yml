@@ -32,6 +32,9 @@ services:
       REDIS_URL: redis://redis:6379/0
     ports: ["8000:8000"]
     depends_on: [pg, redis, maildev]
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic.ini:/app/alembic.ini
 
   frontend:
     build: ./frontend
@@ -40,6 +43,9 @@ services:
       NEXT_PUBLIC_API_BASE: http://localhost:8000
     ports: ["3000:3000"]
     depends_on: [backend]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
   pgdata: {}
