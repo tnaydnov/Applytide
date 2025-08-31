@@ -16,7 +16,9 @@ export default function ResumesPage() {
   async function load() { 
     setLoading(true);
     try {
-      const data = await api.listResumes();
+      const response = await api.listResumes();
+      // Handle both paginated response (new) and direct array (old)
+      const data = response.items || response;
       setItems(data);
     } catch (err) {
       toast.error("Failed to load resumes");
@@ -213,7 +215,7 @@ export default function ResumesPage() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((resume, index) => (
+          {Array.isArray(items) && items.map((resume, index) => (
             <Card 
               key={resume.id} 
               className="hover:shadow-lg transition-all duration-300 animate-slideIn"
@@ -261,13 +263,13 @@ export default function ResumesPage() {
       )}
 
       {/* Stats */}
-      {items.length > 0 && (
+      {Array.isArray(items) && items.length > 0 && (
         <Card>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-gray-900">Resume Statistics</h3>
               <p className="text-sm text-gray-600 mt-1">
-                You have {items.length} resume{items.length !== 1 ? 's' : ''} ready for applications
+                You have {Array.isArray(items) ? items.length : 0} resume{(Array.isArray(items) ? items.length : 0) !== 1 ? 's' : ''} ready for applications
               </p>
             </div>
             <div className="text-3xl">📊</div>
