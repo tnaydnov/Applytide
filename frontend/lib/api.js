@@ -75,12 +75,14 @@ export async function register(email, password) {
 }
 
 export const api = {
+  // jobs
   listJobs: () => apiFetch("/jobs").then(r => r.json()),
   scrapeJob: (url) =>
     apiFetch("/jobs/scrape", { method: "POST", body: JSON.stringify({ url }) }).then(r => r.json()),
   createJob: (payload) =>
     apiFetch("/jobs", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
 
+  // resumes
   listResumes: () => apiFetch("/resumes").then(r => r.json()),
   uploadResume: async (label, file) => {
     const form = new FormData();
@@ -91,10 +93,32 @@ export const api = {
     return r.json();
   },
 
+  // applications
   createApp: (payload) =>
     apiFetch("/applications", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
   listAppsByStatus: (status) =>
     apiFetch(`/applications?status=${encodeURIComponent(status)}`).then(r => r.json()),
+  listCardsByStatus: (status) =>
+    apiFetch(`/applications/cards?status=${encodeURIComponent(status)}`).then(r => r.json()),
   moveApp: (id, status) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }).then(r => r.json()),
+  getAppDetail: (id) =>
+    apiFetch(`/applications/${id}/detail`).then(r => r.json()),
+  addStage: (id, payload) =>
+    apiFetch(`/applications/${id}/stages`, { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  addNote: (id, body) =>
+    apiFetch(`/applications/${id}/notes`, { method: "POST", body: JSON.stringify({ body }) }).then(r => r.json()),
+
+  // dashboard
+  getMetrics: () => apiFetch("/dashboard/metrics").then(r => r.json()),
 };
+
+// WebSocket helper
+export function connectWS(onMsg) {
+  const base = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000").replace("http", "ws");
+  const ws = new WebSocket(`${base}/ws/updates`);
+  ws.onmessage = (e) => {
+    try { onMsg(JSON.parse(e.data)); } catch {}
+  };
+  return ws;
+}
