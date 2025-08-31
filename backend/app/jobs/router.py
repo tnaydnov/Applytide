@@ -3,11 +3,13 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from ..db.session import get_db
 from ..db import models
-from .schemas import JobCreate, JobOut, ScrapeIn
+from .schemas import JobCreate, JobOut, ScrapeIn, JobSearchOut
 from .scraper import scrape_job
+from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_search_filter, apply_sorting
+from ..core.search import search_service
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -38,14 +40,178 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db)):
     db.refresh(job)
     return job
 
-@router.get("", response_model=List[JobOut])
-def list_jobs(q: str | None = Query(default=None, description="search in title"),
-              db: Session = Depends(get_db)):
-    stmt = select(models.Job).order_by(models.Job.created_at.desc())
-    if q:
-        stmt = stmt.where(models.Job.title.ilike(f"%{q}%"))
-    items = db.execute(stmt).scalars().all()
-    return items
+
+@router.get("", response_model=PaginatedResponse[JobOut])
+def list_jobs(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    q: str = Query("", description="Search query for title and description"),
+    location: str = Query("", description="Filter by location"),
+    remote_type: str = Query("", description="Filter by remote type"),
+    company: str = Query("", description="Filter by company name"),
+    sort: str = Query("created_at", description="Sort field"),
+    order: str = Query("desc", description="Sort order (asc/desc)"),
+    db: Session = Depends(get_db)
+):
+    """
+    List jobs with pagination, search, and filtering capabilities.
+    Supports full-text search on title and description.
+    """
+    params = PaginationParams(
+        page=page,
+        page_size=page_size,
+        q=q,
+        sort=sort,
+        order=order
+    )
+    
+    # If there's a search query, use full-text search
+    if q.strip():
+        filters = {}
+        if location:
+            filters["location"] = location
+        if remote_type:
+            filters["remote_type"] = remote_type
+        if company:
+            filters["company"] = company
+        
+        # Use full-text search service
+        offset = (page - 1) * page_size
+        jobs_data = search_service.search_jobs(
+            db=db,
+            query_text=q,
+            limit=page_size,
+            offset=offset,
+            filters=filters
+        )
+        
+        total = search_service.count_search_results(db, q, filters)
+        
+        # Convert to JobOut format
+        items = []
+        for job_data in jobs_data:
+            job_item = JobOut(
+                id=uuid.UUID(job_data["id"]),
+                title=job_data["title"],
+                description=job_data["description"],
+                location=job_data["location"],
+                remote_type=job_data["remote_type"],
+                salary_min=job_data["salary_min"],
+                salary_max=job_data["salary_max"],
+                source_url=job_data["source_url"],
+                created_at=job_data["created_at"],
+                company_id=None,  # Would need to include in search if needed
+                company_name=job_data["company_name"],
+                website=job_data["company_website"]
+            )
+            items.append(job_item)
+        
+        # Calculate pagination metadata
+        pages = (total + page_size - 1) // page_size
+        return PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            pages=pages,
+            has_next=page < pages,
+            has_prev=page > 1
+        )
+    
+    # Regular query with filters
+    query = select(models.Job).join(
+        models.Company, models.Job.company_id == models.Company.id, isouter=True
+    )
+    
+    # Apply filters
+    if location:
+        query = query.filter(models.Job.location.ilike(f"%{location}%"))
+    if remote_type:
+        query = query.filter(models.Job.remote_type == remote_type)
+    if company:
+        query = query.filter(models.Company.name.ilike(f"%{company}%"))
+    
+    # Apply sorting
+    query = apply_sorting(query, models.Job, params.sort, params.order)
+    
+    # Get total count
+    total_query = select(func.count(models.Job.id))
+    if location:
+        total_query = total_query.filter(models.Job.location.ilike(f"%{location}%"))
+    if remote_type:
+        total_query = total_query.filter(models.Job.remote_type == remote_type)
+    if company:
+        total_query = total_query.join(models.Company).filter(models.Company.name.ilike(f"%{company}%"))
+    
+    # Paginate
+    result = paginate_query(query, params, total_query, db)
+    
+    return PaginatedResponse(**result)
+
+
+@router.get("/search", response_model=PaginatedResponse[JobSearchOut])
+def search_jobs(
+    q: str = Query(..., description="Search query"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    location: str = Query("", description="Filter by location"),
+    remote_type: str = Query("", description="Filter by remote type"),
+    company: str = Query("", description="Filter by company"),
+    salary_min: int = Query(None, description="Minimum salary filter"),
+    db: Session = Depends(get_db)
+):
+    """
+    Advanced full-text search for jobs with relevance scoring.
+    Returns results ranked by relevance to the search query.
+    """
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Search query is required")
+    
+    filters = {}
+    if location:
+        filters["location"] = location
+    if remote_type:
+        filters["remote_type"] = remote_type
+    if company:
+        filters["company"] = company
+    if salary_min:
+        filters["salary_min"] = salary_min
+    
+    offset = (page - 1) * page_size
+    jobs_data = search_service.search_jobs(
+        db=db,
+        query_text=q,
+        limit=page_size,
+        offset=offset,
+        filters=filters
+    )
+    
+    total = search_service.count_search_results(db, q, filters)
+    
+    # Convert to JobSearchOut format (includes relevance score)
+    items = [JobSearchOut(**job_data) for job_data in jobs_data]
+    
+    pages = (total + page_size - 1) // page_size
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages,
+        has_next=page < pages,
+        has_prev=page > 1
+    )
+
+
+@router.get("/suggestions")
+def get_search_suggestions(
+    q: str = Query(..., min_length=2, description="Partial search query"),
+    db: Session = Depends(get_db)
+):
+    """Get search term suggestions based on partial input"""
+    suggestions = search_service.suggest_search_terms(db, q)
+    return {"suggestions": suggestions}
+
 
 @router.get("/{job_id}", response_model=JobOut)
 def get_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -53,6 +219,7 @@ def get_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
 
 @router.post("/scrape", response_model=JobCreate)
 def scrape(payload: ScrapeIn):

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select, join
+from sqlalchemy import select, join, func, or_
 from ..db.session import get_db
 from ..db import models
 from .schemas import (
@@ -15,6 +15,7 @@ from .schemas import (
 from ..ws.router import broadcast
 from ..auth.deps import get_current_user
 from ..db.models import User
+from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_sorting
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -40,12 +41,72 @@ def create_application(payload: ApplicationCreate, db: Session = Depends(get_db)
     db.refresh(row)
     return row
 
-@router.get("", response_model=List[ApplicationOut])
-def list_applications(status: Optional[str] = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    stmt = select(models.Application).where(models.Application.user_id == current_user.id).order_by(models.Application.created_at.desc())
+@router.get("", response_model=PaginatedResponse[ApplicationOut])
+def list_applications(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    q: str = Query("", description="Search in job title and company name"),
+    sort: str = Query("created_at", description="Sort field"),
+    order: str = Query("desc", description="Sort order (asc/desc)"),
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """List applications with pagination, search, and filtering"""
+    params = PaginationParams(
+        page=page,
+        page_size=page_size,
+        q=q,
+        sort=sort,
+        order=order
+    )
+    
+    # Build query with joins for search
+    query = select(models.Application).join(
+        models.Job, models.Application.job_id == models.Job.id
+    ).join(
+        models.Company, models.Job.company_id == models.Company.id, isouter=True
+    ).where(models.Application.user_id == current_user.id)
+    
+    # Apply filters
     if status:
-        stmt = stmt.where(models.Application.status == status)
-    return db.execute(stmt).scalars().all()
+        query = query.filter(models.Application.status == status)
+    
+    if q.strip():
+        search_term = f"%{q}%"
+        query = query.filter(
+            or_(
+                models.Job.title.ilike(search_term),
+                models.Company.name.ilike(search_term)
+            )
+        )
+    
+    # Apply sorting
+    query = apply_sorting(query, models.Application, params.sort, params.order)
+    
+    # Get total count with same filters
+    total_query = select(func.count(models.Application.id)).join(
+        models.Job, models.Application.job_id == models.Job.id
+    ).join(
+        models.Company, models.Job.company_id == models.Company.id, isouter=True
+    ).where(models.Application.user_id == current_user.id)
+    
+    if status:
+        total_query = total_query.filter(models.Application.status == status)
+    
+    if q.strip():
+        search_term = f"%{q}%"
+        total_query = total_query.filter(
+            or_(
+                models.Job.title.ilike(search_term),
+                models.Company.name.ilike(search_term)
+            )
+        )
+    
+    # Paginate
+    result = paginate_query(query, params, total_query, db)
+    
+    return PaginatedResponse(**result)
 
 
 # ---------- Cards (job title + company) ----------
