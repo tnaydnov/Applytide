@@ -12,7 +12,9 @@ from .schemas import (
     StageCreate, StageOut, NoteCreate, NoteOut,
     ApplicationCard, JobMini, ApplicationDetail
 )
-from ..ws.router import broadcast  # best-effort; if WS not connected it's fine
+from ..ws.router import broadcast
+from ..auth.deps import get_current_user
+from ..db.models import User
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -23,9 +25,10 @@ def _ensure_job_resume(db: Session, job_id: uuid.UUID, resume_id: uuid.UUID | No
         raise HTTPException(status_code=400, detail="resume_id not found")
 
 @router.post("", response_model=ApplicationOut)
-def create_application(payload: ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(payload: ApplicationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _ensure_job_resume(db, payload.job_id, payload.resume_id)
     row = models.Application(
+        user_id=current_user.id,
         job_id=payload.job_id,
         resume_id=payload.resume_id,
         status=payload.status or "Applied",
@@ -38,22 +41,23 @@ def create_application(payload: ApplicationCreate, db: Session = Depends(get_db)
     return row
 
 @router.get("", response_model=List[ApplicationOut])
-def list_applications(status: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    stmt = select(models.Application).order_by(models.Application.created_at.desc())
+def list_applications(status: Optional[str] = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    stmt = select(models.Application).where(models.Application.user_id == current_user.id).order_by(models.Application.created_at.desc())
     if status:
         stmt = stmt.where(models.Application.status == status)
     return db.execute(stmt).scalars().all()
 
+
 # ---------- Cards (job title + company) ----------
 @router.get("/cards", response_model=List[ApplicationCard])
-def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db)):
+def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # join applications -> jobs -> companies
     j = join(models.Application, models.Job, models.Application.job_id == models.Job.id)
     j = join(j, models.Company, models.Job.company_id == models.Company.id, isouter=True)
     stmt = select(
         models.Application.id, models.Application.status, models.Application.resume_id,
         models.Job.id.label("job_id"), models.Job.title, models.Company.name.label("company_name")
-    ).select_from(j)
+    ).select_from(j).where(models.Application.user_id == current_user.id)
     if status:
         stmt = stmt.where(models.Application.status == status)
     stmt = stmt.order_by(models.Application.created_at.desc())
@@ -67,15 +71,16 @@ def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db
     return out
 
 @router.get("/{app_id}", response_model=ApplicationOut)
-def get_application(app_id: uuid.UUID, db: Session = Depends(get_db)):
-    row = db.get(models.Application, app_id)
+def get_application(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = _get_owned_app(db, app_id, current_user.id)
     if not row:
         raise HTTPException(status_code=404, detail="Application not found")
     return row
 
+
 @router.patch("/{app_id}", response_model=ApplicationOut)
-def update_application(app_id: uuid.UUID, payload: ApplicationUpdate, db: Session = Depends(get_db)):
-    row = db.get(models.Application, app_id)
+def update_application(app_id: uuid.UUID, payload: ApplicationUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = _get_owned_app(db, app_id, current_user.id)
     if not row:
         raise HTTPException(status_code=404, detail="Application not found")
     row.status = payload.status
@@ -93,8 +98,8 @@ def update_application(app_id: uuid.UUID, payload: ApplicationUpdate, db: Sessio
 
 # ---------- stages ----------
 @router.post("/{app_id}/stages", response_model=StageOut)
-def add_stage(app_id: uuid.UUID, payload: StageCreate, db: Session = Depends(get_db)):
-    if not db.get(models.Application, app_id):
+def add_stage(app_id: uuid.UUID, payload: StageCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _get_owned_app(db, app_id, current_user.id):
         raise HTTPException(status_code=404, detail="Application not found")
     stage = models.Stage(
         application_id=app_id,
@@ -114,16 +119,16 @@ def add_stage(app_id: uuid.UUID, payload: StageCreate, db: Session = Depends(get
     return stage
 
 @router.get("/{app_id}/stages", response_model=List[StageOut])
-def list_stages(app_id: uuid.UUID, db: Session = Depends(get_db)):
-    if not db.get(models.Application, app_id):
+def list_stages(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _get_owned_app(db, app_id, current_user.id):
         raise HTTPException(status_code=404, detail="Application not found")
     stmt = select(models.Stage).where(models.Stage.application_id == app_id).order_by(models.Stage.created_at.asc())
     return db.execute(stmt).scalars().all()
 
 # ---------- notes ----------
 @router.post("/{app_id}/notes", response_model=NoteOut)
-def add_note(app_id: uuid.UUID, payload: NoteCreate, db: Session = Depends(get_db)):
-    if not db.get(models.Application, app_id):
+def add_note(app_id: uuid.UUID, payload: NoteCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _get_owned_app(db, app_id, current_user.id):
         raise HTTPException(status_code=404, detail="Application not found")
     n = models.Note(application_id=app_id, body=payload.body)
     db.add(n)
@@ -137,16 +142,16 @@ def add_note(app_id: uuid.UUID, payload: NoteCreate, db: Session = Depends(get_d
     return n
 
 @router.get("/{app_id}/notes", response_model=List[NoteOut])
-def list_notes(app_id: uuid.UUID, db: Session = Depends(get_db)):
-    if not db.get(models.Application, app_id):
+def list_notes(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _get_owned_app(db, app_id, current_user.id):
         raise HTTPException(status_code=404, detail="Application not found")
     stmt = select(models.Note).where(models.Note.application_id == app_id).order_by(models.Note.created_at.asc())
     return db.execute(stmt).scalars().all()
 
 # ---------- detail ----------
 @router.get("/{app_id}/detail", response_model=ApplicationDetail)
-def get_detail(app_id: uuid.UUID, db: Session = Depends(get_db)):
-    app = db.get(models.Application, app_id)
+def get_detail(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    app = _get_owned_app(db, app_id, current_user.id)
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     job = db.get(models.Job, app.job_id)
@@ -171,3 +176,10 @@ def get_detail(app_id: uuid.UUID, db: Session = Depends(get_db)):
         stages=stages,
         notes=notes,
     )
+
+
+def _get_owned_app(db: Session, app_id: uuid.UUID, user_id: uuid.UUID) -> models.Application | None:
+    row = db.get(models.Application, app_id)
+    if not row or row.user_id != user_id:
+        return None
+    return row
