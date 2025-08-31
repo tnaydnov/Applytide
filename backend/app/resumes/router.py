@@ -7,6 +7,8 @@ from sqlalchemy import select
 from ..db.session import get_db
 from ..db import models
 from .extractor import save_file_and_extract
+from ..auth.deps import get_current_user
+from ..db.models import User
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
@@ -15,6 +17,7 @@ async def upload_resume(
     label: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload a resume (PDF/DOCX/TXT). Stores file to /app/uploads/resumes and
@@ -31,7 +34,7 @@ async def upload_resume(
         label=label,
         file_path=path,
         text=text,
-        user_id=None,
+        user_id=current_user.id,
     )
     db.add(row)
     db.commit()
@@ -42,8 +45,15 @@ async def upload_resume(
     return {"id": str(row.id), "label": row.label, "file_path": row.file_path, "text_preview": preview}
 
 @router.get("", response_model=List[dict])
-def list_resumes(db: Session = Depends(get_db)):
-    rows = db.execute(select(models.Resume).order_by(models.Resume.created_at.desc())).scalars().all()
+def list_resumes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = db.execute(
+        select(models.Resume)
+        .where(models.Resume.user_id == current_user.id)
+        .order_by(models.Resume.created_at.desc())
+    ).scalars().all()
     return [
         {"id": str(r.id), "label": r.label, "file_path": r.file_path, "created_at": r.created_at.isoformat()}
         for r in rows

@@ -59,4 +59,22 @@ def scrape(payload: ScrapeIn):
     """
     Fetch a job page and return a JobCreate-like payload you can edit before creating.
     """
-    return JobCreate(**scrape_job(payload.url))
+    try:
+        data = scrape_job(str(payload.url))
+        return JobCreate(**data)
+    except Exception as e:
+        # Provide helpful error messages for common issues
+        error_msg = str(e)
+        url_str = str(payload.url).lower()
+        if "linkedin.com" in url_str:
+            error_msg = "LinkedIn URLs are not supported due to anti-bot protection. Try using the company's direct career page instead."
+        elif "403" in error_msg or "forbidden" in error_msg.lower():
+            error_msg = "Access forbidden. This site blocks automated requests. Try a different URL."
+        elif "timeout" in error_msg.lower():
+            error_msg = "Request timed out. The site may be slow or blocking requests."
+        elif "404" in error_msg or "not found" in error_msg.lower():
+            error_msg = "Page not found. Please check if the URL is correct."
+        else:
+            error_msg = f"Failed to scrape URL: {error_msg}"
+        
+        raise HTTPException(status_code=400, detail=error_msg)
