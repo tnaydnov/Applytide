@@ -30,6 +30,10 @@ services:
       ALLOWED_ORIGINS: http://localhost:3000
       DATABASE_URL: postgresql+psycopg2://jobflow:jobflow@pg:5432/jobflow
       REDIS_URL: redis://redis:6379/0
+      SMTP_HOST: ${SMTP_HOST:-maildev}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-noreply@jobflow.local}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
     ports: ["8000:8000"]
     depends_on: [pg, redis, maildev]
     volumes:
@@ -46,6 +50,19 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
+  worker:
+    build: ./backend
+    container_name: jobflow_worker
+    depends_on: [pg, redis, backend, maildev]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://jobflow:jobflow@pg:5432/jobflow
+      REDIS_URL: redis://redis:6379/0
+      SMTP_HOST: ${SMTP_HOST:-maildev}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-noreply@jobflow.local}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+    command: ["python", "-m", "app.worker.runner"]
 
 volumes:
   pgdata: {}

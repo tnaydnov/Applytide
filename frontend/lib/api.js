@@ -88,7 +88,12 @@ export const api = {
     const form = new FormData();
     form.append("label", label);
     form.append("file", file);
-    const r = await fetch(`${API_BASE}/resumes`, { method: "POST", body: form });
+    const { access_token } = getTokens();
+    const r = await fetch(`${API_BASE}/resumes`, {
+        method: "POST",
+        headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+        body: form, // let the browser set multipart boundary
+    });
     if (!r.ok) throw new Error(await r.text());
     return r.json();
   },
@@ -121,4 +126,36 @@ export function connectWS(onMsg) {
     try { onMsg(JSON.parse(e.data)); } catch {}
   };
   return ws;
+}
+
+
+// IO (CSV)
+export async function downloadApplicationsCSV() {
+  const { access_token } = getTokens();
+  const r = await fetch(`${API_BASE}/io/export/applications.csv`, {
+    headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+  });
+  if (!r.ok) throw new Error(await r.text());
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "applications.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function importApplicationsCSV(file) {
+  const { access_token } = getTokens();
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(`${API_BASE}/io/import/applications`, {
+    method: "POST",
+    headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    body: form,
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
 }
