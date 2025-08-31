@@ -16,8 +16,34 @@ function setTokens(tokens) {
 }
 
 export function logout() {
-  if (typeof window !== "undefined") localStorage.removeItem("tokens");
+  if (typeof window !== "undefined") {
+    const { refresh_token } = getTokens();
+    
+    // Call logout endpoint if we have a refresh token
+    if (refresh_token) {
+      fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token }),
+      }).catch(() => {}); // Don't worry if this fails
+    }
+    
+    localStorage.removeItem("tokens");
+  }
   window.location.href = "/login";
+}
+
+export async function logoutAll() {
+  try {
+    await apiFetch("/auth/logout_all", { method: "POST" });
+  } catch (error) {
+    console.log("Logout all failed:", error);
+  } finally {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("tokens");
+    }
+    window.location.href = "/login";
+  }
 }
 
 async function tryRefreshAndRetry(path, init) {
