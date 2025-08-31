@@ -1,5 +1,6 @@
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
+from datetime import datetime
 import uuid
 
 class JobCreate(BaseModel):
@@ -18,15 +19,33 @@ class JobOut(BaseModel):
     id: uuid.UUID
     title: str
     company_id: Optional[uuid.UUID] = None
+    company_name: Optional[str] = None
+    website: Optional[str] = None
     location: Optional[str] = None
     remote_type: Optional[str] = None
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
     description: Optional[str] = None
     source_url: Optional[str] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
+
+class JobSearchOut(BaseModel):
+    """Job search result with relevance scoring"""
+    id: str
+    title: str
+    description: Optional[str] = None
+    location: Optional[str] = None
+    remote_type: Optional[str] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    source_url: Optional[str] = None
+    created_at: str
+    company_name: Optional[str] = None
+    company_website: Optional[str] = None
+    relevance_score: float
 
 class ScrapeIn(BaseModel):
     url: HttpUrl

@@ -18,3 +18,4 @@ pypdf
 python-docx
 anyio
 scikit-learn
+faker>=20.0.0
