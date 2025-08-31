@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
 from .base import Base
 from ..config import settings
 
@@ -10,6 +11,16 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, futu
 
 def get_db():
     """FastAPI dependency: yields a DB session per request and closes it."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_session():
+    """Context manager for database sessions outside FastAPI requests."""
     db = SessionLocal()
     try:
         yield db
