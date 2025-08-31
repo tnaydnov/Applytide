@@ -5,6 +5,14 @@ import { useToast } from '../lib/toast';
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    page_size: 12,
+    pages: 1,
+    has_next: false,
+    has_prev: false
+  });
   const [url, setUrl] = useState("");
   const [draft, setDraft] = useState(null);
   const [resumes, setResumes] = useState([]);
@@ -12,18 +20,72 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [remoteTypeFilter, setRemoteTypeFilter] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const toast = useToast();
 
-  async function loadJobs() { 
+  async function fetchSearchSuggestions(query) {
+    if (!query || query.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+    
+    try {
+      const response = await api.get(`/jobs/suggestions?q=${encodeURIComponent(query)}`);
+      setSearchSuggestions(response || []);
+    } catch (err) {
+      console.error('Failed to fetch suggestions:', err);
+      setSearchSuggestions([]);
+    }
+  }
+
+  async function loadJobs(page = 1) { 
     setLoading(true);
     try {
-      const response = await api.listJobs();
-      // Handle both paginated response (new) and direct array (old)
-      const data = response.items || response;
-      setJobs(data);
+      // Build query parameters for the backend API
+      const params = new URLSearchParams({
+        page: page.toString(),
+        page_size: pagination.page_size.toString(),
+        sort: sortBy,
+        order: sortOrder
+      });
+      
+      if (searchTerm.trim()) {
+        params.append('q', searchTerm.trim());
+      }
+      if (locationFilter.trim()) {
+        params.append('location', locationFilter.trim());
+      }
+      if (remoteTypeFilter) {
+        params.append('remote_type', remoteTypeFilter);
+      }
+
+      // Use the search endpoint if there's a search term, otherwise use regular listing
+      const endpoint = searchTerm.trim() ? `/jobs/search?${params}` : `/jobs?${params}`;
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}${endpoint}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setJobs(data.items || []);
+        setPagination({
+          total: data.total || 0,
+          page: data.page || 1,
+          page_size: data.page_size || 12,
+          pages: data.pages || 1,
+          has_next: data.has_next || false,
+          has_prev: data.has_prev || false
+        });
+      } else {
+        throw new Error(data.detail || 'Failed to load jobs');
+      }
     } catch (err) {
+      console.error('Load jobs error:', err);
       toast.error("Failed to load jobs");
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -44,6 +106,26 @@ export default function JobsPage() {
     loadJobs(); 
     loadResumes(); 
   }, []);
+
+  // Debounced search suggestions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (showSuggestions) {
+        fetchSearchSuggestions(searchTerm);
+      }
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm, showSuggestions]);
+
+  // Reload jobs when search/filter params change
+  useEffect(() => {
+    const delayedSearch = setTimeout(() => {
+      loadJobs(1); // Reset to page 1 when filters change
+    }, 300); // Debounce search
+
+    return () => clearTimeout(delayedSearch);
+  }, [searchTerm, sortBy, sortOrder, locationFilter, remoteTypeFilter]);
 
   async function doScrape(e) {
     e.preventDefault();
@@ -87,25 +169,6 @@ export default function JobsPage() {
     }
   }
 
-  const filteredJobs = (Array.isArray(jobs) ? jobs : [])
-    .filter(job => 
-      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (job.company_name && job.company_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (job.location && job.location.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        case "title":
-          return a.title.localeCompare(b.title);
-        case "company":
-          return (a.company_name || "").localeCompare(b.company_name || "");
-        default:
-          return 0;
-      }
-    });
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -116,7 +179,7 @@ export default function JobsPage() {
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">
-            {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
+            {pagination.total} job{pagination.total !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -212,37 +275,133 @@ export default function JobsPage() {
         </div>
       </Card>
 
-      {/* Search and Filter */}
+      {/* Enhanced Search and Filter */}
       <Card>
-        <div className="flex flex-col md:flex-row gap-4">
-          <Input
-            placeholder="Search jobs by title, company, or location..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="flex-1"
-            icon={<span>🔍</span>}
-          />
-          <Select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="md:w-48"
-          >
-            <option value="newest">Newest First</option>
-            <option value="title">By Title</option>
-            <option value="company">By Company</option>
-          </Select>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl">🔍</span>
+            <h2 className="text-xl font-semibold text-gray-900">Search & Filter Jobs</h2>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Input
+              placeholder="Search jobs by title, company, or description..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              className="w-full"
+              icon={<span>🔍</span>}
+            />
+            
+            {/* Search Suggestions Dropdown */}
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {searchSuggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                    onMouseDown={() => {
+                      setSearchTerm(suggestion);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    <span className="text-gray-700">{suggestion}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Filters Row */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Input
+              placeholder="Location (e.g., Remote, NYC...)"
+              value={locationFilter}
+              onChange={e => setLocationFilter(e.target.value)}
+              icon={<span>�</span>}
+            />
+            
+            <Select
+              value={remoteTypeFilter}
+              onChange={e => setRemoteTypeFilter(e.target.value)}
+            >
+              <option value="">All Types</option>
+              <option value="Remote">Remote</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="On-site">On-site</option>
+            </Select>
+            
+            <Select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+            >
+              <option value="created_at">Date Posted</option>
+              <option value="title">Job Title</option>
+              <option value="salary_min">Salary</option>
+            </Select>
+            
+            <Select
+              value={sortOrder}
+              onChange={e => setSortOrder(e.target.value)}
+            >
+              <option value="desc">Newest First</option>
+              <option value="asc">Oldest First</option>
+            </Select>
+          </div>
+          
+          {/* Results Summary */}
+          <div className="flex items-center justify-between pt-2 border-t">
+            <p className="text-sm text-gray-600">
+              Showing {jobs.length} of {pagination.total} job{pagination.total !== 1 ? 's' : ''}
+              {searchTerm && ` for "${searchTerm}"`}
+            </p>
+            {(searchTerm || locationFilter || remoteTypeFilter) && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setLocationFilter('');
+                  setRemoteTypeFilter('');
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
       {/* Jobs Grid */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="text-gray-600">Loading jobs...</p>
-          </div>
+        <div className="space-y-6">
+          {/* Skeleton Loading */}
+          {[...Array(3)].map((_, index) => (
+            <Card key={index} className="animate-pulse">
+              <div className="flex justify-between items-start space-x-4">
+                <div className="flex-1 space-y-3">
+                  <div className="space-y-2">
+                    <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                    <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      ) : filteredJobs.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <Card className="text-center py-12">
           <div className="space-y-4">
             <div className="text-6xl">📋</div>
@@ -254,7 +413,7 @@ export default function JobsPage() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {filteredJobs.map((job, index) => (
+          {jobs.map((job, index) => (
             <Card 
               key={job.id} 
               className="hover:shadow-lg transition-all duration-300 animate-slideIn"
@@ -311,6 +470,96 @@ export default function JobsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {pagination.pages > 1 && (
+        <Card className="mt-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            {/* Page Info */}
+            <div className="text-sm text-gray-600">
+              Showing {((pagination.page - 1) * pagination.page_size) + 1} to{' '}
+              {Math.min(pagination.page * pagination.page_size, pagination.total)} of{' '}
+              {pagination.total} jobs
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="flex items-center space-x-2">
+              {/* Previous Button */}
+              <Button
+                onClick={() => loadJobs(pagination.page - 1)}
+                disabled={!pagination.has_prev || loading}
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                <span className="mr-1">←</span>
+                Previous
+              </Button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {(() => {
+                  const currentPage = pagination.page;
+                  const totalPages = pagination.pages;
+                  const pages = [];
+                  
+                  // Always show first page
+                  if (currentPage > 3) {
+                    pages.push(1);
+                    if (currentPage > 4) {
+                      pages.push('...');
+                    }
+                  }
+                  
+                  // Show pages around current page
+                  for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+                    pages.push(i);
+                  }
+                  
+                  // Always show last page
+                  if (currentPage < totalPages - 2) {
+                    if (currentPage < totalPages - 3) {
+                      pages.push('...');
+                    }
+                    pages.push(totalPages);
+                  }
+                  
+                  return pages.map((page, index) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-400">
+                        ...
+                      </span>
+                    ) : (
+                      <Button
+                        key={page}
+                        onClick={() => loadJobs(page)}
+                        disabled={loading}
+                        variant={page === currentPage ? "default" : "outline"}
+                        size="sm"
+                        className="min-w-[2.5rem] h-8"
+                      >
+                        {page}
+                      </Button>
+                    )
+                  ));
+                })()}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                onClick={() => loadJobs(pagination.page + 1)}
+                disabled={!pagination.has_next || loading}
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+              >
+                Next
+                <span className="ml-1">→</span>
+              </Button>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   );
