@@ -10,23 +10,27 @@ export default function AppDetailPage() {
   const [stage, setStage] = useState({ name: "Phone Screen", scheduled_at: "", notes: "" });
   const [msg, setMsg] = useState("");
 
+  // scoring
+  const [resumes, setResumes] = useState([]);
+  const [score, setScore] = useState(null);
+  const [keywords, setKeywords] = useState({ present: [], missing: [] });
+  const [selectedResume, setSelectedResume] = useState("");
+
   async function load() {
     if (!id) return;
     const d = await api.getAppDetail(id);
     setData(d);
+    setResumes(await api.listResumes());
+    setSelectedResume(d.application.resume_id || "");
   }
 
   useEffect(() => { load(); }, [id]);
 
   async function addNote() {
     setMsg("");
-    try {
-      await api.addNote(id, note);
-      setNote("");
-      await load();
-    } catch (e) { setMsg(String(e)); }
+    try { await api.addNote(id, note); setNote(""); await load(); }
+    catch (e) { setMsg(String(e)); }
   }
-
   async function addStage() {
     setMsg("");
     try {
@@ -39,17 +43,51 @@ export default function AppDetailPage() {
     } catch (e) { setMsg(String(e)); }
   }
 
+  async function doScore() {
+    if (!selectedResume) { setMsg("Pick a resume"); return; }
+    try {
+      const res = await api.apiFetch(`/match/score?resume_id=${selectedResume}&job_id=${data.job.id}`, { method: "POST" }).then(r=>r.json());
+      setScore(res.score);
+      setKeywords({ present: res.keywords_present, missing: res.keywords_missing });
+    } catch (e) { setMsg(String(e)); }
+  }
+
   if (!data) return <p>Loading…</p>;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <h1>Application</h1>
       <div>
-        <b>{data.job.title}</b>
-        {data.job.company_name ? <span> • {data.job.company_name}</span> : null}
+        <b>{data.job.title}</b>{data.job.company_name ? <span> • {data.job.company_name}</span> : null}
         <div>Status: {data.application.status}</div>
         {data.resume_label ? <div>Resume: {data.resume_label}</div> : null}
       </div>
+
+      {/* Scoring panel */}
+      <section style={{ border: "1px solid #eee", borderRadius: 8, padding: 12 }}>
+        <h3>Match Scoring</h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span>Resume:</span>
+          <select value={selectedResume} onChange={e => setSelectedResume(e.target.value)}>
+            <option value="">(pick)</option>
+            {resumes.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+          <button onClick={doScore}>Score Match</button>
+          {score != null && <b>Score: {score}%</b>}
+        </div>
+        {keywords.missing.length > 0 && (
+          <div>
+            <h4>Missing keywords</h4>
+            <ul>{keywords.missing.map(k => <li key={k}>{k}</li>)}</ul>
+          </div>
+        )}
+        {keywords.present.length > 0 && (
+          <div>
+            <h4>Present keywords</h4>
+            <ul>{keywords.present.map(k => <li key={k}>{k}</li>)}</ul>
+          </div>
+        )}
+      </section>
 
       <section>
         <h3>Timeline (Stages)</h3>
