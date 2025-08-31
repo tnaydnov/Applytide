@@ -3,6 +3,7 @@ from typing import Optional, List
 import uuid
 from datetime import datetime
 
+# ----- Applications -----
 class ApplicationCreate(BaseModel):
     job_id: uuid.UUID
     resume_id: Optional[uuid.UUID] = None
@@ -21,6 +22,18 @@ class ApplicationOut(BaseModel):
 class ApplicationUpdate(BaseModel):
     status: str
 
+# ----- Cards / Detail view models -----
+class JobMini(BaseModel):
+    id: uuid.UUID
+    title: str
+    company_name: Optional[str] = None
+
+class ApplicationCard(BaseModel):
+    id: uuid.UUID
+    status: str
+    job: JobMini
+    resume_id: Optional[uuid.UUID] = None
+
 class StageCreate(BaseModel):
     name: str
     scheduled_at: Optional[datetime] = None
@@ -37,3 +50,21 @@ class StageOut(BaseModel):
     created_at: datetime
     class Config:
         from_attributes = True
+
+class NoteCreate(BaseModel):
+    body: str
+
+class NoteOut(BaseModel):
+    id: uuid.UUID
+    application_id: uuid.UUID
+    body: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class ApplicationDetail(BaseModel):
+    application: ApplicationOut
+    job: JobMini
+    resume_label: Optional[str] = None
+    stages: List[StageOut]
+    notes: List[NoteOut]
