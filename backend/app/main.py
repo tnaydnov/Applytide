@@ -1,7 +1,9 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .auth.router import router as auth_router  # <-- add
+from .auth.router import router as auth_router
+from .jobs.router import router as jobs_router
+from .resumes.router import router as resumes_router
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
@@ -15,7 +17,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)   # <-- mount /auth routes
+app.include_router(auth_router)
+app.include_router(jobs_router)
+app.include_router(resumes_router)
 
 @app.get("/health")
 def health():
