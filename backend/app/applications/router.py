@@ -1,8 +1,11 @@
 from __future__ import annotations
 import uuid
+import os
+import shutil
 from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, join, func, or_
 from ..db.session import get_db
@@ -10,7 +13,7 @@ from ..db import models
 from .schemas import (
     ApplicationCreate, ApplicationOut, ApplicationUpdate,
     StageCreate, StageOut, NoteCreate, NoteOut,
-    ApplicationCard, JobMini, ApplicationDetail
+    ApplicationCard, JobMini, ApplicationDetail, JobDetailMini, AttachmentOut
 )
 from ..ws.router import broadcast
 from ..auth.deps import get_current_user
@@ -216,26 +219,59 @@ def get_detail(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: U
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     job = db.get(models.Job, app.job_id)
+    
+    # Get company information for enhanced job details
     company_name = None
+    company_website = None
     if job and job.company_id:
         comp = db.get(models.Company, job.company_id)
-        company_name = comp.name if comp else None
+        if comp:
+            company_name = comp.name
+            company_website = comp.website
+    
     resume_label = None
     if app.resume_id:
         res = db.get(models.Resume, app.resume_id)
         resume_label = res.label if res else None
+    
     stages = db.execute(
         select(models.Stage).where(models.Stage.application_id == app_id).order_by(models.Stage.created_at.asc())
     ).scalars().all()
+    
     notes = db.execute(
         select(models.Note).where(models.Note.application_id == app_id).order_by(models.Note.created_at.asc())
     ).scalars().all()
+    
+    attachments = db.execute(
+        select(models.ApplicationAttachment).where(models.ApplicationAttachment.application_id == app_id).order_by(models.ApplicationAttachment.created_at.asc())
+    ).scalars().all()
+    
+    # Create enhanced job details
+    job_detail = JobDetailMini(
+        id=job.id,
+        title=job.title,
+        company_name=company_name,
+        company_website=company_website,
+        location=job.location,
+        source_url=job.source_url,
+        description=job.description
+    ) if job else JobDetailMini(
+        id=app.job_id, 
+        title="(missing)", 
+        company_name=None,
+        company_website=None,
+        location=None,
+        source_url=None,
+        description=None
+    )
+    
     return ApplicationDetail(
         application=app,
-        job=JobMini(id=job.id, title=job.title, company_name=company_name) if job else JobMini(id=app.job_id, title="(missing)", company_name=None),
+        job=job_detail,
         resume_label=resume_label,
         stages=stages,
         notes=notes,
+        attachments=attachments,
     )
 
 
@@ -244,3 +280,130 @@ def _get_owned_app(db: Session, app_id: uuid.UUID, user_id: uuid.UUID) -> models
     if not row or row.user_id != user_id:
         return None
     return row
+
+
+# ---------- attachments ----------
+@router.post("/{app_id}/attachments", response_model=AttachmentOut)
+async def upload_attachment(
+    app_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a file attachment for an application"""
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Validate file size (10MB limit)
+    if file.size and file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+    
+    # Create upload directory if it doesn't exist
+    upload_dir = "app/uploads/app_attachments"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1] if file.filename else ""
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Get file size
+    file_size = os.path.getsize(file_path)
+    
+    # Create database record
+    attachment = models.ApplicationAttachment(
+        application_id=app_id,
+        filename=file.filename or "unknown",
+        file_size=file_size,
+        content_type=file.content_type or "application/octet-stream",
+        file_path=file_path,
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+    
+    try:
+        import anyio
+        anyio.from_thread.run(broadcast, {"type": "attachment_added", "application_id": str(app_id)})
+    except Exception:
+        pass
+    
+    return attachment
+
+
+@router.get("/{app_id}/attachments", response_model=List[AttachmentOut])
+def list_attachments(
+    app_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all attachments for an application"""
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    stmt = select(models.ApplicationAttachment).where(
+        models.ApplicationAttachment.application_id == app_id
+    ).order_by(models.ApplicationAttachment.created_at.desc())
+    
+    return db.execute(stmt).scalars().all()
+
+
+@router.get("/{app_id}/attachments/{attachment_id}/download")
+def download_attachment(
+    app_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Download an attachment file"""
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    attachment = db.get(models.ApplicationAttachment, attachment_id)
+    if not attachment or attachment.application_id != app_id:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    if not os.path.exists(attachment.file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    
+    return FileResponse(
+        path=attachment.file_path,
+        filename=attachment.filename,
+        media_type=attachment.content_type
+    )
+
+
+@router.delete("/{app_id}/attachments/{attachment_id}")
+def delete_attachment(
+    app_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an attachment"""
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    attachment = db.get(models.ApplicationAttachment, attachment_id)
+    if not attachment or attachment.application_id != app_id:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    # Delete file from disk
+    if os.path.exists(attachment.file_path):
+        os.remove(attachment.file_path)
+    
+    # Delete from database
+    db.delete(attachment)
+    db.commit()
+    
+    try:
+        import anyio
+        anyio.from_thread.run(broadcast, {"type": "attachment_deleted", "application_id": str(app_id)})
+    except Exception:
+        pass
+    
+    return {"message": "Attachment deleted successfully"}
