@@ -60,8 +60,9 @@ export default function NavBar() {
 
   const authenticatedLinks = [
     { label: "Dashboard", href: "/dashboard", icon: "📊" },
-    { label: "Jobs", href: "/jobs", icon: "�" },
-    { label: "Pipeline", href: "/pipeline", icon: "�" },
+    { label: "Jobs", href: "/jobs", icon: "💼" },
+    { label: "Pipeline", href: "/pipeline", icon: "🔄" },
+    { label: "Reminders", href: "/reminders", icon: "🗓️" },
     { label: "Resumes", href: "/resumes", icon: "📄" },
   ];
 

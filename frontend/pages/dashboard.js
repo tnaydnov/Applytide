@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, downloadApplicationsCSV, importApplicationsCSV } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
+import RemindersWidget from "../components/RemindersWidget";
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null);
@@ -232,6 +233,9 @@ export default function Dashboard() {
           subtitle="In database"
         />
       </div>
+
+      {/* Reminders Widget */}
+      <RemindersWidget maxItems={3} />
 
       {/* Insights Panel */}
       {insights && (
