@@ -11,23 +11,48 @@ export default function NavBar() {
 
   // Check if user is authenticated and get user info
   useEffect(() => {
-    async function loadUser() {
+    function checkAuth() {
       try {
         const tokens = typeof window !== 'undefined' ? localStorage.getItem('tokens') : null;
-        if (tokens && router.pathname !== '/login' && router.pathname !== '/register') {
-          const response = await apiFetch('/auth/me');
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
+        if (tokens) {
+          const tokenData = JSON.parse(tokens);
+          if (tokenData.access_token && tokenData.refresh_token) {
+            // Create user object with stored email
+            setUser({ 
+              authenticated: true,
+              email: tokenData.email || 'user@example.com'
+            });
+          } else {
+            setUser(null);
           }
+        } else {
+          setUser(null);
         }
       } catch (error) {
-        // User not authenticated or error occurred
+        // Invalid tokens
         setUser(null);
       }
     }
-    loadUser();
-  }, [router.pathname]);
+
+    checkAuth();
+
+    // Listen for auth changes (login/logout)
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('authChange', handleAuthChange);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('authChange', handleAuthChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const publicLinks = [
     { label: "Login", href: "/login", icon: "🔐" },
@@ -95,10 +120,10 @@ export default function NavBar() {
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-medium text-sm">
-                      {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                      {user.email?.charAt(0).toUpperCase() || 'U'}
                     </span>
                   </div>
-                  <span className="text-sm font-medium">{user.full_name || user.email}</span>
+                  <span className="text-sm font-medium">{user.email || 'User'}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
