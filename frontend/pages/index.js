@@ -16,7 +16,13 @@ export default function Home() {
       href: "/pipeline"
     },
     {
-      icon: "📄",
+      icon: "�️",
+      title: "Smart Reminders",
+      description: "Never miss an interview or follow-up with calendar integration and ICS export capabilities.",
+      href: "/reminders"
+    },
+    {
+      icon: "�📄",
       title: "Resume Management",
       description: "Store and manage multiple resume versions, perfectly tailored for different job opportunities.",
       href: "/resumes"
