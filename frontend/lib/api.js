@@ -183,6 +183,41 @@ export const api = {
   // Stage management
   deleteStage: (applicationId, stageId) => apiFetch(`/applications/${applicationId}/stages/${stageId}`, { method: "DELETE" }),
   
+  // Analytics
+  getAnalytics: (timeRange = '6m') => apiFetch(`/analytics?range=${timeRange}`).then(r => r.json()),
+  exportAnalyticsPDF: async (timeRange = '6m') => {
+    const { access_token } = getTokens();
+    const response = await fetch(`${API_BASE}/analytics/export/pdf?range=${timeRange}`, {
+      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-report-${timeRange}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  exportAnalyticsCSV: async (timeRange = '6m') => {
+    const { access_token } = getTokens();
+    const response = await fetch(`${API_BASE}/analytics/export/csv?range=${timeRange}`, {
+      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-data-${timeRange}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  
   // Resume management
   listResumes: () => apiFetch("/resumes").then(r => r.json()),
   uploadResume: (filename, file, isDefault = false) => {
