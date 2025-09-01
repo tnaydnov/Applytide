@@ -416,54 +416,124 @@ export default function JobsPage() {
           {jobs.map((job, index) => (
             <Card 
               key={job.id} 
-              className="hover:shadow-lg transition-all duration-300 animate-slideIn"
+              className="group hover:shadow-xl hover:border-indigo-200 transition-all duration-300 animate-slideIn overflow-hidden"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="flex justify-between items-start space-x-4">
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
+              {/* Job Header */}
+              <div className="flex justify-between items-start space-x-4 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
                       {job.title}
                     </h3>
-                    {job.company_name && (
-                      <p className="text-indigo-600 font-medium">{job.company_name}</p>
-                    )}
-                    {job.location && (
-                      <p className="text-gray-500 flex items-center">
-                        <span className="mr-1">📍</span>
-                        {job.location}
-                      </p>
-                    )}
+                    <div className="flex items-center space-x-2 ml-4">
+                      {job.remote_type && (
+                        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                          {job.remote_type}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {new Date(job.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
                   
-                  {job.description && (
-                    <p className="text-gray-600 text-sm line-clamp-3">
-                      {job.description.substring(0, 200)}
-                      {job.description.length > 200 && "..."}
-                    </p>
-                  )}
-                  
+                  {/* Company and Location */}
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                    {job.company_name && (
+                      <div className="flex items-center">
+                        <span className="mr-1">🏢</span>
+                        <span className="font-medium text-indigo-600">{job.company_name}</span>
+                      </div>
+                    )}
+                    {job.location && (
+                      <div className="flex items-center">
+                        <span className="mr-1">📍</span>
+                        <span>{job.location}</span>
+                      </div>
+                    )}
+                    {job.salary_min && job.salary_max && (
+                      <div className="flex items-center">
+                        <span className="mr-1">�</span>
+                        <span className="font-medium text-green-600">
+                          ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Job Description */}
+              {job.description && (
+                <div className="mb-4">
+                  <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">
+                    {job.description.substring(0, 250)}
+                    {job.description.length > 250 && "..."}
+                  </p>
+                </div>
+              )}
+
+              {/* Job Tags/Skills (if we had them) */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {/* Example tags - in a real app these would come from job data */}
+                {job.title.toLowerCase().includes('frontend') && (
+                  <>
+                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-md">React</span>
+                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-md">JavaScript</span>
+                  </>
+                )}
+                {job.title.toLowerCase().includes('backend') && (
+                  <>
+                    <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-md">Node.js</span>
+                    <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-md">API</span>
+                  </>
+                )}
+                {job.title.toLowerCase().includes('developer') && (
+                  <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-md">Full-time</span>
+                )}
+              </div>
+
+              {/* Job Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div className="flex items-center space-x-3">
                   {job.source_url && (
                     <a 
                       href={job.source_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs text-gray-400 hover:text-indigo-600 transition-colors inline-flex items-center"
+                      className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center"
                     >
                       <span className="mr-1">🔗</span>
                       View Original
                     </a>
                   )}
+                  <button className="text-sm text-gray-500 hover:text-red-600 transition-colors inline-flex items-center">
+                    <span className="mr-1">❤️</span>
+                    Save
+                  </button>
+                  <button className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center">
+                    <span className="mr-1">📤</span>
+                    Share
+                  </button>
                 </div>
                 
-                <div className="flex-shrink-0">
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <span className="mr-1">👁️</span>
+                    View Details
+                  </Button>
                   <Button 
                     onClick={() => createApplication(job.id)}
                     size="sm"
-                    className="whitespace-nowrap"
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                   >
                     <span className="mr-1">📝</span>
-                    Apply
+                    Apply Now
                   </Button>
                 </div>
               </div>
