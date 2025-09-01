@@ -137,10 +137,11 @@ export const api = {
 
   // resumes
   listResumes: () => apiFetch("/resumes").then(r => r.json()),
-  uploadResume: async (label, file) => {
+  uploadResume: async (label, file, setAsDefault = false) => {
     const form = new FormData();
     form.append("label", label);
     form.append("file", file);
+    if (setAsDefault) form.append("set_as_default", "true");
     const { access_token } = getTokens();
     const r = await fetch(`${API_BASE}/resumes`, {
         method: "POST",
@@ -150,6 +151,10 @@ export const api = {
     if (!r.ok) throw new Error(await r.text());
     return r.json();
   },
+  deleteResume: (id) =>
+    apiFetch(`/resumes/${id}`, { method: "DELETE" }).then(r => r.json()),
+  setDefaultResume: (id) =>
+    apiFetch(`/resumes/${id}/default`, { method: "POST" }).then(r => r.json()),
 
   // applications
   createApp: (payload) =>
@@ -160,6 +165,8 @@ export const api = {
     apiFetch(`/applications/cards?status=${encodeURIComponent(status)}`).then(r => r.json()),
   moveApp: (id, status) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }).then(r => r.json()),
+  updateApplication: (id, payload) =>
+    apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify(payload) }).then(r => r.json()),
   getAppDetail: (id) =>
     apiFetch(`/applications/${id}/detail`).then(r => r.json()),
   addStage: (id, payload) =>
@@ -169,6 +176,7 @@ export const api = {
 
   // dashboard
   getMetrics: () => apiFetch("/dashboard/metrics").then(r => r.json()),
+  getApplications: () => apiFetch("/applications").then(r => r.json()),
 };
 
 // WebSocket helper

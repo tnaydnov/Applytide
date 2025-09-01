@@ -18,14 +18,18 @@ export default function Dashboard() {
   async function loadData() {
     try {
       setLoading(true);
-      const [metricsData, applicationsData] = await Promise.all([
+      const [metricsData, applicationsResponse] = await Promise.all([
         api.getMetrics(),
         api.getApplications()
       ]);
       setMetrics(metricsData);
+      
+      // Handle paginated response
+      const applicationsData = applicationsResponse.items || applicationsResponse;
       setApplications(applicationsData);
       generateInsights(applicationsData, metricsData);
     } catch (err) {
+      console.error("Dashboard load error:", err);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -37,32 +41,24 @@ export default function Dashboard() {
     const rangeInDays = parseInt(dateRange);
     const startDate = new Date(now.getTime() - rangeInDays * 24 * 60 * 60 * 1000);
     
+    // Filter applications by date range
     const recentApps = apps.filter(app => 
       new Date(app.created_at) >= startDate
     );
 
     // Calculate trends
     const applicationsPerWeek = recentApps.length / (rangeInDays / 7);
-    const responseRate = (recentApps.filter(app => 
-      ['interview', 'offer', 'accepted'].includes(app.status)
-    ).length / recentApps.length * 100) || 0;
+    
+    // Use metrics for status distribution if available
+    const statusCounts = metrics?.applications_by_status || {};
+    const totalApps = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+    
+    // Calculate response rate from status distribution
+    const responseStatuses = ['Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted'];
+    const responseCount = responseStatuses.reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
+    const responseRate = totalApps > 0 ? (responseCount / totalApps * 100) : 0;
 
-    // Company analysis
-    const companyCounts = {};
-    recentApps.forEach(app => {
-      companyCounts[app.company] = (companyCounts[app.company] || 0) + 1;
-    });
-    const topCompanies = Object.entries(companyCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5);
-
-    // Status distribution
-    const statusCounts = {};
-    recentApps.forEach(app => {
-      statusCounts[app.status] = (statusCounts[app.status] || 0) + 1;
-    });
-
-    // Time-based analysis
+    // Time-based analysis using available data
     const today = new Date();
     const thisWeek = recentApps.filter(app => {
       const appDate = new Date(app.created_at);
@@ -78,14 +74,50 @@ export default function Dashboard() {
 
     const weeklyTrend = lastWeek > 0 ? ((thisWeek - lastWeek) / lastWeek * 100) : 0;
 
+    // Generate actionable insights
+    const insights = [];
+    
+    if (responseRate < 20) {
+      insights.push({
+        type: 'warning',
+        title: 'Low Response Rate',
+        message: `Your response rate is ${responseRate.toFixed(1)}%. Consider improving your resume or application strategy.`,
+        action: 'Review your resume and cover letter templates'
+      });
+    }
+    
+    if (weeklyTrend > 50) {
+      insights.push({
+        type: 'success',
+        title: 'Great Momentum!',
+        message: `You've increased applications by ${weeklyTrend.toFixed(1)}% this week.`,
+        action: 'Keep up the great work!'
+      });
+    } else if (weeklyTrend < -30) {
+      insights.push({
+        type: 'info',
+        title: 'Application Slowdown',
+        message: `Applications decreased by ${Math.abs(weeklyTrend).toFixed(1)}% this week.`,
+        action: 'Consider setting a daily application goal'
+      });
+    }
+    
+    if (applicationsPerWeek < 5) {
+      insights.push({
+        type: 'info',
+        title: 'Increase Application Volume',
+        message: `You're averaging ${applicationsPerWeek.toFixed(1)} applications per week.`,
+        action: 'Aim for 10-15 applications per week for better results'
+      });
+    }
+
     setInsights({
-      applicationsPerWeek: Math.round(applicationsPerWeek * 10) / 10,
-      responseRate: Math.round(responseRate * 10) / 10,
-      topCompanies,
-      statusCounts,
-      weeklyTrend: Math.round(weeklyTrend * 10) / 10,
-      totalInPeriod: recentApps.length,
-      mostCommonStatus: Object.entries(statusCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'applied'
+      applicationsPerWeek: applicationsPerWeek.toFixed(1),
+      responseRate: responseRate.toFixed(1),
+      weeklyTrend: weeklyTrend.toFixed(1),
+      statusDistribution: statusCounts,
+      recommendations: insights,
+      timeRange: `Last ${rangeInDays} days`
     });
   }
 
@@ -240,13 +272,13 @@ export default function Dashboard() {
                   <h3 className="font-semibold text-gray-900">Activity Level</h3>
                 </div>
                 <div className="text-lg font-medium text-purple-600">
-                  {insights.totalInPeriod} applications in {dateRange} days
+                  {insights.timeRange}
                 </div>
               </div>
             </div>
 
-            {/* Top Companies */}
-            {insights.topCompanies.length > 0 && (
+            {/* Top Companies - Temporarily disabled due to data structure change */}
+            {false && insights.topCompanies && insights.topCompanies.length > 0 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
                   <span>🏢</span>
@@ -389,13 +421,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
-                {insights.topCompanies.length > 0 && insights.topCompanies[0][1] > 3 && (
+                {/* {insights.topCompanies && insights.topCompanies.length > 0 && insights.topCompanies[0][1] > 3 && (
                   <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                     <p className="text-sm text-purple-800">
                       <strong>🎯 Diversify:</strong> Consider expanding to new companies beyond your top targets.
                     </p>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           </Card>
