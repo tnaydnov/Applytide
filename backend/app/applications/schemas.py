@@ -28,6 +28,15 @@ class JobMini(BaseModel):
     title: str
     company_name: Optional[str] = None
 
+class JobDetailMini(BaseModel):
+    id: uuid.UUID
+    title: str
+    company_name: Optional[str] = None
+    company_website: Optional[str] = None
+    location: Optional[str] = None
+    source_url: Optional[str] = None
+    description: Optional[str] = None
+
 class ApplicationCard(BaseModel):
     id: uuid.UUID
     status: str
@@ -62,9 +71,22 @@ class NoteOut(BaseModel):
     class Config:
         from_attributes = True
 
+# ----- Attachments -----
+class AttachmentOut(BaseModel):
+    id: uuid.UUID
+    application_id: uuid.UUID
+    filename: str
+    file_size: int
+    content_type: str
+    file_path: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
 class ApplicationDetail(BaseModel):
     application: ApplicationOut
-    job: JobMini
+    job: JobDetailMini
     resume_label: Optional[str] = None
     stages: List[StageOut]
     notes: List[NoteOut]
+    attachments: List[AttachmentOut] = []

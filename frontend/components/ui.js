@@ -44,13 +44,14 @@ export const Button = ({
   );
 };
 
-export const Card = ({ children, className = '', padding = true, shadow = true }) => {
+export const Card = ({ children, className = '', padding = true, shadow = true, hover = true }) => {
   const baseClasses = 'bg-white rounded-xl border border-gray-200';
-  const paddingClass = padding ? 'p-6' : '';
+  const paddingClass = padding ? 'p-4 sm:p-6' : '';
   const shadowClass = shadow ? 'card-shadow hover:card-shadow-lg transition-shadow duration-200' : '';
+  const hoverClass = hover ? 'hover:border-gray-300' : '';
   
   return (
-    <div className={`${baseClasses} ${paddingClass} ${shadowClass} ${className}`}>
+    <div className={`${baseClasses} ${paddingClass} ${shadowClass} ${hoverClass} ${className}`}>
       {children}
     </div>
   );
@@ -180,8 +181,16 @@ export const Badge = ({ children, variant = 'default', size = 'md' }) => {
   );
 };
 
-export const Modal = ({ isOpen, onClose, title, children, footer }) => {
+export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
   if (!isOpen) return null;
+  
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    full: 'max-w-7xl'
+  };
   
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -191,12 +200,21 @@ export const Modal = ({ isOpen, onClose, title, children, footer }) => {
           onClick={onClose}
         ></div>
         
-        <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+        <div className={`inline-block w-full ${sizes[size]} p-4 sm:p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl`}>
           {title && (
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-medium leading-6 text-gray-900">
                 {title}
               </h3>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           )}
           
@@ -205,10 +223,126 @@ export const Modal = ({ isOpen, onClose, title, children, footer }) => {
           </div>
           
           {footer && (
-            <div className="flex justify-end space-x-2">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
               {footer}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Mobile-optimized components
+export const MobileCard = ({ children, className = '', onClick, title, subtitle, actions }) => {
+  return (
+    <Card 
+      className={`${onClick ? 'cursor-pointer active:scale-95' : ''} ${className}`}
+      onClick={onClick}
+    >
+      {title && (
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+          </div>
+          {actions && (
+            <div className="flex items-center space-x-2">
+              {actions}
+            </div>
+          )}
+        </div>
+      )}
+      {children}
+    </Card>
+  );
+};
+
+export const MobileGrid = ({ children, cols = 1, className = '' }) => {
+  const colClasses = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-1 sm:grid-cols-2',
+    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+    5: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+  };
+  
+  return (
+    <div className={`grid ${colClasses[cols]} gap-4 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+export const MobileActionButton = ({ children, icon, onClick, variant = 'primary' }) => {
+  return (
+    <Button
+      onClick={onClick}
+      variant={variant}
+      size="sm"
+      className="w-full flex items-center justify-center space-x-2 text-xs py-2"
+    >
+      {icon && <span className="text-base">{icon}</span>}
+      <span>{children}</span>
+    </Button>
+  );
+};
+
+export const ResponsiveContainer = ({ children, maxWidth = '7xl', className = '' }) => {
+  const widthClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+    '7xl': 'max-w-7xl'
+  };
+  
+  return (
+    <div className={`w-full ${widthClasses[maxWidth]} mx-auto px-4 sm:px-6 lg:px-8 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+export const MobileDrawer = ({ isOpen, onClose, title, children, position = 'bottom' }) => {
+  if (!isOpen) return null;
+  
+  const positions = {
+    bottom: 'bottom-0 left-0 right-0 rounded-t-2xl',
+    top: 'top-0 left-0 right-0 rounded-b-2xl',
+    left: 'left-0 top-0 bottom-0 w-80 rounded-r-2xl',
+    right: 'right-0 top-0 bottom-0 w-80 rounded-l-2xl'
+  };
+  
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <div 
+        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        onClick={onClose}
+      ></div>
+      
+      <div className={`fixed ${positions[position]} bg-white shadow-xl transform transition-transform duration-300 ease-in-out`}>
+        {title && (
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+        
+        <div className="p-4 overflow-y-auto max-h-96">
+          {children}
         </div>
       </div>
     </div>

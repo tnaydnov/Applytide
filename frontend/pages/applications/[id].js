@@ -12,6 +12,9 @@ export default function AppDetailPage() {
   const [note, setNote] = useState("");
   const [stage, setStage] = useState({ name: "Phone Screen", scheduled_at: "", notes: "" });
   const [loading, setLoading] = useState(true);
+  const [attachments, setAttachments] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const toast = useToast();
 
   // scoring
@@ -43,6 +46,7 @@ export default function AppDetailPage() {
       setData(appData);
       setResumes(resumeData);
       setSelectedResume(appData.application.resume_id || "");
+      setAttachments(appData.attachments || []);
     } catch (err) {
       toast.error("Failed to load application details");
     } finally {
@@ -51,6 +55,124 @@ export default function AppDetailPage() {
   }
 
   useEffect(() => { load(); }, [id]);
+
+  // Quick action handlers
+  async function quickStatusChange(newStatus) {
+    try {
+      await api.updateApplication(id, { status: newStatus });
+      setData(prev => ({
+        ...prev,
+        application: { ...prev.application, status: newStatus }
+      }));
+      toast.success(`Status changed to ${newStatus}`);
+    } catch (err) {
+      toast.error(`Failed to update status: ${err.message || err}`);
+    }
+  }
+
+  async function quickAddFollowUp() {
+    const followUpDate = new Date();
+    followUpDate.setDate(followUpDate.getDate() + 3);
+    
+    try {
+      const payload = { 
+        name: "Follow-up", 
+        scheduled_at: followUpDate.toISOString(),
+        notes: "Automated follow-up reminder" 
+      };
+      await api.addStage(id, payload);
+      await load();
+      toast.success("Follow-up reminder added for 3 days from now");
+    } catch (err) {
+      toast.error(`Failed to add follow-up: ${err.message || err}`);
+    }
+  }
+
+  async function quickAddInterview() {
+    const interviewDate = new Date();
+    interviewDate.setDate(interviewDate.getDate() + 7);
+    interviewDate.setHours(14, 0, 0); // 2 PM default
+    
+    try {
+      const payload = { 
+        name: "Interview", 
+        scheduled_at: interviewDate.toISOString(),
+        notes: "Scheduled interview" 
+      };
+      await api.addStage(id, payload);
+      await load();
+      toast.success("Interview scheduled for next week");
+    } catch (err) {
+      toast.error(`Failed to add interview: ${err.message || err}`);
+    }
+  }
+
+  // File upload handlers
+  async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploadLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+      
+      if (response.ok) {
+        await load(); // Reload to get updated attachments
+        toast.success("File uploaded successfully!");
+        event.target.value = ''; // Clear file input
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || "Upload failed");
+      }
+    } catch (err) {
+      toast.error(`Upload failed: ${err.message || err}`);
+    } finally {
+      setUploadLoading(false);
+    }
+  }
+
+  async function deleteAttachment(attachmentId) {
+    if (!confirm("Are you sure you want to delete this file?")) return;
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments/${attachmentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        await load(); // Reload to get updated attachments
+        toast.success("File deleted successfully!");
+      } else {
+        const error = await response.json();
+        toast.error(error.detail || "Delete failed");
+      }
+    } catch (err) {
+      toast.error(`Delete failed: ${err.message || err}`);
+    }
+  }
+
+  function downloadAttachment(attachmentId, filename) {
+    const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments/${attachmentId}/download`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   async function addNote() {
     if (!note.trim()) {
@@ -140,7 +262,20 @@ export default function AppDetailPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{data.job.title}</h1>
           {data.job.company_name && (
-            <p className="text-xl text-indigo-600 font-medium">{data.job.company_name}</p>
+            <div className="flex items-center space-x-4">
+              <p className="text-xl text-indigo-600 font-medium">{data.job.company_name}</p>
+              {data.job.company_website && (
+                <a 
+                  href={data.job.company_website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-500 hover:text-indigo-600 flex items-center"
+                >
+                  <span className="mr-1">🌐</span>
+                  Website
+                </a>
+              )}
+            </div>
           )}
           <div className="flex items-center space-x-4">
             <Badge variant="default" size="lg">
@@ -157,6 +292,76 @@ export default function AppDetailPage() {
         </div>
       </div>
 
+      {/* Quick Actions Bar */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl">⚡</span>
+            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Status Change */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Move Status</label>
+              <Select
+                value={data.application.status}
+                onChange={e => quickStatusChange(e.target.value)}
+                className="w-full"
+              >
+                {["Saved","Applied","Phone Screen","Tech","On-site","Offer","Accepted","Rejected"].map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Quick Follow-up */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Schedule Reminder</label>
+              <Button
+                onClick={quickAddFollowUp}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                📅 Follow-up in 3 days
+              </Button>
+            </div>
+
+            {/* Quick Interview */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Add Interview</label>
+              <Button
+                onClick={quickAddInterview}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                🗓️ Schedule Interview
+              </Button>
+            </div>
+
+            {/* Email Templates */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Email Templates</label>
+              <Button
+                onClick={() => {
+                  const subject = `Following up on ${data.job.title} application`;
+                  const body = `Hi,\n\nI wanted to follow up on my application for the ${data.job.title} position at ${data.job.company_name}. I'm very interested in this opportunity and would appreciate any updates you can provide.\n\nThank you for your time.\n\nBest regards`;
+                  const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                  window.open(mailtoLink);
+                }}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                ✉️ Email Template
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Job Info */}
       <Card>
         <div className="space-y-4">
@@ -165,26 +370,64 @@ export default function AppDetailPage() {
             <h2 className="text-xl font-semibold text-gray-900">Job Details</h2>
           </div>
           
-          {data.resume_label && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-green-600">📄</span>
-                <span className="font-medium text-green-800">Resume: {data.resume_label}</span>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {data.resume_label && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-600">📄</span>
+                    <span className="font-medium text-green-800">Resume: {data.resume_label}</span>
+                  </div>
+                </div>
+              )}
+
+              {data.job.source_url && (
+                <a 
+                  href={data.job.source_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  <span className="mr-2">🔗</span>
+                  View Original Job Posting
+                </a>
+              )}
+
+              {data.job.company_website && (
+                <a 
+                  href={data.job.company_website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  <span className="mr-2">🌐</span>
+                  Company Website
+                </a>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                {data.job.location && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">📍</span>
+                    <span className="text-gray-600">Location:</span>
+                    <span className="font-medium">{data.job.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-400">📅</span>
+                  <span className="text-gray-600">Applied:</span>
+                  <span className="font-medium">{new Date(data.application.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-400">🔄</span>
+                  <span className="text-gray-600">Last Update:</span>
+                  <span className="font-medium">{new Date(data.application.updated_at).toLocaleDateString()}</span>
+                </div>
               </div>
             </div>
-          )}
-
-          {data.job.source_url && (
-            <a 
-              href={data.job.source_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
-              <span className="mr-2">🔗</span>
-              View Original Job Posting
-            </a>
-          )}
+          </div>
 
           {data.job.description && (
             <div className="space-y-2">
@@ -268,6 +511,93 @@ export default function AppDetailPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Attachments */}
+      <Card>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">📎</span>
+              <h2 className="text-xl font-semibold text-gray-900">Attachments</h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="file"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-upload"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+              />
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {uploadLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-2">📤</span>
+                    Upload File
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+          
+          {attachments.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="text-4xl mb-2">📁</div>
+              <p>No files attached yet</p>
+              <p className="text-sm mt-1">Upload documents, screenshots, or other relevant files</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {attachments.map(attachment => (
+                <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <span className="text-2xl">
+                        {attachment.content_type?.includes('image') ? '🖼️' : 
+                         attachment.content_type?.includes('pdf') ? '📄' : 
+                         attachment.content_type?.includes('doc') ? '📝' : '📎'}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{attachment.filename}</p>
+                      <p className="text-sm text-gray-500">
+                        {(attachment.file_size / 1024 / 1024).toFixed(2)} MB • 
+                        {new Date(attachment.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={() => downloadAttachment(attachment.id, attachment.filename)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <span className="mr-1">⬇️</span>
+                      Download
+                    </Button>
+                    <Button
+                      onClick={() => deleteAttachment(attachment.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <span className="mr-1">🗑️</span>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
