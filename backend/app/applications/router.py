@@ -134,6 +134,61 @@ def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db
         ))
     return out
 
+@router.get("/with-stages", response_model=List[dict])
+def list_applications_with_stages(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get all applications with their stages - useful for reminders"""
+    # Get applications
+    applications = db.query(models.Application).filter(
+        models.Application.user_id == current_user.id
+    ).order_by(models.Application.created_at.desc()).all()
+    
+    result = []
+    for app in applications:
+        # Get job for this application
+        job = db.query(models.Job).filter(models.Job.id == app.job_id).first()
+        if not job:
+            continue
+            
+        # Get company for this job (if exists)
+        company = None
+        if job.company_id:
+            company = db.query(models.Company).filter(models.Company.id == job.company_id).first()
+        
+        # Get stages for this application
+        stages = db.query(models.Stage).filter(
+            models.Stage.application_id == app.id
+        ).order_by(models.Stage.created_at.asc()).all()
+        
+        # Build the response
+        app_data = {
+            "id": app.id,
+            "status": app.status,
+            "created_at": app.created_at,
+            "updated_at": app.updated_at,
+            "job": {
+                "id": job.id,
+                "title": job.title,
+                "company_name": company.name if company else None,
+                "location": job.location,
+                "source_url": job.source_url
+            },
+            "stages": [
+                {
+                    "id": stage.id,
+                    "name": stage.name,
+                    "scheduled_at": stage.scheduled_at,
+                    "outcome": stage.outcome,
+                    "notes": stage.notes,
+                    "created_at": stage.created_at,
+                    "application_id": stage.application_id
+                }
+                for stage in stages
+            ]
+        }
+        result.append(app_data)
+    
+    return result
+
 @router.get("/{app_id}", response_model=ApplicationOut)
 def get_application(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     row = _get_owned_app(db, app_id, current_user.id)
@@ -188,6 +243,32 @@ def list_stages(app_id: uuid.UUID, db: Session = Depends(get_db), current_user: 
         raise HTTPException(status_code=404, detail="Application not found")
     stmt = select(models.Stage).where(models.Stage.application_id == app_id).order_by(models.Stage.created_at.asc())
     return db.execute(stmt).scalars().all()
+
+@router.delete("/{app_id}/stages/{stage_id}")
+def delete_stage(app_id: uuid.UUID, stage_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Verify application ownership
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Find and delete the stage
+    stmt = select(models.Stage).where(
+        models.Stage.id == stage_id,
+        models.Stage.application_id == app_id
+    )
+    stage = db.execute(stmt).scalar_one_or_none()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    db.delete(stage)
+    db.commit()
+    
+    try:
+        import anyio
+        anyio.from_thread.run(broadcast, {"type": "stage_deleted", "application_id": str(app_id)})
+    except Exception:
+        pass
+    
+    return {"success": True}
 
 # ---------- notes ----------
 @router.post("/{app_id}/notes", response_model=NoteOut)
