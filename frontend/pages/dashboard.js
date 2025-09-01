@@ -1,26 +1,92 @@
 import { useEffect, useState } from "react";
 import { api, downloadApplicationsCSV, importApplicationsCSV } from "../lib/api";
-import { Button, Card } from "../components/ui";
+import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('30');
+  const [insights, setInsights] = useState(null);
   const toast = useToast();
 
   useEffect(() => { 
-    loadMetrics();
-  }, []);
+    loadData();
+  }, [dateRange]);
 
-  async function loadMetrics() {
+  async function loadData() {
     try {
-      const data = await api.getMetrics();
-      setMetrics(data);
+      setLoading(true);
+      const [metricsData, applicationsData] = await Promise.all([
+        api.getMetrics(),
+        api.getApplications()
+      ]);
+      setMetrics(metricsData);
+      setApplications(applicationsData);
+      generateInsights(applicationsData, metricsData);
     } catch (err) {
-      toast.error("Failed to load dashboard metrics");
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
+  }
+
+  function generateInsights(apps, metrics) {
+    const now = new Date();
+    const rangeInDays = parseInt(dateRange);
+    const startDate = new Date(now.getTime() - rangeInDays * 24 * 60 * 60 * 1000);
+    
+    const recentApps = apps.filter(app => 
+      new Date(app.created_at) >= startDate
+    );
+
+    // Calculate trends
+    const applicationsPerWeek = recentApps.length / (rangeInDays / 7);
+    const responseRate = (recentApps.filter(app => 
+      ['interview', 'offer', 'accepted'].includes(app.status)
+    ).length / recentApps.length * 100) || 0;
+
+    // Company analysis
+    const companyCounts = {};
+    recentApps.forEach(app => {
+      companyCounts[app.company] = (companyCounts[app.company] || 0) + 1;
+    });
+    const topCompanies = Object.entries(companyCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
+
+    // Status distribution
+    const statusCounts = {};
+    recentApps.forEach(app => {
+      statusCounts[app.status] = (statusCounts[app.status] || 0) + 1;
+    });
+
+    // Time-based analysis
+    const today = new Date();
+    const thisWeek = recentApps.filter(app => {
+      const appDate = new Date(app.created_at);
+      const daysDiff = (today - appDate) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 7;
+    }).length;
+
+    const lastWeek = recentApps.filter(app => {
+      const appDate = new Date(app.created_at);
+      const daysDiff = (today - appDate) / (1000 * 60 * 60 * 24);
+      return daysDiff > 7 && daysDiff <= 14;
+    }).length;
+
+    const weeklyTrend = lastWeek > 0 ? ((thisWeek - lastWeek) / lastWeek * 100) : 0;
+
+    setInsights({
+      applicationsPerWeek: Math.round(applicationsPerWeek * 10) / 10,
+      responseRate: Math.round(responseRate * 10) / 10,
+      topCompanies,
+      statusCounts,
+      weeklyTrend: Math.round(weeklyTrend * 10) / 10,
+      totalInPeriod: recentApps.length,
+      mostCommonStatus: Object.entries(statusCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'applied'
+    });
   }
 
   async function doExport() {
@@ -39,7 +105,7 @@ export default function Dashboard() {
     try {
       const res = await importApplicationsCSV(file);
       toast.success(`Imported ${res.created} applications successfully!`);
-      await loadMetrics(); // refresh metrics
+      await loadData(); // refresh all data
     } catch (e2) { 
       toast.error(`Import failed: ${e2.message || e2}`);
     }
@@ -77,42 +143,142 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overview of your job search progress</p>
+      {/* Header with Date Range Selector */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Comprehensive overview of your job search progress</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <label className="text-sm font-medium text-gray-700">Time Range:</label>
+          <select 
+            value={dateRange} 
+            onChange={(e) => setDateRange(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 3 months</option>
+            <option value="365">Last year</option>
+          </select>
+        </div>
       </div>
 
-      {/* Main Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Enhanced Main Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <MetricCard 
+          title="Total Applications" 
+          value={metrics.total_applications} 
+          icon="�"
+          color="text-blue-600"
+          bgColor="bg-blue-50"
+          trend={insights?.weeklyTrend}
+          subtitle="All time"
+        />
+        <MetricCard 
+          title="Response Rate" 
+          value={`${insights?.responseRate || 0}%`}
+          icon="�"
+          color="text-green-600"
+          bgColor="bg-green-50"
+          subtitle={`Last ${dateRange} days`}
+        />
+        <MetricCard 
+          title="Weekly Average" 
+          value={insights?.applicationsPerWeek || 0}
+          icon="📊"
+          color="text-purple-600"
+          bgColor="bg-purple-50"
+          subtitle="Applications/week"
+        />
         <MetricCard 
           title="Total Jobs" 
           value={metrics.total_jobs} 
           icon="💼"
-          color="text-blue-600"
-          bgColor="bg-blue-50"
-        />
-        <MetricCard 
-          title="Total Resumes" 
-          value={metrics.total_resumes} 
-          icon="📄"
-          color="text-green-600"
-          bgColor="bg-green-50"
-        />
-        <MetricCard 
-          title="Total Applications" 
-          value={metrics.total_applications} 
-          icon="📨"
-          color="text-purple-600"
-          bgColor="bg-purple-50"
+          color="text-orange-600"
+          bgColor="bg-orange-50"
+          subtitle="In database"
         />
       </div>
 
-      {/* Applications by Status */}
+      {/* Insights Panel */}
+      {insights && (
+        <Card>
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">🔍</span>
+              <h2 className="text-xl font-semibold text-gray-900">Key Insights</h2>
+            </div>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">📈</span>
+                  <h3 className="font-semibold text-gray-900">Weekly Trend</h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-2xl font-bold ${insights.weeklyTrend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {insights.weeklyTrend > 0 ? '+' : ''}{insights.weeklyTrend}%
+                  </span>
+                  <span className="text-sm text-gray-600">vs last week</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">🎯</span>
+                  <h3 className="font-semibold text-gray-900">Most Common Status</h3>
+                </div>
+                <div className="capitalize text-lg font-medium text-indigo-600">
+                  {insights.mostCommonStatus}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg">🚀</span>
+                  <h3 className="font-semibold text-gray-900">Activity Level</h3>
+                </div>
+                <div className="text-lg font-medium text-purple-600">
+                  {insights.totalInPeriod} applications in {dateRange} days
+                </div>
+              </div>
+            </div>
+
+            {/* Top Companies */}
+            {insights.topCompanies.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
+                  <span>🏢</span>
+                  <span>Top Companies Applied To</span>
+                </h3>
+                <div className="space-y-2">
+                  {insights.topCompanies.map(([company, count], index) => (
+                    <div key={company} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-bold text-gray-500">#{index + 1}</span>
+                        <span className="font-medium text-gray-900">{company}</span>
+                      </div>
+                      <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm font-medium">
+                        {count} {count === 1 ? 'application' : 'applications'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Enhanced Applications by Status */}
       <Card>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Application Status Breakdown</h2>
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+              <span>📊</span>
+              <span>Application Status Breakdown</span>
+            </h2>
             <span className="text-sm text-gray-500">{totalApplications} total applications</span>
           </div>
           
@@ -126,15 +292,36 @@ export default function Dashboard() {
             <div className="space-y-4">
               {statusData.map(([status, count]) => {
                 const percentage = totalApplications > 0 ? (count / totalApplications) * 100 : 0;
+                const getStatusColor = (status) => {
+                  switch (status.toLowerCase()) {
+                    case 'offer': return 'bg-green-500';
+                    case 'interview': return 'bg-blue-500';
+                    case 'applied': return 'bg-yellow-500';
+                    case 'rejected': return 'bg-red-500';
+                    default: return 'bg-gray-500';
+                  }
+                };
+                const getStatusIcon = (status) => {
+                  switch (status.toLowerCase()) {
+                    case 'offer': return '🎉';
+                    case 'interview': return '🗣️';
+                    case 'applied': return '📨';
+                    case 'rejected': return '❌';
+                    default: return '📋';
+                  }
+                };
                 return (
                   <div key={status} className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">{status}</span>
+                      <div className="flex items-center space-x-2">
+                        <span>{getStatusIcon(status)}</span>
+                        <span className="font-medium text-gray-900 capitalize">{status}</span>
+                      </div>
                       <span className="text-sm text-gray-600">{count} ({Math.round(percentage)}%)</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-3">
                       <div 
-                        className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                        className={`h-3 rounded-full transition-all duration-500 ${getStatusColor(status)}`}
                         style={{ width: `${percentage}%` }}
                       ></div>
                     </div>
@@ -145,6 +332,75 @@ export default function Dashboard() {
           )}
         </div>
       </Card>
+
+      {/* Performance Analytics */}
+      {insights && (
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                <span>⚡</span>
+                <span>Performance Metrics</span>
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-600">Applications per week</span>
+                  <span className="font-semibold text-lg">{insights.applicationsPerWeek}</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-600">Response rate</span>
+                  <span className="font-semibold text-lg text-green-600">{insights.responseRate}%</span>
+                </div>
+                <div className="flex justify-between items-center py-3">
+                  <span className="text-gray-600">Week-over-week change</span>
+                  <span className={`font-semibold text-lg ${insights.weeklyTrend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {insights.weeklyTrend > 0 ? '+' : ''}{insights.weeklyTrend}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                <span>💡</span>
+                <span>Recommendations</span>
+              </h3>
+              <div className="space-y-3">
+                {insights.applicationsPerWeek < 5 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>💪 Increase Activity:</strong> Consider applying to more jobs per week for better results.
+                    </p>
+                  </div>
+                )}
+                {insights.responseRate < 10 && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>📝 Optimize Applications:</strong> Low response rate - consider improving your resume or cover letter.
+                    </p>
+                  </div>
+                )}
+                {insights.weeklyTrend > 20 && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <strong>🚀 Great Momentum:</strong> You're increasing your application rate - keep it up!
+                    </p>
+                  </div>
+                )}
+                {insights.topCompanies.length > 0 && insights.topCompanies[0][1] > 3 && (
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="text-sm text-purple-800">
+                      <strong>🎯 Diversify:</strong> Consider expanding to new companies beyond your top targets.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Data Management */}
       <Card>
@@ -196,7 +452,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <a href="/jobs" className="block">
               <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-md transition-all duration-200 text-center">
                 <div className="text-2xl mb-2">💼</div>
@@ -221,6 +477,12 @@ export default function Dashboard() {
                 <div className="text-sm font-medium text-gray-900">Refresh Data</div>
               </div>
             </button>
+            <a href="/profile" className="block">
+              <div className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-md transition-all duration-200 text-center">
+                <div className="text-2xl mb-2">👤</div>
+                <div className="text-sm font-medium text-gray-900">Profile Settings</div>
+              </div>
+            </a>
           </div>
         </div>
       </Card>
@@ -228,14 +490,24 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon, color, bgColor }) {
+function MetricCard({ title, value, icon, color, bgColor, trend, subtitle }) {
   return (
     <Card className={`${bgColor} border-none`}>
-      <div className="flex items-center space-x-4">
-        <div className="text-3xl">{icon}</div>
-        <div>
-          <div className={`text-3xl font-bold ${color}`}>{value}</div>
-          <div className="text-gray-600 font-medium">{title}</div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="text-3xl">{icon}</div>
+          <div>
+            <div className={`text-3xl font-bold ${color} flex items-center space-x-2`}>
+              <span>{value}</span>
+              {trend !== undefined && (
+                <span className={`text-sm font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {trend > 0 ? '↗' : trend < 0 ? '↘' : '→'} {Math.abs(trend)}%
+                </span>
+              )}
+            </div>
+            <div className="text-gray-600 font-medium">{title}</div>
+            {subtitle && <div className="text-xs text-gray-500">{subtitle}</div>}
+          </div>
         </div>
       </div>
     </Card>
