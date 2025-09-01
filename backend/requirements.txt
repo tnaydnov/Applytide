@@ -14,8 +14,18 @@ httpx
 beautifulsoup4
 lxml
 python-multipart
+
+# PDF Processing (Enhanced)
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+PyMuPDF==1.23.8
 pypdf
+
+# Document Processing
 python-docx
-anyio
+
+# Text Processing & Analysis (Enhanced)
+nltk==3.8.1
 scikit-learn
+anyio
 faker>=20.0.0

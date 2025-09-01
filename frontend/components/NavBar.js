@@ -63,9 +63,9 @@ export default function NavBar() {
     { label: "Jobs", href: "/jobs", icon: "💼" },
     { label: "Pipeline", href: "/pipeline", icon: "🔄" },
     { label: "Search", href: "/search", icon: "🔍" },
-    { label: "Reminders", href: "/reminders", icon: "🗓️" },
-    { label: "Analytics", href: "/analytics", icon: "📈" },
-    { label: "Resumes", href: "/resumes", icon: "📄" },
+    { label: "Documents", href: "/documents", icon: "�" },
+    { label: "Reminders", href: "/reminders", icon: "�️" },
+    { label: "Analytics", href: "/analytics", icon: "�" },
   ];
 
   const links = user ? authenticatedLinks : publicLinks;
