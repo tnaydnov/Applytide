@@ -177,6 +177,23 @@ export const api = {
   // dashboard
   getMetrics: () => apiFetch("/dashboard/metrics").then(r => r.json()),
   getApplications: () => apiFetch("/applications").then(r => r.json()),
+  getApplicationsWithStages: () => apiFetch("/applications/with-stages").then(r => r.json()),
+  updateApplication: (id, data) => apiFetch(`/applications/${id}`, { method: "PUT", body: JSON.stringify(data) }).then(r => r.json()),
+  
+  // Stage management
+  deleteStage: (applicationId, stageId) => apiFetch(`/applications/${applicationId}/stages/${stageId}`, { method: "DELETE" }),
+  
+  // Resume management
+  listResumes: () => apiFetch("/resumes").then(r => r.json()),
+  uploadResume: (filename, file, isDefault = false) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("label", filename);
+    if (isDefault) formData.append("is_default", "true");
+    return apiFetch("/resumes", { method: "POST", body: formData }).then(r => r.json());
+  },
+  deleteResume: (id) => apiFetch(`/resumes/${id}`, { method: "DELETE" }),
+  setDefaultResume: (id) => apiFetch(`/resumes/${id}/default`, { method: "PUT" }),
 };
 
 // WebSocket helper
@@ -220,3 +237,6 @@ export async function importApplicationsCSV(file) {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
+
+// Default export for convenience
+export default api;
