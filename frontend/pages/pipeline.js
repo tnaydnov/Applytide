@@ -20,17 +20,29 @@ const statusConfig = {
 function ApplicationCard({ application, onMove, statuses, onDragStart, onDragEnd }) {
   const [showActions, setShowActions] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
   const config = statusConfig[application.status] || statusConfig["Saved"];
 
   const availableStatuses = statuses.filter(s => s !== application.status);
 
   const handleDragStart = (e) => {
+    console.log('🚀 DRAG START EVENT FIRED!', application.id, application.job.title);
+    console.log('Event type:', e.type, 'Target:', e.target.tagName);
+    console.log('DataTransfer available:', !!e.dataTransfer);
+    
     setIsDragging(true);
-    e.dataTransfer.setData('text/plain', JSON.stringify({
-      id: application.id,
-      currentStatus: application.status
-    }));
-    e.dataTransfer.effectAllowed = 'move';
+    
+    try {
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        id: application.id,
+        currentStatus: application.status
+      }));
+      e.dataTransfer.effectAllowed = 'move';
+      console.log('✅ Drag data set successfully');
+    } catch (error) {
+      console.error('❌ Error setting drag data:', error);
+    }
+    
     onDragStart && onDragStart(application);
   };
 
@@ -56,17 +68,80 @@ function ApplicationCard({ application, onMove, statuses, onDragStart, onDragEnd
 
   return (
     <Card 
-      className={`group cursor-grab active:cursor-grabbing transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slideIn ${
+      className={`group transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slideIn ${
         isDragging ? 'opacity-50 rotate-2 scale-105 shadow-2xl' : ''
       }`}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      style={{
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none'
+      }}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       padding={false}
     >
       <div className="p-3 sm:p-4 space-y-3">
+        {/* Drag Handle */}
+        <div className="flex items-center justify-between relative">
+          <div 
+            className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing p-2 -m-2 hover:bg-gray-100 rounded transition-all" 
+            title="Drag to move or click for menu"
+            draggable="true"
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onMouseDown={(e) => {
+              console.log('🎯 Drag handle mousedown!');
+            }}
+            onClick={(e) => {
+              console.log('🖱️ Opening move menu');
+              e.stopPropagation();
+              setShowMoveMenu(!showMoveMenu);
+            }}
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+            </svg>
+          </div>
+          
+          {/* Move Menu */}
+          {showMoveMenu && (
+            <div className="absolute top-8 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 min-w-[150px]">
+              <div className="text-xs font-medium text-gray-700 mb-2">Move to:</div>
+              {availableStatuses.map(status => (
+                <button
+                  key={status}
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded flex items-center space-x-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMove(application.id, status);
+                    setShowMoveMenu(false);
+                  }}
+                >
+                  <span>{statusConfig[status]?.icon || '📋'}</span>
+                  <span>{status}</span>
+                </button>
+              ))}
+              <button
+                className="block w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-100 rounded mt-1 border-t border-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoveMenu(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          
+          <div className="ml-2 flex-shrink-0">
+            <Badge variant="default" size="sm">
+              <span className="mr-1">{config.icon}</span>
+              <span className="hidden sm:inline">{application.status}</span>
+            </Badge>
+          </div>
+        </div>
+        
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors text-sm sm:text-base">
@@ -83,12 +158,6 @@ function ApplicationCard({ application, onMove, statuses, onDragStart, onDragEnd
                 <span className="truncate">{application.job.location}</span>
               </p>
             )}
-          </div>
-          <div className="ml-2 flex-shrink-0">
-            <Badge variant="default" size="sm">
-              <span className="mr-1">{config.icon}</span>
-              <span className="hidden sm:inline">{application.status}</span>
-            </Badge>
           </div>
         </div>
 
@@ -198,19 +267,23 @@ function Column({ status, items, onMove, availableStatuses, draggedItem, onDragS
   // Ensure items is always an array
   const safeItems = Array.isArray(items) ? items : [];
   
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🎯 Drag enter column:', status);
+    setIsDragOver(true);
+    setIsDropAllowed(true);
+  };
+
   const handleDragOver = (e) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.stopPropagation();
+    console.log('🎯 Drag over column:', status);
     
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-      const allowed = data.currentStatus !== status;
-      setIsDropAllowed(allowed);
-      setIsDragOver(true);
-    } catch {
-      setIsDropAllowed(false);
-      setIsDragOver(true);
-    }
+    // Always allow drop - we'll check validity on drop
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+    setIsDropAllowed(true);
   };
 
   const handleDragLeave = (e) => {
@@ -264,6 +337,7 @@ function Column({ status, items, onMove, availableStatuses, draggedItem, onDragS
               : 'border-red-400 shadow-lg bg-red-50'
             : 'border-gray-200'
         }`}
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
