@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { apiFetch } from '../lib/api';
 
 export default function AuthGuard({ children }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -9,6 +8,24 @@ export default function AuthGuard({ children }) {
 
   useEffect(() => {
     checkAuth();
+
+    // Listen for storage changes (when login/logout happens)
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+
+    // Listen for custom auth events
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('authChange', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authChange', handleAuthChange);
+    };
   }, []);
 
   async function checkAuth() {
@@ -19,21 +36,33 @@ export default function AuthGuard({ children }) {
         throw new Error('No tokens found');
       }
 
-      // Verify tokens by making a request to a protected endpoint
-      const response = await apiFetch('/auth/me');
-      if (response.ok) {
-        setIsAuthenticated(true);
-      } else {
-        throw new Error('Token invalid');
+      // Parse and validate token structure
+      const tokenData = JSON.parse(tokens);
+      if (!tokenData.access_token || !tokenData.refresh_token) {
+        throw new Error('Invalid token structure');
       }
+
+      // Check if session is still valid (30 days from login)
+      const loginTime = tokenData.loginTime || Date.now();
+      const sessionDuration = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+      const sessionExpired = Date.now() - loginTime > sessionDuration;
+
+      if (sessionExpired) {
+        throw new Error('Session expired');
+      }
+
+      // If we have valid tokens and session not expired, consider user authenticated
+      setIsAuthenticated(true);
     } catch (error) {
       // Clear any invalid tokens
       if (typeof window !== 'undefined') {
         localStorage.removeItem('tokens');
       }
       setIsAuthenticated(false);
-      // Redirect to login page
-      router.push('/login');
+      // Only redirect to login if we're not already there
+      if (router.pathname !== '/login') {
+        router.push('/login');
+      }
     } finally {
       setIsLoading(false);
     }
