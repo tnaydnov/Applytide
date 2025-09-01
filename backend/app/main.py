@@ -11,6 +11,8 @@ from .match.router import router as match_router
 from .io.router import router as io_router
 from .analytics.router import router as analytics_router
 from .search.router import router as search_router
+from .documents.router import router as documents_router
+from .api.enhanced_documents import router as enhanced_documents_router  # Enhanced documents API
 
 
 
@@ -37,6 +39,8 @@ app.include_router(match_router)
 app.include_router(io_router)
 app.include_router(analytics_router)
 app.include_router(search_router)
+app.include_router(documents_router)
+app.include_router(enhanced_documents_router)  # Enhanced intelligent document analysis
 
 
 

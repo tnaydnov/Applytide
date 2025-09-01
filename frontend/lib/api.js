@@ -245,6 +245,64 @@ export const api = {
   },
   deleteResume: (id) => apiFetch(`/resumes/${id}`, { method: "DELETE" }),
   setDefaultResume: (id) => apiFetch(`/resumes/${id}/default`, { method: "PUT" }),
+
+  // Document Management
+  getDocuments: (params = '') => 
+    apiFetch(`/documents?${params}`).then(r => r.json()),
+  uploadDocument: (formData) => {
+    const { access_token } = getTokens();
+    return fetch(`${API_BASE}/documents/upload`, {
+      method: "POST",
+      headers: access_token ? { Authorization: `Bearer ${access_token}` } : {},
+      body: formData
+    }).then(async r => {
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    });
+  },
+  deleteDocument: (id) => 
+    apiFetch(`/documents/${id}`, { method: "DELETE" }),
+  downloadDocument: async (id) => {
+    const { access_token } = getTokens();
+    const response = await fetch(`${API_BASE}/documents/${id}/download`, {
+      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    
+    // Get filename from response headers
+    const contentDisposition = response.headers.get('content-disposition');
+    let filename = 'document';
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="(.+)"/);
+      if (match) filename = match[1];
+    }
+    
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+  analyzeDocument: (id) => 
+    apiFetch(`/documents/${id}/analyze`, { method: "POST" }).then(r => r.json()),
+  optimizeDocument: (id, targetJob = null) => {
+    const body = targetJob ? JSON.stringify({ target_job_id: targetJob }) : '{}';
+    return apiFetch(`/documents/${id}/optimize`, { 
+      method: "POST", 
+      body 
+    }).then(r => r.json());
+  },
+  generateCoverLetter: (payload) =>
+    apiFetch("/documents/cover-letter/generate", { 
+      method: "POST", 
+      body: JSON.stringify(payload) 
+    }).then(r => r.json()),
+  getCoverLetterTemplates: () =>
+    apiFetch("/documents/cover-letter/templates").then(r => r.json()),
 };
 
 // WebSocket helper
