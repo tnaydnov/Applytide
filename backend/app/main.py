@@ -10,6 +10,7 @@ from .dashboard.router import router as dashboard_router
 from .match.router import router as match_router
 from .io.router import router as io_router
 from .analytics.router import router as analytics_router
+from .search.router import router as search_router
 
 
 
@@ -35,6 +36,7 @@ app.include_router(dashboard_router)
 app.include_router(match_router)
 app.include_router(io_router)
 app.include_router(analytics_router)
+app.include_router(search_router)
 
 
 

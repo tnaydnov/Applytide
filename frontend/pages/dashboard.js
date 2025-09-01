@@ -3,6 +3,7 @@ import { api, downloadApplicationsCSV, importApplicationsCSV } from "../lib/api"
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
 import RemindersWidget from "../components/RemindersWidget";
+import QuickSearchWidget from "../components/QuickSearchWidget";
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null);
@@ -234,6 +235,9 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Quick Search Widget */}
+      <QuickSearchWidget />
+
       {/* Reminders Widget */}
       <RemindersWidget maxItems={3} />
 
@@ -246,7 +250,7 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold text-gray-900">Key Insights</h2>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-lg">📈</span>

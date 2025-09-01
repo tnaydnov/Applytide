@@ -217,6 +217,22 @@ export const api = {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+
+  // Search
+  advancedSearch: (payload) =>
+    apiFetch("/search/advanced", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  quickSearch: (query) =>
+    apiFetch(`/search/quick?query=${encodeURIComponent(query)}`).then(r => r.json()),
+  getSearchSuggestions: (query) =>
+    apiFetch(`/search/suggestions?q=${encodeURIComponent(query)}`).then(r => r.json()),
+  getFilterOptions: () =>
+    apiFetch("/search/filters").then(r => r.json()),
+  getSavedSearches: () =>
+    apiFetch("/search/saved").then(r => r.json()),
+  saveSearch: (payload) =>
+    apiFetch("/search/saved", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  deleteSavedSearch: (id) =>
+    apiFetch(`/search/saved/${id}`, { method: "DELETE" }).then(r => r.json()),
   
   // Resume management
   listResumes: () => apiFetch("/resumes").then(r => r.json()),
