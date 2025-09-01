@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "next/router";
 import { login, register } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
@@ -8,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const toast = useToast();
 
   async function submit(e) {
@@ -18,11 +20,15 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(email, password);
         toast.success("Welcome back!");
+        // Force a reload to ensure AuthGuard picks up the new authentication state
+        window.location.href = "/pipeline";
       } else {
         await register(email, password);
-        toast.success("Account created successfully!");
+        toast.success("Account created successfully! Please sign in.");
+        // After registration, switch to login mode instead of redirecting
+        setMode("login");
+        setPassword(""); // Clear password for security
       }
-      window.location.href = "/pipeline";
     } catch (err) {
       toast.error(err.message || err);
     } finally {

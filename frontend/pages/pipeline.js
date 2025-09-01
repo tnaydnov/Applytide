@@ -99,6 +99,9 @@ function ApplicationCard({ application, onMove, statuses }) {
 function Column({ status, items, onMove, availableStatuses }) {
   const config = statusConfig[status];
   
+  // Ensure items is always an array
+  const safeItems = Array.isArray(items) ? items : [];
+  
   return (
     <div className="flex-shrink-0 w-80">
       <div className={`bg-gradient-to-br ${config.gradient} rounded-xl border border-gray-200 overflow-hidden`}>
@@ -117,13 +120,13 @@ function Column({ status, items, onMove, availableStatuses }) {
 
         {/* Column Content */}
         <div className="p-4 space-y-3 min-h-[200px] max-h-[600px] overflow-y-auto">
-          {items.length === 0 ? (
+          {safeItems.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <div className="text-3xl mb-2">{config.icon}</div>
               <p className="text-sm">No applications yet</p>
             </div>
           ) : (
-            items.map((app, index) => (
+            safeItems.map((app, index) => (
               <div key={app.id} style={{ animationDelay: `${index * 100}ms` }}>
                 <ApplicationCard 
                   application={app} 
@@ -151,7 +154,14 @@ export default function PipelinePage() {
     try {
       const result = {};
       const promises = STATUSES.map(async (status) => {
-        result[status] = await api.listCardsByStatus(status);
+        try {
+          const data = await api.listCardsByStatus(status);
+          // Ensure we always get an array
+          result[status] = Array.isArray(data) ? data : [];
+        } catch (err) {
+          console.warn(`Failed to load cards for status ${status}:`, err);
+          result[status] = [];
+        }
       });
       await Promise.all(promises);
       setColumns(result);

@@ -29,6 +29,9 @@ export function logout() {
     }
     
     localStorage.removeItem("tokens");
+    
+    // Trigger auth change event for immediate navbar update
+    window.dispatchEvent(new Event('authChange'));
   }
   window.location.href = "/login";
 }
@@ -86,7 +89,19 @@ export async function login(email, password) {
   });
   if (!r.ok) throw new Error(await r.text());
   const data = await r.json();
-  setTokens({ access_token: data.access_token, refresh_token: data.refresh_token });
+  
+  // Store tokens with user email for navbar display
+  setTokens({ 
+    access_token: data.access_token, 
+    refresh_token: data.refresh_token,
+    email: email, // Store email for display purposes
+    loginTime: Date.now() // Store login time for session management
+  });
+  
+  // Trigger custom auth change event for AuthGuard and NavBar
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event('authChange'));
+  }
 }
 
 export async function register(email, password) {
@@ -97,7 +112,19 @@ export async function register(email, password) {
   });
   if (!r.ok) throw new Error(await r.text());
   const data = await r.json();
-  setTokens({ access_token: data.access_token, refresh_token: data.refresh_token });
+  
+  // Store tokens with user email for navbar display
+  setTokens({ 
+    access_token: data.access_token, 
+    refresh_token: data.refresh_token,
+    email: email, // Store email for display purposes
+    loginTime: Date.now() // Store login time for session management
+  });
+  
+  // Trigger custom auth change event for AuthGuard and NavBar
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event('authChange'));
+  }
 }
 
 export const api = {
