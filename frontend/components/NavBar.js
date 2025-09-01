@@ -63,6 +63,7 @@ export default function NavBar() {
     { label: "Jobs", href: "/jobs", icon: "💼" },
     { label: "Pipeline", href: "/pipeline", icon: "🔄" },
     { label: "Reminders", href: "/reminders", icon: "🗓️" },
+    { label: "Analytics", href: "/analytics", icon: "📈" },
     { label: "Resumes", href: "/resumes", icon: "📄" },
   ];
 
