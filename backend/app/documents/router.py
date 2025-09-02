@@ -186,24 +186,20 @@ def delete_document(
         raise HTTPException(status_code=400, detail="Invalid document ID")
 
 @router.post("/cover-letter/generate")
-def generate_cover_letter(
+async def generate_cover_letter(
     request: CoverLetterRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Generate AI-powered cover letter"""
+    """Generate AI-powered cover letter with intelligent analysis"""
     try:
-        cover_letter = document_service.generate_cover_letter(
+        result = await document_service.generate_cover_letter(
             db=db,
             user_id=str(current_user.id),
             request=request
         )
         
-        return {
-            "cover_letter": cover_letter,
-            "word_count": len(cover_letter.split()),
-            "estimated_reading_time": f"{len(cover_letter.split()) // 200 + 1} minutes"
-        }
+        return result
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

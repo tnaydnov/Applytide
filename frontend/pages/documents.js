@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Textarea, FileUpload } from '../components/ui';
-import api, { apiFetch } from '../lib/api';
+import api, { apiFetch, getTokens } from '../lib/api';
+import AuthGuard from "../components/AuthGuard";
 
 // Enhanced Document Management with Intelligent ATS Analysis
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -62,6 +63,7 @@ export default function DocumentsPage() {
   });
   
   const [jobs, setJobs] = useState([]);
+  const [resumes, setResumes] = useState([]);
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState('');
   
   // Simple toast function with better UX
@@ -93,6 +95,7 @@ export default function DocumentsPage() {
   useEffect(() => {
     loadDocuments();
     loadJobs();
+    loadResumes();
   }, [pagination.page, filters]);
 
   async function loadDocuments() {
@@ -122,23 +125,24 @@ export default function DocumentsPage() {
     }
   }
 
+  async function loadResumes() {
+    try {
+      const response = await api.listResumes();
+      const resumesData = response.items || response || [];
+      console.log('Loaded resumes for cover letter:', resumesData);
+      setResumes(resumesData);
+    } catch (error) {
+      console.error('Failed to load resumes:', error);
+    }
+  }
+
   async function loadJobs() {
     try {
-      // Try enhanced API first, fallback to original
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/documents/jobs`);
-        if (response.ok) {
-          const data = await response.json();
-          setJobs(data.jobs || []);
-          return;
-        }
-      } catch (enhancedError) {
-        console.log('Enhanced API not available, using fallback');
-      }
-      
-      // Fallback to original API
+      // Skip the enhanced API for now and use the main jobs API directly
       const response = await api.listJobs();
-      setJobs(response.items || []);
+      const jobsData = response.items || [];
+      console.log('Loaded jobs for cover letter:', jobsData);
+      setJobs(jobsData);
     } catch (error) {
       console.error('Failed to load jobs:', error);
     }
@@ -304,17 +308,76 @@ export default function DocumentsPage() {
     }
   }
 
+  async function saveCoverLetterAsDocument() {
+    if (!generatedCoverLetter) {
+      toast.error('No cover letter to save');
+      return;
+    }
+
+    try {
+      const selectedJob = jobs.find(job => job.id === coverLetterForm.job_id);
+      const filename = `Cover_Letter_${selectedJob?.company_name || 'Unknown'}_${selectedJob?.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'Job'}.txt`;
+      
+      // Create a text file blob
+      const blob = new Blob([generatedCoverLetter], { type: 'text/plain' });
+      const file = new File([blob], filename, { type: 'text/plain' });
+      
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('document_type', 'cover_letter');
+      formData.append('metadata', JSON.stringify({
+        generated_for_job: selectedJob?.title,
+        generated_for_company: selectedJob?.company_name,
+        tone: coverLetterForm.tone,
+        length: coverLetterForm.length
+      }));
+
+      // Upload the document
+      const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${getTokens().access_token}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Cover letter saved as document!');
+        loadDocuments(); // Refresh the documents list
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error(`Failed to save: ${error.message}`);
+    }
+  }
+
   async function generateCoverLetter() {
     if (!coverLetterForm.job_id) {
       toast.error('Please select a job');
       return;
     }
+    
+    if (!coverLetterForm.resume_id) {
+      toast.error('Please select a resume');
+      return;
+    }
 
     try {
+      console.log('Generating cover letter with:', coverLetterForm);
       const response = await api.generateCoverLetter(coverLetterForm);
-      setGeneratedCoverLetter(response.cover_letter);
-      toast.success('Cover letter generated successfully!');
+      console.log('Cover letter response:', response);
+      
+      if (response.cover_letter) {
+        setGeneratedCoverLetter(response.cover_letter);
+        toast.success('Cover letter generated successfully!');
+      } else {
+        throw new Error('No cover letter content received');
+      }
     } catch (error) {
+      console.error('Cover letter generation error:', error);
       toast.error(`Generation failed: ${error.message}`);
     }
   }
@@ -338,7 +401,8 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <AuthGuard>
+      <div className="max-w-7xl mx-auto p-6">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Document Manager</h1>
@@ -693,7 +757,10 @@ export default function DocumentsPage() {
                     </label>
                     <select
                       value={coverLetterForm.job_id}
-                      onChange={(e) => setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value })}
+                      onChange={(e) => {
+                        console.log('Job selected:', e.target.value);
+                        setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value });
+                      }}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -703,8 +770,38 @@ export default function DocumentsPage() {
                       }}
                     >
                       <option value="">Select a job...</option>
-                      <option value="1">Software Engineer at TechCorp</option>
-                      <option value="2">Frontend Developer at StartupXYZ</option>
+                      {jobs.map(job => (
+                        <option key={job.id} value={job.id}>
+                          {job.title} at {job.company_name || 'Unknown Company'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                      Resume *
+                    </label>
+                    <select
+                      value={coverLetterForm.resume_id}
+                      onChange={(e) => {
+                        console.log('Resume selected:', e.target.value);
+                        setCoverLetterForm({ ...coverLetterForm, resume_id: e.target.value });
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="">Select your resume...</option>
+                      {resumes.map(resume => (
+                        <option key={resume.id} value={resume.id}>
+                          {resume.file_name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -753,14 +850,15 @@ export default function DocumentsPage() {
 
                   <button 
                     onClick={generateCoverLetter}
+                    disabled={!coverLetterForm.job_id || !coverLetterForm.resume_id}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: '#7c3aed',
+                      backgroundColor: (!coverLetterForm.job_id || !coverLetterForm.resume_id) ? '#9ca3af' : '#7c3aed',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
-                      cursor: 'pointer',
+                      cursor: (!coverLetterForm.job_id || !coverLetterForm.resume_id) ? 'not-allowed' : 'pointer',
                       fontSize: '14px',
                       fontWeight: '500'
                     }}
@@ -809,6 +907,7 @@ export default function DocumentsPage() {
                         📋 Copy
                       </button>
                       <button
+                        onClick={saveCoverLetterAsDocument}
                         style={{
                           padding: '6px 12px',
                           border: '1px solid #d1d5db',
@@ -1204,6 +1303,7 @@ export default function DocumentsPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

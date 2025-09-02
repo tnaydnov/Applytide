@@ -55,6 +55,7 @@ def register(payload: RegisterIn, request: Request, db: Session = Depends(get_db
     user = models.User(
         id=uuid.uuid4(),
         email=payload.email,
+        full_name=payload.full_name,
         password_hash=hash_password(payload.password),
         role="user",
         calendar_token=secrets.token_urlsafe(32),

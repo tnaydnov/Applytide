@@ -3,6 +3,20 @@ import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import { logout, apiFetch } from "../lib/api";
 
+const publicLinks = [
+  { label: "Login", href: "/login", icon: "🔐" },
+];
+
+const authenticatedLinks = [
+  { label: "Dashboard", href: "/dashboard", icon: "📊" },
+  { label: "Jobs", href: "/jobs", icon: "💼" },
+  { label: "Pipeline", href: "/pipeline", icon: "🔄" },
+  { label: "Search", href: "/search", icon: "🔍" },
+  { label: "Documents", href: "/documents", icon: "📄" },
+  { label: "Reminders", href: "/reminders", icon: "⏰" },
+  { label: "Analytics", href: "/analytics", icon: "📈" },
+];
+
 export default function NavBar() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { login, register } from "../lib/api";
+import { login, api } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
 
@@ -8,9 +8,24 @@ export default function LoginPage() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const toast = useToast();
+
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const tokens = localStorage.getItem('tokens');
+      if (tokens) {
+        const parsed = JSON.parse(tokens);
+        if (parsed.access_token) {
+          router.push('/');
+          return;
+        }
+      }
+    }
+  }, [router]);
 
   async function submit(e) {
     e.preventDefault();
@@ -20,14 +35,17 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(email, password);
         toast.success("Welcome back!");
-        // Force a reload to ensure AuthGuard picks up the new authentication state
-        window.location.href = "/pipeline";
+        // Redirect to main page instead of pipeline
+        router.push("/");
       } else {
-        await register(email, password);
-        toast.success("Account created successfully! Please sign in.");
-        // After registration, switch to login mode instead of redirecting
-        setMode("login");
-        setPassword(""); // Clear password for security
+        await api.register({
+          email: email,
+          password: password,
+          full_name: fullName
+        });
+        toast.success("Account created successfully! Welcome to JobFlow!");
+        // Redirect to dashboard after successful registration
+        router.push("/dashboard");
       }
     } catch (err) {
       toast.error(err.message || err);
@@ -58,6 +76,18 @@ export default function LoginPage() {
         {/* Form */}
         <Card>
           <form onSubmit={submit} className="space-y-6">
+            {mode === "register" && (
+              <Input
+                label="Full Name"
+                type="text"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="John Doe"
+                required
+                icon={<span>👤</span>}
+              />
+            )}
+            
             <Input
               label="Email Address"
               type="email"

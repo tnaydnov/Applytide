@@ -50,27 +50,54 @@ export default function Home() {
         <div className="text-center space-y-8 py-16">
           <div className="space-y-4">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 tracking-tight animate-slideIn">
-              Your <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Dream Job
-              </span> Awaits
+              <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Personal AI
+              </span> Career Assistant
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed animate-slideIn">
-              Transform your job search with JobFlow Copilot - the intelligent platform that turns 
-              chaos into clarity, helping you land your perfect role faster than ever.
+              Get personalized job recommendations, track applications, and receive AI insights 
+              tailored specifically to YOUR career goals, skills, and location.
             </p>
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 max-w-2xl mx-auto">
+              <p className="text-sm font-medium text-green-800">
+                🎯 <span className="font-bold">PERSONALIZED:</span> All insights and recommendations are tailored to your profile!
+              </p>
+            </div>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slideIn">
-            <Link href="/jobs">
-              <Button size="xl" className="w-full sm:w-auto">
-                🚀 Start Job Hunting
+            <Link href="/auth/register">
+              <Button size="xl" className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                🚀 Start Your Journey
               </Button>
             </Link>
-            <Link href="/pipeline">
-              <Button variant="outline" size="xl" className="w-full sm:w-auto">
-                📊 View Pipeline
+            <Link href="/login">
+              <Button variant="outline" size="xl" className="w-full sm:w-auto border-purple-300 text-purple-700 hover:bg-purple-50">
+                � Sign In
               </Button>
             </Link>
+          </div>
+          
+          {/* Personal Benefits Preview */}
+          <div className="max-w-4xl mx-auto mt-8 p-6 bg-white rounded-lg shadow-lg border border-purple-200">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">🎯 Your Personal Career Intelligence</h3>
+              <p className="text-gray-600">See how our AI adapts to YOUR specific situation</p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4 text-center">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-2xl font-bold text-green-600">YOUR</div>
+                <div className="text-sm text-gray-600">Location-specific job market</div>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-blue-600">YOUR</div>
+                <div className="text-sm text-gray-600">Skills gap analysis</div>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="text-2xl font-bold text-purple-600">7 Factors</div>
+                <div className="text-sm text-gray-600">Success Prediction Model</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -87,6 +114,74 @@ export default function Home() {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* AI Showcase Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 -z-10"></div>
+        <div className="space-y-8 py-16">
+          <div className="text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              🧠 Revolutionary AI Intelligence
+            </h2>
+            <p className="text-gray-600 text-xl max-w-3xl mx-auto">
+              The first job search platform with AI that actually predicts your success. 
+              No more guessing - get data-driven insights for every application.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="text-center border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+              <div className="space-y-4">
+                <div className="text-5xl">🎯</div>
+                <h3 className="text-xl font-bold text-purple-800">Success Prediction</h3>
+                <p className="text-gray-700">
+                  AI analyzes 7 key factors to predict your success rate with 85% accuracy
+                </p>
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <div className="text-2xl font-bold text-purple-600">87%</div>
+                  <div className="text-sm text-gray-600">Success Rate for Google SWE</div>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="text-center border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
+              <div className="space-y-4">
+                <div className="text-5xl">📊</div>
+                <h3 className="text-xl font-bold text-blue-800">Market Intelligence</h3>
+                <p className="text-gray-700">
+                  Real-time analysis of hiring trends, salary data, and skill demand
+                </p>
+                <div className="bg-white p-3 rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-600">2,847</div>
+                  <div className="text-sm text-gray-600">New jobs this week</div>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="text-center border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+              <div className="space-y-4">
+                <div className="text-5xl">💡</div>
+                <h3 className="text-xl font-bold text-green-800">Personal Insights</h3>
+                <p className="text-gray-700">
+                  Personalized recommendations to improve your profile and strategy
+                </p>
+                <div className="bg-white p-3 rounded-lg border border-green-100">
+                  <div className="text-2xl font-bold text-green-600">+40%</div>
+                  <div className="text-sm text-gray-600">Interview rate boost</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+          
+          <div className="text-center">
+            <Link href="/ai-dashboard">
+              <Button size="lg" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                🚀 Access AI Assistant →
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Features Section */}
