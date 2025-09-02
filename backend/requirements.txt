@@ -29,3 +29,11 @@ nltk==3.8.1
 scikit-learn
 anyio
 faker>=20.0.0
+
+# AI/ML Dependencies for Success Prediction
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# OpenAI for Real AI Cover Letter Generation
+openai>=1.0.0

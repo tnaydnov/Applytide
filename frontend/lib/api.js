@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-function getTokens() {
+export function getTokens() {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem("tokens");
@@ -11,8 +11,20 @@ function getTokens() {
 }
 
 function setTokens(tokens) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("tokens", JSON.stringify(tokens));
+  console.log("=== SET TOKENS DEBUG ===");
+  console.log("setTokens called with:", tokens);
+  
+  if (typeof window === "undefined") {
+    console.log("Window undefined, skipping token storage");
+    return;
+  }
+  
+  const tokenString = JSON.stringify(tokens);
+  console.log("Storing token string:", tokenString);
+  
+  localStorage.setItem("tokens", tokenString);
+  console.log("Tokens stored in localStorage");
+  console.log("=== SET TOKENS DEBUG END ===");
 }
 
 export function logout() {
@@ -102,32 +114,94 @@ export async function login(email, password) {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event('authChange'));
   }
-}
-
-export async function register(email, password) {
-  const r = await fetch(`${API_BASE}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const data = await r.json();
   
-  // Store tokens with user email for navbar display
-  setTokens({ 
-    access_token: data.access_token, 
-    refresh_token: data.refresh_token,
-    email: email, // Store email for display purposes
-    loginTime: Date.now() // Store login time for session management
-  });
-  
-  // Trigger custom auth change event for AuthGuard and NavBar
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event('authChange'));
-  }
+  return data;
 }
 
 export const api = {
+  // Authentication
+  register: async (data) => {
+    console.log("=== API.REGISTER DEBUG START ===");
+    console.log("A. Received data:", data);
+    console.log("B. Data type:", typeof data);
+    console.log("C. Data keys:", Object.keys(data));
+    console.log("D. Data values:", Object.values(data));
+    console.log("E. JSON stringify test:", JSON.stringify(data));
+    
+    const url = `${API_BASE}/auth/register`;
+    console.log("F. Request URL:", url);
+    
+    const requestBody = JSON.stringify(data);
+    console.log("G. Request body:", requestBody);
+    
+    const fetchOptions = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: requestBody,
+    };
+    console.log("H. Fetch options:", fetchOptions);
+    
+    const r = await fetch(url, fetchOptions);
+    console.log("I. Response status:", r.status);
+    console.log("J. Response ok:", r.ok);
+    
+    if (!r.ok) {
+      const errorText = await r.text();
+      console.log("K. Error response text:", errorText);
+      throw new Error(errorText);
+    }
+    
+    const response = await r.json();
+    console.log("L. Success response:", response);
+    
+    // Store tokens with user email for navbar display
+    const tokens = { 
+      access_token: response.access_token, 
+      refresh_token: response.refresh_token,
+      email: data.email, // Store email for display purposes
+      loginTime: Date.now() // Store login time for session management
+    };
+    console.log("M. Tokens to store:", tokens);
+    
+    setTokens(tokens);
+    console.log("N. Tokens stored");
+    
+    // Trigger custom auth change event for AuthGuard and NavBar
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event('authChange'));
+      console.log("O. Auth change event dispatched");
+    }
+    
+    console.log("P. Returning response:", response);
+    console.log("=== API.REGISTER DEBUG END ===");
+    return response;
+  },
+
+  login: async (email, password) => {
+    const r = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    
+    // Store tokens with user email for navbar display
+    setTokens({ 
+      access_token: data.access_token, 
+      refresh_token: data.refresh_token,
+      email: email, // Store email for display purposes
+      loginTime: Date.now() // Store login time for session management
+    });
+    
+    // Trigger custom auth change event for AuthGuard and NavBar
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event('authChange'));
+    }
+    
+    return data;
+  },
+
   // jobs
   listJobs: () => apiFetch("/jobs").then(r => r.json()),
   scrapeJob: (url) =>
@@ -296,14 +370,70 @@ export const api = {
       body 
     }).then(r => r.json());
   },
-  generateCoverLetter: (payload) =>
-    apiFetch("/documents/cover-letter/generate", { 
+  generateCoverLetter: async (payload) => {
+    const response = await apiFetch("/documents/cover-letter/generate", { 
       method: "POST", 
       body: JSON.stringify(payload) 
-    }).then(r => r.json()),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
   getCoverLetterTemplates: () =>
     apiFetch("/documents/cover-letter/templates").then(r => r.json()),
-};
+
+  // User Profile Management
+  getUserProfile: () =>
+    apiFetch("/profile/").then(r => r.json()),
+  
+  updateUserProfile: (profileData) => {
+    console.log("=== FRONTEND API DEBUG ===");
+    console.log("Profile data being sent:", profileData);
+    console.log("Stringified data:", JSON.stringify(profileData));
+    console.log("=== SENDING REQUEST ===");
+    
+    return apiFetch("/profile/", {
+      method: "PUT",
+      body: JSON.stringify(profileData)
+    }).then(r => {
+      console.log("Response status:", r.status);
+      if (!r.ok) {
+        console.error("Response not OK:", r.status, r.statusText);
+        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+      }
+      return r.json();
+    }).catch(error => {
+      console.error("API call failed:", error);
+      throw error;
+    });
+  },
+  
+  getUserJobPreferences: () =>
+    apiFetch("/profile/job-preferences").then(r => r.json()),
+  
+  updateJobPreferences: (preferences) =>
+    apiFetch("/profile/job-preferences", {
+      method: "PUT", 
+      body: JSON.stringify(preferences)
+    }).then(r => r.json()),
+  
+  getUserCareerGoals: () =>
+    apiFetch("/profile/career-goals").then(r => r.json()),
+  
+  updateCareerGoals: (goals) =>
+    apiFetch("/profile/career-goals", {
+      method: "PUT",
+      body: JSON.stringify(goals) 
+    }).then(r => r.json()),
+
+  // Profile completeness check
+  getProfileCompleteness: () =>
+    apiFetch("/profile/completeness").then(r => r.json()),
+}
 
 // WebSocket helper
 export function connectWS(onMsg) {
