@@ -25,6 +25,7 @@ services:
   backend:
     build: ./backend
     container_name: jobflow_api
+    env_file: .env
     environment:
       PORT: 8000
       ALLOWED_ORIGINS: http://localhost:3000
@@ -34,6 +35,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_FROM: ${SMTP_FROM:-noreply@jobflow.local}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     ports: ["8000:8000"]
     depends_on: [pg, redis, maildev]
     volumes:

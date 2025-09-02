@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from typing import List, Dict, Any, Optional, Tuple
 import os
 import uuid
@@ -11,6 +12,7 @@ from pathlib import Path
 from ..db import models
 from ..services.pdf_extractor import PDFExtractor
 from ..services.ats_analyzer import ATSAnalyzer
+from ..services.ai_cover_letter import AICoverLetterService
 from .models import (
     DocumentType, DocumentStatus, DocumentFormat, ATSScore, 
     DocumentAnalysis, CoverLetterRequest, DocumentOptimizationRequest
@@ -27,6 +29,13 @@ class DocumentService:
         # Initialize enhanced services
         self.pdf_extractor = PDFExtractor()
         self.ats_analyzer = ATSAnalyzer()
+        
+        # Initialize AI service for cover letters
+        self.ai_cover_letter_service = None
+        try:
+            self.ai_cover_letter_service = AICoverLetterService()
+        except ValueError as e:
+            print(f"AI service not available: {e}. Using template fallback.")
         
         # ATS-friendly keywords and patterns
         self.ats_keywords = {
@@ -76,29 +85,69 @@ class DocumentService:
         
         return document
     
-    def generate_cover_letter(
+    async def generate_cover_letter(
         self,
         db: Session,
         user_id: str,
         request: CoverLetterRequest
-    ) -> str:
-        """Generate AI-powered cover letter"""
+    ) -> dict:
+        """Generate AI-powered cover letter with intelligent analysis"""
         
-        # Get job details
-        job = db.query(models.Job).filter(models.Job.id == uuid.UUID(request.job_id)).first()
-        if not job:
-            raise ValueError("Job not found")
-        
-        # Get resume if provided
+        # Get resume content if provided
         resume_content = ""
         if request.resume_id:
             resume = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.resume_id)).first()
             if resume:
                 resume_content = resume.text or ""
         
-        # Generate cover letter content
+        # Get user profile information
+        user = db.query(models.User).filter(models.User.id == uuid.UUID(user_id)).first()
+        user_profile = {
+            "email": user.email if user else None,
+            "name": getattr(user, 'full_name', None) if user else None
+        }
+        
+        # Use AI service if available, otherwise fallback to template
+        if self.ai_cover_letter_service:
+            try:
+                result = await self.ai_cover_letter_service.generate_intelligent_cover_letter(
+                    db=db,
+                    job_id=request.job_id,
+                    resume_content=resume_content,
+                    user_profile=user_profile,
+                    tone=request.tone,
+                    length=request.length
+                )
+                return result
+            except Exception as e:
+                print(f"AI generation failed, using fallback: {e}")
+        
+        # Fallback to template-based generation
+        return self._generate_template_cover_letter(db, request, resume_content)
+    
+    def _generate_template_cover_letter(
+        self,
+        db: Session, 
+        request: CoverLetterRequest,
+        resume_content: str
+    ) -> dict:
+        """Fallback template-based cover letter generation"""
+        
+        # Get job details with company name
+        job_query = select(models.Job, models.Company.name.label('company_name')).join(
+            models.Company, models.Job.company_id == models.Company.id, isouter=True
+        ).where(models.Job.id == uuid.UUID(request.job_id))
+        
+        result = db.execute(job_query).first()
+        if not result:
+            raise ValueError("Job not found")
+        
+        job, company_name = result
+        
+        # Generate cover letter content using template
         cover_letter = self._generate_cover_letter_content(
             job=job,
+            company_name=company_name or "the company",
             resume_content=resume_content,
             tone=request.tone,
             length=request.length,
@@ -106,7 +155,13 @@ class DocumentService:
             custom_intro=request.custom_intro
         )
         
-        return cover_letter
+        word_count = len(cover_letter.split())
+        return {
+            "cover_letter": cover_letter,
+            "word_count": word_count,
+            "estimated_reading_time": f"{word_count // 200 + 1} minutes",
+            "ai_model_used": "template_fallback"
+        }
     
     def analyze_document_ats(
         self,
@@ -227,6 +282,7 @@ class DocumentService:
     def _generate_cover_letter_content(
         self,
         job,
+        company_name: str,
         resume_content: str,
         tone: str,
         length: str,
@@ -236,7 +292,6 @@ class DocumentService:
         """Generate cover letter content using AI templates"""
         
         # Extract key information
-        company_name = job.company.name if job.company else "the company"
         job_title = job.title
         
         # Generate intro

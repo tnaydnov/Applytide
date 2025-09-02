@@ -13,19 +13,19 @@ from .analytics.router import router as analytics_router
 from .search.router import router as search_router
 from .documents.router import router as documents_router
 from .api.enhanced_documents import router as enhanced_documents_router  # Enhanced documents API
+from .api.profile import router as profile_router  # User Profile Management
 
 
 
-
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 
 app = FastAPI(title="JobFlow Copilot API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in ALLOWED_ORIGINS],
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -41,7 +41,7 @@ app.include_router(analytics_router)
 app.include_router(search_router)
 app.include_router(documents_router)
 app.include_router(enhanced_documents_router)  # Enhanced intelligent document analysis
-
+app.include_router(profile_router)  # User Profile Management for Personalization
 
 
 

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
 from ..db.session import get_db
 from ..db import models
+from ..auth.deps import get_current_user
 from .schemas import JobCreate, JobOut, ScrapeIn, JobSearchOut
 from .scraper import scrape_job
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_search_filter, apply_sorting
@@ -14,7 +15,11 @@ from ..core.search import search_service
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 @router.post("", response_model=JobOut)
-def create_job(payload: JobCreate, db: Session = Depends(get_db)):
+def create_job(
+    payload: JobCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     # Ensure company exists (either by id, or create by name if provided)
     company_id: Optional[uuid.UUID] = payload.company_id
     if not company_id and payload.company_name:
@@ -26,6 +31,7 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db)):
         company_id = company.id
 
     job = models.Job(
+        user_id=current_user.id,  # Associate job with current user
         company_id=company_id,
         source_url=payload.source_url,
         title=payload.title,
@@ -51,7 +57,8 @@ def list_jobs(
     company: str = Query("", description="Filter by company name"),
     sort: str = Query("created_at", description="Sort field"),
     order: str = Query("desc", description="Sort order (asc/desc)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     List jobs with pagination, search, and filtering capabilities.
@@ -67,7 +74,7 @@ def list_jobs(
     
     # If there's a search query, use full-text search
     if q.strip():
-        filters = {}
+        filters = {"user_id": str(current_user.id)}  # Filter by current user
         if location:
             filters["location"] = location
         if remote_type:
@@ -121,7 +128,9 @@ def list_jobs(
     # Regular query with filters
     query = select(models.Job).join(
         models.Company, models.Job.company_id == models.Company.id, isouter=True
-    )
+    ).filter(
+        models.Job.user_id == current_user.id
+    )  # Show only current user's jobs
     
     # Apply filters
     if location:
@@ -135,7 +144,7 @@ def list_jobs(
     query = apply_sorting(query, models.Job, params.sort, params.order)
     
     # Get total count
-    total_query = select(func.count(models.Job.id))
+    total_query = select(func.count(models.Job.id)).filter(models.Job.user_id == current_user.id)
     if location:
         total_query = total_query.filter(models.Job.location.ilike(f"%{location}%"))
     if remote_type:
@@ -143,10 +152,51 @@ def list_jobs(
     if company:
         total_query = total_query.join(models.Company).filter(models.Company.name.ilike(f"%{company}%"))
     
-    # Paginate
-    result = paginate_query(query, params, total_query, db)
+    # Execute queries manually to handle the join properly
+    offset = (params.page - 1) * params.page_size
+    jobs_query = query.offset(offset).limit(params.page_size)
     
-    return PaginatedResponse(**result)
+    # Execute the queries
+    jobs_with_company = db.execute(
+        select(models.Job, models.Company.name.label('company_name'))
+        .join(models.Company, models.Job.company_id == models.Company.id, isouter=True)
+        .filter(models.Job.user_id == current_user.id)
+        .offset(offset).limit(params.page_size)
+    ).all()
+    
+    total = db.execute(total_query).scalar() or 0
+    
+    # Convert to JobOut format
+    items = []
+    for job, company_name in jobs_with_company:
+        job_out = JobOut(
+            id=job.id,
+            title=job.title,
+            company_id=job.company_id,
+            company_name=company_name,
+            website=None,  # Would need to join if we want this
+            location=job.location,
+            remote_type=job.remote_type,
+            salary_min=job.salary_min,
+            salary_max=job.salary_max,
+            description=job.description,
+            source_url=job.source_url,
+            created_at=job.created_at
+        )
+        items.append(job_out)
+    
+    # Calculate pagination metadata
+    pages = (total + params.page_size - 1) // params.page_size
+    
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        page=params.page,
+        page_size=params.page_size,
+        pages=pages,
+        has_next=params.page < pages,
+        has_prev=params.page > 1
+    )
 
 
 @router.get("/search", response_model=PaginatedResponse[JobSearchOut])
