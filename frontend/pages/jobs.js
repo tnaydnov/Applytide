@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, apiFetch } from "../lib/api";
 import { Button, Card, Input, Textarea, Select, Modal } from "../components/ui";
 import { useToast } from '../lib/toast';
+import AuthGuard from "../components/AuthGuard";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState([]);
@@ -64,9 +65,9 @@ export default function JobsPage() {
         params.append('remote_type', remoteTypeFilter);
       }
 
-      // Use the search endpoint if there's a search term, otherwise use regular listing
-      const endpoint = searchTerm.trim() ? `/jobs/search?${params}` : `/jobs?${params}`;
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}${endpoint}`);
+      // Use the API function which includes authentication headers
+      const endpoint = `/jobs?${params}`;
+      const response = await apiFetch(endpoint);
       const data = await response.json();
       
       if (response.ok) {
@@ -84,7 +85,10 @@ export default function JobsPage() {
       }
     } catch (err) {
       console.error('Load jobs error:', err);
-      toast.error("Failed to load jobs");
+      // Don't show error toast for authentication errors - AuthGuard will handle redirect
+      if (!err.message.includes('Auth expired') && !err.message.includes('Not authenticated')) {
+        toast.error("Failed to load jobs");
+      }
       setJobs([]);
     } finally {
       setLoading(false);
@@ -103,8 +107,13 @@ export default function JobsPage() {
   }
 
   useEffect(() => { 
-    loadJobs(); 
-    loadResumes(); 
+    // Add a small delay to ensure AuthGuard has completed authentication check
+    const timer = setTimeout(() => {
+      loadJobs(); 
+      loadResumes(); 
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Debounced search suggestions
@@ -170,7 +179,8 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <AuthGuard>
+      <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
         <div>
@@ -631,6 +641,7 @@ export default function JobsPage() {
           </div>
         </Card>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

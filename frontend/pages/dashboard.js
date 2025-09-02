@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, downloadApplicationsCSV, importApplicationsCSV } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
+import AuthGuard from "../components/AuthGuard";
 import RemindersWidget from "../components/RemindersWidget";
 import QuickSearchWidget from "../components/QuickSearchWidget";
 
@@ -176,7 +177,8 @@ export default function Dashboard() {
   const totalApplications = statusData.reduce((sum, [_, count]) => sum + count, 0);
 
   return (
-    <div className="space-y-8">
+    <AuthGuard>
+      <div className="space-y-8">
       {/* Header with Date Range Selector */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
@@ -526,7 +528,8 @@ export default function Dashboard() {
           </div>
         </div>
       </Card>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
 

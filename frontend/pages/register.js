@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useToast } from "../lib/toast";
+import { api } from "../lib/api";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -15,48 +16,51 @@ export default function Register() {
   const toast = useToast();
 
   async function handleSubmit(e) {
+    console.log("=== HANDLE SUBMIT CALLED ===");
     e.preventDefault();
+    
+    console.log("=== REGISTER DEBUG START ===");
+    console.log("1. Form state:", form);
     
     if (form.password !== form.confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (form.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
+    const registerData = {
+      email: form.email,
+      password: form.password,
+      full_name: form.full_name
+    };
+    
+    console.log("2. Register data object:", registerData);
+    console.log("3. Register data type:", typeof registerData);
+    console.log("4. About to call api.register with:", registerData);
+    console.log("5. api object:", api);
+    console.log("6. api.register function:", api.register);
+
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-          full_name: form.full_name
-        }),
-      });
+      const data = await api.register(registerData);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Registration failed");
-      }
-
-      const data = await response.json();
+      console.log("5. Registration response:", data);
+      toast.success("Account created successfully! Welcome to JobFlow!");
       
-      // Store tokens
-      localStorage.setItem("tokens", JSON.stringify({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token
-      }));
-
-      toast.success("Account created successfully!");
+      console.log("6. About to redirect to dashboard");
+      // Redirect to dashboard after successful registration
       router.push("/dashboard");
     } catch (err) {
+      console.log("7. Registration error:", err);
+      console.log("8. Error message:", err.message);
       toast.error(err.message || "Registration failed");
     } finally {
+      console.log("9. Registration attempt finished");
+      console.log("=== REGISTER DEBUG END ===");
       setLoading(false);
     }
   }
