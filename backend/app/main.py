@@ -19,6 +19,8 @@ from .documents.router import router as documents_router
 from .api.profile import router as profile_router  # User Profile Management
 from .api.kanban import router as kanban_router  # Kanban/Pipeline Management
 from .preferences.router import router as preferences_router  # User Preferences
+from .auth.sessions import router as sessions_router
+
 
 
 
@@ -73,6 +75,7 @@ if os.getenv("CORS_DEBUG", "0") == "1":
         return resp
 
 app.include_router(auth_router)
+app.include_router(sessions_router)
 app.include_router(jobs_router)
 app.include_router(resumes_router)
 app.include_router(applications_router)

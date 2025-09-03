@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { logout, apiFetch } from "../lib/api";
 
 const publicLinks = [
@@ -12,6 +13,8 @@ export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userBtnRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
   // Check if user is authenticated and get user info
   useEffect(() => {
@@ -119,7 +122,14 @@ export default function NavBar() {
             {user && (
               <div className="relative">
                 <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  ref={userBtnRef}
+                  onClick={() => {
+                    setIsUserMenuOpen(!isUserMenuOpen);
+                    if (!isUserMenuOpen && userBtnRef.current) {
+                      const rect = userBtnRef.current.getBoundingClientRect();
+                      setDropdownPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+                    }
+                  }}
                   className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -134,8 +144,8 @@ export default function NavBar() {
                 </button>
 
                 {/* User Dropdown */}
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                {isUserMenuOpen && typeof window !== "undefined" && createPortal(
+                  <div style={{position: "absolute", top: dropdownPos.top, left: dropdownPos.left, zIndex: 99999}} className="w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
                     <div className="px-4 py-2 text-sm text-gray-500 border-b border-gray-100">
                       {user.email}
                     </div>
@@ -166,7 +176,7 @@ export default function NavBar() {
                     >
                       🚪 Sign Out
                     </button>
-                  </div>
+                  </div>, document.body
                 )}
               </div>
             )}
