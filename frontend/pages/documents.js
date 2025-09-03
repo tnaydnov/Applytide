@@ -48,6 +48,12 @@ export default function DocumentsPage() {
     search: ''
   });
   
+  // Job selection modal states
+  const [showJobSelectionModal, setShowJobSelectionModal] = useState(false);
+  const [jobSelectionDocument, setJobSelectionDocument] = useState(null);
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+  const [selectedJobForAnalysis, setSelectedJobForAnalysis] = useState(null);
+  
   // Upload form state
   const [uploadForm, setUploadForm] = useState({
     file: null,
@@ -169,8 +175,8 @@ export default function DocumentsPage() {
       }
       
       const url = jobId 
-        ? `${API_BASE_URL}/api/documents/${document.id}/analyze?job_id=${jobId}`
-        : `${API_BASE_URL}/api/documents/${document.id}/analyze`;
+        ? `${API_BASE_URL}/documents/${document.id}/analyze?job_id=${jobId}`
+        : `${API_BASE_URL}/documents/${document.id}/analyze`;
         
       const response = await fetch(url, { 
         method: 'POST',
@@ -221,7 +227,7 @@ export default function DocumentsPage() {
             headers.Authorization = `Bearer ${access_token}`;
           }
 
-          const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+          const response = await fetch(`${API_BASE_URL}/documents/upload`, {
             method: 'POST',
             headers: headers,
             body: formData
@@ -285,7 +291,7 @@ export default function DocumentsPage() {
         headers.Authorization = `Bearer ${access_token}`;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/documents/${document.id}/analyze?job_id=${selectedJob}`, {
+      const response = await fetch(`${API_BASE_URL}/documents/${document.id}/analyze?job_id=${selectedJob}`, {
         method: 'POST',
         headers: headers
       });
@@ -558,24 +564,19 @@ export default function DocumentsPage() {
                     
                     {/* Job Selection Dropdown */}
                     {jobs.length > 0 && (
-                      <div className="mt-1">
-                        <select 
-                          className="w-full text-xs p-1 border rounded bg-blue-50 text-blue-700"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleEnhancedAnalysis(document, e.target.value);
-                              e.target.value = ''; // Reset selection
-                            }
+                      <div className="mt-2">
+                        <Button
+                          onClick={() => {
+                            setJobSelectionDocument(document);
+                            setShowJobSelectionModal(true);
                           }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
                           disabled={analyzing}
                         >
-                          <option value="">📋 Quick job analysis...</option>
-                          {jobs.slice(0, 5).map(job => (
-                            <option key={job.id} value={job.id}>
-                              {job.title} - {job.company}
-                            </option>
-                          ))}
-                        </select>
+                          🎯 Analyze against specific job ({jobs.length} available)
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -1034,18 +1035,54 @@ export default function DocumentsPage() {
                 )}
               </h2>
               
+              {/* Analysis Type Explanation */}
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: selectedJob ? '#eff6ff' : '#fef3c7',
+                borderRadius: '8px',
+                border: `1px solid ${selectedJob ? '#bfdbfe' : '#fde68a'}`,
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '16px' }}>{selectedJob ? '🎯' : '📊'}</span>
+                  <strong style={{ color: '#1f2937' }}>
+                    {selectedJob ? 'Job-Specific Analysis' : 'General Analysis'}
+                  </strong>
+                </div>
+                <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+                  {selectedJob 
+                    ? 'This analysis compares your document against specific job requirements, providing targeted feedback and keyword matching scores.'
+                    : 'This is a general analysis without job context. For better insights, analyze against a specific job to see how well your document matches job requirements.'
+                  }
+                </p>
+              </div>
+              
               {analysis ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {/* Enhanced ATS Scores Display */}
+                  {/* Analysis Header - Different for General vs Job-Specific */}
                   <div style={{ 
                     padding: '16px', 
                     backgroundColor: '#f9fafb', 
                     borderRadius: '8px',
                     border: '1px solid #e5e7eb'
                   }}>
-                    <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>ATS Compatibility Scores</h3>
+                    {analysis.ats_score?.technical_skills_score !== null && analysis.ats_score?.soft_skills_score !== null ? (
+                      <>
+                        <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>🎯 Job-Specific Analysis</h3>
+                        <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                          Analysis tailored to the selected job requirements
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>📋 General Resume Analysis</h3>
+                        <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                          Comprehensive review of resume structure and completeness. Select a job for targeted analysis.
+                        </p>
+                      </>
+                    )}
                     
-                    {/* Overall Score Highlight */}
+                    {/* Overall Score Display */}
                     <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                       <div style={{ 
                         fontSize: '36px', 
@@ -1054,36 +1091,38 @@ export default function DocumentsPage() {
                       }}>
                         {(analysis.ats_score?.overall_score || 0).toFixed(1)}%
                       </div>
-                      <p style={{ fontSize: '16px', color: '#6b7280' }}>Overall ATS Compatibility</p>
+                      <p style={{ fontSize: '16px', color: '#6b7280' }}>
+                        {analysis.ats_score?.technical_skills_score !== null ? 'Job Match Score' : 'Resume Quality Score'}
+                      </p>
                       {analysis.job_match_summary && (
                         <p style={{ fontSize: '14px', color: '#374151', marginTop: '8px' }}>
-                          <strong>{analysis.job_match_summary.match_level}</strong>: {analysis.job_match_summary.summary}
+                          {typeof analysis.job_match_summary === 'string' ? analysis.job_match_summary : analysis.job_match_summary.summary}
                         </p>
                       )}
                     </div>
 
                     {/* Detailed Scores Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-                      {analysis.ats_score?.technical_skills_score !== undefined && (
+                      {analysis.ats_score?.technical_skills_score !== null && analysis.ats_score?.technical_skills_score !== undefined && (
                         <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '6px' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
                             color: analysis.ats_score.technical_skills_score >= 80 ? '#059669' : analysis.ats_score.technical_skills_score >= 60 ? '#d97706' : '#dc2626'
                           }}>
-                            {analysis.ats_score.technical_skills_score.toFixed(1)}%
+                            {(analysis.ats_score.technical_skills_score || 0).toFixed(1)}%
                           </div>
                           <p style={{ fontSize: '12px', color: '#6b7280' }}>Technical Skills</p>
                         </div>
                       )}
-                      {analysis.ats_score?.soft_skills_score !== undefined && (
+                      {analysis.ats_score?.soft_skills_score !== null && analysis.ats_score?.soft_skills_score !== undefined && (
                         <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
                             color: analysis.ats_score.soft_skills_score >= 80 ? '#059669' : analysis.ats_score.soft_skills_score >= 60 ? '#d97706' : '#dc2626'
                           }}>
-                            {analysis.ats_score.soft_skills_score.toFixed(1)}%
+                            {(analysis.ats_score.soft_skills_score || 0).toFixed(1)}%
                           </div>
                           <p style={{ fontSize: '12px', color: '#6b7280' }}>Soft Skills</p>
                         </div>
@@ -1115,38 +1154,134 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  {/* Enhanced Keyword Analysis */}
-                  {analysis.keyword_analysis && (
+                  {/* Enhanced Keyword Analysis - Only for job-specific analysis */}
+                  {analysis.keyword_analysis && analysis.ats_score?.technical_skills_score !== null && (
                     <div style={{ 
                       padding: '16px', 
                       backgroundColor: '#eff6ff', 
                       borderRadius: '8px',
                       border: '1px solid #bfdbfe'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#1e40af' }}>🎯 Keyword Match Analysis</h3>
-                      <p style={{ fontSize: '14px', color: '#374151', marginBottom: '12px' }}>
-                        {analysis.keyword_analysis.matched_keywords?.length || 0} of {analysis.keyword_analysis.total_job_keywords || 0} keywords matched 
-                        ({((analysis.keyword_analysis.matched_keywords?.length || 0) / (analysis.keyword_analysis.total_job_keywords || 1) * 100).toFixed(1)}%)
-                      </p>
-                      {analysis.keyword_analysis.matched_keywords && analysis.keyword_analysis.matched_keywords.length > 0 && (
-                        <div>
-                          <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Matched keywords:</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                            {analysis.keyword_analysis.matched_keywords.slice(0, 15).map((keyword, idx) => (
-                              <span key={idx} style={{ 
-                                padding: '4px 8px', 
-                                backgroundColor: '#dbeafe', 
-                                color: '#1e40af', 
-                                fontSize: '12px', 
-                                borderRadius: '4px',
-                                border: '1px solid #bfdbfe'
-                              }}>
-                                {keyword}
-                              </span>
-                            ))}
-                          </div>
+                      <h3 style={{ fontWeight: '600', marginBottom: '16px', color: '#1e40af' }}>🎯 Detailed Keyword Analysis</h3>
+                      
+                      {/* Technical Skills Breakdown */}
+                      {analysis.keyword_analysis.technical_skills && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>💻 Technical Skills</h4>
+                          
+                          {/* Found Technical Skills */}
+                          {analysis.keyword_analysis.technical_skills.found && analysis.keyword_analysis.technical_skills.found.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <p style={{ fontSize: '14px', color: '#059669', marginBottom: '8px', fontWeight: '500' }}>
+                                ✅ Found ({analysis.keyword_analysis.technical_skills.found.length}/{analysis.keyword_analysis.technical_skills.required.length}):
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {analysis.keyword_analysis.technical_skills.found.map((skill, idx) => (
+                                  <span key={idx} style={{ 
+                                    padding: '4px 8px', 
+                                    backgroundColor: '#dcfce7', 
+                                    color: '#059669', 
+                                    fontSize: '12px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid #bbf7d0'
+                                  }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Missing Technical Skills */}
+                          {analysis.keyword_analysis.technical_skills.missing && analysis.keyword_analysis.technical_skills.missing.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <p style={{ fontSize: '14px', color: '#dc2626', marginBottom: '8px', fontWeight: '500' }}>
+                                ❌ Missing ({analysis.keyword_analysis.technical_skills.missing.length}):
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {analysis.keyword_analysis.technical_skills.missing.map((skill, idx) => (
+                                  <span key={idx} style={{ 
+                                    padding: '4px 8px', 
+                                    backgroundColor: '#fef2f2', 
+                                    color: '#dc2626', 
+                                    fontSize: '12px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid #fecaca'
+                                  }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
+                      
+                      {/* Soft Skills Breakdown */}
+                      {analysis.keyword_analysis.soft_skills && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>🤝 Soft Skills</h4>
+                          
+                          {/* Found Soft Skills */}
+                          {analysis.keyword_analysis.soft_skills.found && analysis.keyword_analysis.soft_skills.found.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <p style={{ fontSize: '14px', color: '#059669', marginBottom: '8px', fontWeight: '500' }}>
+                                ✅ Found ({analysis.keyword_analysis.soft_skills.found.length}/{analysis.keyword_analysis.soft_skills.required.length}):
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {analysis.keyword_analysis.soft_skills.found.map((skill, idx) => (
+                                  <span key={idx} style={{ 
+                                    padding: '4px 8px', 
+                                    backgroundColor: '#dcfce7', 
+                                    color: '#059669', 
+                                    fontSize: '12px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid #bbf7d0'
+                                  }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Missing Soft Skills */}
+                          {analysis.keyword_analysis.soft_skills.missing && analysis.keyword_analysis.soft_skills.missing.length > 0 && (
+                            <div>
+                              <p style={{ fontSize: '14px', color: '#dc2626', marginBottom: '8px', fontWeight: '500' }}>
+                                ❌ Missing ({analysis.keyword_analysis.soft_skills.missing.length}):
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {analysis.keyword_analysis.soft_skills.missing.map((skill, idx) => (
+                                  <span key={idx} style={{ 
+                                    padding: '4px 8px', 
+                                    backgroundColor: '#fef2f2', 
+                                    color: '#dc2626', 
+                                    fontSize: '12px', 
+                                    borderRadius: '4px',
+                                    border: '1px solid #fecaca'
+                                  }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Overall Summary */}
+                      <div style={{ 
+                        padding: '12px', 
+                        backgroundColor: '#f8fafc', 
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0'
+                      }}>
+                        <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+                          <strong>Summary:</strong> {analysis.keyword_analysis.matched_keywords?.length || 0} of {analysis.keyword_analysis.total_job_keywords || 0} job keywords found 
+                          ({((analysis.keyword_analysis.matched_keywords?.length || 0) / Math.max(analysis.keyword_analysis.total_job_keywords || 1, 1) * 100).toFixed(1)}% match)
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -1248,23 +1383,6 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  {/* Suggestions */}
-                  {analysis.suggested_improvements.length > 0 && (
-                    <div style={{ 
-                      padding: '16px', 
-                      backgroundColor: '#f0f9ff', 
-                      borderRadius: '8px',
-                      border: '1px solid #0ea5e9'
-                    }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#0284c7' }}>💡 Suggested Improvements</h3>
-                      <ul style={{ listStyle: 'disc', paddingLeft: '20px', margin: 0 }}>
-                        {analysis.suggested_improvements.map((suggestion, index) => (
-                          <li key={index} style={{ marginBottom: '8px', color: '#374151' }}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
                   {/* Missing Sections */}
                   {analysis.missing_sections.length > 0 && (
                     <div style={{ 
@@ -1346,6 +1464,244 @@ export default function DocumentsPage() {
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Job Selection Modal */}
+      {showJobSelectionModal && (
+        <>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Header */}
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                  🎯 Select Job for Analysis
+                </h3>
+                <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                  Choose a job to analyze your {jobSelectionDocument?.filename} against specific requirements
+                </p>
+              </div>
+
+              {/* Search */}
+              <div style={{ marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search jobs by title, company, or keywords..."
+                  value={jobSearchTerm}
+                  onChange={(e) => setJobSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              {/* Job List */}
+              <div style={{ 
+                flex: 1, 
+                overflowY: 'auto', 
+                marginBottom: '20px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}>
+                {jobs
+                  .filter(job => 
+                    job.title?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+                    job.company?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+                    job.location?.toLowerCase().includes(jobSearchTerm.toLowerCase())
+                  )
+                  .map((job, index) => (
+                    <div
+                      key={job.id}
+                      onClick={() => setSelectedJobForAnalysis(job)}
+                      style={{
+                        padding: '16px',
+                        borderBottom: index < jobs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        cursor: 'pointer',
+                        backgroundColor: selectedJobForAnalysis?.id === job.id ? '#eff6ff' : 'white',
+                        borderLeft: selectedJobForAnalysis?.id === job.id ? '4px solid #3b82f6' : '4px solid transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedJobForAnalysis?.id !== job.id) {
+                          e.target.style.backgroundColor = '#f9fafb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedJobForAnalysis?.id !== job.id) {
+                          e.target.style.backgroundColor = 'white';
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ 
+                            fontWeight: 'bold', 
+                            color: '#1f2937', 
+                            marginBottom: '4px',
+                            fontSize: '16px'
+                          }}>
+                            {job.title}
+                          </h4>
+                          <p style={{ 
+                            color: '#6b7280', 
+                            fontSize: '14px', 
+                            marginBottom: '8px',
+                            fontWeight: '500'
+                          }}>
+                            🏢 {job.company}
+                          </p>
+                          {job.location && (
+                            <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>
+                              📍 {job.location}
+                            </p>
+                          )}
+                          {job.description && (
+                            <p style={{ 
+                              color: '#4b5563', 
+                              fontSize: '12px', 
+                              lineHeight: '1.4',
+                              maxHeight: '40px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {job.description.substring(0, 120)}...
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ 
+                          backgroundColor: selectedJobForAnalysis?.id === job.id ? '#3b82f6' : '#e5e7eb',
+                          color: selectedJobForAnalysis?.id === job.id ? 'white' : '#6b7280',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          marginLeft: '12px',
+                          flexShrink: 0
+                        }}>
+                          {selectedJobForAnalysis?.id === job.id ? '✓' : '○'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                
+                {jobs.filter(job => 
+                  job.title?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+                  job.company?.toLowerCase().includes(jobSearchTerm.toLowerCase()) ||
+                  job.location?.toLowerCase().includes(jobSearchTerm.toLowerCase())
+                ).length === 0 && (
+                  <div style={{ 
+                    padding: '40px', 
+                    textAlign: 'center', 
+                    color: '#9ca3af' 
+                  }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                    <p>No jobs found matching "{jobSearchTerm}"</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                paddingTop: '16px',
+                borderTop: '1px solid #e5e7eb'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowJobSelectionModal(false);
+                    setJobSelectionDocument(null);
+                    setSelectedJobForAnalysis(null);
+                    setJobSearchTerm('');
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  Cancel
+                </button>
+                
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => {
+                      handleEnhancedAnalysis(jobSelectionDocument, '');
+                      setShowJobSelectionModal(false);
+                      setJobSelectionDocument(null);
+                      setSelectedJobForAnalysis(null);
+                      setJobSearchTerm('');
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #9ca3af',
+                      borderRadius: '6px',
+                      backgroundColor: '#f3f4f6',
+                      cursor: 'pointer',
+                      color: '#4b5563'
+                    }}
+                  >
+                    📊 Quick Analysis (No Job)
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      if (selectedJobForAnalysis) {
+                        handleEnhancedAnalysis(jobSelectionDocument, selectedJobForAnalysis.id);
+                        setShowJobSelectionModal(false);
+                        setJobSelectionDocument(null);
+                        setSelectedJobForAnalysis(null);
+                        setJobSearchTerm('');
+                      }
+                    }}
+                    disabled={!selectedJobForAnalysis}
+                    style={{
+                      padding: '8px 16px',
+                      border: 'none',
+                      borderRadius: '6px',
+                      backgroundColor: selectedJobForAnalysis ? '#3b82f6' : '#d1d5db',
+                      color: 'white',
+                      cursor: selectedJobForAnalysis ? 'pointer' : 'not-allowed',
+                      fontWeight: '500'
+                    }}
+                  >
+                    🎯 Analyze Against Selected Job
+                  </button>
+                </div>
               </div>
             </div>
           </div>

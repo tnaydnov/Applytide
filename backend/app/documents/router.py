@@ -218,13 +218,16 @@ def analyze_document(
         analysis = document_service.analyze_document_ats(
             db=db,
             document_id=document_id,
-            job_id=job_id
+            job_id=job_id,
+            user_id=str(current_user.id)
         )
         return analysis
         
     except ValueError as e:
+        print(f"ValueError in analyze_document: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"Exception in analyze_document: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @router.post("/optimize")

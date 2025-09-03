@@ -22,7 +22,12 @@ from .preferences.router import router as preferences_router  # User Preferences
 
 
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+# Normalize and extend with common local variants automatically
+_norm = set(o.strip().rstrip('/') for o in raw_origins if o.strip())
+for extra in ["http://127.0.0.1:3000", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3001"]:
+    _norm.add(extra)
+ALLOWED_ORIGINS = list(_norm)
 
 app = FastAPI(title="Applytide API")
 
@@ -41,25 +46,31 @@ if os.getenv("ENVIRONMENT") == "production":
         enabled=True
     )
 
-# CORS configuration - production vs development
-if os.getenv("ENVIRONMENT") == "production":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS,  # Restricted origins for production
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept"],
-        expose_headers=["X-Total-Count"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins for development
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-    )
+# Unified CORS configuration.
+# Always use explicit origin list from ALLOWED_ORIGINS env to guarantee header reflection.
+# If you truly want wildcard in local dev, add '*' to ALLOWED_ORIGINS.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["*"] ,  # be permissive during dev
+    expose_headers=["X-Total-Count"],
+)
+
+# Debug middleware (safe to keep in dev) to trace CORS behavior
+if os.getenv("CORS_DEBUG", "0") == "1":
+    from starlette.responses import Response
+    @app.middleware("http")
+    async def cors_debug_mw(request, call_next):
+        origin = request.headers.get('origin')
+        if origin:  # Only log when there's an Origin header (CORS request)
+            print(f"[CORS-DEBUG] Incoming Origin={origin} Method={request.method} Path={request.url.path}")
+        resp: Response = await call_next(request)
+        if origin:
+            acao = resp.headers.get('access-control-allow-origin')
+            print(f"[CORS-DEBUG] Outgoing ACAO={acao} Status={resp.status_code} Path={request.url.path}")
+        return resp
 
 app.include_router(auth_router)
 app.include_router(jobs_router)
