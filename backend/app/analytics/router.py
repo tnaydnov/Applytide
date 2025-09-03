@@ -542,7 +542,7 @@ def export_analytics_pdf(
     temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
     
     try:
-        temp_file.write("JobFlow Analytics Report\n")
+        temp_file.write("Applytide Analytics Report\n")
         temp_file.write("=" * 25 + "\n\n")
         temp_file.write(f"Time Range: {range_param}\n")
         temp_file.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")

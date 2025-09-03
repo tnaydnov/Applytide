@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradA" x1="48" y1="208" x2="208" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B6AF6"/>
+      <stop offset="1" stop-color="#00C2FF"/>
+    </linearGradient>
+  </defs>
+  <!-- A-shape legs -->
+  <path d="M64 208 L128 48" stroke="#0B1220" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M192 208 L128 48" stroke="#0B1220" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Wave crossbar -->
+  <path d="M68 140 C 104 118, 152 162, 188 140" stroke="url(#gradA)" stroke-width="20" stroke-linecap="round" fill="none"/>
+</svg>

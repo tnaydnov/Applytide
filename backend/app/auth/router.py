@@ -251,3 +251,17 @@ def password_reset(payload: PasswordResetIn, db: Session = Depends(get_db)):
         revoke_all_user_tokens(user_id)
     
     return MessageOut(message="Password reset successfully")
+
+
+@router.get("/me")
+def get_current_user_info(current_user: models.User = Depends(get_current_user)):
+    """Get current user information including premium status"""
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "is_premium": getattr(current_user, 'is_premium', False),
+        "premium_expires_at": current_user.premium_expires_at.isoformat() if getattr(current_user, 'premium_expires_at', None) else None,
+        "created_at": current_user.created_at.isoformat(),
+        "email_verified": bool(current_user.email_verified_at)
+    }

@@ -4,17 +4,7 @@ import { useState, useEffect } from "react";
 import { logout, apiFetch } from "../lib/api";
 
 const publicLinks = [
-  { label: "Login", href: "/login", icon: "🔐" },
-];
-
-const authenticatedLinks = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Jobs", href: "/jobs", icon: "💼" },
-  { label: "Pipeline", href: "/pipeline", icon: "🔄" },
-  { label: "Search", href: "/search", icon: "🔍" },
-  { label: "Documents", href: "/documents", icon: "📄" },
-  { label: "Reminders", href: "/reminders", icon: "⏰" },
-  { label: "Analytics", href: "/analytics", icon: "📈" },
+  { label: "Sign In", href: "/login", icon: "🔐" },
 ];
 
 export default function NavBar() {
@@ -68,18 +58,13 @@ export default function NavBar() {
     };
   }, []);
 
-  const publicLinks = [
-    { label: "Login", href: "/login", icon: "🔐" },
-  ];
-
   const authenticatedLinks = [
     { label: "Dashboard", href: "/dashboard", icon: "📊" },
     { label: "Jobs", href: "/jobs", icon: "💼" },
     { label: "Pipeline", href: "/pipeline", icon: "🔄" },
-    { label: "Search", href: "/search", icon: "🔍" },
-    { label: "Documents", href: "/documents", icon: "�" },
-    { label: "Reminders", href: "/reminders", icon: "�️" },
-    { label: "Analytics", href: "/analytics", icon: "�" },
+    { label: "Documents", href: "/documents", icon: "📄" },
+    { label: "Reminders", href: "/reminders", icon: "⏰" },
+    { label: "Analytics", href: "/analytics", icon: "📈" },
   ];
 
   const links = user ? authenticatedLinks : publicLinks;
@@ -98,12 +83,14 @@ export default function NavBar() {
         <div className="flex justify-between h-16">
           {/* Logo and brand */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">JF</span>
-              </div>
-              <span className="font-bold text-xl text-gray-900 hidden sm:block">
-                JobFlow Copilot
+            <Link href={user ? "/dashboard" : "/"} className="flex items-end space-x-3">
+              <img 
+                src="/images/logomark.svg" 
+                alt="Applytide" 
+                className="h-12 w-12"
+              />
+              <span className="hidden sm:block text-lg font-medium text-gray-700 pb-1" style={{fontFamily: 'Outfit, Inter, sans-serif', letterSpacing: '0.02em'}}>
+                applytide
               </span>
             </Link>
           </div>

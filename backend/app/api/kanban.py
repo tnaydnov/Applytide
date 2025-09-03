@@ -59,7 +59,7 @@ def get_applications(db: Session = Depends(get_db), current_user: User = Depends
             app_data = {
                 'id': str(app.id),
                 'status': app.status.lower().replace(' ', '-'),  # Convert to kanban format
-                'priority': 'medium',  # Default since not in current model
+                'priority': app.priority,  # Use actual priority field
                 'notes': '',  # Default since not in current model
                 'created_at': app.created_at.isoformat() if app.created_at else None,
                 'updated_at': app.updated_at.isoformat() if app.updated_at else None,
@@ -128,12 +128,32 @@ def create_application(
         db.add(job)
         db.flush()  # Get the ID
         
+        # Check if application already exists for this user and job
+        existing_app = db.execute(
+            select(models.Application).where(
+                models.Application.user_id == current_user.id,
+                models.Application.job_id == job.id
+            )
+        ).scalar_one_or_none()
+        
+        if existing_app:
+            # Update existing application instead of creating duplicate
+            existing_app.status = payload.status.replace('-', ' ').title()
+            existing_app.priority = payload.priority
+            existing_app.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            return {
+                'id': str(existing_app.id),
+                'message': 'Application updated successfully'
+            }
+        
         # Create application
         application = models.Application(
             id=uuid.uuid4(),
             user_id=current_user.id,
             job_id=job.id,
             status=payload.status.replace('-', ' ').title(),  # Convert from kanban format
+            priority=payload.priority,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
@@ -211,6 +231,8 @@ def update_application(
         # Update application fields
         if payload.status:
             application.status = payload.status.replace('-', ' ').title()
+        if payload.priority:
+            application.priority = payload.priority
         
         application.updated_at = datetime.now(timezone.utc)
         
@@ -231,11 +253,14 @@ def delete_application(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    """Delete an application"""
+    """Delete an application and all related records"""
     try:
+        app_uuid = uuid.UUID(application_id)
+        
+        # Check if application exists and belongs to user
         application = db.execute(
             select(models.Application).where(
-                models.Application.id == uuid.UUID(application_id),
+                models.Application.id == app_uuid,
                 models.Application.user_id == current_user.id
             )
         ).scalar_one_or_none()
@@ -243,6 +268,30 @@ def delete_application(
         if not application:
             raise HTTPException(status_code=404, detail="Application not found")
         
+        # Delete related records first to avoid foreign key constraints
+        
+        # 1. Delete notes
+        db.execute(
+            select(models.Note).where(models.Note.application_id == app_uuid)
+        )
+        db.execute(
+            models.Note.__table__.delete().where(models.Note.application_id == app_uuid)
+        )
+        
+        # 2. Delete stages  
+        db.execute(
+            models.Stage.__table__.delete().where(models.Stage.application_id == app_uuid)
+        )
+        
+        # 3. Delete application attachments (if they exist)
+        try:
+            db.execute(
+                models.ApplicationAttachment.__table__.delete().where(models.ApplicationAttachment.application_id == app_uuid)
+            )
+        except Exception:
+            pass  # Table might not exist
+        
+        # 4. Finally delete the application
         db.delete(application)
         db.commit()
         

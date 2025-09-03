@@ -45,7 +45,7 @@ class EmailService:
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Verify Your Email - JobFlow Copilot</title>
+            <title>Verify Your Email - Applytide</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -54,7 +54,7 @@ class EmailService:
                                 border-radius: 15px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
                         <span style="color: white; font-size: 24px; font-weight: bold;">JF</span>
                     </div>
-                    <h1 style="color: #333; margin: 0;">Welcome to JobFlow Copilot!</h1>
+                    <h1 style="color: #333; margin: 0;">Welcome to Applytide!</h1>
                 </div>
                 
                 <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
@@ -85,7 +85,7 @@ class EmailService:
         </html>
         """
         
-        return self._send_email(to_email, "Verify Your Email - JobFlow Copilot", html_content)
+        return self._send_email(to_email, "Verify Your Email - Applytide", html_content)
     
     def send_password_reset_email(self, to_email: str, token: str):
         """Send password reset email"""
@@ -96,7 +96,7 @@ class EmailService:
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Reset Your Password - JobFlow Copilot</title>
+            <title>Reset Your Password - Applytide</title>
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -136,7 +136,7 @@ class EmailService:
         </html>
         """
         
-        return self._send_email(to_email, "Reset Your Password - JobFlow Copilot", html_content)
+        return self._send_email(to_email, "Reset Your Password - Applytide", html_content)
 
 
 # Global email service instance

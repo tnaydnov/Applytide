@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Button, Input, Select, Modal, Textarea, FileUpload } from '../components/ui';
 import api, { apiFetch, getTokens } from '../lib/api';
 import AuthGuard from "../components/AuthGuard";
+import { PremiumBadge, usePremiumFeature } from "../components/PremiumFeature";
 
 // Enhanced Document Management with Intelligent ATS Analysis
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -24,6 +25,7 @@ const DOCUMENT_STATUS = [
 ];
 
 export default function DocumentsPage() {
+  const { checkPremium, PremiumModal } = usePremiumFeature();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -42,7 +44,8 @@ export default function DocumentsPage() {
   });
   const [filters, setFilters] = useState({
     type: '',
-    status: ''
+    status: '',
+    search: ''
   });
   
   // Upload form state
@@ -108,6 +111,7 @@ export default function DocumentsPage() {
       
       if (filters.type) params.append('document_type', filters.type);
       if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('q', filters.search);
       
       const response = await api.getDocuments(params.toString());
       setDocuments(response.documents);
@@ -365,21 +369,23 @@ export default function DocumentsPage() {
       return;
     }
 
-    try {
-      console.log('Generating cover letter with:', coverLetterForm);
-      const response = await api.generateCoverLetter(coverLetterForm);
-      console.log('Cover letter response:', response);
-      
-      if (response.cover_letter) {
-        setGeneratedCoverLetter(response.cover_letter);
-        toast.success('Cover letter generated successfully!');
-      } else {
-        throw new Error('No cover letter content received');
+    checkPremium(async () => {
+      try {
+        console.log('Generating cover letter with:', coverLetterForm);
+        const response = await api.generateCoverLetter(coverLetterForm);
+        console.log('Cover letter response:', response);
+        
+        if (response.cover_letter) {
+          setGeneratedCoverLetter(response.cover_letter);
+          toast.success('Cover letter generated successfully!');
+        } else {
+          throw new Error('No cover letter content received');
+        }
+      } catch (error) {
+        console.error('Cover letter generation error:', error);
+        toast.error(`Generation failed: ${error.message}`);
       }
-    } catch (error) {
-      console.error('Cover letter generation error:', error);
-      toast.error(`Generation failed: ${error.message}`);
-    }
+    }, "AI Cover Letter Generation");
   }
 
   async function deleteDocument(documentId) {
@@ -409,8 +415,12 @@ export default function DocumentsPage() {
           <p className="text-gray-600 mt-2">Manage your resumes, cover letters, and other documents with AI-powered optimization</p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={() => setShowCoverLetterModal(true)} className="bg-purple-600 hover:bg-purple-700">
+          <Button 
+            onClick={() => checkPremium(() => setShowCoverLetterModal(true), "AI Cover Letter Generation")} 
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center gap-2"
+          >
             ✨ Generate Cover Letter
+            <PremiumBadge size="xs" />
           </Button>
           <Button onClick={() => setShowUploadModal(true)} className="bg-blue-600 hover:bg-blue-700">
             📤 Upload Document
@@ -418,9 +428,21 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card className="p-4 mb-6">
-        <div className="flex gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Search Bar */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search Documents</label>
+            <Input
+              placeholder="Search by filename, content, or metadata..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              icon={<span>🔍</span>}
+            />
+          </div>
+          
+          {/* Document Type Filter */}
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
             <Select
@@ -434,6 +456,7 @@ export default function DocumentsPage() {
               ))}
             </Select>
           </div>
+          {/* Status Filter */}
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <Select
@@ -447,10 +470,13 @@ export default function DocumentsPage() {
               ))}
             </Select>
           </div>
+          
+          {/* Clear Filters Button */}
           <div className="flex items-end">
             <Button 
-              onClick={() => setFilters({ type: '', status: '' })}
+              onClick={() => setFilters({ type: '', status: '', search: '' })}
               variant="outline"
+              className="w-full"
             >
               Clear Filters
             </Button>
@@ -744,9 +770,31 @@ export default function DocumentsPage() {
             border: '1px solid #e5e7eb'
           }}>
             <div style={{ padding: '24px', minWidth: '600px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-                ✨ Generate AI Cover Letter
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-lg">✨</span>
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>
+                      Generate AI Cover Letter
+                    </h2>
+                    <PremiumBadge size="sm" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCoverLetterModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#6B7280'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
                 {/* Left Column - Form */}
@@ -1303,6 +1351,9 @@ export default function DocumentsPage() {
           </div>
         </>
       )}
+      
+      {/* Premium Modal */}
+      <PremiumModal />
       </div>
     </AuthGuard>
   );
