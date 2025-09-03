@@ -365,40 +365,57 @@ export const api = {
   },
   deleteDocument: (id) => 
     apiFetch(`/documents/${id}`, { method: "DELETE" }),
+  // api.js
   downloadDocument: async (id) => {
     const { access_token } = getTokens();
     const response = await fetch(`${API_BASE}/documents/${id}/download`, {
       headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
     });
     if (!response.ok) throw new Error(await response.text());
-    
-    // Get filename from response headers
-    const contentDisposition = response.headers.get('content-disposition');
-    let filename = 'document';
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="(.+)"/);
-      if (match) filename = match[1];
+
+    // Robust filename parsing (handles filename*=, quoted, unquoted)
+    const cd = response.headers.get("content-disposition") || "";
+    let filename = "document";
+    console.log("[DOWNLOAD] Content-Disposition header:", cd);
+
+    // RFC 5987 (filename*=UTF-8''...)
+    const starMatch = cd.match(/filename\*\s*=\s*([^']+)''([^;]+)/i);
+    if (starMatch) {
+      try {
+        filename = decodeURIComponent(starMatch[2]);
+      } catch {
+        filename = starMatch[2];
+      }
+      console.log("[DOWNLOAD] Parsed filename (RFC 5987):", filename);
+    } else {
+      // filename="..."
+      const quoted = cd.match(/filename\s*=\s*"([^"]+)"/i);
+      if (quoted) {
+        filename = quoted[1];
+        console.log("[DOWNLOAD] Parsed filename (quoted):", filename);
+      } else {
+        // filename=unquoted
+        const unquoted = cd.match(/filename\s*=\s*([^;]+)/i);
+        if (unquoted) {
+          filename = unquoted[1].trim();
+          console.log("[DOWNLOAD] Parsed filename (unquoted):", filename);
+        }
+      }
     }
-    
+
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.setAttribute("download", filename);  // <- ensure the browser uses our name
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
-  analyzeDocument: (id) => 
-    apiFetch(`/documents/${id}/analyze`, { method: "POST" }).then(r => r.json()),
-  optimizeDocument: (id, targetJob = null) => {
-    const body = targetJob ? JSON.stringify({ target_job_id: targetJob }) : '{}';
-    return apiFetch(`/documents/${id}/optimize`, { 
-      method: "POST", 
-      body 
-    }).then(r => r.json());
-  },
+
+
+
   generateCoverLetter: async (payload) => {
     const response = await apiFetch("/documents/cover-letter/generate", { 
       method: "POST", 
