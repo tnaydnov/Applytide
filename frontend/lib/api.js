@@ -3,12 +3,33 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 export function getTokens() {
   if (typeof window === "undefined") return {};
   try {
+    // new format
     const raw = localStorage.getItem("tokens");
-    return raw ? JSON.parse(raw) : {};
+    if (raw) return JSON.parse(raw);
+
+    // --- LEGACY COMPAT ---
+    const legacyAccess = localStorage.getItem("token") || localStorage.getItem("access_token");
+    const legacyRefresh = localStorage.getItem("refresh_token");
+    if (legacyAccess || legacyRefresh) {
+      const migrated = {
+        access_token: legacyAccess || undefined,
+        refresh_token: legacyRefresh || undefined,
+      };
+      // persist in new shape so future reads work
+      localStorage.setItem("tokens", JSON.stringify(migrated));
+      // (optional) clean up old keys
+      localStorage.removeItem("token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      return migrated;
+    }
+    // ---------------------
+    return {};
   } catch {
     return {};
   }
 }
+
 
 function setTokens(tokens) {
   console.log("=== SET TOKENS DEBUG ===");
@@ -79,7 +100,9 @@ async function tryRefreshAndRetry(path, init) {
 export async function apiFetch(path, init = {}, allowRetry = true) {
   const { access_token } = getTokens();
   const headers = new Headers(init.headers || {});
-  headers.set("Content-Type", headers.get("Content-Type") || "application/json");
+  if (!headers.has("Content-Type") && !(init.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   if (access_token) headers.set("Authorization", `Bearer ${access_token}`);
   const resp = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (resp.status === 401 && allowRetry) {
