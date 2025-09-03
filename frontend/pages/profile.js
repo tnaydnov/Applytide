@@ -144,6 +144,9 @@ export default function ProfilePage() {
                 >
                   🚪 Sign Out
                 </Button>
+                <a href="/sessions">
+                  <Button className="w-full" variant="outline">🖥️ View Active Sessions</Button>
+                </a>
               </div>
             </Card>
           </div>

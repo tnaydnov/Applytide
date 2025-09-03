@@ -24,6 +24,15 @@ const DOCUMENT_STATUS = [
   { value: 'template', label: '📋 Template', color: 'blue' }
 ];
 
+// keep letters, numbers, spaces, dashes/underscores; strip any extension the user typed
+function sanitizeName(name) {
+  return (name || '')
+    .replace(/\.[^/.]+$/, '')        // drop any extension the user entered
+    .replace(/[^a-z0-9 _-]+/gi, '')  // keep simple safe chars
+    .trim();
+}
+
+
 export default function DocumentsPage() {
   const { checkPremium, PremiumModal } = usePremiumFeature();
   const [documents, setDocuments] = useState([]);
@@ -33,6 +42,7 @@ export default function DocumentsPage() {
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [selectedJob, setSelectedJob] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [pagination, setPagination] = useState({
@@ -58,6 +68,7 @@ export default function DocumentsPage() {
   const [uploadForm, setUploadForm] = useState({
     file: null,
     type: 'resume',
+    name: '',
     metadata: {}
   });
   
@@ -160,6 +171,10 @@ export default function DocumentsPage() {
 
   // Enhanced analysis function for Docker integration
   async function handleEnhancedAnalysis(document, jobId = '') {
+    if (document?.type && document.type !== 'resume') {
+      toast.error('Analysis is only available for resumes.');
+      return;
+    }
     try {
       setAnalyzing(true);
       setSelectedDocument(document);
@@ -205,66 +220,72 @@ export default function DocumentsPage() {
   }
 
   async function handleUpload() {
+    if (uploading) return; // guard against double clicks
     if (!uploadForm.file) {
       toast.error('Please select a file to upload');
       return;
     }
 
     try {
-      // Try enhanced upload first
-      if (uploadForm.file.name.toLowerCase().endsWith('.pdf')) {
-        try {
-          const formData = new FormData();
-          formData.append('file', uploadForm.file);
-          formData.append('document_type', uploadForm.type);
+      setUploading(true);
 
-          // Create custom fetch with auth but without Content-Type for FormData
-          const { access_token } = typeof window !== "undefined" ? 
-            JSON.parse(localStorage.getItem("tokens") || "{}") : {};
-          
-          const headers = {};
-          if (access_token) {
-            headers.Authorization = `Bearer ${access_token}`;
-          }
+      // build a safely renamed File if user provided a name
+      const ext = uploadForm.file.name.includes('.')
+        ? uploadForm.file.name.substring(uploadForm.file.name.lastIndexOf('.'))
+        : '';
+      const desired = sanitizeName(uploadForm.name || '');
 
-          const response = await fetch(`${API_BASE_URL}/documents/upload`, {
-            method: 'POST',
-            headers: headers,
-            body: formData
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-              toast.success(`Document uploaded successfully! Text extracted: ${result.text_length} chars`);
-              setShowUploadModal(false);
-              setUploadForm({ file: null, type: 'resume', metadata: {} });
-              loadDocuments();
-              return;
-            }
-          }
-        } catch (enhancedError) {
-          console.log('Enhanced upload failed, using fallback:', enhancedError);
-        }
+      let fileToSend = uploadForm.file;
+      if (desired) {
+        fileToSend = new File([uploadForm.file], `${desired}${ext}`, {
+          type: uploadForm.file.type || 'application/octet-stream'
+        });
       }
 
-      // Fallback to original upload
       const formData = new FormData();
-      formData.append('file', uploadForm.file);
-      formData.append('document_type', uploadForm.type);
-      formData.append('metadata', JSON.stringify(uploadForm.metadata));
+      formData.append('file', fileToSend);
 
-      await api.uploadDocument(formData);
+      // VERY IMPORTANT: send the chosen document type
+      formData.append('document_type', uploadForm.type);
+
+      // send name too (harmless if backend ignores; helpful if it supports it)
+      if (desired) formData.append('name', desired);
+
+      if (uploadForm.metadata) {
+        formData.append('metadata', JSON.stringify(uploadForm.metadata));
+      }
+
+      const { access_token } = getTokens() || {};
+      const headers = {};
+      if (access_token) headers.Authorization = `Bearer ${access_token}`;
+
+      const resp = await fetch(`${API_BASE_URL}/documents/upload`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!resp.ok) throw new Error(`Upload failed (${resp.status})`);
+      await resp.json().catch(() => ({}));
+
       toast.success('Document uploaded successfully!');
       setShowUploadModal(false);
-      setUploadForm({ file: null, type: 'resume', metadata: {} });
-      loadDocuments();
+      setUploadForm({ file: null, type: 'resume', name: '', metadata: {} });
+      await loadDocuments();
     } catch (error) {
       toast.error(`Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
     }
   }
 
+
+
   async function analyzeDocument(document) {
+    if (document?.type && document.type !== 'resume') {
+      toast.error('Analysis is only available for resumes.');
+      return;
+    }
     try {
       setSelectedDocument(document);
       setShowAnalysisModal(true);
@@ -508,7 +529,9 @@ export default function DocumentsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documents.map(document => {
-            const docType = DOCUMENT_TYPES.find(t => t.value === document.type) || DOCUMENT_TYPES[0];
+            const docType =
+              DOCUMENT_TYPES.find(t => t.value === document.type) ||
+              { value: document.type || 'other', label: '📎 Other', icon: '📎' };
             const docStatus = DOCUMENT_STATUS.find(s => s.value === document.status) || DOCUMENT_STATUS[0];
             
             return (
@@ -550,37 +573,37 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  {/* Enhanced Analysis Button with Job Selection */}
-                  <div className="flex-1 relative">
-                    <Button
-                      onClick={() => handleEnhancedAnalysis(document)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      disabled={analyzing}
-                    >
-                      {analyzing ? '🔄' : '🔍'} {analyzing ? 'Analyzing...' : 'Analyze'}
-                    </Button>
-                    
-                    {/* Job Selection Dropdown */}
-                    {jobs.length > 0 && (
-                      <div className="mt-2">
-                        <Button
-                          onClick={() => {
-                            setJobSelectionDocument(document);
-                            setShowJobSelectionModal(true);
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
-                          disabled={analyzing}
-                        >
-                          🎯 Analyze against specific job ({jobs.length} available)
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  
+                  {document.type === 'resume' && (
+                    <div className="flex-1 relative">
+                      <Button
+                        onClick={() => handleEnhancedAnalysis(document)}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={analyzing}
+                      >
+                        {analyzing ? '🔄' : '🔍'} {analyzing ? 'Analyzing...' : 'Analyze'}
+                      </Button>
+
+                      {jobs.length > 0 && (
+                        <div className="mt-2">
+                          <Button
+                            onClick={() => {
+                              setJobSelectionDocument(document);
+                              setShowJobSelectionModal(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                            disabled={analyzing}
+                          >
+                            🎯 Analyze against specific job ({jobs.length} available)
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <Button
                     onClick={() => api.downloadDocument(document.id)}
                     variant="outline"
@@ -682,6 +705,28 @@ export default function DocumentsPage() {
                     <option key={type.value} value={type.value}>{type.label}</option>
                   ))}
                 </select>
+              </div>
+              
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Document Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={uploadForm.name}
+                  onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
+                  placeholder="e.g., Tomer Naydnov – English Resume"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  We’ll keep your file extension and use this as the display name.
+                </p>
               </div>
 
               <div style={{ marginBottom: '16px' }}>

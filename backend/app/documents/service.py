@@ -18,6 +18,20 @@ from .models import (
 )
 
 
+def _sanitize_display_name(name: Optional[str]) -> str:
+    """
+    Keep a safe base name (no extension, simple chars).
+    """
+    if not name:
+        return ""
+    # drop extension if user typed one
+    base = re.sub(r"\.[^./\\]+$", "", name).strip()
+    # keep letters, numbers, spaces, _, -
+    base = re.sub(r"[^a-zA-Z0-9 _-]+", "", base).strip()
+    return base
+
+
+
 class DocumentService:
     """Advanced document management service with AI capabilities"""
     
@@ -50,38 +64,68 @@ class DocumentService:
         file_content: bytes,
         filename: str,
         document_type: DocumentType,
+        display_name: Optional[str] = None,
         metadata: Dict[str, Any] = None
     ) -> models.Resume:  # Using existing Resume model for now
         """Upload and process a new document"""
-        
-        # Generate unique filename
-        file_extension = Path(filename).suffix
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+        # Resolve extension from the original upload
+        p = Path(filename)
+        ext = p.suffix.lower()  # e.g. ".pdf", ".docx"
+        if not ext:
+            ext = ".bin"
+
+        # Generate unique storage name
+        file_id = uuid.uuid4()
+        unique_filename = f"{file_id}{ext}"
         file_path = self.upload_dir / unique_filename
-        
-        # Save file
+
+        # Save the raw file bytes
         with open(file_path, "wb") as f:
             f.write(file_content)
-        
-        # Extract text content
-        text_content = self._extract_text(file_path, file_extension)
-        
-        # Create document record (using Resume model for compatibility)
+
+        # Extract text (best effort)
+        text_content = self._extract_text(file_path, ext)
+
+        # Compute display label (DB label) – prefer user-supplied, sanitize, no extension
+        safe_display = _sanitize_display_name(display_name) or p.stem or "document"
+        print(f"[UPLOAD] display_name={display_name} sanitized={safe_display} original_filename={filename}")
+
+        # Create DB row — label is the user-facing name (no extension)
         document = models.Resume(
+            id=file_id,
             user_id=uuid.UUID(user_id) if user_id else None,
-            label=Path(filename).stem,
+            label=safe_display,
             file_path=str(file_path),
             text=text_content
         )
-        
         db.add(document)
         db.commit()
         db.refresh(document)
-        
-        # Perform initial analysis
+        print(f"[UPLOAD] DB label={document.label} file_path={document.file_path}")
+
+        # Sidecar meta used by list/get/download to resolve type, name, and extension
+        meta = {
+            "document_id": str(document.id),
+            "type": document_type.value,                    # exact chosen type from the UI
+            "name": safe_display,                           # display name (no extension)
+            "original_filename": filename,                  # full original name from user upload
+            "original_extension": ext,                      # ".pdf", ".docx", etc
+            "metadata": metadata or {},
+            "created_at": document.created_at.isoformat(),
+        }
+        meta_path = Path(document.file_path).with_suffix(Path(document.file_path).suffix + ".meta.json")
+        try:
+            meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"Failed to write document meta: {e}")
+
+        # Optional: initial analysis hook
         self._analyze_document(db, document.id, text_content)
-        
+
         return document
+
+
     
     async def generate_cover_letter(
         self,

@@ -59,12 +59,12 @@ export default function NavBar() {
   }, []);
 
   const authenticatedLinks = [
-    { label: "Dashboard", href: "/dashboard", icon: "📊" },
-    { label: "Jobs", href: "/jobs", icon: "💼" },
-    { label: "Pipeline", href: "/pipeline", icon: "🔄" },
-    { label: "Documents", href: "/documents", icon: "📄" },
-    { label: "Reminders", href: "/reminders", icon: "⏰" },
-    { label: "Analytics", href: "/analytics", icon: "📈" },
+  { label: "Dashboard", href: "/dashboard", icon: "📊" },
+  { label: "Jobs", href: "/jobs", icon: "💼" },
+  { label: "Pipeline", href: "/pipeline", icon: "🔄" },
+  { label: "Documents", href: "/documents", icon: "📄" },
+  { label: "Reminders", href: "/reminders", icon: "⏰" },
+  { label: "Analytics", href: "/analytics", icon: "📈" },
   ];
 
   const links = user ? authenticatedLinks : publicLinks;
@@ -145,6 +145,13 @@ export default function NavBar() {
                       onClick={() => setIsUserMenuOpen(false)}
                     >
                       👤 Profile Settings
+                    </Link>
+                    <Link
+                      href="/sessions"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      🖥️ Active Sessions
                     </Link>
                     <Link
                       href="/dashboard"

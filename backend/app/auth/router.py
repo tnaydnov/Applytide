@@ -18,9 +18,14 @@ from .tokens import (
 )
 from .rate_limiting import login_limiter, refresh_limiter, email_limiter
 from .email_service import email_service
+# Import sessions endpoints
+from .sessions import router as sessions_router
 from ..auth.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Include sessions endpoints
+router.include_router(sessions_router)
 
 
 def get_client_info(request: Request) -> tuple[str, str]:

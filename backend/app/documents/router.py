@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse
+import mimetypes
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pathlib import Path
 import uuid
 import json
 
@@ -22,6 +24,7 @@ document_service = DocumentService()
 async def upload_document(
     file: UploadFile = File(...),
     document_type: DocumentType = Form(...),
+    name: Optional[str] = Form(None),          # 👈 NEW
     metadata: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -31,13 +34,12 @@ async def upload_document(
         # Validate file type
         allowed_extensions = {'.pdf', '.docx', '.doc', '.txt'}
         file_extension = '.' + file.filename.split('.')[-1].lower()
-        
         if file_extension not in allowed_extensions:
             raise HTTPException(status_code=400, detail="Unsupported file format")
-        
+
         # Read file content
         file_content = await file.read()
-        
+
         # Parse metadata if provided
         metadata_dict = {}
         if metadata:
@@ -45,17 +47,20 @@ async def upload_document(
                 metadata_dict = json.loads(metadata)
             except json.JSONDecodeError:
                 pass
-        
-        # Upload document
+
+        # Upload document (we now pass the user-provided display name)
+        print(f"[UPLOAD ENDPOINT] name={name} file.filename={file.filename}")
         document = document_service.upload_document(
             db=db,
             user_id=str(current_user.id),
             file_content=file_content,
             filename=file.filename,
             document_type=document_type,
+            display_name=name,                # 👈 NEW
             metadata=metadata_dict
         )
-        
+        print(f"[UPLOAD ENDPOINT] DB label={document.label}")
+
         # Return response
         return DocumentResponse(
             id=str(document.id),
@@ -71,7 +76,6 @@ async def upload_document(
             tags=[],
             metadata=metadata_dict
         )
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
@@ -85,22 +89,44 @@ def list_documents(
     current_user: User = Depends(get_current_user)
 ):
     """List user's documents with filtering and pagination"""
-    
-    # For now, return resumes as documents (using existing model)
     from ..db import models
-    
+    from pathlib import Path
+
     query = db.query(models.Resume).filter(models.Resume.user_id == current_user.id)
-    
+
     total = query.count()
     offset = (page - 1) * page_size
     documents = query.offset(offset).limit(page_size).all()
-    
+
     document_responses = []
     for doc in documents:
+        print(f"[LIST] DB label={doc.label} file_path={doc.file_path}")
+        # Default values if no sidecar exists (backward compatibility)
+        resolved_type = DocumentType.RESUME
+        resolved_name = doc.label
+        resolved_metadata = {}
+
+        # Try to read sidecar metadata we saved on upload
+        try:
+            meta_path = Path(doc.file_path).with_suffix(Path(doc.file_path).suffix + ".meta.json")
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                if meta.get("type"):
+                    resolved_type = DocumentType(meta["type"])
+                if meta.get("name"):
+                    resolved_name = meta["name"]
+                resolved_metadata = meta.get("metadata") or {}
+        except Exception as e:
+            print(f"Failed reading meta for document {doc.id}: {e}")
+
+        # Apply optional filter by type
+        if document_type and resolved_type != document_type:
+            continue
+
         document_responses.append(DocumentResponse(
             id=str(doc.id),
-            type=DocumentType.RESUME,
-            name=doc.label,
+            type=resolved_type,
+            name=resolved_name,
             status=DocumentStatus.ACTIVE,
             format="pdf",
             file_size=1024,  # Placeholder
@@ -109,11 +135,10 @@ def list_documents(
             version_count=1,
             current_version=1,
             tags=[],
-            metadata={}
+            metadata=resolved_metadata
         ))
-    
+
     pages = (total + page_size - 1) // page_size
-    
     return DocumentListResponse(
         documents=document_responses,
         total=total,
@@ -123,41 +148,76 @@ def list_documents(
         has_prev=page > 1
     )
 
-@router.get("/{document_id}")
+
+@router.get("/{document_id}", response_model=DocumentResponse)
 def get_document(
     document_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get document details"""
+    """Get a single document, resolved with sidecar metadata (type/name)."""
     from ..db import models
-    
+    from pathlib import Path
+    import json
+
     try:
-        document = db.query(models.Resume).filter(
+        doc = db.query(models.Resume).filter(
             models.Resume.id == uuid.UUID(document_id),
             models.Resume.user_id == current_user.id
         ).first()
-        
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-        
-        return DocumentResponse(
-            id=str(document.id),
-            type=DocumentType.RESUME,
-            name=document.label,
-            status=DocumentStatus.ACTIVE,
-            format="pdf",
-            file_size=len(document.text) if document.text else 0,
-            created_at=document.created_at,
-            updated_at=document.created_at,
-            version_count=1,
-            current_version=1,
-            tags=[],
-            metadata={}
-        )
-        
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid document ID")
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Defaults
+    resolved_type = DocumentType.RESUME
+    resolved_name = doc.label
+    resolved_metadata = {}
+    print(f"[GET] DB label={doc.label} file_path={doc.file_path}")
+
+    # Try sidecar (.meta.json) to override type/name/metadata
+    file_path = Path(doc.file_path) if getattr(doc, "file_path", None) else None
+    if file_path:
+        try:
+            meta_path = file_path.with_suffix(file_path.suffix + ".meta.json")
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                if meta.get("type"):
+                    resolved_type = DocumentType(meta["type"])
+                if meta.get("name"):
+                    resolved_name = meta["name"]
+                resolved_metadata = meta.get("metadata") or {}
+        except Exception as e:
+            print(f"[get_document] meta read failed for {doc.id}: {e}")
+
+    ext = (file_path.suffix[1:] if file_path and file_path.suffix else "bin")
+    size = 0
+    try:
+        if file_path and file_path.exists():
+            size = file_path.stat().st_size
+        elif doc.text:
+            size = len(doc.text.encode("utf-8"))
+    except Exception:
+        pass
+
+    return DocumentResponse(
+        id=str(doc.id),
+        type=resolved_type,
+        name=resolved_name,
+        status=DocumentStatus.ACTIVE,
+        format=ext,  # e.g. 'pdf'
+        file_size=size,
+        created_at=doc.created_at,
+        updated_at=doc.created_at,
+        version_count=1,
+        current_version=1,
+        tags=[],
+        metadata=resolved_metadata,
+    )
+
+
 
 @router.delete("/{document_id}")
 def delete_document(
@@ -295,25 +355,43 @@ def download_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Download document file"""
+    """Download the original stored file, with the correct name and extension."""
     from ..db import models
-    
+
     try:
-        document = db.query(models.Resume).filter(
-            models.Resume.id == uuid.UUID(document_id),
-            models.Resume.user_id == current_user.id
-        ).first()
-        
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-        
-        # For now, return text content as response
-        # In production, return actual file
-        return {
-            "content": document.text or "No content available",
-            "filename": f"{document.label}.txt",
-            "content_type": "text/plain"
-        }
-        
+        doc_uuid = uuid.UUID(document_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid document ID")
+
+    document = (
+        db.query(models.Resume)
+        .filter(models.Resume.id == doc_uuid, models.Resume.user_id == current_user.id)
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_path = Path(document.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Stored file missing")
+
+    # Always use the label from the database for the download filename
+    print(f"[DOWNLOAD] DB label={document.label} file_path={file_path}")
+    display_name = document.label or file_path.stem
+    ext = file_path.suffix or ""
+    safe_name = "".join(c for c in display_name if c.isalnum() or c in " _-").strip() or "document"
+    download_filename = f"{safe_name}{ext}"
+    print(f"[DOWNLOAD] download_filename={download_filename}")
+
+    # set the media type
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    if not media_type:
+        media_type = "application/octet-stream"
+
+    # IMPORTANT: FileResponse(filename=...) sets Content-Disposition correctly
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=download_filename
+    )
+

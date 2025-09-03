@@ -278,8 +278,7 @@ export default function JobsPage() {
 
   // Handle array inputs for skills, requirements, benefits
   function handleArrayInput(field, value) {
-    const items = value.split('\n').filter(item => item.trim());
-    setManualJobData(prev => ({ ...prev, [field]: items }));
+    setManualJobData(prev => ({ ...prev, [field]: value.split('\n') }));
   }
 
   // Format description with proper line breaks and bullet points
@@ -1075,9 +1074,9 @@ export default function JobsPage() {
                 ) : (
                   <Textarea
                     value={editJobData?.requirements?.join('\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({ 
-                      ...prev, 
-                      requirements: e.target.value.split('\n').filter(req => req.trim()) 
+                    onChange={(e) => setEditJobData(prev => ({
+                      ...prev,
+                      requirements: e.target.value.split('\n')
                     }))}
                     placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms"
                     rows={4}
@@ -1107,9 +1106,9 @@ export default function JobsPage() {
                 ) : (
                   <Textarea
                     value={editJobData?.skills?.join('\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({ 
-                      ...prev, 
-                      skills: e.target.value.split('\n').filter(skill => skill.trim()) 
+                    onChange={(e) => setEditJobData(prev => ({
+                      ...prev,
+                      skills: e.target.value.split('\n')
                     }))}
                     placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
                     rows={3}
@@ -1137,9 +1136,9 @@ export default function JobsPage() {
                 ) : (
                   <Textarea
                     value={editJobData?.benefits?.join('\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({ 
-                      ...prev, 
-                      benefits: e.target.value.split('\n').filter(benefit => benefit.trim()) 
+                    onChange={(e) => setEditJobData(prev => ({
+                      ...prev,
+                      benefits: e.target.value.split('\n')
                     }))}
                     placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
                     rows={3}
