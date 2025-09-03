@@ -144,8 +144,8 @@ export default function JobsPage() {
       setAiAnalyzing(true);
       try {
         const analyzedJob = await api.aiAnalyzeJob(jobUrl);
-        
-        // Set the analyzed data into manual form for review/editing
+
+        // Fill the manual form with AI results so the user can review/edit
         setManualJobData({
           title: analyzedJob.title || '',
           company_name: analyzedJob.company_name || '',
@@ -158,79 +158,56 @@ export default function JobsPage() {
           salary_max: analyzedJob.salary_max || '',
           remote_type: analyzedJob.remote_type || 'On-site',
           job_type: analyzedJob.job_type || 'Full-time',
-          source_url: jobUrl // Set the original URL as source
+          source_url: jobUrl
         });
-        
-        setJobCreationMode('manual'); // Switch to manual mode for review
+
+        setJobCreationMode('manual');
         toast.success("Job analyzed successfully! Review the details below.");
       } catch (err) {
+        console.error('AI analysis failed:', err);
         toast.error(`AI analysis failed: ${err.message}`);
       } finally {
         setAiAnalyzing(false);
       }
-    }, "AI Job Analysis");
+    });
   }
 
-  // Handle manual job creation
+  // Save a manually created/edited job
   async function handleManualJobSave() {
-    if (!manualJobData.title || !manualJobData.company_name) {
-      toast.error("Please fill in at least the job title and company name");
-      return;
-    }
-
     setLoading(true);
     try {
-      // Clean the data before sending - only send non-empty values
       const cleanData = {
         title: manualJobData.title.trim(),
         company_name: manualJobData.company_name.trim(),
       };
 
-      // Only add optional fields if they have actual values
-      if (manualJobData.location && manualJobData.location.trim()) {
-        cleanData.location = manualJobData.location.trim();
-      }
-      
+      if (manualJobData.location?.trim()) cleanData.location = manualJobData.location.trim();
       if (manualJobData.remote_type && manualJobData.remote_type !== 'On-site') {
         cleanData.remote_type = manualJobData.remote_type;
       }
-      
       if (manualJobData.job_type && manualJobData.job_type !== 'Full-time') {
         cleanData.job_type = manualJobData.job_type;
       }
-      
-      if (manualJobData.description && manualJobData.description.trim()) {
-        cleanData.description = manualJobData.description.trim();
-      }
-      
-      if (manualJobData.source_url && manualJobData.source_url.trim()) {
-        cleanData.source_url = manualJobData.source_url.trim();
-      }
-      
-      // Only add salary if both values are provided and valid
+      if (manualJobData.description?.trim()) cleanData.description = manualJobData.description.trim();
+      if (manualJobData.source_url?.trim()) cleanData.source_url = manualJobData.source_url.trim();
+
       if (manualJobData.salary_min && !isNaN(parseInt(manualJobData.salary_min))) {
         cleanData.salary_min = parseInt(manualJobData.salary_min);
       }
-      
       if (manualJobData.salary_max && !isNaN(parseInt(manualJobData.salary_max))) {
         cleanData.salary_max = parseInt(manualJobData.salary_max);
       }
-      
-      // Only add arrays if they have actual content
-      if (manualJobData.requirements && manualJobData.requirements.length > 0) {
-        cleanData.requirements = manualJobData.requirements.filter(req => req.trim());
+
+      if (manualJobData.requirements?.length) {
+        cleanData.requirements = manualJobData.requirements.map(r => r.trim()).filter(Boolean);
       }
-      
-      if (manualJobData.skills && manualJobData.skills.length > 0) {
-        cleanData.skills = manualJobData.skills.filter(skill => skill.trim());
+      if (manualJobData.skills?.length) {
+        cleanData.skills = manualJobData.skills.map(s => s.trim()).filter(Boolean);
       }
-      
-      if (manualJobData.benefits && manualJobData.benefits.length > 0) {
-        cleanData.benefits = manualJobData.benefits.filter(benefit => benefit.trim());
+      if (manualJobData.benefits?.length) {
+        cleanData.benefits = manualJobData.benefits.map(b => b.trim()).filter(Boolean);
       }
 
-      console.log('Sending clean job data:', cleanData);
-      
       await api.createManualJob(cleanData);
       toast.success("Job created successfully!");
       setShowJobModal(false);
@@ -243,6 +220,8 @@ export default function JobsPage() {
       setLoading(false);
     }
   }
+
+
 
   function resetJobForm() {
     setJobUrl('');
@@ -369,22 +348,18 @@ export default function JobsPage() {
     });
   }
 
-  // Save/Share functionality
-  function saveJob(jobId) {
-    // TODO: Implement save to favorites functionality
-    toast.success("Job saved to favorites!");
-  }
-
   function shareJob(job) {
+    const url = job.source_url?.trim();
+    if (!url) return; // nothing to share
     if (navigator.share) {
       navigator.share({
         title: `${job.title} at ${job.company_name}`,
         text: `Check out this job opportunity: ${job.title} at ${job.company_name}`,
-        url: job.source_url || window.location.href
+        url
       }).catch(err => console.log('Error sharing:', err));
     } else {
       // Fallback: copy to clipboard
-      const shareText = `${job.title} at ${job.company_name}${job.source_url ? `\n${job.source_url}` : ''}`;
+      const shareText = `${job.title} at ${job.company_name}\n${url}`;
       navigator.clipboard.writeText(shareText).then(() => {
         toast.success("Job details copied to clipboard!");
       }).catch(() => {
@@ -1433,30 +1408,25 @@ export default function JobsPage() {
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center space-x-3">
                       {job.source_url && (
-                        <a 
-                          href={job.source_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center"
-                        >
-                          <span className="mr-1">🔗</span>
-                          View Original
-                        </a>
+                        <>
+                          <a
+                            href={job.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center"
+                          >
+                            <span className="mr-1">🔗</span>
+                            View Original
+                          </a>
+                          <button
+                            onClick={() => shareJob(job)}
+                            className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center"
+                          >
+                            <span className="mr-1">📤</span>
+                            Share
+                          </button>
+                        </>
                       )}
-                      <button 
-                        onClick={() => saveJob(job.id)}
-                        className="text-sm text-gray-500 hover:text-red-600 transition-colors inline-flex items-center"
-                      >
-                        <span className="mr-1">❤️</span>
-                        Save
-                      </button>
-                      <button 
-                        onClick={() => shareJob(job)}
-                        className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center"
-                      >
-                        <span className="mr-1">📤</span>
-                        Share
-                      </button>
                     </div>
                     
                     <div className="flex items-center space-x-2">

@@ -25,7 +25,6 @@ export default function AppDetailPage() {
   const [scoring, setScoring] = useState(false);
 
   const statusConfig = {
-    "Saved": { color: "bg-gray-100 text-gray-800", icon: "💾" },
     "Applied": { color: "bg-blue-100 text-blue-800", icon: "📨" },
     "Phone Screen": { color: "bg-yellow-100 text-yellow-800", icon: "📞" },
     "Tech": { color: "bg-purple-100 text-purple-800", icon: "💻" },
@@ -34,6 +33,9 @@ export default function AppDetailPage() {
     "Accepted": { color: "bg-emerald-100 text-emerald-800", icon: "✅" },
     "Rejected": { color: "bg-red-100 text-red-800", icon: "❌" }
   };
+
+  const ALLOWED_STATUSES = ["Applied","Phone Screen","Tech","On-site","Offer","Accepted","Rejected"];
+  const normalizeStatus = (s) => (s === "Saved" ? "Applied" : s);
 
   async function load() {
     if (!id) return;
@@ -59,12 +61,13 @@ export default function AppDetailPage() {
   // Quick action handlers
   async function quickStatusChange(newStatus) {
     try {
-      await api.updateApplication(id, { status: newStatus });
+      const next = normalizeStatus(newStatus);
+      await api.updateApplication(id, { status: next });
       setData(prev => ({
         ...prev,
-        application: { ...prev.application, status: newStatus }
+        application: { ...prev.application, status: next }
       }));
-      toast.success(`Status changed to ${newStatus}`);
+      toast.success(`Status changed to ${next}`);
     } catch (err) {
       toast.error(`Failed to update status: ${err.message || err}`);
     }
@@ -192,7 +195,7 @@ export default function AppDetailPage() {
 
   async function addStage() {
     try {
-      const payload = { name: stage.name };
+      const payload = { name: normalizeStatus(stage.name) };
       if (stage.scheduled_at) payload.scheduled_at = new Date(stage.scheduled_at).toISOString();
       if (stage.notes) payload.notes = stage.notes;
       
@@ -250,7 +253,8 @@ export default function AppDetailPage() {
     );
   }
 
-  const currentStatus = statusConfig[data.application.status] || statusConfig["Saved"];
+  const normalized = normalizeStatus(data.application.status);
+  const currentStatus = statusConfig[normalized] || { color: "bg-gray-100 text-gray-800", icon: "📋" };
 
   return (
     <div className="space-y-8">
@@ -305,11 +309,11 @@ export default function AppDetailPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Move Status</label>
               <Select
-                value={data.application.status}
+                value={normalized}
                 onChange={e => quickStatusChange(e.target.value)}
                 className="w-full"
               >
-                {["Saved","Applied","Phone Screen","Tech","On-site","Offer","Accepted","Rejected"].map(status => (
+                {ALLOWED_STATUSES.map(status => (
                   <option key={status} value={status}>{status}</option>
                 ))}
               </Select>
@@ -659,7 +663,7 @@ export default function AppDetailPage() {
                 value={stage.name}
                 onChange={e => setStage({ ...stage, name: e.target.value })}
               >
-                {["Saved","Applied","Phone Screen","Tech","On-site","Offer","Accepted","Rejected"].map(x => (
+                {ALLOWED_STATUSES.map(x => (
                   <option key={x} value={x}>{x}</option>
                 ))}
               </Select>

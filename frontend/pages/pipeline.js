@@ -6,7 +6,6 @@ import { useToast } from '../lib/toast';
 
 // Available pipeline stages that can be added to applications
 const AVAILABLE_STAGES = [
-  { id: 'saved', name: 'Saved', icon: '💾', category: 'initial' },
   { id: 'applied', name: 'Applied', icon: '📨', category: 'initial' },
   { id: 'phone-screen', name: 'Phone Screen', icon: '📞', category: 'interview' },
   { id: 'hr-round', name: 'HR Round', icon: '👥', category: 'interview' },
@@ -34,10 +33,16 @@ const AVAILABLE_STAGES = [
 ];
 
 // Default pipeline stages 
-const DEFAULT_STAGES = ['Saved', 'Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected'];
+const DEFAULT_STAGES = ['Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected'];
+
+const DEFAULT_STATUS_STYLE = {
+  color: "bg-gray-100 text-gray-800",
+  icon: "📋",
+  gradient: "from-gray-50 to-gray-100",
+  bgColor: "bg-gray-500",
+};
 
 const statusConfig = {
-  "Saved": { color: "bg-gray-100 text-gray-800", icon: "💾", gradient: "from-gray-50 to-gray-100", bgColor: "bg-gray-500" },
   "Applied": { color: "bg-blue-100 text-blue-800", icon: "📨", gradient: "from-blue-50 to-blue-100", bgColor: "bg-blue-500" },
   "Phone Screen": { color: "bg-yellow-100 text-yellow-800", icon: "📞", gradient: "from-yellow-50 to-yellow-100", bgColor: "bg-yellow-500" },
   "HR Round": { color: "bg-cyan-100 text-cyan-800", icon: "👥", gradient: "from-cyan-50 to-cyan-100", bgColor: "bg-cyan-50" },
@@ -56,7 +61,7 @@ const statusConfig = {
   "Partner Interview": { color: "bg-rose-100 text-rose-800", icon: "🤵", gradient: "from-rose-50 to-rose-100", bgColor: "bg-rose-50" },
   "Final Round": { color: "bg-violet-100 text-violet-800", icon: "🎯", gradient: "from-violet-50 to-violet-100", bgColor: "bg-violet-50" },
   "On-site": { color: "bg-indigo-100 text-indigo-800", icon: "🏢", gradient: "from-indigo-50 to-indigo-100", bgColor: "bg-indigo-500" },
-  "Reference Check": { color: "bg-amber-100 text-amber-800", icon: "�", gradient: "from-amber-50 to-amber-100", bgColor: "bg-amber-50" },
+  "Reference Check": { color: "bg-amber-100 text-amber-800", icon: "📋", gradient: "from-amber-50 to-amber-100", bgColor: "bg-amber-50" },
   "Background Check": { color: "bg-yellow-100 text-yellow-800", icon: "🔍", gradient: "from-yellow-50 to-yellow-100", bgColor: "bg-yellow-50" },
   "Offer": { color: "bg-green-100 text-green-800", icon: "🎉", gradient: "from-green-50 to-green-100", bgColor: "bg-green-500" },
   "Negotiation": { color: "bg-blue-100 text-blue-800", icon: "💼", gradient: "from-blue-50 to-blue-100", bgColor: "bg-blue-50" },
@@ -69,7 +74,10 @@ function ApplicationCard({ application, onMove, onDelete, onUpdate, statuses, on
   const [isDragging, setIsDragging] = useState(false);
   const [showJobDetail, setShowJobDetail] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const config = statusConfig[application.status] || statusConfig["Saved"];
+  const config = statusConfig[application.status] || DEFAULT_STATUS_STYLE;
+
+
+
 
   const availableStatuses = statuses.filter(s => s !== application.status);
 
@@ -284,7 +292,7 @@ function Column({ status, items, onMove, onDelete, onUpdate, availableStatuses, 
   const [showAll, setShowAll] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const config = statusConfig[status];
+  const config = statusConfig[status] || DEFAULT_STATUS_STYLE;
   
   // Sort by date (newest first)
   const sortedItems = [...items].sort((a, b) => {
@@ -362,7 +370,7 @@ function Column({ status, items, onMove, onDelete, onUpdate, availableStatuses, 
   return (
     <div className="w-full h-full">
       <div 
-        className={`bg-gradient-to-br ${config.gradient} rounded-xl border-2 transition-all duration-300 overflow-hidden h-full flex flex-col ${
+        className={`bg-gradient-to-br ${config.gradient ?? 'from-gray-50 to-gray-100'} rounded-xl border-2 transition-all duration-300 overflow-hidden h-full flex flex-col ${
           isDragOver 
             ? isDropAllowed 
               ? 'border-green-400 shadow-lg scale-[1.02] bg-green-50' 
@@ -386,7 +394,7 @@ function Column({ status, items, onMove, onDelete, onUpdate, availableStatuses, 
                   {stageNumber}
                 </div>
               )}
-              <span className="text-lg">{config.icon}</span>
+              <span className="text-lg">{config.icon ?? '📋'}</span>
               <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{status}</h3>
             </div>
             <div className="flex items-center space-x-2">
@@ -453,7 +461,7 @@ function Column({ status, items, onMove, onDelete, onUpdate, availableStatuses, 
         <div className="p-2 space-y-2 flex-1 overflow-y-auto">
           {safeItems.length === 0 ? (
             <div className="text-center py-6 text-gray-500">
-              <div className="text-2xl mb-2">{config.icon}</div>
+              <div className="text-2xl mb-2">{config.icon ?? '📋'}</div>
               <p className="text-xs">No applications</p>
               <p className="text-xs text-gray-400 mt-1">Drag here</p>
             </div>
@@ -517,7 +525,7 @@ export default function PipelinePage() {
   const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'board'
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showPipelineSettings, setShowPipelineSettings] = useState(false);
-  const [currentStages, setCurrentStages] = useState(['Saved', 'Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected']);
+  const [currentStages, setCurrentStages] = useState(['Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected']);
   const wsRef = useRef(null);
   const toast = useToast();
 
@@ -572,7 +580,7 @@ export default function PipelinePage() {
       return;
     }
     
-    const defaultStages = ['Saved', 'Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected'];
+    const defaultStages = ['Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected'];
     const isDefaultStages = currentStages.length === defaultStages.length && 
                            currentStages.every((stage, index) => stage === defaultStages[index]);
     
@@ -605,11 +613,12 @@ export default function PipelinePage() {
       const items = columns[status] || [];
       
       let filteredItems = items.filter(app => {
-        const matchesSearch = !searchTerm || 
-          app.job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          app.job.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          app.job.location?.toLowerCase().includes(searchTerm.toLowerCase());
-          
+        const q = searchTerm.toLowerCase();
+        const matchesSearch =
+          !searchTerm ||
+          app.job?.title?.toLowerCase?.().includes(q) ||
+          app.job?.company_name?.toLowerCase?.().includes(q) ||
+          app.job?.location?.toLowerCase?.().includes(q);
         const matchesFilter = selectedFilter === 'all' ||
           (selectedFilter === 'recent' && new Date(app.created_at) > new Date(Date.now() - 7*24*60*60*1000)) ||
           (selectedFilter === 'with-salary' && app.job.salary_min && app.job.salary_max);
@@ -1070,9 +1079,6 @@ export default function PipelinePage() {
                     ✨ Add Your First Job
                   </Button>
                 </Link>
-                <p className="text-sm text-gray-500">
-                  Or import applications from LinkedIn, Indeed, or CSV files
-                </p>
               </div>
             </div>
           </div>
@@ -1783,7 +1789,7 @@ function PipelineCustomizer({ stages, onStagesChange, availableStages, onClose }
   };
 
   const resetToDefaults = () => {
-    setTempStages(['Saved', 'Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected']);
+    setTempStages(['Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected']);
   };
 
   const cancel = () => {
