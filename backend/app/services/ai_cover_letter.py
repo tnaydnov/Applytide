@@ -6,6 +6,7 @@ import os
 import openai
 from typing import Optional, List
 from sqlalchemy.orm import Session
+from datetime import datetime
 from ..db import models
 import json
 
@@ -51,142 +52,113 @@ class AICoverLetterService:
             "long": "400-500"
         }.get(length, "300-400")
         
-        system_prompt = f"""You are an expert career coach and professional writer specializing in creating personalized, compelling cover letters. 
-
-Your task is to write a {tone} cover letter of {word_count} words that:
-
-1. ANALYZES the candidate's resume to identify:
-   - Key technical and soft skills
-   - Career progression and achievements
-   - Relevant experience for this specific role
-   - Transferable skills from previous positions
-
-2. ANALYZES the job posting to identify:
-   - Required technical skills
-   - Desired qualifications
-   - Company culture indicators
-   - Key responsibilities
-
-3. CREATES a highly personalized cover letter that:
-   - Demonstrates clear understanding of the role requirements
-   - Highlights relevant skills and experience from the resume
-   - Shows how past roles have prepared the candidate for this position
-   - Establishes cultural fit with the company
-   - Uses specific examples and achievements when possible
-   - Maintains a {tone} tone throughout
-
-4. STRUCTURE:
-   - Compelling opening that shows genuine interest and immediate value
-   - 2-3 body paragraphs highlighting relevant experience and skills
-   - Strong closing with call to action
-
-Make it feel personal, not templated. Use industry-specific language when appropriate."""
-
-        user_prompt = f"""RESUME CONTENT:
-{resume_content}
-
-JOB DETAILS:
-Company: {company_name or 'Unknown Company'}
-Job Title: {job.title}
-Location: {job.location or 'Not specified'}
-Job Description: {job.description or 'No description available'}
-
-USER PROFILE:
-{json.dumps(user_profile, indent=2) if user_profile else 'No additional profile information'}
-
-Please generate a personalized cover letter that analyzes my background and shows how I'm specifically qualified for this role."""
-
+        tone_instructions = {
+            "professional": "formal and professional",
+            "conversational": "warm and conversational while maintaining professionalism",
+            "confident": "confident and assertive while remaining respectful",
+            "creative": "creative and engaging while staying professional"
+        }.get(tone, "professional")
+        
+        prompt = f"""
+        Create a compelling, personalized cover letter based on the following information:
+        
+        JOB DETAILS:
+        - Position: {job.title}
+        - Company: {company_name or 'Not specified'}
+        - Location: {job.location}
+        - Job Description: {job.description[:1000]}...
+        
+        CANDIDATE INFORMATION:
+        - Resume Content: {resume_content[:1500]}...
+        - User Profile: {json.dumps(user_profile)}
+        
+        REQUIREMENTS:
+        - Length: {word_count} words
+        - Tone: {tone_instructions}
+        - Must be personalized to the specific job and company
+        - Highlight relevant experience from the resume
+        - Show enthusiasm for the role and company
+        - Include a strong opening and closing
+        - Use specific examples from the resume when possible
+        - Address any key requirements mentioned in the job description
+        
+        Format the response as a complete cover letter ready to send.
+        """
+        
         try:
-            # Call OpenAI GPT-4o-mini (most cost-effective model)
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # Cheapest model: $0.15/1M input tokens, $0.60/1M output tokens
+                model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {
+                        "role": "system", 
+                        "content": "You are an expert career counselor and professional writer specializing in creating compelling, personalized cover letters that get results."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
                 ],
-                max_tokens=1000,
-                temperature=0.7,  # Balanced creativity vs consistency
-                top_p=0.9
+                max_tokens=800,
+                temperature=0.7
             )
             
-            cover_letter_content = response.choices[0].message.content.strip()
-            
-            # Calculate metrics
-            word_count_actual = len(cover_letter_content.split())
-            estimated_reading_time = f"{word_count_actual // 200 + 1} minutes"
+            cover_letter_text = response.choices[0].message.content.strip()
             
             return {
-                "cover_letter": cover_letter_content,
-                "word_count": word_count_actual,
-                "estimated_reading_time": estimated_reading_time,
-                "ai_model_used": "gpt-4-turbo-preview",
-                "analysis": {
-                    "job_title": job.title,
-                    "company": company_name,
-                    "tone_requested": tone,
-                    "length_requested": length
-                }
+                "success": True,
+                "cover_letter": cover_letter_text,
+                "job_title": job.title,
+                "company_name": company_name,
+                "generated_at": datetime.utcnow().isoformat(),
+                "model_used": "gpt-4o-mini",
+                "tone": tone,
+                "length": length,
+                "word_count": len(cover_letter_text.split())
             }
             
         except Exception as e:
-            # Fallback to template-based generation if AI fails
-            print(f"AI generation failed: {str(e)}")
-            return self._fallback_template_generation(job, company_name, resume_content, tone, length)
-    
-    def _fallback_template_generation(self, job, company_name: str, resume_content: str, tone: str, length: str) -> dict:
-        """Fallback template-based generation if AI service fails"""
-        
-        job_title = job.title
-        intro = f"I am writing to express my strong interest in the {job_title} position at {company_name}."
-        
-        if tone == "enthusiastic":
-            body_tone = "I am excited about the opportunity to contribute to your team and bring my passion for technology to this role."
-        elif tone == "confident":
-            body_tone = "With my proven track record and expertise, I am confident I would be a valuable addition to your team."
-        else:  # professional
-            body_tone = "I believe my experience and skills align well with the requirements for this position."
-        
-        # Basic skill extraction from resume
-        skills_mentioned = []
-        common_skills = ['Python', 'JavaScript', 'Java', 'React', 'SQL', 'AWS', 'Docker', 'Git', 'API']
-        for skill in common_skills:
-            if skill.lower() in resume_content.lower():
-                skills_mentioned.append(skill)
-        
-        skills_text = f"My experience with {', '.join(skills_mentioned[:3])} " if skills_mentioned else "My technical background "
-        
-        if length == "short":
-            template = f"""{intro}
-
-{body_tone} {skills_text}would be valuable for this role at {company_name}.
-
-I would welcome the opportunity to discuss how my background can contribute to your team's success. Thank you for your consideration.
-
-Sincerely,
-[Your Name]"""
-        else:  # medium or long
-            template = f"""{intro}
-
-{body_tone} {skills_text}aligns well with the requirements outlined in your job posting. Through my previous experience, I have developed strong problem-solving abilities and a collaborative approach that would be valuable in this role.
-
-I am particularly drawn to {company_name} because of your commitment to innovation and excellence. I believe my passion for continuous learning and my dedication to delivering high-quality results would make me a strong addition to your team.
-
-I would welcome the opportunity to discuss how my background and enthusiasm can contribute to your team's continued success. Thank you for your time and consideration.
-
-Sincerely,
-[Your Name]"""
-
-        word_count = len(template.split())
-        return {
-            "cover_letter": template,
-            "word_count": word_count,
-            "estimated_reading_time": f"{word_count // 200 + 1} minutes",
-            "ai_model_used": "template_fallback",
-            "analysis": {
-                "job_title": job.title,
-                "company": company_name,
-                "tone_requested": tone,
-                "length_requested": length,
-                "note": "Generated using template fallback due to AI service unavailability"
+            return {
+                "success": False,
+                "error": f"Failed to generate cover letter: {str(e)}",
+                "fallback_message": "Please use the template generator as a fallback."
             }
-        }
+    
+    def generate_template_cover_letter(
+        self,
+        job_title: str,
+        company_name: str,
+        user_name: str,
+        key_skills: List[str],
+        tone: str = "professional"
+    ) -> str:
+        """
+        Generate a template-based cover letter when AI is not available
+        """
+        
+        skills_text = ", ".join(key_skills[:3]) if key_skills else "relevant technical skills"
+        
+        if tone == "conversational":
+            template = f"""Dear Hiring Manager,
+
+I'm excited to apply for the {job_title} position at {company_name}. Your company's reputation for innovation and excellence aligns perfectly with my career goals and values.
+
+In my previous roles, I've developed strong expertise in {skills_text}. I'm particularly drawn to this opportunity because it would allow me to contribute to {company_name}'s continued success while growing my own skills in a dynamic environment.
+
+I'd love the opportunity to discuss how my background and enthusiasm can contribute to your team. Thank you for considering my application.
+
+Best regards,
+{user_name}"""
+        
+        else:  # professional tone
+            template = f"""Dear Hiring Manager,
+
+I am writing to express my strong interest in the {job_title} position at {company_name}. With my background in {skills_text}, I am confident that I would be a valuable addition to your team.
+
+My experience has prepared me well for this role, and I am particularly impressed by {company_name}'s commitment to excellence in the industry. I am eager to contribute to your organization's continued success and growth.
+
+I would welcome the opportunity to discuss my qualifications further. Thank you for your time and consideration.
+
+Sincerely,
+{user_name}"""
+        
+        return template

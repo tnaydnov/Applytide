@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="256" x2="256" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B6AF6"/>
+      <stop offset="1" stop-color="#00C2FF"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded tile -->
+  <rect x="8" y="8" width="240" height="240" rx="48" fill="url(#tile)"/>
+  <!-- A-shape legs (white) -->
+  <path d="M64 208 L128 48" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" opacity="0.98"/>
+  <path d="M192 208 L128 48" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" opacity="0.98"/>
+  <!-- Wave crossbar (white, slightly thinner to read at small sizes) -->
+  <path d="M68 140 C 104 118, 152 162, 188 140" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.98"/>
+</svg>

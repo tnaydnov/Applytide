@@ -10,8 +10,9 @@ class TokenPairOut(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
-class LoginIn(RegisterIn):
-    pass
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
 
 class RefreshIn(BaseModel):
     refresh_token: str

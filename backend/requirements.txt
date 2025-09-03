@@ -15,6 +15,9 @@ beautifulsoup4
 lxml
 python-multipart
 
+# Browser automation for JavaScript-rendered content
+playwright>=1.40.0
+
 # PDF Processing (Enhanced)
 PyPDF2==3.0.1
 pdfplumber==0.10.3

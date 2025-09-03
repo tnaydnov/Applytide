@@ -11,7 +11,6 @@ from pathlib import Path
 
 from ..db import models
 from ..services.pdf_extractor import PDFExtractor
-from ..services.ats_analyzer import ATSAnalyzer
 from ..services.ai_cover_letter import AICoverLetterService
 from .models import (
     DocumentType, DocumentStatus, DocumentFormat, ATSScore, 
@@ -26,11 +25,10 @@ class DocumentService:
         self.upload_dir = Path("/app/uploads/documents")
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize enhanced services
+        # Initialize core services
         self.pdf_extractor = PDFExtractor()
-        self.ats_analyzer = ATSAnalyzer()
         
-        # Initialize AI service for cover letters
+        # Initialize AI service for cover letters (future feature)
         self.ai_cover_letter_service = None
         try:
             self.ai_cover_letter_service = AICoverLetterService()
@@ -107,22 +105,7 @@ class DocumentService:
             "name": getattr(user, 'full_name', None) if user else None
         }
         
-        # Use AI service if available, otherwise fallback to template
-        if self.ai_cover_letter_service:
-            try:
-                result = await self.ai_cover_letter_service.generate_intelligent_cover_letter(
-                    db=db,
-                    job_id=request.job_id,
-                    resume_content=resume_content,
-                    user_profile=user_profile,
-                    tone=request.tone,
-                    length=request.length
-                )
-                return result
-            except Exception as e:
-                print(f"AI generation failed, using fallback: {e}")
-        
-        # Fallback to template-based generation
+        # Use template-based cover letter generation only
         return self._generate_template_cover_letter(db, request, resume_content)
     
     def _generate_template_cover_letter(
@@ -355,34 +338,31 @@ Sincerely,
             # Create a pseudo job description from keywords for the analyzer
             job_description = f"Required skills and qualifications: {', '.join(job_keywords)}"
             
-            # Use enhanced ATS analyzer
-            enhanced_analysis = self.ats_analyzer.analyze_resume_for_job(
-                resume_text=text_content,
-                job_description=job_description
-            )
+            # Use basic analysis since ATS analyzer was removed
+            basic_analysis = self._analyze_document_basic(text_content, job_description)
             
-            # Extract enhanced data
+            # Extract basic data
             ats_score = ATSScore(
-                overall_score=enhanced_analysis.get('overall_score', 0),
-                formatting_score=enhanced_analysis.get('formatting_score', 0),
-                keyword_score=enhanced_analysis.get('keyword_score', 0),
-                readability_score=enhanced_analysis.get('readability_score', 0),
-                technical_skills_score=enhanced_analysis.get('technical_skills_score', 0),
-                soft_skills_score=enhanced_analysis.get('soft_skills_score', 0),
-                suggestions=enhanced_analysis.get('recommendations', [])
+                overall_score=basic_analysis.get('overall_score', 0),
+                formatting_score=basic_analysis.get('formatting_score', 0),
+                keyword_score=basic_analysis.get('keyword_score', 0),
+                readability_score=basic_analysis.get('readability_score', 0),
+                technical_skills_score=basic_analysis.get('technical_skills_score', 0),
+                soft_skills_score=basic_analysis.get('soft_skills_score', 0),
+                suggestions=basic_analysis.get('recommendations', [])
             )
             
             return DocumentAnalysis(
-                word_count=enhanced_analysis.get('word_count', len(text_content.split())),
-                keyword_density=enhanced_analysis.get('keyword_analysis', {}).get('keyword_density', {}),
-                readability_score=enhanced_analysis.get('readability_score', 0),
+                word_count=basic_analysis.get('word_count', len(text_content.split())),
+                keyword_density=basic_analysis.get('keyword_analysis', {}).get('keyword_density', {}),
+                readability_score=basic_analysis.get('readability_score', 0),
                 ats_score=ats_score,
-                suggested_improvements=enhanced_analysis.get('recommendations', []),
-                missing_sections=enhanced_analysis.get('missing_sections', []),
-                # Enhanced fields for frontend
-                job_match_summary=enhanced_analysis.get('job_match_summary'),
-                keyword_analysis=enhanced_analysis.get('keyword_analysis'),
-                missing_skills=enhanced_analysis.get('missing_skills')
+                suggested_improvements=basic_analysis.get('recommendations', []),
+                missing_sections=basic_analysis.get('missing_sections', []),
+                # Basic fields for frontend
+                job_match_summary=basic_analysis.get('job_match_summary'),
+                keyword_analysis=basic_analysis.get('keyword_analysis'),
+                missing_skills=basic_analysis.get('missing_skills')
             )
         else:
             # Fallback to basic analysis when no job context
@@ -453,3 +433,35 @@ Sincerely,
             optimization_notes += f"• Optimized for: {goal}\\n"
         
         return optimized_content + optimization_notes
+
+    def _analyze_document_basic(self, text_content: str, job_description: str = None) -> dict:
+        """Basic document analysis without AI services"""
+        words = text_content.split()
+        word_count = len(words)
+        
+        # Basic keyword matching
+        tech_keywords = ['python', 'javascript', 'react', 'sql', 'aws', 'docker']
+        soft_keywords = ['leadership', 'communication', 'teamwork', 'problem-solving']
+        
+        found_tech = sum(1 for word in words if word.lower() in tech_keywords)
+        found_soft = sum(1 for word in words if word.lower() in soft_keywords)
+        
+        # Calculate basic scores
+        tech_score = min(100, (found_tech / len(tech_keywords)) * 100) if tech_keywords else 0
+        soft_score = min(100, (found_soft / len(soft_keywords)) * 100) if soft_keywords else 0
+        overall_score = (tech_score + soft_score) / 2
+        
+        return {
+            'word_count': word_count,
+            'overall_score': overall_score,
+            'formatting_score': 75,  # Default formatting score
+            'keyword_score': tech_score,
+            'readability_score': 80,  # Default readability
+            'technical_skills_score': tech_score,
+            'soft_skills_score': soft_score,
+            'recommendations': ['Add more relevant keywords', 'Improve formatting'],
+            'missing_sections': [],
+            'job_match_summary': f"Document contains {found_tech} technical and {found_soft} soft skill keywords",
+            'keyword_analysis': {'keyword_density': {}},
+            'missing_skills': []
+        }

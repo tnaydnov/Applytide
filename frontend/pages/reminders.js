@@ -150,11 +150,11 @@ export default function RemindersPage() {
     if (format === "ics") {
       // Generate ICS format for calendar import
       content = generateICSContent(filteredReminders);
-      downloadFile(content, "jobflow-reminders.ics", "text/calendar");
+      downloadFile(content, "applytide-reminders.ics", "text/calendar");
     } else if (format === "json") {
       // Generate JSON export for backup
       content = JSON.stringify(filteredReminders, null, 2);
-      downloadFile(content, "jobflow-reminders.json", "application/json");
+      downloadFile(content, "applytide-reminders.json", "application/json");
     }
   }
 
@@ -166,7 +166,7 @@ export default function RemindersPage() {
     }
     
     const content = generateICSContent(upcomingReminders);
-    downloadFile(content, "jobflow-upcoming-reminders.ics", "text/calendar");
+    downloadFile(content, "applytide-upcoming-reminders.ics", "text/calendar");
   }
 
   function generateICSContent(reminders) {
@@ -175,11 +175,11 @@ export default function RemindersPage() {
     let ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//JobFlow Copilot//Reminders//EN',
+      'PRODID:-//Applytide//Reminders//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:JobFlow Reminders',
-      'X-WR-CALDESC:Job search reminders and interviews from JobFlow Copilot'
+      'X-WR-CALNAME:Applytide Reminders',
+      'X-WR-CALDESC:Job search reminders and interviews from Applytide'
     ];
     
     reminders.forEach(reminder => {
@@ -200,12 +200,12 @@ export default function RemindersPage() {
       
       ics.push(
         'BEGIN:VEVENT',
-        `UID:${reminder.id}@jobflow-copilot.local`,
+        `UID:${reminder.id}@applytide.local`,
         `DTSTAMP:${now}`,
         `DTSTART:${formatDate(startDate)}`,
         `DTEND:${formatDate(endDate)}`,
         `SUMMARY:${escapeICSText(reminder.name)} - ${escapeICSText(reminder.job?.company_name || 'Unknown Company')}`,
-        `DESCRIPTION:${escapeICSText(`Job: ${reminder.job?.title || 'Unknown Position'}\\nCompany: ${reminder.job?.company_name || 'Unknown Company'}\\nType: ${reminder.name}${reminder.notes ? '\\nNotes: ' + reminder.notes : ''}\\n\\nView in JobFlow: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/applications/${reminder.application_id}`)}`,
+        `DESCRIPTION:${escapeICSText(`Job: ${reminder.job?.title || 'Unknown Position'}\\nCompany: ${reminder.job?.company_name || 'Unknown Company'}\\nType: ${reminder.name}${reminder.notes ? '\\nNotes: ' + reminder.notes : ''}\\n\\nView in Applytide: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/applications/${reminder.application_id}`)}`,
         `LOCATION:${escapeICSText(reminder.job?.location || '')}`,
         `URL:${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/applications/${reminder.application_id}`,
         `CATEGORIES:${category}`,
@@ -215,13 +215,13 @@ export default function RemindersPage() {
         'BEGIN:VALARM',
         'TRIGGER:-PT15M',
         'ACTION:DISPLAY',
-        'DESCRIPTION:JobFlow Reminder: 15 minutes until your reminder',
+        'DESCRIPTION:Applytide Reminder: 15 minutes until your reminder',
         'END:VALARM',
         'BEGIN:VALARM',
         'TRIGGER:-PT1H',
         'ACTION:EMAIL',
-        'DESCRIPTION:JobFlow Reminder: 1 hour until your reminder',
-        'SUMMARY:Upcoming JobFlow Reminder',
+        'DESCRIPTION:Applytide Reminder: 1 hour until your reminder',
+        'SUMMARY:Upcoming Applytide Reminder',
         'END:VALARM',
         'END:VEVENT'
       );

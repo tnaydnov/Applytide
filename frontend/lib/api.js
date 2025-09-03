@@ -206,8 +206,18 @@ export const api = {
   listJobs: () => apiFetch("/jobs").then(r => r.json()),
   scrapeJob: (url) =>
     apiFetch("/jobs/scrape", { method: "POST", body: JSON.stringify({ url }) }).then(r => r.json()),
+  aiAnalyzeJob: (url) =>
+    apiFetch("/jobs/ai-analyze", { method: "POST", body: JSON.stringify({ url }) }).then(r => r.json()),
   createJob: (payload) =>
     apiFetch("/jobs", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  createManualJob: (payload) =>
+    apiFetch("/jobs/manual", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  updateJob: (jobId, payload) =>
+    apiFetch(`/jobs/${jobId}`, { method: "PUT", body: JSON.stringify(payload) }).then(r => r.json()),
+
+  // Get current user info including premium status
+  getCurrentUser: () =>
+    apiFetch("/auth/me").then(r => r.json()),
 
   // resumes
   listResumes: () => apiFetch("/resumes").then(r => r.json()),
@@ -239,20 +249,39 @@ export const api = {
     apiFetch(`/applications/cards?status=${encodeURIComponent(status)}`).then(r => r.json()),
   moveApp: (id, status) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }).then(r => r.json()),
+  deleteApp: (id) =>
+    apiFetch(`/kanban/applications/${id}`, { method: "DELETE" }),
   updateApplication: (id, payload) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify(payload) }).then(r => r.json()),
   getAppDetail: (id) =>
     apiFetch(`/applications/${id}/detail`).then(r => r.json()),
   addStage: (id, payload) =>
     apiFetch(`/applications/${id}/stages`, { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
+  getStages: (id) =>
+    apiFetch(`/applications/${id}/stages`).then(r => r.json()),
   addNote: (id, body) =>
     apiFetch(`/applications/${id}/notes`, { method: "POST", body: JSON.stringify({ body }) }).then(r => r.json()),
+  getNotes: (id) =>
+    apiFetch(`/applications/${id}/notes`).then(r => r.json()),
 
   // dashboard
   getMetrics: () => apiFetch("/dashboard/metrics").then(r => r.json()),
   getApplications: () => apiFetch("/applications").then(r => r.json()),
+  getApplicationCards: () => apiFetch("/applications/cards").then(r => r.json()),
+  getUsedStatuses: () => apiFetch("/applications/statuses").then(r => r.json()),
   getApplicationsWithStages: () => apiFetch("/applications/with-stages").then(r => r.json()),
-  updateApplication: (id, data) => apiFetch(`/applications/${id}`, { method: "PUT", body: JSON.stringify(data) }).then(r => r.json()),
+  
+  // User Preferences
+  getPreferences: () => apiFetch("/preferences").then(r => r.json()),
+  getPreference: (key) => apiFetch(`/preferences/${key}`).then(r => r.json()),
+  savePreference: (key, value) => apiFetch("/preferences", { 
+    method: "POST", 
+    body: JSON.stringify({ preference_key: key, preference_value: value }) 
+  }).then(r => r.json()),
+  updatePreference: (key, value) => apiFetch(`/preferences/${key}`, { 
+    method: "PUT", 
+    body: JSON.stringify({ preference_value: value }) 
+  }).then(r => r.json()),
   
   // Stage management
   deleteStage: (applicationId, stageId) => apiFetch(`/applications/${applicationId}/stages/${stageId}`, { method: "DELETE" }),

@@ -1,6 +1,9 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from .middleware.security import SecurityHeadersMiddleware
+from .middleware.rate_limiting import GlobalRateLimitMiddleware
 from .auth.router import router as auth_router
 from .jobs.router import router as jobs_router
 from .resumes.router import router as resumes_router
@@ -10,24 +13,53 @@ from .dashboard.router import router as dashboard_router
 from .match.router import router as match_router
 from .io.router import router as io_router
 from .analytics.router import router as analytics_router
-from .search.router import router as search_router
+# Search functionality removed - using page-specific searches instead
 from .documents.router import router as documents_router
-from .api.enhanced_documents import router as enhanced_documents_router  # Enhanced documents API
+# Enhanced documents API removed - using standard documents router
 from .api.profile import router as profile_router  # User Profile Management
+from .api.kanban import router as kanban_router  # Kanban/Pipeline Management
+from .preferences.router import router as preferences_router  # User Preferences
 
 
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 
-app = FastAPI(title="JobFlow Copilot API")
+app = FastAPI(title="Applytide API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# Add security middleware
+if os.getenv("ENVIRONMENT") == "production":
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        TrustedHostMiddleware, 
+        allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    )
+    # Add global rate limiting in production
+    app.add_middleware(
+        GlobalRateLimitMiddleware,
+        max_requests=int(os.getenv("GLOBAL_RATE_LIMIT_REQUESTS", "1000")),
+        window_seconds=int(os.getenv("GLOBAL_RATE_LIMIT_WINDOW", "3600")),
+        enabled=True
+    )
+
+# CORS configuration - production vs development
+if os.getenv("ENVIRONMENT") == "production":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,  # Restricted origins for production
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
+        expose_headers=["X-Total-Count"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins for development
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 
 app.include_router(auth_router)
 app.include_router(jobs_router)
@@ -38,10 +70,12 @@ app.include_router(dashboard_router)
 app.include_router(match_router)
 app.include_router(io_router)
 app.include_router(analytics_router)
-app.include_router(search_router)
+# Search router removed - using page-specific searches instead
 app.include_router(documents_router)
-app.include_router(enhanced_documents_router)  # Enhanced intelligent document analysis
+# Enhanced intelligent document analysis removed - using standard documents router
 app.include_router(profile_router)  # User Profile Management for Personalization
+app.include_router(kanban_router)  # Kanban/Pipeline Management
+app.include_router(preferences_router)  # User Preferences Storage
 
 
 
@@ -51,4 +85,4 @@ def health():
 
 @app.get("/")
 def root():
-    return {"message": "JobFlow Copilot API"}
+    return {"message": "Applytide API"}

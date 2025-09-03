@@ -7,8 +7,9 @@ from sqlalchemy import select, func, or_
 from ..db.session import get_db
 from ..db import models
 from ..auth.deps import get_current_user
-from .schemas import JobCreate, JobOut, ScrapeIn, JobSearchOut
+from .schemas import JobCreate, JobOut, ScrapeIn, JobSearchOut, ManualJobCreate
 from .scraper import scrape_job
+from .openai_analyzer import analyze_job_with_openai
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_search_filter, apply_sorting
 from ..core.search import search_service
 
@@ -271,16 +272,147 @@ def get_job(job_id: uuid.UUID, db: Session = Depends(get_db)):
     return job
 
 
+@router.post("/manual", response_model=JobOut)
+def create_manual_job(
+    payload: ManualJobCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Create a job manually (available for all users)"""
+    
+    # Create or get company
+    company = db.execute(
+        select(models.Company).where(models.Company.name == payload.company_name)
+    ).scalar_one_or_none()
+    
+    if not company:
+        company = models.Company(
+            name=payload.company_name,
+            website=None,  # We don't have company website in manual creation
+            location=payload.location
+        )
+        db.add(company)
+        db.flush()
+
+    # Format description with requirements and skills
+    description_parts = []
+    if payload.description:
+        description_parts.append(payload.description)
+    
+    if payload.requirements and len(payload.requirements) > 0:
+        requirements_text = "\n".join([f"• {req}" for req in payload.requirements if req and req.strip()])
+        if requirements_text:  # Only add if there's actual content
+            description_parts.append(f"\n\n**Requirements:**\n{requirements_text}")
+    
+    if payload.skills and len(payload.skills) > 0:
+        skills_text = ", ".join([skill for skill in payload.skills if skill and skill.strip()])
+        if skills_text:  # Only add if there's actual content
+            description_parts.append(f"\n\n**Required Skills:**\n{skills_text}")
+    
+    if payload.benefits and len(payload.benefits) > 0:
+        benefits_text = "\n".join([f"• {benefit}" for benefit in payload.benefits if benefit and benefit.strip()])
+        if benefits_text:  # Only add if there's actual content
+            description_parts.append(f"\n\n**Benefits:**\n{benefits_text}")
+    
+    final_description = "\n".join(description_parts) if description_parts else None
+
+    job = models.Job(
+        user_id=current_user.id,
+        company_id=company.id,
+        title=payload.title,
+        location=payload.location,
+        remote_type=payload.remote_type,
+        salary_min=payload.salary_min,
+        salary_max=payload.salary_max,
+        description=final_description,
+        source_url=payload.source_url
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job
+
+
+@router.put("/{job_id}", response_model=JobOut)
+def update_job(
+    job_id: uuid.UUID,
+    payload: ManualJobCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Update an existing job (only for jobs owned by the current user)"""
+    
+    # Get the job and verify ownership
+    job = db.execute(
+        select(models.Job).where(
+            models.Job.id == job_id,
+            models.Job.user_id == current_user.id
+        )
+    ).scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or not authorized")
+    
+    # Update or get company
+    company = db.execute(
+        select(models.Company).where(models.Company.name == payload.company_name)
+    ).scalar_one_or_none()
+    
+    if not company:
+        company = models.Company(
+            name=payload.company_name,
+            website=None,
+            location=payload.location
+        )
+        db.add(company)
+        db.flush()
+
+    # Format description with requirements and skills
+    description_parts = []
+    if payload.description:
+        description_parts.append(payload.description)
+    
+    if payload.requirements and len(payload.requirements) > 0:
+        requirements_text = "\n".join([f"• {req}" for req in payload.requirements if req and req.strip()])
+        if requirements_text:
+            description_parts.append(f"\n\n**Requirements:**\n{requirements_text}")
+    
+    if payload.skills and len(payload.skills) > 0:
+        skills_text = ", ".join([skill for skill in payload.skills if skill and skill.strip()])
+        if skills_text:
+            description_parts.append(f"\n\n**Required Skills:**\n{skills_text}")
+    
+    if payload.benefits and len(payload.benefits) > 0:
+        benefits_text = "\n".join([f"• {benefit}" for benefit in payload.benefits if benefit and benefit.strip()])
+        if benefits_text:
+            description_parts.append(f"\n\n**Benefits:**\n{benefits_text}")
+    
+    final_description = "\n".join(description_parts) if description_parts else None
+
+    # Update job fields
+    job.company_id = company.id
+    job.title = payload.title
+    job.location = payload.location
+    job.remote_type = payload.remote_type
+    job.salary_min = payload.salary_min
+    job.salary_max = payload.salary_max
+    job.description = final_description
+    job.source_url = payload.source_url
+    
+    db.commit()
+    db.refresh(job)
+    return job
+
+
 @router.post("/scrape", response_model=JobCreate)
-def scrape(payload: ScrapeIn):
+def scrape_job_basic(payload: ScrapeIn, current_user: models.User = Depends(get_current_user)):
     """
-    Fetch a job page and return a JobCreate-like payload you can edit before creating.
+    Basic job scraping (fallback for non-premium users)
     """
     try:
         data = scrape_job(str(payload.url))
         return JobCreate(**data)
     except Exception as e:
-        # Provide helpful error messages for common issues
         error_msg = str(e)
         url_str = str(payload.url).lower()
         if "linkedin.com" in url_str:
@@ -295,3 +427,84 @@ def scrape(payload: ScrapeIn):
             error_msg = f"Failed to scrape URL: {error_msg}"
         
         raise HTTPException(status_code=400, detail=error_msg)
+
+
+@router.post("/ai-analyze", response_model=JobCreate)
+async def analyze_job_with_ai(
+    payload: ScrapeIn, 
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    AI-powered job analysis using OpenAI (Premium feature only)
+    """
+    # Check if user is premium
+    if not current_user.is_premium:
+        raise HTTPException(
+            status_code=403, 
+            detail="AI job analysis is a premium feature. Please upgrade your account to access this functionality."
+        )
+    
+    # Check if premium is still valid (if expiration date is set)
+    if current_user.premium_expires_at:
+        from datetime import datetime, timezone
+        if datetime.now(timezone.utc) > current_user.premium_expires_at:
+            raise HTTPException(
+                status_code=403, 
+                detail="Your premium subscription has expired. Please renew to continue using AI features."
+            )
+    
+    try:
+        # Use AI analyzer as primary method for premium users
+        data = await analyze_job_with_openai(str(payload.url))
+        
+        # Convert to JobCreate format
+        job_data = {
+            "title": data.get("title", ""),
+            "company_name": data.get("company_name", ""),
+            "location": data.get("location"),
+            "remote_type": data.get("remote_type"),
+            "salary_min": data.get("salary_min"),
+            "salary_max": data.get("salary_max"),
+            "description": data.get("description"),
+            "source_url": str(payload.url)
+        }
+        
+        return JobCreate(**job_data)
+        
+    except Exception as e:
+        error_msg = str(e)
+        
+        # Try fallback to basic scraper if AI analysis fails
+        try:
+            print(f"AI analysis failed: {error_msg}. Falling back to basic scraper...")
+            data = scrape_job(str(payload.url))
+            
+            # Convert to JobCreate format
+            job_data = {
+                "title": data.get("title", ""),
+                "company_name": data.get("company_name", ""),
+                "location": data.get("location"),
+                "remote_type": data.get("remote_type"),
+                "salary_min": data.get("salary_min"),
+                "salary_max": data.get("salary_max"),
+                "description": data.get("description"),
+                "source_url": str(payload.url)
+            }
+            
+            return JobCreate(**job_data)
+            
+        except Exception as fallback_error:
+            # If both AI and scraper fail, provide helpful error messages
+            if "OPENAI_API_KEY" in error_msg:
+                error_msg = "AI analysis service is temporarily unavailable. Please try again later or use manual job entry."
+            elif "insufficient content" in error_msg.lower():
+                error_msg = "This page doesn't contain enough job information for analysis. Try using manual job entry instead."
+            elif "access restrictions" in error_msg.lower():
+                error_msg = "This page requires JavaScript or has access restrictions. Try copying the job details and using manual entry."
+            elif "analysis failed" in error_msg.lower():
+                error_msg = f"AI analysis failed: {error_msg}"
+            else:
+                error_msg = f"Failed to analyze job posting: {error_msg}"
+            
+            raise HTTPException(status_code=400, detail=error_msg)

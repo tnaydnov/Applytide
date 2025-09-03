@@ -59,9 +59,9 @@ export default function AuthGuard({ children }) {
         localStorage.removeItem('tokens');
       }
       setIsAuthenticated(false);
-      // Only redirect to login if we're not already there
-      if (router.pathname !== '/login') {
-        router.push('/login');
+      // Only redirect to landing page if we're not already there or on login
+      if (router.pathname !== '/' && router.pathname !== '/login') {
+        router.push('/');
       }
     } finally {
       setIsLoading(false);

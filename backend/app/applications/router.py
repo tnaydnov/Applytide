@@ -31,6 +31,25 @@ def _ensure_job_resume(db: Session, job_id: uuid.UUID, resume_id: uuid.UUID | No
 @router.post("", response_model=ApplicationOut)
 def create_application(payload: ApplicationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _ensure_job_resume(db, payload.job_id, payload.resume_id)
+    
+    # Check if application already exists for this user and job
+    existing_app = db.execute(
+        select(models.Application).where(
+            models.Application.user_id == current_user.id,
+            models.Application.job_id == payload.job_id
+        )
+    ).scalar_one_or_none()
+    
+    if existing_app:
+        # Update existing application instead of creating duplicate
+        existing_app.status = payload.status or "Applied"
+        existing_app.resume_id = payload.resume_id
+        existing_app.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing_app)
+        return existing_app
+    
+    # Create new application
     row = models.Application(
         user_id=current_user.id,
         job_id=payload.job_id,
@@ -111,6 +130,14 @@ def list_applications(
     
     return PaginatedResponse(**result)
 
+@router.get("/statuses", response_model=List[str])
+def get_used_statuses(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get all statuses currently used by user's applications"""
+    stmt = select(models.Application.status).where(
+        models.Application.user_id == current_user.id
+    ).distinct().order_by(models.Application.status)
+    statuses = db.execute(stmt).scalars().all()
+    return list(statuses)
 
 # ---------- Cards (job title + company) ----------
 @router.get("/cards", response_model=List[ApplicationCard])
@@ -120,6 +147,7 @@ def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db
     j = join(j, models.Company, models.Job.company_id == models.Company.id, isouter=True)
     stmt = select(
         models.Application.id, models.Application.status, models.Application.resume_id,
+        models.Application.created_at, models.Application.updated_at,
         models.Job.id.label("job_id"), models.Job.title, models.Company.name.label("company_name")
     ).select_from(j).where(models.Application.user_id == current_user.id)
     if status:
@@ -130,6 +158,7 @@ def list_cards(status: Optional[str] = Query(None), db: Session = Depends(get_db
     for r in rows:
         out.append(ApplicationCard(
             id=r.id, status=r.status, resume_id=r.resume_id,
+            created_at=r.created_at, updated_at=r.updated_at,
             job=JobMini(id=r.job_id, title=r.title, company_name=r.company_name)
         ))
     return out
@@ -202,6 +231,18 @@ def update_application(app_id: uuid.UUID, payload: ApplicationUpdate, db: Sessio
     row = _get_owned_app(db, app_id, current_user.id)
     if not row:
         raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Track status change if it's different
+    old_status = row.status
+    if old_status != payload.status:
+        # Create a stage record to track this status change
+        stage = models.Stage(
+            application_id=app_id,
+            name=payload.status,
+            notes=f"Status changed from {old_status} to {payload.status}",
+        )
+        db.add(stage)
+    
     row.status = payload.status
     row.updated_at = datetime.now(timezone.utc)
     db.add(row)

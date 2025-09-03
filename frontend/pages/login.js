@@ -43,7 +43,7 @@ export default function LoginPage() {
           password: password,
           full_name: fullName
         });
-        toast.success("Account created successfully! Welcome to JobFlow!");
+        toast.success("Account created successfully! Welcome to Applytide!");
         // Redirect to dashboard after successful registration
         router.push("/dashboard");
       }
@@ -68,7 +68,7 @@ export default function LoginPage() {
           <p className="text-gray-600 mt-2">
             {mode === "login" 
               ? "Sign in to continue your job search journey" 
-              : "Join JobFlow Copilot and streamline your applications"
+              : "Join Applytide and streamline your applications"
             }
           </p>
         </div>

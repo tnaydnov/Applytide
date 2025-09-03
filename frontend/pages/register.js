@@ -49,7 +49,7 @@ export default function Register() {
       const data = await api.register(registerData);
 
       console.log("5. Registration response:", data);
-      toast.success("Account created successfully! Welcome to JobFlow!");
+      toast.success("Account created successfully! Welcome to Applytide!");
       
       console.log("6. About to redirect to dashboard");
       // Redirect to dashboard after successful registration
