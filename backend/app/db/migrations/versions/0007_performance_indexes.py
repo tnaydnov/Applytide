@@ -17,98 +17,68 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add performance indexes for most common queries
-    
-    # Applications - commonly filtered by status, user_id, and sorted by created_at
-    # Check if indexes exist before creating them
-    try:
-        op.create_index('ix_applications_status', 'applications', ['status'])
-    except Exception:
-        pass  # Index already exists
-    try:
-        op.create_index('ix_applications_user_id', 'applications', ['user_id'])
-    except Exception:
-        pass  # Index already exists
-    try:
-        op.create_index('ix_applications_created_at', 'applications', ['created_at'])
-    except Exception:
-        pass  # Index already exists
-    try:
-        op.create_index('ix_applications_updated_at', 'applications', ['updated_at'])
-    except Exception:
-        pass  # Index already exists
-    
-    # Composite index for user's applications by status and date
-    op.create_index('ix_applications_user_status_created', 'applications', 
-                   ['user_id', 'status', 'created_at'])
-    
-    # Jobs - commonly searched by title and description, filtered by location
-    op.create_index('ix_jobs_location', 'jobs', ['location'])
-    op.create_index('ix_jobs_remote_type', 'jobs', ['remote_type'])
-    op.create_index('ix_jobs_created_at', 'jobs', ['created_at'])
-    
-    # Companies - enforce unique names (case-insensitive)
-    op.create_unique_constraint('uq_companies_name_lower', 'companies', 
-                               [sa.text('LOWER(name)')])
-    
-    # Resumes - commonly filtered by user
-    op.create_index('ix_resumes_user_id', 'resumes', ['user_id'])
-    op.create_index('ix_resumes_created_at', 'resumes', ['created_at'])
-    
-    # Stages - commonly queried by application
-    op.create_index('ix_stages_application_id', 'stages', ['application_id'])
-    op.create_index('ix_stages_scheduled_at', 'stages', ['scheduled_at'])
-    
-    # Notes - commonly queried by application
-    op.create_index('ix_notes_application_id', 'notes', ['application_id'])
-    op.create_index('ix_notes_created_at', 'notes', ['created_at'])
-    
-    # Match results - commonly queried by user, resume, job
-    op.create_index('ix_match_results_user_id', 'match_results', ['user_id'])
-    op.create_index('ix_match_results_resume_id', 'match_results', ['resume_id'])
-    op.create_index('ix_match_results_job_id', 'match_results', ['job_id'])
-    op.create_index('ix_match_results_score', 'match_results', ['score'])
-    
-    # Add full-text search capabilities for jobs
-    op.execute("CREATE INDEX ix_jobs_title_fts ON jobs USING gin(to_tsvector('english', title))")
-    op.execute("CREATE INDEX ix_jobs_description_fts ON jobs USING gin(to_tsvector('english', description))")
-    
-    # Combined full-text search index for title and description
+    # Add performance indexes for most common queries.
+    # NOTE: ix_applications_status already created in 0003; don't recreate it.
+
+    # Applications (new supplemental indexes)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_applications_user_id ON applications (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_applications_created_at ON applications (created_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_applications_updated_at ON applications (updated_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_applications_user_status_created ON applications (user_id, status, created_at)")
+
+    # Jobs
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_location ON jobs (location)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_remote_type ON jobs (remote_type)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_created_at ON jobs (created_at)")
+
+    # Companies (case-insensitive unique constraint). Use a functional unique index in Postgres.
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_companies_name_lower ON companies (LOWER(name))")
+
+    # Resumes
+    op.execute("CREATE INDEX IF NOT EXISTS ix_resumes_user_id ON resumes (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_resumes_created_at ON resumes (created_at)")
+
+    # Stages
+    op.execute("CREATE INDEX IF NOT EXISTS ix_stages_application_id ON stages (application_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_stages_scheduled_at ON stages (scheduled_at)")
+
+    # Notes
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notes_application_id ON notes (application_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notes_created_at ON notes (created_at)")
+
+    # Match results
+    op.execute("CREATE INDEX IF NOT EXISTS ix_match_results_user_id ON match_results (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_match_results_resume_id ON match_results (resume_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_match_results_job_id ON match_results (job_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_match_results_score ON match_results (score)")
+
+    # Full-text search indexes (idempotent creation)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_title_fts ON jobs USING gin(to_tsvector('english', title))")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_description_fts ON jobs USING gin(to_tsvector('english', description))")
     op.execute("""
-        CREATE INDEX ix_jobs_content_fts ON jobs 
+        CREATE INDEX IF NOT EXISTS ix_jobs_content_fts ON jobs 
         USING gin(to_tsvector('english', title || ' ' || COALESCE(description, '')))
     """)
 
 
 def downgrade() -> None:
-    # Drop full-text search indexes
-    op.drop_index('ix_jobs_content_fts', 'jobs')
-    op.drop_index('ix_jobs_description_fts', 'jobs')
-    op.drop_index('ix_jobs_title_fts', 'jobs')
-    
-    # Drop regular indexes
-    op.drop_index('ix_match_results_score', 'match_results')
-    op.drop_index('ix_match_results_job_id', 'match_results')
-    op.drop_index('ix_match_results_resume_id', 'match_results')
-    op.drop_index('ix_match_results_user_id', 'match_results')
-    
-    op.drop_index('ix_notes_created_at', 'notes')
-    op.drop_index('ix_notes_application_id', 'notes')
-    
-    op.drop_index('ix_stages_scheduled_at', 'stages')
-    op.drop_index('ix_stages_application_id', 'stages')
-    
-    op.drop_index('ix_resumes_created_at', 'resumes')
-    op.drop_index('ix_resumes_user_id', 'resumes')
-    
-    op.drop_constraint('uq_companies_name_lower', 'companies')
-    
-    op.drop_index('ix_jobs_created_at', 'jobs')
-    op.drop_index('ix_jobs_remote_type', 'jobs')
-    op.drop_index('ix_jobs_location', 'jobs')
-    
-    op.drop_index('ix_applications_user_status_created', 'applications')
-    op.drop_index('ix_applications_updated_at', 'applications')
-    op.drop_index('ix_applications_created_at', 'applications')
-    op.drop_index('ix_applications_user_id', 'applications')
-    op.drop_index('ix_applications_status', 'applications')
+    # Full-text search indexes
+    op.execute("DROP INDEX IF EXISTS ix_jobs_content_fts")
+    op.execute("DROP INDEX IF EXISTS ix_jobs_description_fts")
+    op.execute("DROP INDEX IF EXISTS ix_jobs_title_fts")
+
+    # Regular indexes
+    for idx in [
+        'ix_match_results_score', 'ix_match_results_job_id', 'ix_match_results_resume_id', 'ix_match_results_user_id',
+        'ix_notes_created_at', 'ix_notes_application_id',
+        'ix_stages_scheduled_at', 'ix_stages_application_id',
+        'ix_resumes_created_at', 'ix_resumes_user_id',
+        'ix_jobs_created_at', 'ix_jobs_remote_type', 'ix_jobs_location',
+        'ix_applications_user_status_created', 'ix_applications_updated_at', 'ix_applications_created_at', 'ix_applications_user_id'
+    ]:
+        op.execute(f"DROP INDEX IF EXISTS {idx}")
+
+    # Drop functional unique index
+    op.execute("DROP INDEX IF EXISTS uq_companies_name_lower")
+
+    # Do NOT drop ix_applications_status here (belongs to migration 0003)

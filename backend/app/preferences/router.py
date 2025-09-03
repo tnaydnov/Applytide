@@ -29,7 +29,8 @@ def get_user_preference(preference_key: str, db: Session = Depends(get_db), curr
     preference = db.execute(stmt).scalar_one_or_none()
     
     if not preference:
-        raise HTTPException(status_code=404, detail="Preference not found")
+        # Return default empty value instead of 404 for better UX
+        return PreferenceOut(preference_key=preference_key, preference_value={})
     
     return PreferenceOut(preference_key=preference.preference_key, preference_value=preference.preference_value)
 

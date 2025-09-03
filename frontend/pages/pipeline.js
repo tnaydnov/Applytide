@@ -532,14 +532,23 @@ export default function PipelinePage() {
         // Try to load saved pipeline preferences from backend
         try {
           const savedPreference = await api.getPreference('pipeline_stages');
-          const savedStages = savedPreference.preference_value.stages;
+          const savedStages = savedPreference.preference_value?.stages;
           console.log('Loaded saved pipeline stages from backend:', savedStages);
           
-          // Merge saved stages with any new used statuses
-          const missingStatuses = usedStatuses.filter(status => !savedStages.includes(status));
-          const finalStages = missingStatuses.length > 0 ? [...savedStages, ...missingStatuses] : savedStages;
-          console.log('Using saved stages with missing statuses added:', finalStages);
-          setCurrentStages(finalStages);
+          // Check if we have valid saved stages
+          if (savedStages && Array.isArray(savedStages) && savedStages.length > 0) {
+            // Merge saved stages with any new used statuses
+            const missingStatuses = usedStatuses.filter(status => !savedStages.includes(status));
+            const finalStages = missingStatuses.length > 0 ? [...savedStages, ...missingStatuses] : savedStages;
+            console.log('Using saved stages with missing statuses added:', finalStages);
+            setCurrentStages(finalStages);
+          } else {
+            // No valid saved stages, use defaults with used statuses
+            console.log('No valid saved pipeline stages, using defaults with used statuses');
+            const mergedStages = [...new Set([...DEFAULT_STAGES, ...usedStatuses])];
+            console.log('Using merged stages:', mergedStages);
+            setCurrentStages(mergedStages);
+          }
         } catch (err) {
           // No saved preferences, use defaults with used statuses
           console.log('No saved pipeline preferences, using defaults with used statuses');
@@ -558,6 +567,11 @@ export default function PipelinePage() {
 
   // Save pipeline stages to backend whenever they change (but not during initialization)
   useEffect(() => {
+    // Safety check: ensure currentStages is a valid array
+    if (!currentStages || !Array.isArray(currentStages)) {
+      return;
+    }
+    
     const defaultStages = ['Saved', 'Applied', 'Phone Screen', 'Tech', 'On-site', 'Offer', 'Accepted', 'Rejected'];
     const isDefaultStages = currentStages.length === defaultStages.length && 
                            currentStages.every((stage, index) => stage === defaultStages[index]);
