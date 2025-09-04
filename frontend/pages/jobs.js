@@ -535,27 +535,31 @@ export default function JobsPage() {
 
   return (
     <AuthGuard>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Job Board</h1>
-            <p className="text-gray-600 mt-1">Discover and track amazing opportunities</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">
-              {pagination.total} job{pagination.total !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-200">Job Board</h1>
+                <p className="text-slate-400 mt-1">Discover and track amazing opportunities</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-400">
+                  {pagination.total} job{pagination.total !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
 
         {/* Job Creation Card */}
-        <Card>
+        <Card className="glass-card glass-rose">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-2xl">✨</span>
-                <h2 className="text-xl font-semibold text-gray-900">Add New Job</h2>
+                <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <h2 className="text-xl font-semibold text-slate-200">Add New Job</h2>
               </div>
               {currentUser?.is_premium && (
                 <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-full">
@@ -566,21 +570,22 @@ export default function JobsPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* AI Analysis - Premium Feature */}
-              {/* AI Analysis - Premium Feature */}
-              <div className="p-6 border-2 border-dashed rounded-lg transition-all border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 hover:border-purple-300">
+              <div className="p-6 border-2 border-dashed rounded-lg transition-all border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-pink-900/20 backdrop-blur-sm hover:border-purple-400/50">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-lg">🤖</span>
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">AI Job Analysis</h3>
+                      <h3 className="font-semibold text-slate-200">AI Job Analysis</h3>
                       <PremiumBadge size="sm" />
                     </div>
                   </div>
                 </div>
                 
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-slate-400 mb-4">
                   Paste any job URL and let AI extract all the details automatically
                 </p>
                 
@@ -588,20 +593,25 @@ export default function JobsPage() {
                   onClick={() => checkPremium(() => setShowJobModal(true), "AI Job Analysis")}
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
                 >
-                  🔗 Analyze Job URL
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  Analyze Job URL
                 </Button>
               </div>
 
               {/* Manual Entry - Free Feature */}
-              <div className="p-4 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg hover:border-blue-400 transition-all">
+              <div className="p-4 border-2 border-dashed border-blue-500/30 bg-blue-900/20 rounded-lg hover:border-blue-400/50 transition-all backdrop-blur-sm">
                 <div className="flex items-center space-x-2 mb-2">
-                  <span className="text-lg">✍️</span>
-                  <h3 className="font-semibold text-gray-900">Manual Entry</h3>
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <h3 className="font-semibold text-slate-200">Manual Entry</h3>
+                  <span className="px-2 py-1 bg-green-900/50 text-green-300 text-xs rounded-full border border-green-500/30">
                     Free
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">
+                <p className="text-sm text-slate-400 mb-3">
                   Enter job details manually with our user-friendly form
                 </p>
                 <Button
@@ -609,10 +619,13 @@ export default function JobsPage() {
                     setJobCreationMode('manual');
                     setShowJobModal(true);
                   }}
-                  className="w-full"
+                  className="w-full border-slate-600 text-slate-300 hover:bg-slate-700"
                   variant="outline"
                 >
-                  📝 Create Job Manually
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Create Job Manually
                 </Button>
               </div>
             </div>
@@ -634,14 +647,14 @@ export default function JobsPage() {
             {jobCreationMode === 'ai' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-semibold text-slate-400 tracking-wide uppercase mb-2">
                     Job URL
                   </label>
                   <Input
                     value={jobUrl}
                     onChange={e => setJobUrl(e.target.value)}
                     placeholder="https://company.com/jobs/software-engineer"
-                    className="w-full"
+                    className="w-full text-sm font-medium text-slate-100"
                   />
                 </div>
                 <Button
@@ -657,147 +670,197 @@ export default function JobsPage() {
 
             {/* Manual Creation Form */}
             {jobCreationMode === 'manual' && (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              <div className="space-y-6 max-h-96 overflow-y-auto">
                 {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Job Title *"
-                    value={manualJobData.title}
-                    onChange={e => setManualJobData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Senior Software Engineer"
-                    required
-                  />
-                  <Input
-                    label="Company Name *"
-                    value={manualJobData.company_name}
-                    onChange={e => setManualJobData(prev => ({ ...prev, company_name: e.target.value }))}
-                    placeholder="Amazing Tech Corp"
-                    required
-                  />
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="field-label">
+                        Job Title *
+                      </label>
+                      <Input
+                        value={manualJobData.title}
+                        onChange={e => setManualJobData(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Senior Software Engineer"
+                        required
+                        className="text-sm font-medium text-slate-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label">
+                        Company Name *
+                      </label>
+                      <Input
+                        value={manualJobData.company_name}
+                        onChange={e => setManualJobData(prev => ({ ...prev, company_name: e.target.value }))}
+                        placeholder="Amazing Tech Corp"
+                        required
+                        className="text-sm font-medium text-slate-100"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Source URL */}
-                <div>
-                  <Input
-                    label="Job Posting URL (Optional)"
-                    value={manualJobData.source_url}
-                    onChange={e => setManualJobData(prev => ({ ...prev, source_url: e.target.value }))}
-                    placeholder="https://company.com/careers/job-posting"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Link to the original job posting for reference
-                  </p>
+                <div className="section">
+                  <div>
+                    <label className="field-label">
+                      Job Posting URL (Optional)
+                    </label>
+                    <Input
+                      value={manualJobData.source_url}
+                      onChange={e => setManualJobData(prev => ({ ...prev, source_url: e.target.value }))}
+                      placeholder="https://company.com/careers/job-posting"
+                      className="text-sm font-medium text-slate-100"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Link to the original job posting for reference
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Input
-                    label="Location"
-                    value={manualJobData.location}
-                    onChange={e => setManualJobData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="San Francisco, CA"
-                  />
-                  <Select
-                    label="Remote Type"
-                    value={manualJobData.remote_type}
-                    onChange={e => setManualJobData(prev => ({ ...prev, remote_type: e.target.value }))}
-                  >
-                    <option value="On-site">On-site</option>
-                    <option value="Remote">Remote</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </Select>
-                  <Select
-                    label="Job Type"
-                    value={manualJobData.job_type}
-                    onChange={e => setManualJobData(prev => ({ ...prev, job_type: e.target.value }))}
-                  >
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
-                  </Select>
+                {/* Job Details */}
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Job Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="field-label">
+                        Location
+                      </label>
+                      <Input
+                        value={manualJobData.location}
+                        onChange={e => setManualJobData(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="San Francisco, CA"
+                        className="text-sm font-medium text-slate-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label">
+                        Remote Type
+                      </label>
+                      <Select
+                        value={manualJobData.remote_type}
+                        onChange={e => setManualJobData(prev => ({ ...prev, remote_type: e.target.value }))}
+                        className="text-sm font-medium text-slate-100"
+                      >
+                        <option value="On-site">On-site</option>
+                        <option value="Remote">Remote</option>
+                        <option value="Hybrid">Hybrid</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="field-label">
+                        Job Type
+                      </label>
+                      <Select
+                        value={manualJobData.job_type}
+                        onChange={e => setManualJobData(prev => ({ ...prev, job_type: e.target.value }))}
+                        className="text-sm font-medium text-slate-100"
+                      >
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Internship">Internship</option>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Salary */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Minimum Salary"
-                    type="number"
-                    value={manualJobData.salary_min}
-                    onChange={e => setManualJobData(prev => ({ ...prev, salary_min: e.target.value }))}
-                    placeholder="120000"
-                  />
-                  <Input
-                    label="Maximum Salary"
-                    type="number"
-                    value={manualJobData.salary_max}
-                    onChange={e => setManualJobData(prev => ({ ...prev, salary_max: e.target.value }))}
-                    placeholder="180000"
-                  />
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Compensation</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="field-label">
+                        Minimum Salary
+                      </label>
+                      <Input
+                        type="number"
+                        value={manualJobData.salary_min}
+                        onChange={e => setManualJobData(prev => ({ ...prev, salary_min: e.target.value }))}
+                        placeholder="120000"
+                        className="text-sm font-medium text-slate-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label">
+                        Maximum Salary
+                      </label>
+                      <Input
+                        type="number"
+                        value={manualJobData.salary_max}
+                        onChange={e => setManualJobData(prev => ({ ...prev, salary_max: e.target.value }))}
+                        placeholder="180000"
+                        className="text-sm font-medium text-slate-100"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Description
-                  </label>
-                  <Textarea
-                    rows={6}
-                    value={manualJobData.description}
-                    onChange={e => setManualJobData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use line breaks for better formatting. Bullet points (•, -, *) will be formatted automatically.
-                  </p>
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Job Description</h3>
+                  <div>
+                    <Textarea
+                      rows={6}
+                      value={manualJobData.description}
+                      onChange={e => setManualJobData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
+                      className="w-full text-sm font-medium text-slate-100"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Use line breaks for better formatting. Bullet points (•, -, *) will be formatted automatically.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Requirements */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Requirements (one per line)
-                  </label>
-                  <Textarea
-                    rows={4}
-                    value={manualJobData.requirements.join('\n')}
-                    onChange={e => handleArrayInput('requirements', e.target.value)}
-                    placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms (AWS, GCP, Azure)"
-                    className="w-full"
-                  />
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Requirements</h3>
+                  <div>
+                    <Textarea
+                      rows={4}
+                      value={manualJobData.requirements.join('\n')}
+                      onChange={e => handleArrayInput('requirements', e.target.value)}
+                      placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms (AWS, GCP, Azure)"
+                      className="w-full text-sm font-medium text-slate-100"
+                    />
+                  </div>
                 </div>
 
                 {/* Skills */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Required Skills (one per line)
-                  </label>
-                  <Textarea
-                    rows={3}
-                    value={manualJobData.skills.join('\n')}
-                    onChange={e => handleArrayInput('skills', e.target.value)}
-                    placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
-                    className="w-full"
-                  />
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Required Skills</h3>
+                  <div>
+                    <Textarea
+                      rows={3}
+                      value={manualJobData.skills.join('\n')}
+                      onChange={e => handleArrayInput('skills', e.target.value)}
+                      placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
+                      className="w-full text-sm font-medium text-slate-100"
+                    />
+                  </div>
                 </div>
 
                 {/* Benefits */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Benefits & Perks (one per line)
-                  </label>
-                  <Textarea
-                    rows={3}
-                    value={manualJobData.benefits.join('\n')}
-                    onChange={e => handleArrayInput('benefits', e.target.value)}
-                    placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
-                    className="w-full"
-                  />
+                <div className="section">
+                  <h3 className="modal-title text-base mb-3">Benefits & Perks</h3>
+                  <div>
+                    <Textarea
+                      rows={3}
+                      value={manualJobData.benefits.join('\n')}
+                      onChange={e => handleArrayInput('benefits', e.target.value)}
+                      placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
+                      className="w-full text-sm font-medium text-slate-100"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Modal Actions */}
-            <div className="flex justify-end space-x-3 pt-4 border-t">
+            <div className="flex justify-end space-x-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -830,10 +893,10 @@ export default function JobsPage() {
           {selectedJob && (
             <div className="space-y-6">
               {/* Job Header */}
-              <div className="border-b pb-4">
+              <div className="pb-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-slate-100">
                       {jobDetailsMode === 'view' ? selectedJob.title : 
                         <Input
                           value={editJobData?.title || ''}
@@ -843,7 +906,7 @@ export default function JobsPage() {
                         />
                       }
                     </h2>
-                    <p className="text-lg text-gray-600 mt-1">
+                    <p className="text-lg text-slate-300 mt-1">
                       {jobDetailsMode === 'view' ? selectedJob.company_name :
                         <Input
                           value={editJobData?.company_name || ''}
@@ -888,35 +951,39 @@ export default function JobsPage() {
                 </div>
               </div>
 
+              <div className="soft-divider my-2" />
+
               {/* Job Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="section">
+                  <label className="field-label">
                     Location
                   </label>
                   {jobDetailsMode === 'view' ? (
-                    <p className="text-gray-900">{selectedJob.location || 'Not specified'}</p>
+                    <p className="field-value-quiet">{selectedJob.location || 'Not specified'}</p>
                   ) : (
                     <Input
                       value={editJobData?.location || ''}
                       onChange={(e) => setEditJobData(prev => ({ ...prev, location: e.target.value }))}
                       placeholder="Location"
+                      className="text-sm font-medium text-slate-100"
                     />
                   )}
                 </div>
 
                 {/* Remote Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="section">
+                  <label className="field-label">
                     Work Type
                   </label>
                   {jobDetailsMode === 'view' ? (
-                    <p className="text-gray-900">{selectedJob.remote_type || 'On-site'}</p>
+                    <p className="field-value-quiet">{selectedJob.remote_type || 'On-site'}</p>
                   ) : (
                     <Select
                       value={editJobData?.remote_type || 'On-site'}
                       onChange={(e) => setEditJobData(prev => ({ ...prev, remote_type: e.target.value }))}
+                      className="text-sm font-medium text-slate-100"
                     >
                       <option value="On-site">On-site</option>
                       <option value="Remote">Remote</option>
@@ -926,16 +993,17 @@ export default function JobsPage() {
                 </div>
 
                 {/* Job Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="section">
+                  <label className="field-label">
                     Job Type
                   </label>
                   {jobDetailsMode === 'view' ? (
-                    <p className="text-gray-900">{selectedJob.job_type || 'Full-time'}</p>
+                    <p className="field-value-quiet">{selectedJob.job_type || 'Full-time'}</p>
                   ) : (
                     <Select
                       value={editJobData?.job_type || 'Full-time'}
                       onChange={(e) => setEditJobData(prev => ({ ...prev, job_type: e.target.value }))}
+                      className="text-sm font-medium text-slate-100"
                     >
                       <option value="Full-time">Full-time</option>
                       <option value="Part-time">Part-time</option>
@@ -946,12 +1014,12 @@ export default function JobsPage() {
                 </div>
 
                 {/* Salary Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="section">
+                  <label className="field-label">
                     Salary Range
                   </label>
                   {jobDetailsMode === 'view' ? (
-                    <p className="text-gray-900">
+                    <p className="field-value-quiet">
                       {selectedJob.salary_min || selectedJob.salary_max ? 
                         `$${selectedJob.salary_min || 'N/A'} - $${selectedJob.salary_max || 'N/A'}` : 
                         'Not specified'
@@ -964,12 +1032,14 @@ export default function JobsPage() {
                         value={editJobData?.salary_min || ''}
                         onChange={(e) => setEditJobData(prev => ({ ...prev, salary_min: e.target.value }))}
                         placeholder="Min"
+                        className="text-sm font-medium text-slate-100"
                       />
                       <Input
                         type="number"
                         value={editJobData?.salary_max || ''}
                         onChange={(e) => setEditJobData(prev => ({ ...prev, salary_max: e.target.value }))}
                         placeholder="Max"
+                        className="text-sm font-medium text-slate-100"
                       />
                     </div>
                   )}
@@ -977,8 +1047,8 @@ export default function JobsPage() {
               </div>
 
               {/* Source URL */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="section">
+                <label className="field-label">
                   Source URL
                 </label>
                 {jobDetailsMode === 'view' ? (
@@ -987,12 +1057,12 @@ export default function JobsPage() {
                       href={selectedJob.source_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 underline break-all"
+                      className="text-sm font-medium text-blue-400 hover:text-blue-300 underline break-all"
                     >
                       {selectedJob.source_url}
                     </a>
                   ) : (
-                    <p className="text-gray-500">No source URL provided</p>
+                    <p className="field-empty">No source URL provided</p>
                   )
                 ) : (
                   <Input
@@ -1000,23 +1070,24 @@ export default function JobsPage() {
                     value={editJobData?.source_url || ''}
                     onChange={(e) => setEditJobData(prev => ({ ...prev, source_url: e.target.value }))}
                     placeholder="https://..."
+                    className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
               {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="section">
+                <label className="field-label">
                   Description
                 </label>
                 {jobDetailsMode === 'view' ? (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="card-subtle">
                     {editJobData?.description ? (
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                      <pre className="whitespace-pre-wrap text-sm font-medium text-slate-100 font-sans">
                         {editJobData.description}
                       </pre>
                     ) : (
-                      <p className="text-gray-500 italic">No description provided</p>
+                      <p className="text-slate-500 italic">No description provided</p>
                     )}
                   </div>
                 ) : (
@@ -1025,25 +1096,26 @@ export default function JobsPage() {
                     onChange={(e) => setEditJobData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Job description..."
                     rows={6}
+                    className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
               {/* Requirements */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="section">
+                <label className="field-label">
                   Requirements
                 </label>
                 {jobDetailsMode === 'view' ? (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="card-subtle">
                     {editJobData?.requirements && editJobData.requirements.length > 0 ? (
                       <ul className="list-disc list-inside space-y-1">
                         {editJobData.requirements.map((req, index) => (
-                          <li key={index} className="text-sm text-gray-700">{req}</li>
+                          <li key={index} className="text-sm font-medium text-slate-100">{req}</li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-gray-500 italic">No requirements specified</p>
+                      <p className="text-slate-500 italic">No requirements specified</p>
                     )}
                   </div>
                 ) : (
@@ -1055,27 +1127,28 @@ export default function JobsPage() {
                     }))}
                     placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms"
                     rows={4}
+                    className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
               {/* Skills */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="section">
+                <label className="field-label">
                   Required Skills
                 </label>
                 {jobDetailsMode === 'view' ? (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="card-subtle">
                     {editJobData?.skills && editJobData.skills.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {editJobData.skills.map((skill, index) => (
-                          <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+                          <span key={index} className="bg-blue-900/50 text-blue-200 px-2 py-1 rounded-full text-sm font-medium border border-blue-500/30">
                             {skill}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 italic">No skills specified</p>
+                      <p className="text-slate-500 italic">No skills specified</p>
                     )}
                   </div>
                 ) : (
@@ -1087,25 +1160,26 @@ export default function JobsPage() {
                     }))}
                     placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
                     rows={3}
+                    className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
               {/* Benefits */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="section">
+                <label className="field-label">
                   Benefits & Perks
                 </label>
                 {jobDetailsMode === 'view' ? (
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="card-subtle">
                     {editJobData?.benefits && editJobData.benefits.length > 0 ? (
                       <ul className="list-disc list-inside space-y-1">
                         {editJobData.benefits.map((benefit, index) => (
-                          <li key={index} className="text-sm text-gray-700">{benefit}</li>
+                          <li key={index} className="text-sm font-medium text-slate-100">{benefit}</li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-gray-500 italic">No benefits specified</p>
+                      <p className="text-slate-500 italic">No benefits specified</p>
                     )}
                   </div>
                 ) : (
@@ -1117,12 +1191,15 @@ export default function JobsPage() {
                     }))}
                     placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
                     rows={3}
+                    className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
+              <div className="soft-divider my-2" />
+
               {/* Job Metadata */}
-              <div className="border-t pt-4">
+              <div className="pt-4">
                 <div className="text-sm text-gray-500">
                   <p>Created: {new Date(selectedJob.created_at).toLocaleDateString()}</p>
                   {selectedJob.source_url && (
@@ -1135,14 +1212,14 @@ export default function JobsPage() {
         </Modal>
 
         {/* Resume Selection */}
-        <Card>
+        <Card className="glass-card glass-rose">
           <div className="flex items-center space-x-4">
             <span className="text-lg">📄</span>
             <Select
               label="Default Resume for Applications"
               value={selectedResume}
               onChange={e => setSelectedResume(e.target.value)}
-              className="flex-1"
+              className="flex-1 input-glass input-rose"
             >
               <option value="">(No resume selected)</option>
               {Array.isArray(resumes) && resumes.map(r => (
@@ -1152,12 +1229,13 @@ export default function JobsPage() {
           </div>
         </Card>
 
+
         {/* Enhanced Search and Filter */}
-        <Card>
+        <Card className="glass-card glass-amber">
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <span className="text-2xl">🔍</span>
-              <h2 className="text-xl font-semibold text-gray-900">Search & Filter Jobs</h2>
+              <h2 className="text-xl font-semibold text-slate-100">Search & Filter Jobs</h2>
             </div>
             
             {/* Search Bar */}
@@ -1168,23 +1246,23 @@ export default function JobsPage() {
                 onChange={e => setSearchTerm(e.target.value)}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                className="w-full"
+                className="w-full input-glass input-amber"
                 icon={<span>🔍</span>}
               />
               
               {/* Search Suggestions Dropdown */}
               {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 dropdown-light max-h-60 overflow-y-auto">
                   {searchSuggestions.map((suggestion, index) => (
                     <button
                       key={index}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+                      className="w-full text-left item"
                       onMouseDown={() => {
                         setSearchTerm(suggestion);
                         setShowSuggestions(false);
                       }}
                     >
-                      <span className="text-gray-700">{suggestion}</span>
+                      <span className="text-slate-300 dark:text-gray-200">{suggestion}</span>
                     </button>
                   ))}
                 </div>
@@ -1198,39 +1276,44 @@ export default function JobsPage() {
                 value={locationFilter}
                 onChange={e => setLocationFilter(e.target.value)}
                 icon={<span>📍</span>}
+                className="input-glass input-amber"
               />
-              
+
               <Select
                 value={remoteTypeFilter}
                 onChange={e => setRemoteTypeFilter(e.target.value)}
+                className="input-glass input-amber"
               >
                 <option value="">All Types</option>
                 <option value="Remote">Remote</option>
                 <option value="Hybrid">Hybrid</option>
                 <option value="On-site">On-site</option>
               </Select>
-              
+
               <Select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
+                className="input-glass input-amber"
               >
                 <option value="created_at">Date Posted</option>
                 <option value="title">Job Title</option>
                 <option value="salary_min">Salary</option>
               </Select>
-              
+
               <Select
                 value={sortOrder}
                 onChange={e => setSortOrder(e.target.value)}
+                className="input-glass input-amber"
               >
                 <option value="desc">Newest First</option>
                 <option value="asc">Oldest First</option>
               </Select>
             </div>
+
             
             {/* Results Summary */}
             <div className="flex items-center justify-between pt-2 border-t">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-300 dark:text-gray-400">
                 Showing {jobs.length} of {pagination.total} job{pagination.total !== 1 ? 's' : ''}
                 {searchTerm && ` for "${searchTerm}"`}
               </p>
@@ -1251,6 +1334,12 @@ export default function JobsPage() {
           </div>
         </Card>
 
+        {/* Available Jobs Header */}
+        <div>
+          <h2 className="text-2xl font-bold text-slate-200">Available Jobs</h2>
+          <p className="text-slate-400 mt-1">Discover and apply to amazing opportunities</p>
+        </div>
+
         {/* Jobs Grid */}
         {loading ? (
           <div className="space-y-6">
@@ -1260,16 +1349,16 @@ export default function JobsPage() {
                 <div className="flex justify-between items-start space-x-4">
                   <div className="flex-1 space-y-3">
                     <div className="space-y-2">
-                      <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-5 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/3"></div>
                     </div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-gray-200 rounded w-full"></div>
-                      <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-                      <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-5/6"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-4/6"></div>
                     </div>
-                    <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/4"></div>
                   </div>
                   <div className="flex-shrink-0">
                     <div className="h-8 w-16 bg-gray-200 rounded"></div>
@@ -1282,8 +1371,8 @@ export default function JobsPage() {
           <Card className="text-center py-12">
             <div className="space-y-4">
               <div className="text-6xl">📋</div>
-              <h3 className="text-xl font-semibold text-gray-900">No jobs found</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold text-slate-100 dark:text-gray-100">No jobs found</h3>
+              <p className="text-slate-300 dark:text-gray-400">
                 {searchTerm ? "Try adjusting your search terms" : "Start by adding your first job!"}
               </p>
             </div>
@@ -1299,34 +1388,39 @@ export default function JobsPage() {
               return (
                 <Card 
                   key={job.id} 
-                  className="group hover:shadow-xl hover:border-indigo-200 transition-all duration-300 animate-slideIn overflow-hidden"
+                  className="glass-card group hover:border-white/20 transition-all duration-300 animate-slideIn overflow-hidden"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {/* Job Header */}
                   <div className="flex justify-between items-start space-x-4 mb-4">
                     <div className="flex-1">
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                        <h3 className="text-xl font-bold text-slate-100 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight">
                           {job.title}
                         </h3>
                         <div className="flex items-center space-x-2 ml-4">
                           {job.remote_type && (
-                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                            <span
+                              className={`chip ${
+                                job.remote_type === 'Remote' ? 'chip-cyan' :
+                                job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
+                              }`}
+                            >
                               {job.remote_type}
                             </span>
                           )}
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
                             {new Date(job.created_at).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
                       
                       {/* Company and Location */}
-                      <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                      <div className="flex items-center space-x-4 text-sm text-slate-300 dark:text-gray-400 mb-3">
                         {job.company_name && (
                           <div className="flex items-center">
                             <span className="mr-1">🏢</span>
-                            <span className="font-medium text-indigo-600">{job.company_name}</span>
+                            <span className="font-medium text-indigo-600 dark:text-indigo-400">{job.company_name}</span>
                           </div>
                         )}
                         {job.location && (
@@ -1338,7 +1432,7 @@ export default function JobsPage() {
                         {job.salary_min && job.salary_max && (
                           <div className="flex items-center">
                             <span className="mr-1">💰</span>
-                            <span className="font-medium text-green-600">
+                            <span className="font-medium text-green-600 dark:text-green-400">
                               ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
                             </span>
                           </div>
@@ -1350,7 +1444,7 @@ export default function JobsPage() {
                   {/* Job Description */}
                   {parsedJob.cleanDescription && (
                     <div className="mb-4">
-                      <div className="text-gray-700 text-sm leading-relaxed">
+                      <div className="text-slate-300 dark:text-gray-300 text-sm leading-relaxed">
                         {(isExpanded ? descriptionLines : descriptionLines.slice(0, 3)).map((line, idx) => (
                           <div key={idx} className={line.startsWith('•') ? 'ml-4 mb-1' : 'mb-2'}>
                             {line}
@@ -1359,7 +1453,7 @@ export default function JobsPage() {
                         {shouldShowReadMore && (
                           <button
                             onClick={() => toggleJobExpanded(job.id)}
-                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium transition-colors mt-2"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-slate-300 text-sm font-medium transition-colors mt-2"
                           >
                             {isExpanded ? '...read less' : '...read more'}
                           </button>
@@ -1372,12 +1466,12 @@ export default function JobsPage() {
                   {parsedJob.skills && parsedJob.skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
                       {parsedJob.skills.slice(0, 5).map((skill, idx) => (
-                        <span key={idx} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-md">
+                        <span key={idx} className="chip chip-cyan">
                           {skill}
                         </span>
                       ))}
                       {parsedJob.skills.length > 5 && (
-                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-md">
+                        <span className="chip text-slate-300 bg-white/10 border border-white/15">
                           +{parsedJob.skills.length - 5} more
                         </span>
                       )}
@@ -1386,17 +1480,17 @@ export default function JobsPage() {
 
                   {/* Requirements Preview (if expanded) */}
                   {isExpanded && parsedJob.requirements && parsedJob.requirements.length > 0 && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">Requirements:</h4>
-                      <ul className="text-sm text-gray-700 space-y-1">
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <h4 className="text-sm font-medium text-slate-100 dark:text-gray-100 mb-2">Requirements:</h4>
+                      <ul className="text-sm text-slate-300 dark:text-gray-300 space-y-1">
                         {parsedJob.requirements.slice(0, 3).map((req, idx) => (
                           <li key={idx} className="flex items-start">
-                            <span className="text-indigo-500 mr-2">•</span>
+                            <span className="text-indigo-500 dark:text-indigo-400 mr-2">•</span>
                             <span>{req}</span>
                           </li>
                         ))}
                         {parsedJob.requirements.length > 3 && (
-                          <li className="text-gray-500 italic">
+                          <li className="text-gray-500 dark:text-gray-400 italic">
                             ...and {parsedJob.requirements.length - 3} more requirements
                           </li>
                         )}
@@ -1405,7 +1499,7 @@ export default function JobsPage() {
                   )}
 
                   {/* Job Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-600">
                     <div className="flex items-center space-x-3">
                       {job.source_url && (
                         <>
@@ -1413,14 +1507,14 @@ export default function JobsPage() {
                             href={job.source_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center"
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors inline-flex items-center"
                           >
                             <span className="mr-1">🔗</span>
                             View Original
                           </a>
                           <button
                             onClick={() => shareJob(job)}
-                            className="text-sm text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center"
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center"
                           >
                             <span className="mr-1">📤</span>
                             Share
@@ -1430,22 +1524,20 @@ export default function JobsPage() {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      <Button 
+                      <Button
                         onClick={() => openJobDetails(job)}
                         variant="outline"
                         size="sm"
-                        className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                        className="btn-ghost"
                       >
-                        <span className="mr-1">👁️</span>
-                        View Details
+                        <span className="mr-1">👁️</span> View Details
                       </Button>
-                      <Button 
+                      <Button
                         onClick={() => createApplication(job.id)}
                         size="sm"
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                        className="btn-orchid"
                       >
-                        <span className="mr-1">📝</span>
-                        Apply Now
+                        <span className="mr-1">📝</span> Apply Now
                       </Button>
                     </div>
                   </div>
@@ -1460,7 +1552,7 @@ export default function JobsPage() {
           <Card className="mt-8">
             <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
               {/* Page Info */}
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-slate-300 dark:text-gray-400">
                 Showing {((pagination.page - 1) * pagination.page_size) + 1} to{' '}
                 {Math.min(pagination.page * pagination.page_size, pagination.total)} of{' '}
                 {pagination.total} jobs
@@ -1510,7 +1602,7 @@ export default function JobsPage() {
                     
                     return pages.map((page, index) => (
                       page === '...' ? (
-                        <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-400">
+                        <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-400 dark:text-gray-500">
                           ...
                         </span>
                       ) : (
@@ -1548,6 +1640,8 @@ export default function JobsPage() {
       
       {/* Premium Modal */}
       <PremiumModal />
+        </div>
+      </div>
     </AuthGuard>
   );
 }

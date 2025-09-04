@@ -296,23 +296,30 @@ export default function RemindersPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="text-gray-600">Loading reminders...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-400 mx-auto"></div>
+          <p className="text-slate-400">Loading reminders...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">🗓️ Reminders & Calendar</h1>
-          <p className="text-gray-600 mt-1">Manage your job search schedule and export to calendar apps</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-200">
+                <svg className="w-8 h-8 inline mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Reminders & Calendar
+              </h1>
+              <p className="text-slate-400 mt-1">Manage your job search schedule and export to calendar apps</p>
+            </div>
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             <Button
@@ -320,101 +327,148 @@ export default function RemindersPage() {
               variant="outline"
               disabled={filteredReminders.length === 0}
               size="sm"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
             >
-              📅 Export Calendar
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Export Calendar
             </Button>
             <Button
               onClick={() => exportUpcomingOnly()}
               variant="outline"
               disabled={stats.upcoming === 0}
               size="sm"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
             >
-              ⏰ Export Upcoming
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Export Upcoming
             </Button>
           </div>
           <Button
             onClick={() => setShowCreateModal(true)}
             className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
           >
-            ➕ Add Reminder
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Reminder
           </Button>
         </div>
       </div>
 
       {/* Stats Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200">
+        <Card className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border-blue-500/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">Total Reminders</p>
-              <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
+              <p className="text-sm font-medium text-blue-300">Total Reminders</p>
+              <p className="text-2xl font-bold text-blue-400">{stats.total}</p>
             </div>
-            <div className="text-3xl">📋</div>
+            <div className="text-3xl">
+              <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
           </div>
         </Card>
         
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-100 border-green-200">
+        <Card className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Upcoming</p>
-              <p className="text-2xl font-bold text-green-900">{stats.upcoming}</p>
+              <p className="text-sm font-medium text-green-300">Upcoming</p>
+              <p className="text-2xl font-bold text-green-400">{stats.upcoming}</p>
             </div>
-            <div className="text-3xl">⏰</div>
+            <div className="text-3xl">
+              <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
         </Card>
         
-        <Card className="bg-gradient-to-br from-red-50 to-rose-100 border-red-200">
+        <Card className="bg-gradient-to-r from-red-900/20 to-rose-900/20 border-red-500/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-red-600">Overdue</p>
-              <p className="text-2xl font-bold text-red-900">{stats.overdue}</p>
+              <p className="text-sm font-medium text-red-300">Overdue</p>
+              <p className="text-2xl font-bold text-red-400">{stats.overdue}</p>
             </div>
-            <div className="text-3xl">⚠️</div>
+            <div className="text-3xl">
+              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
           </div>
         </Card>
         
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200">
+        <Card className="bg-gradient-to-r from-purple-900/20 to-violet-900/20 border-purple-500/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-purple-600">This Week</p>
-              <p className="text-2xl font-bold text-purple-900">{stats.thisWeek}</p>
+              <p className="text-sm font-medium text-purple-300">This Week</p>
+              <p className="text-2xl font-bold text-purple-400">{stats.thisWeek}</p>
             </div>
-            <div className="text-3xl">📅</div>
+            <div className="text-3xl">
+              <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
           </div>
         </Card>
       </div>
 
-      {/* Filters and Controls */}
-      <Card>
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Filter & Sort</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Select
-              label="Filter by Status"
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-            >
-              <option value="all">All Reminders</option>
-              <option value="upcoming">Upcoming Only</option>
-              <option value="overdue">Overdue Only</option>
-            </Select>
+      {/* Search & Filter Section */}
+      <div className="glass-card glass-cyan">
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:space-x-4 flex-1">
+              {/* Filter Controls */}
+              <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Filter by Status</label>
+                  <select
+                    value={filter}
+                    onChange={e => setFilter(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-800/90 border border-slate-600/50 rounded-lg text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    style={{
+                      backgroundColor: 'rgb(30 41 59 / 0.9)',
+                      color: 'rgb(226 232 240)'
+                    }}
+                  >
+                    <option value="all" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>All Reminders</option>
+                    <option value="upcoming" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>Upcoming Only</option>
+                    <option value="overdue" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>Overdue Only</option>
+                  </select>
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Sort by</label>
+                  <select
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-800/90 border border-slate-600/50 rounded-lg text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    style={{
+                      backgroundColor: 'rgb(30 41 59 / 0.9)',
+                      color: 'rgb(226 232 240)'
+                    }}
+                  >
+                    <option value="scheduled_at" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>Scheduled Date</option>
+                    <option value="created_at" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>Date Added</option>
+                    <option value="company" style={{ backgroundColor: 'rgb(30 41 59)', color: 'rgb(226 232 240)' }}>Company Name</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             
-            <Select
-              label="Sort by"
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-            >
-              <option value="scheduled_at">Scheduled Date</option>
-              <option value="created_at">Date Added</option>
-              <option value="company">Company Name</option>
-            </Select>
-            
-            <div className="flex items-end space-x-2">
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
               <Button
                 onClick={() => exportToCalendar("json")}
                 variant="outline"
                 size="sm"
                 disabled={filteredReminders.length === 0}
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
               >
                 📁 Export JSON
               </Button>
@@ -422,61 +476,64 @@ export default function RemindersPage() {
                 onClick={loadReminders}
                 variant="outline"
                 size="sm"
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
               >
                 🔄 Refresh
               </Button>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Reminders List */}
       {filteredReminders.length === 0 ? (
-        <Card>
-          <div className="text-center py-12">
+        <div className="glass-card glass-cyan">
+          <div className="text-center py-16">
             <div className="text-6xl mb-4">🗓️</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-slate-200 mb-2">
               {filter === "overdue" ? "No overdue reminders" : 
                filter === "upcoming" ? "No upcoming reminders" : 
                "No reminders found"}
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-slate-400 mb-8">
               {reminders.length === 0 
                 ? "Get started by creating your first reminder or scheduling follow-ups from your applications."
                 : "Try adjusting your filters to see more reminders."
               }
             </p>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              ➕ Create First Reminder
-            </Button>
+            <div className="flex justify-center">
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                ➕ Create First Reminder
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
       ) : (
         <div className="space-y-4">
           {filteredReminders.map(reminder => {
             const isOverdue = new Date(reminder.scheduled_at) < new Date();
             return (
-              <Card key={reminder.id} className={`${isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-200'} transition-all hover:shadow-md`}>
+              <div key={reminder.id} className={`glass-card ${isOverdue ? 'glass-red' : 'glass-cyan'} transition-all hover:shadow-md`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">
-                          <h3 className="font-semibold text-gray-900">{reminder.name}</h3>
+                          <h3 className="font-semibold text-slate-200">{reminder.name}</h3>
                           <Badge variant={isOverdue ? 'danger' : 'default'} className={getReminderTypeColor(reminder.name)}>
                             {reminder.name}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-slate-400 mt-1">
                           {reminder.job?.title} at {reminder.job?.company_name}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-medium ${isOverdue ? 'text-red-400' : 'text-slate-200'}`}>
                           {new Date(reminder.scheduled_at).toLocaleDateString('en-US', {
                             weekday: 'short',
                             month: 'short',
@@ -485,14 +542,14 @@ export default function RemindersPage() {
                             minute: '2-digit'
                           })}
                         </p>
-                        <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-gray-500'}`}>
+                        <p className={`text-xs ${isOverdue ? 'text-red-300' : 'text-slate-400'}`}>
                           {getTimeUntil(reminder.scheduled_at)}
                         </p>
                       </div>
                     </div>
 
                     {/* Details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-slate-400">
                       {reminder.job?.location && (
                         <div className="flex items-center space-x-2">
                           <span>📍</span>
@@ -506,13 +563,13 @@ export default function RemindersPage() {
                     </div>
 
                     {reminder.notes && (
-                      <div className="bg-gray-100 rounded-lg p-3">
-                        <p className="text-sm text-gray-700">{reminder.notes}</p>
+                      <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                        <p className="text-sm text-slate-300">{reminder.notes}</p>
                       </div>
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
                       <div className="flex items-center space-x-2">
                         <Link href={`/applications/${reminder.application_id}`}>
                           <Button size="sm" variant="outline">
@@ -533,7 +590,7 @@ export default function RemindersPage() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
@@ -621,6 +678,8 @@ export default function RemindersPage() {
           </div>
         </form>
       </Modal>
+        </div>
+      </div>
     </div>
   );
 }
