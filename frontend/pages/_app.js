@@ -15,7 +15,7 @@ export default function MyApp({ Component, pageProps, router }) {
       <Head>
         <title>Applytide - Track Every Job Application Like a Pro</title>
       </Head>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)'}}>
         {isPublicPage ? (
           // Public pages (login, reset password, etc.)
           <>

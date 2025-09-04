@@ -10,12 +10,6 @@ export default function Dashboard() {
   const [applications, setApplications] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [newApplication, setNewApplication] = useState({
-    job_title: '',
-    company_name: '',
-    application_url: ''
-  });
   const toast = useToast();
 
   useEffect(() => {
@@ -41,30 +35,15 @@ export default function Dashboard() {
     }
   }
 
-  async function handleQuickAdd(e) {
-    e.preventDefault();
-    if (!newApplication.job_title || !newApplication.company_name) {
-      toast.error("Please fill in job title and company name");
-      return;
-    }
-
-    try {
-      await api.createApplication(newApplication);
-      toast.success("Application added successfully!");
-      setNewApplication({ job_title: '', company_name: '', application_url: '' });
-      setShowQuickAdd(false);
-      loadData(); // Refresh data
-    } catch (err) {
-      toast.error("Failed to add application");
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="text-gray-600 text-lg">Loading dashboard...</p>
+      <div className="flex justify-center py-20">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-indigo-500/20 border-t-indigo-500 mx-auto"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20 border-t-purple-500 mx-auto animate-spin animation-delay-300"></div>
+          </div>
+          <p className="text-slate-300 dark:text-slate-400 text-xl font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -95,166 +74,128 @@ export default function Dashboard() {
       
       <div className="space-y-8">
         {/* Welcome Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-gray-900">Welcome back! 👋</h1>
-          <p className="text-gray-600">Here's what's happening with your job search</p>
+        <div className="text-center space-y-6 mb-8">
+          <div className="space-y-4">
+            <h1 className="text-5xl font-bold text-gradient animate-fadeIn">
+              Welcome back!
+            </h1>
+            <p className="text-xl text-slate-300 dark:text-slate-400 animate-fadeIn animation-delay-200">
+              Here's what's happening with your job search
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <div className="h-1 w-32 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-pulse-glow"></div>
+          </div>
         </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-100 border-none">
-            <div className="text-5xl font-black text-indigo-600 mb-2">
+          <div className="glass-card glass-cyan text-center py-12">
+            <div className="text-5xl font-black text-indigo-400 mb-2">
               {metrics?.total_applications || 0}
             </div>
-            <div className="text-gray-700 font-medium">Total Applications</div>
-            <div className="text-sm text-gray-500 mt-1">All time</div>
-          </Card>
+            <div className="text-slate-200 font-medium">Total Applications</div>
+            <div className="text-sm text-slate-400 mt-1">All time</div>
+          </div>
           
-          <Card className="text-center p-8 bg-gradient-to-br from-green-50 to-emerald-100 border-none">
-            <div className="text-5xl font-black text-emerald-600 mb-2">
+          <div className="glass-card glass-cyan text-center py-12">
+            <div className="text-5xl font-black text-emerald-400 mb-2">
               {thisWeekApps}
             </div>
-            <div className="text-gray-700 font-medium">This Week</div>
-            <div className="text-sm text-gray-500 mt-1">Applications added</div>
-          </Card>
+            <div className="text-slate-200 font-medium">This Week</div>
+            <div className="text-sm text-slate-400 mt-1">Applications added</div>
+          </div>
           
-          <Card className="text-center p-8 bg-gradient-to-br from-purple-50 to-violet-100 border-none">
-            <div className="text-5xl font-black text-violet-600 mb-2">
+          <div className="glass-card glass-cyan text-center py-12">
+            <div className="text-5xl font-black text-violet-400 mb-2">
               {inProgressCount}
             </div>
-            <div className="text-gray-700 font-medium">In Progress</div>
-            <div className="text-sm text-gray-500 mt-1">Active interviews</div>
-          </Card>
+            <div className="text-slate-200 font-medium">In Progress</div>
+            <div className="text-sm text-slate-400 mt-1">Active interviews</div>
+          </div>
         </div>
 
-        {/* Quick Add Application */}
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Quick Add Application</h2>
-            {!showQuickAdd && (
-              <Button onClick={() => setShowQuickAdd(true)} className="bg-indigo-600 hover:bg-indigo-700">
-                + Add Application
-              </Button>
+        {/* Recent Applications */}
+        <div className="glass-card glass-cyan">
+          <div className="px-6 py-6">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-white/10">
+              <h2 className="text-xl font-semibold text-slate-200">Recent Applications</h2>
+              <Link href="/pipeline">
+                <Button variant="outline" className="border-white/15 text-white/80 hover:bg-white/10 hover:text-white">
+                  View All
+                </Button>
+              </Link>
+            </div>
+            
+            {recentApps.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">📝</div>
+                <p className="text-slate-400 text-lg">No applications yet</p>
+                <p className="text-sm text-slate-500 mt-2">Add your first application above to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-4xl">
+                {recentApps.map((app) => (
+                  <div key={app.id} className="bg-slate-800/30 hover:bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 transition-all duration-200 hover:shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-slate-100">
+                          {app.job?.title || app.job_title || 'Unknown Position'}
+                        </h3>
+                        <p className="text-sm text-slate-400">
+                          {app.job?.company_name || app.job?.company || app.company_name || 'Unknown Company'}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {new Date(app.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex px-3 py-1.5 text-xs font-medium rounded-full border ${
+                          app.status === 'offer' ? 'text-emerald-300 bg-emerald-300/15 border-emerald-300/25' :
+                          app.status === 'interview' ? 'text-indigo-300 bg-indigo-300/15 border-indigo-300/25' :
+                          app.status === 'applied' ? 'text-amber-300 bg-amber-300/15 border-amber-300/25' :
+                          app.status === 'rejected' ? 'text-rose-300 bg-rose-300/15 border-rose-300/25' :
+                          'text-slate-300 bg-white/10 border-white/15'
+                        }`}>
+                          {app.status || 'applied'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-          
-          {showQuickAdd ? (
-            <form onSubmit={handleQuickAdd} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  placeholder="Job Title"
-                  value={newApplication.job_title}
-                  onChange={(e) => setNewApplication({...newApplication, job_title: e.target.value})}
-                  required
-                />
-                <Input
-                  placeholder="Company Name"
-                  value={newApplication.company_name}
-                  onChange={(e) => setNewApplication({...newApplication, company_name: e.target.value})}
-                  required
-                />
-              </div>
-              <Input
-                placeholder="Application URL (optional)"
-                value={newApplication.application_url}
-                onChange={(e) => setNewApplication({...newApplication, application_url: e.target.value})}
-              />
-              <div className="flex space-x-3">
-                <Button type="submit" className="bg-green-600 hover:bg-green-700">
-                  Add Application
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowQuickAdd(false);
-                    setNewApplication({ job_title: '', company_name: '', application_url: '' });
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <p className="text-gray-600">Quickly add a new job application to your pipeline</p>
-          )}
-        </Card>
-
-        {/* Recent Applications */}
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Applications</h2>
-            <Link href="/pipeline">
-              <Button variant="outline">View All</Button>
-            </Link>
-          </div>
-          
-          {recentApps.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-4">📝</div>
-              <p className="text-gray-500 text-lg">No applications yet</p>
-              <p className="text-sm text-gray-400 mt-2">Add your first application above to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {recentApps.map((app) => (
-                <div key={app.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">
-                      {app.job?.title || app.job_title || 'Unknown Position'}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {app.job?.company_name || app.job?.company || app.company_name || 'Unknown Company'}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(app.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      app.status === 'offer' ? 'bg-green-100 text-green-800' :
-                      app.status === 'interview' ? 'bg-blue-100 text-blue-800' :
-                      app.status === 'applied' ? 'bg-yellow-100 text-yellow-800' :
-                      app.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {app.status || 'applied'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link href="/jobs">
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <div className="glass-card glass-cyan hover:shadow-lg transition-shadow cursor-pointer text-center py-8">
               <div className="text-3xl mb-2">💼</div>
-              <div className="font-medium text-gray-900">Browse Jobs</div>
-            </Card>
+              <div className="font-medium text-slate-200">Browse Jobs</div>
+            </div>
           </Link>
           
           <Link href="/pipeline">
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <div className="glass-card glass-cyan hover:shadow-lg transition-shadow cursor-pointer text-center py-8">
               <div className="text-3xl mb-2">🔄</div>
-              <div className="font-medium text-gray-900">View Pipeline</div>
-            </Card>
+              <div className="font-medium text-slate-200">View Pipeline</div>
+            </div>
           </Link>
           
           <Link href="/documents">
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer text-center bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <div className="glass-card glass-cyan hover:shadow-lg transition-shadow cursor-pointer text-center py-8">
               <div className="text-3xl mb-2">📄</div>
-              <div className="font-medium text-gray-900">Documents</div>
-            </Card>
+              <div className="font-medium text-slate-200">Documents</div>
+            </div>
           </Link>
           
           <Link href="/reminders">
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer text-center bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <div className="glass-card glass-cyan hover:shadow-lg transition-shadow cursor-pointer text-center py-8">
               <div className="text-3xl mb-2">⏰</div>
-              <div className="font-medium text-gray-900">Reminders</div>
-            </Card>
+              <div className="font-medium text-slate-200">Reminders</div>
+            </div>
           </Link>
         </div>
       </div>

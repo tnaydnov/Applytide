@@ -8,15 +8,15 @@ export const Button = ({
   icon = null,
   ...props 
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed btn-hover';
+  const baseClasses = 'flex items-center justify-center font-semibold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed btn-hover';
   
   const variants = {
-    primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500',
-    secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
-    success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-indigo-500',
-    ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500'
+    primary: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 focus:ring-indigo-500 shadow-lg hover:shadow-xl border border-indigo-500/20',
+    secondary: 'bg-white/10 text-white hover:bg-white/20 focus:ring-white/50 backdrop-blur-sm border border-white/20',
+    success: 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 focus:ring-emerald-500 shadow-lg hover:shadow-xl border border-emerald-500/20',
+    danger: 'bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-700 focus:ring-red-500 shadow-lg hover:shadow-xl border border-red-500/20',
+    outline: 'border-2 border-indigo-300 bg-transparent text-indigo-200 hover:bg-indigo-300/10 focus:ring-indigo-400',
+    ghost: 'text-gray-300 hover:text-white hover:bg-white/5 focus:ring-gray-500'
   };
   
   const sizes = {
@@ -45,10 +45,10 @@ export const Button = ({
 };
 
 export const Card = ({ children, className = '', padding = true, shadow = true, hover = true }) => {
-  const baseClasses = 'bg-white rounded-xl border border-gray-200';
-  const paddingClass = padding ? 'p-4 sm:p-6' : '';
-  const shadowClass = shadow ? 'card-shadow hover:card-shadow-lg transition-shadow duration-200' : '';
-  const hoverClass = hover ? 'hover:border-gray-300' : '';
+  const baseClasses = 'rounded-2xl border border-white/15 bg-white/7 backdrop-blur-xl';
+  const paddingClass = padding ? 'p-6 sm:p-8' : '';
+  const shadowClass = shadow ? 'shadow-[0_8px_30px_rgba(2,8,23,0.35)] hover:shadow-[0_12px_40px_rgba(80,56,237,0.35)] transition-all' : '';
+  const hoverClass = hover ? 'hover:border-white/20 hover:bg-white/8' : '';
   
   return (
     <div className={`${baseClasses} ${paddingClass} ${shadowClass} ${hoverClass} ${className}`}>
@@ -63,33 +63,35 @@ export const Input = ({
   helperText, 
   className = '', 
   icon = null,
+  style = {},
   ...props 
 }) => {
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-semibold text-gray-200">
           {label}
         </label>
       )}
       <div className="relative">
         {icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <span className="text-gray-400">{icon}</span>
           </div>
         )}
         <input
-          className={`block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 ${
-            icon ? 'pl-10' : 'px-3'
-          } py-2 ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
+          className={`block w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 placeholder-slate-400 
+  focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-all duration-300 
+  ${icon ? 'pl-12' : 'px-4'} py-3 ${error ? 'border-red-400 focus:ring-red-500/60 focus:border-red-500/60' : ''}`}
+          style={style}
           {...props}
         />
       </div>
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-400">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-gray-500">{helperText}</p>
+        <p className="text-sm text-gray-400">{helperText}</p>
       )}
     </div>
   );
@@ -103,23 +105,23 @@ export const Textarea = ({
   ...props 
 }) => {
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-semibold text-gray-200">
           {label}
         </label>
       )}
       <textarea
-        className={`block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 px-3 py-2 ${
-          error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
-        }`}
+        className={`block w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 placeholder-slate-400 
+  focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-all duration-300 px-4 py-3
+  ${error ? 'border-red-400 focus:ring-red-500/60 focus:border-red-500/60' : ''}`}
         {...props}
       />
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-400">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-gray-500">{helperText}</p>
+        <p className="text-sm text-gray-400">{helperText}</p>
       )}
     </div>
   );
@@ -134,25 +136,25 @@ export const Select = ({
   ...props 
 }) => {
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-semibold text-gray-200">
           {label}
         </label>
       )}
       <select
-        className={`block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 px-3 py-2 ${
-          error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
-        }`}
+        className={`block w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 
+  focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-all duration-300 px-4 py-3
+  ${error ? 'border-red-400 focus:ring-red-500/60 focus:border-red-500/60' : ''}`}
         {...props}
       >
         {children}
       </select>
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-400">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-gray-500">{helperText}</p>
+        <p className="text-sm text-gray-400">{helperText}</p>
       )}
     </div>
   );
@@ -160,12 +162,12 @@ export const Select = ({
 
 export const Badge = ({ children, variant = 'default', size = 'md' }) => {
   const variants = {
-    default: 'bg-gray-100 text-gray-800',
-    primary: 'bg-indigo-100 text-indigo-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    danger: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800'
+    default: 'bg-white/12 text-white border border-white/25',
+    primary: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+    success: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+    warning: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+    danger: 'bg-red-500/20 text-red-300 border border-red-500/30',
+    info: 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
   };
   
   const sizes = {
@@ -175,15 +177,18 @@ export const Badge = ({ children, variant = 'default', size = 'md' }) => {
   };
   
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]}`}>
+    <span className={`inline-flex items-center rounded-full font-semibold backdrop-blur-sm ${variants[variant]} ${sizes[size]}`}>
       {children}
     </span>
   );
 };
 
+import { useEffect } from "react";
+
 export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
   if (!isOpen) return null;
-  
+
+  // keep your size map
   const sizes = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -191,47 +196,52 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' })
     xl: 'max-w-4xl',
     full: 'max-w-7xl'
   };
-  
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
-          onClick={onClose}
-        ></div>
-        
-        <div className={`inline-block w-full ${sizes[size]} p-4 sm:p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl`}>
+
+  // ESC to close + scroll lock
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return !isOpen ? null : (
+    <div className="fixed inset-0 z-50">
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="fixed inset-0 flex items-start sm:items-center justify-center p-4">
+        <div className={`w-full ${sizes[size]} modal-glass px-6 py-5`} role="dialog" aria-modal="true">
           {title && (
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-medium leading-6 text-gray-900">
-                {title}
-              </h3>
+              <h3 className="text-xl font-semibold text-slate-100">{title}</h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition"
+                aria-label="Close"
               >
-                <span className="sr-only">Close</span>
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
           )}
-          
-          <div className="mb-4">
-            {children}
-          </div>
-          
+
+          <div className="space-y-5">{children}</div>
+
           {footer && (
-            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-              {footer}
-            </div>
+            <div className="mt-5 pt-4 soft-divider"></div>
+          )}
+          {footer && (
+            <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">{footer}</div>
           )}
         </div>
       </div>
     </div>
   );
 };
+
 
 // Mobile-optimized components
 export const MobileCard = ({ children, className = '', onClick, title, subtitle, actions }) => {

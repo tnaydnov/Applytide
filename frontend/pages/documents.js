@@ -8,20 +8,20 @@ import { PremiumBadge, usePremiumFeature } from "../components/PremiumFeature";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const DOCUMENT_TYPES = [
-  { value: 'resume', label: '📄 Resume', icon: '📄' },
-  { value: 'cover_letter', label: '💼 Cover Letter', icon: '💼' },
-  { value: 'portfolio', label: '🎨 Portfolio', icon: '🎨' },
-  { value: 'certificate', label: '🏆 Certificate', icon: '🏆' },
-  { value: 'transcript', label: '🎓 Transcript', icon: '🎓' },
-  { value: 'reference', label: '👥 Reference', icon: '👥' },
-  { value: 'other', label: '📎 Other', icon: '📎' }
+  { value: 'resume', label: 'Resume', icon: 'resume' },
+  { value: 'cover_letter', label: 'Cover Letter', icon: 'cover_letter' },
+  { value: 'portfolio', label: 'Portfolio', icon: 'portfolio' },
+  { value: 'certificate', label: 'Certificate', icon: 'certificate' },
+  { value: 'transcript', label: 'Transcript', icon: 'transcript' },
+  { value: 'reference', label: 'Reference', icon: 'reference' },
+  { value: 'other', label: 'Other', icon: 'other' }
 ];
 
 const DOCUMENT_STATUS = [
-  { value: 'active', label: '✅ Active', color: 'green' },
-  { value: 'draft', label: '📝 Draft', color: 'yellow' },
-  { value: 'archived', label: '📦 Archived', color: 'gray' },
-  { value: 'template', label: '📋 Template', color: 'blue' }
+  { value: 'active', label: 'Active', color: 'green' },
+  { value: 'draft', label: 'Draft', color: 'yellow' },
+  { value: 'archived', label: 'Archived', color: 'gray' },
+  { value: 'template', label: 'Template', color: 'blue' }
 ];
 
 // keep letters, numbers, spaces, dashes/underscores; strip any extension the user typed
@@ -428,82 +428,139 @@ export default function DocumentsPage() {
   }
 
   function getScoreColor(score) {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-green-400';
+    if (score >= 60) return 'text-yellow-400';
+    return 'text-red-400';
   }
+
+  const renderIcon = (iconType) => {
+    switch (iconType) {
+      case 'resume':
+        return (
+          <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+      case 'cover_letter':
+        return (
+          <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'portfolio':
+        return (
+          <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        );
+      case 'certificate':
+        return (
+          <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'transcript':
+        return (
+          <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        );
+      case 'reference':
+        return (
+          <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        );
+      case 'other':
+        return (
+          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+    }
+  };
 
   return (
     <AuthGuard>
-      <div className="max-w-7xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Document Manager</h1>
-          <p className="text-gray-600 mt-2">Manage your resumes, cover letters, and other documents with AI-powered optimization</p>
-        </div>
-        <div className="flex gap-3">
-          <Button 
-            onClick={() => checkPremium(() => setShowCoverLetterModal(true), "AI Cover Letter Generation")} 
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center gap-2"
-          >
-            ✨ Generate Cover Letter
-            <PremiumBadge size="xs" />
-          </Button>
-          <Button onClick={() => setShowUploadModal(true)} className="bg-blue-600 hover:bg-blue-700">
-            📤 Upload Document
-          </Button>
-        </div>
-      </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-200">Document Manager</h1>
+              <p className="text-slate-400 mt-2">Manage your resumes, cover letters, and other documents with AI-powered optimization</p>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => checkPremium(() => setShowCoverLetterModal(true), "AI Cover Letter Generation")} 
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                Generate Cover Letter
+                <PremiumBadge size="xs" />
+              </Button>
+              <Button onClick={() => setShowUploadModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Upload Document
+              </Button>
+            </div>
+          </div>
 
       {/* Search and Filters */}
-      <Card className="p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="glass-card glass-cyan">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl">🔍</span>
+            <h2 className="text-xl font-semibold text-slate-100">Search & Filter Documents</h2>
+          </div>
+          
           {/* Search Bar */}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search Documents</label>
+          <div className="relative">
             <Input
               placeholder="Search by filename, content, or metadata..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full input-glass input-cyan"
               icon={<span>🔍</span>}
             />
           </div>
           
-          {/* Document Type Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
+          {/* Filter Options */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select
               value={filters.type}
               onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full"
+              className="input-glass input-cyan"
             >
               <option value="">All Types</option>
               {DOCUMENT_TYPES.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </Select>
-          </div>
-          {/* Status Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            
             <Select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full"
+              className="input-glass input-cyan"
             >
               <option value="">All Status</option>
               {DOCUMENT_STATUS.map(status => (
                 <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </Select>
-          </div>
-          
-          {/* Clear Filters Button */}
-          <div className="flex items-end">
+            
             <Button 
               onClick={() => setFilters({ type: '', status: '', search: '' })}
-              variant="outline"
-              className="w-full"
+              className="input-glass input-cyan text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300"
             >
               Clear Filters
             </Button>
@@ -511,17 +568,27 @@ export default function DocumentsPage() {
         </div>
       </Card>
 
+      {/* My Documents Header */}
+      <div className="mb-6 mt-8">
+        <h2 className="text-2xl font-bold text-slate-200">My Documents</h2>
+        <p className="text-slate-400 mt-1">Manage and analyze your resumes, cover letters, and other documents</p>
+      </div>
+
       {/* Documents Grid */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading documents...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mx-auto"></div>
+          <p className="mt-4 text-slate-400">Loading documents...</p>
         </div>
       ) : documents.length === 0 ? (
-        <Card className="p-12 text-center">
-          <div className="text-6xl mb-4">📄</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No documents found</h3>
-          <p className="text-gray-600 mb-6">Upload your first document to get started</p>
+        <Card className="p-12 text-center glass-card glass-cyan">
+          <div className="text-6xl mb-4">
+            <svg className="w-16 h-16 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-slate-200 mb-2">No documents found</h3>
+          <p className="text-slate-400 mb-6">Upload your first document to get started</p>
           <Button onClick={() => setShowUploadModal(true)} className="bg-blue-600 hover:bg-blue-700">
             Upload Document
           </Button>
@@ -531,40 +598,42 @@ export default function DocumentsPage() {
           {documents.map(document => {
             const docType =
               DOCUMENT_TYPES.find(t => t.value === document.type) ||
-              { value: document.type || 'other', label: '📎 Other', icon: '📎' };
+              { value: document.type || 'other', label: 'Other', icon: 'other' };
             const docStatus = DOCUMENT_STATUS.find(s => s.value === document.status) || DOCUMENT_STATUS[0];
             
             return (
-              <Card key={document.id} className="p-6 hover:shadow-lg transition-shadow">
+              <Card key={document.id} className="p-6 hover:shadow-lg transition-shadow glass-card glass-cyan">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <div className="text-2xl mr-3">{docType.icon}</div>
+                    <div className="text-2xl mr-3">
+                      {renderIcon(docType.icon)}
+                    </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 truncate">{document.name}</h3>
-                      <p className="text-sm text-gray-600">{docType.label}</p>
+                      <h3 className="font-semibold text-slate-200 truncate">{document.name}</h3>
+                      <p className="text-sm text-slate-400">{docType.label}</p>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${docStatus.color}-100 text-${docStatus.color}-800`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${docStatus.color}-900/50 text-${docStatus.color}-300 border border-${docStatus.color}-500/30`}>
                     {docStatus.label}
                   </span>
                 </div>
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Size:</span>
-                    <span>{(document.file_size / 1024).toFixed(1)} KB</span>
+                    <span className="text-slate-400">Size:</span>
+                    <span className="text-slate-200">{(document.file_size / 1024).toFixed(1)} KB</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Created:</span>
-                    <span>{new Date(document.created_at).toLocaleDateString()}</span>
+                    <span className="text-slate-400">Created:</span>
+                    <span className="text-slate-200">{new Date(document.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Version:</span>
-                    <span>v{document.current_version}</span>
+                    <span className="text-slate-400">Version:</span>
+                    <span className="text-slate-200">v{document.current_version}</span>
                   </div>
                   {document.ats_score && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">ATS Score:</span>
+                      <span className="text-slate-400">ATS Score:</span>
                       <span className={getScoreColor(document.ats_score)}>
                         {document.ats_score.toFixed(1)}%
                       </span>
@@ -594,7 +663,7 @@ export default function DocumentsPage() {
                             }}
                             variant="outline"
                             size="sm"
-                            className="w-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                            className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
                             disabled={analyzing}
                           >
                             🎯 Analyze against specific job ({jobs.length} available)
@@ -651,61 +720,27 @@ export default function DocumentsPage() {
       )}
 
       {/* Upload Modal */}
-      {showUploadModal && (
-        <>
-          {/* Backdrop overlay */}
-          <div 
-            onClick={() => setShowUploadModal(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              zIndex: 10000,
-              cursor: 'pointer'
-            }}
-          />
-          
-          {/* Modal content */}
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-            zIndex: 10001,
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ padding: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>Upload Document</h2>
-              
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Document Type
-                </label>
-                <select
-                  value={uploadForm.type}
-                  onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                >
-                  {DOCUMENT_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
+      <Modal 
+        isOpen={showUploadModal} 
+        onClose={() => setShowUploadModal(false)}
+        title="Upload Document"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 tracking-wide uppercase mb-2">
+              Document Type
+            </label>
+            <Select
+              value={uploadForm.type}
+              onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value })}
+              className="w-full text-sm font-medium text-slate-100"
+            >
+              {DOCUMENT_TYPES.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </Select>
+          </div>
               
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
@@ -750,37 +785,24 @@ export default function DocumentsPage() {
                 </p>
               </div>
               
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button 
-                  onClick={() => setShowUploadModal(false)}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleUpload}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Upload
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+                <div className="flex gap-3 justify-end pt-4">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowUploadModal(false)}
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpload}
+                    disabled={uploading || !uploadForm.file}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {uploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                </div>
+        </div>
+      </Modal>
 
       {/* Cover Letter Modal */}
       {showCoverLetterModal && (
@@ -1040,61 +1062,39 @@ export default function DocumentsPage() {
       {/* Analysis Modal */}
       {showAnalysisModal && (
         <>
-          {/* Backdrop overlay */}
+          {/* Backdrop overlay with blur effect */}
           <div 
             onClick={() => setShowAnalysisModal(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-              zIndex: 10000,
-              cursor: 'pointer'
-            }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer"
           />
           
           {/* Modal content */}
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-            zIndex: 10001,
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ padding: '24px', minWidth: '800px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-                🔍 Document Analysis Results
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl mx-4 max-h-[90vh] overflow-auto">
+            <div className="glass-card border border-white/30 rounded-2xl p-6 backdrop-blur-xl bg-slate-900/95 shadow-2xl">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+                  🔍 Document Analysis Results
+                </h2>
                 {analysis?.job_context && (
-                  <div style={{ fontSize: '14px', fontWeight: 'normal', color: '#6b7280', marginTop: '4px' }}>
+                  <p className="text-sm text-slate-400 mt-2">
                     For: {analysis.job_context.title} at {analysis.job_context.company}
-                  </div>
+                  </p>
                 )}
-              </h2>
+              </div>
               
               {/* Analysis Type Explanation */}
-              <div style={{
-                padding: '12px 16px',
-                backgroundColor: selectedJob ? '#eff6ff' : '#fef3c7',
-                borderRadius: '8px',
-                border: `1px solid ${selectedJob ? '#bfdbfe' : '#fde68a'}`,
-                marginBottom: '20px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '16px' }}>{selectedJob ? '🎯' : '📊'}</span>
-                  <strong style={{ color: '#1f2937' }}>
+              <div className={`p-4 rounded-lg border mb-6 ${
+                selectedJob 
+                  ? 'bg-blue-900/30 border-blue-500/30 text-blue-200' 
+                  : 'bg-yellow-900/30 border-yellow-500/30 text-yellow-200'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">{selectedJob ? '🎯' : '📊'}</span>
+                  <strong className="text-slate-200">
                     {selectedJob ? 'Job-Specific Analysis' : 'General Analysis'}
                   </strong>
                 </div>
-                <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+                <p className="text-sm text-slate-300 m-0">
                   {selectedJob 
                     ? 'This analysis compares your document against specific job requirements, providing targeted feedback and keyword matching scores.'
                     : 'This is a general analysis without job context. For better insights, analyze against a specific job to see how well your document matches job requirements.'
@@ -1107,21 +1107,22 @@ export default function DocumentsPage() {
                   {/* Analysis Header - Different for General vs Job-Specific */}
                   <div style={{ 
                     padding: '16px', 
-                    backgroundColor: '#f9fafb', 
+                    backgroundColor: 'rgba(30, 41, 59, 0.8)', 
                     borderRadius: '8px',
-                    border: '1px solid #e5e7eb'
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
+                    backdropFilter: 'blur(8px)'
                   }}>
                     {analysis.ats_score?.technical_skills_score !== null && analysis.ats_score?.soft_skills_score !== null ? (
                       <>
-                        <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>🎯 Job-Specific Analysis</h3>
-                        <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>🎯 Job-Specific Analysis</h3>
+                        <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px' }}>
                           Analysis tailored to the selected job requirements
                         </p>
                       </>
                     ) : (
                       <>
-                        <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>📋 General Resume Analysis</h3>
-                        <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>📋 General Resume Analysis</h3>
+                        <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px' }}>
                           Comprehensive review of resume structure and completeness. Select a job for targeted analysis.
                         </p>
                       </>
@@ -1149,51 +1150,51 @@ export default function DocumentsPage() {
                     {/* Detailed Scores Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
                       {analysis.ats_score?.technical_skills_score !== null && analysis.ats_score?.technical_skills_score !== undefined && (
-                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dbeafe', borderRadius: '6px' }}>
+                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.2)', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
-                            color: analysis.ats_score.technical_skills_score >= 80 ? '#059669' : analysis.ats_score.technical_skills_score >= 60 ? '#d97706' : '#dc2626'
+                            color: analysis.ats_score.technical_skills_score >= 80 ? '#10b981' : analysis.ats_score.technical_skills_score >= 60 ? '#f59e0b' : '#ef4444'
                           }}>
                             {(analysis.ats_score.technical_skills_score || 0).toFixed(1)}%
                           </div>
-                          <p style={{ fontSize: '12px', color: '#6b7280' }}>Technical Skills</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8' }}>Technical Skills</p>
                         </div>
                       )}
                       {analysis.ats_score?.soft_skills_score !== null && analysis.ats_score?.soft_skills_score !== undefined && (
-                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'rgba(16, 185, 129, 0.2)', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
-                            color: analysis.ats_score.soft_skills_score >= 80 ? '#059669' : analysis.ats_score.soft_skills_score >= 60 ? '#d97706' : '#dc2626'
+                            color: analysis.ats_score.soft_skills_score >= 80 ? '#10b981' : analysis.ats_score.soft_skills_score >= 60 ? '#f59e0b' : '#ef4444'
                           }}>
                             {(analysis.ats_score.soft_skills_score || 0).toFixed(1)}%
                           </div>
-                          <p style={{ fontSize: '12px', color: '#6b7280' }}>Soft Skills</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8' }}>Soft Skills</p>
                         </div>
                       )}
                       {analysis.ats_score?.keyword_score !== undefined && (
-                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '6px' }}>
+                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
-                            color: analysis.ats_score.keyword_score >= 80 ? '#059669' : analysis.ats_score.keyword_score >= 60 ? '#d97706' : '#dc2626'
+                            color: analysis.ats_score.keyword_score >= 80 ? '#10b981' : analysis.ats_score.keyword_score >= 60 ? '#f59e0b' : '#ef4444'
                           }}>
                             {analysis.ats_score.keyword_score.toFixed(1)}%
                           </div>
-                          <p style={{ fontSize: '12px', color: '#6b7280' }}>Keywords</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8' }}>Keywords</p>
                         </div>
                       )}
                       {analysis.ats_score?.formatting_score !== undefined && (
-                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: '#e0e7ff', borderRadius: '6px' }}>
+                        <div style={{ textAlign: 'center', padding: '12px', backgroundColor: 'rgba(99, 102, 241, 0.2)', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
                           <div style={{ 
                             fontSize: '20px', 
                             fontWeight: 'bold', 
-                            color: analysis.ats_score.formatting_score >= 80 ? '#059669' : analysis.ats_score.formatting_score >= 60 ? '#d97706' : '#dc2626'
+                            color: analysis.ats_score.formatting_score >= 80 ? '#10b981' : analysis.ats_score.formatting_score >= 60 ? '#f59e0b' : '#ef4444'
                           }}>
                             {analysis.ats_score.formatting_score.toFixed(1)}%
                           </div>
-                          <p style={{ fontSize: '12px', color: '#6b7280' }}>Formatting</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8' }}>Formatting</p>
                         </div>
                       )}
                     </div>
@@ -1203,16 +1204,17 @@ export default function DocumentsPage() {
                   {analysis.keyword_analysis && analysis.ats_score?.technical_skills_score !== null && (
                     <div style={{ 
                       padding: '16px', 
-                      backgroundColor: '#eff6ff', 
+                      backgroundColor: 'rgba(30, 41, 59, 0.8)', 
                       borderRadius: '8px',
-                      border: '1px solid #bfdbfe'
+                      border: '1px solid rgba(148, 163, 184, 0.3)',
+                      backdropFilter: 'blur(8px)'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '16px', color: '#1e40af' }}>🎯 Detailed Keyword Analysis</h3>
+                      <h3 style={{ fontWeight: '600', marginBottom: '16px', color: '#60a5fa' }}>🎯 Detailed Keyword Analysis</h3>
                       
                       {/* Technical Skills Breakdown */}
                       {analysis.keyword_analysis.technical_skills && (
                         <div style={{ marginBottom: '20px' }}>
-                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>💻 Technical Skills</h4>
+                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>💻 Technical Skills</h4>
                           
                           {/* Found Technical Skills */}
                           {analysis.keyword_analysis.technical_skills.found && analysis.keyword_analysis.technical_skills.found.length > 0 && (
@@ -1247,11 +1249,11 @@ export default function DocumentsPage() {
                                 {analysis.keyword_analysis.technical_skills.missing.map((skill, idx) => (
                                   <span key={idx} style={{ 
                                     padding: '4px 8px', 
-                                    backgroundColor: '#fef2f2', 
-                                    color: '#dc2626', 
+                                    backgroundColor: 'rgba(239, 68, 68, 0.2)', 
+                                    color: '#ef4444', 
                                     fontSize: '12px', 
                                     borderRadius: '4px',
-                                    border: '1px solid #fecaca'
+                                    border: '1px solid rgba(239, 68, 68, 0.3)'
                                   }}>
                                     {skill}
                                   </span>
@@ -1265,7 +1267,7 @@ export default function DocumentsPage() {
                       {/* Soft Skills Breakdown */}
                       {analysis.keyword_analysis.soft_skills && (
                         <div style={{ marginBottom: '20px' }}>
-                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>🤝 Soft Skills</h4>
+                          <h4 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>🤝 Soft Skills</h4>
                           
                           {/* Found Soft Skills */}
                           {analysis.keyword_analysis.soft_skills.found && analysis.keyword_analysis.soft_skills.found.length > 0 && (
@@ -1300,11 +1302,11 @@ export default function DocumentsPage() {
                                 {analysis.keyword_analysis.soft_skills.missing.map((skill, idx) => (
                                   <span key={idx} style={{ 
                                     padding: '4px 8px', 
-                                    backgroundColor: '#fef2f2', 
-                                    color: '#dc2626', 
+                                    backgroundColor: 'rgba(239, 68, 68, 0.2)', 
+                                    color: '#ef4444', 
                                     fontSize: '12px', 
                                     borderRadius: '4px',
-                                    border: '1px solid #fecaca'
+                                    border: '1px solid rgba(239, 68, 68, 0.3)'
                                   }}>
                                     {skill}
                                   </span>
@@ -1318,11 +1320,11 @@ export default function DocumentsPage() {
                       {/* Overall Summary */}
                       <div style={{ 
                         padding: '12px', 
-                        backgroundColor: '#f8fafc', 
+                        backgroundColor: 'rgba(30, 41, 59, 0.6)', 
                         borderRadius: '6px',
-                        border: '1px solid #e2e8f0'
+                        border: '1px solid rgba(148, 163, 184, 0.3)'
                       }}>
-                        <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+                        <p style={{ fontSize: '14px', color: '#f1f5f9', margin: 0 }}>
                           <strong>Summary:</strong> {analysis.keyword_analysis.matched_keywords?.length || 0} of {analysis.keyword_analysis.total_job_keywords || 0} job keywords found 
                           ({((analysis.keyword_analysis.matched_keywords?.length || 0) / Math.max(analysis.keyword_analysis.total_job_keywords || 1, 1) * 100).toFixed(1)}% match)
                         </p>
@@ -1334,23 +1336,23 @@ export default function DocumentsPage() {
                   {analysis.missing_skills && (analysis.missing_skills.technical?.length > 0 || analysis.missing_skills.critical_missing?.length > 0) && (
                     <div style={{ 
                       padding: '16px', 
-                      backgroundColor: '#fef2f2', 
+                      backgroundColor: 'rgba(239, 68, 68, 0.15)', 
                       borderRadius: '8px',
-                      border: '1px solid #fecaca'
+                      border: '1px solid rgba(239, 68, 68, 0.3)'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#dc2626' }}>⚠️ Missing Skills & Keywords</h3>
+                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#ef4444' }}>⚠️ Missing Skills & Keywords</h3>
                       {analysis.missing_skills.critical_missing && analysis.missing_skills.critical_missing.length > 0 && (
                         <div style={{ marginBottom: '12px' }}>
-                          <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Critical missing keywords:</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Critical missing keywords:</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {analysis.missing_skills.critical_missing.map((skill, idx) => (
                               <span key={idx} style={{ 
                                 padding: '4px 8px', 
-                                backgroundColor: '#fee2e2', 
-                                color: '#dc2626', 
+                                backgroundColor: 'rgba(239, 68, 68, 0.25)', 
+                                color: '#ef4444', 
                                 fontSize: '12px', 
                                 borderRadius: '4px',
-                                border: '1px solid #fecaca'
+                                border: '1px solid rgba(239, 68, 68, 0.4)'
                               }}>
                                 {skill}
                               </span>
@@ -1360,16 +1362,16 @@ export default function DocumentsPage() {
                       )}
                       {analysis.missing_skills.technical && analysis.missing_skills.technical.length > 0 && (
                         <div>
-                          <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Missing technical skills:</p>
+                          <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Missing technical skills:</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {analysis.missing_skills.technical.slice(0, 10).map((skill, idx) => (
                               <span key={idx} style={{ 
                                 padding: '4px 8px', 
-                                backgroundColor: '#fee2e2', 
-                                color: '#dc2626', 
+                                backgroundColor: 'rgba(239, 68, 68, 0.25)', 
+                                color: '#ef4444', 
                                 fontSize: '12px', 
                                 borderRadius: '4px',
-                                border: '1px solid #fecaca'
+                                border: '1px solid rgba(239, 68, 68, 0.4)'
                               }}>
                                 {skill}
                               </span>
@@ -1384,16 +1386,16 @@ export default function DocumentsPage() {
                   {analysis.suggested_improvements && analysis.suggested_improvements.length > 0 && (
                     <div style={{ 
                       padding: '16px', 
-                      backgroundColor: '#f0fdf4', 
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)', 
                       borderRadius: '8px',
-                      border: '1px solid #bbf7d0'
+                      border: '1px solid rgba(16, 185, 129, 0.3)'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#166534' }}>💡 Improvement Recommendations</h3>
+                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#10b981' }}>💡 Improvement Recommendations</h3>
                       <ul style={{ margin: 0, paddingLeft: '20px' }}>
                         {analysis.suggested_improvements.map((improvement, idx) => (
                           <li key={idx} style={{ 
                             fontSize: '14px', 
-                            color: '#374151', 
+                            color: '#f1f5f9', 
                             marginBottom: '8px',
                             lineHeight: '1.5'
                           }}>
@@ -1407,23 +1409,23 @@ export default function DocumentsPage() {
                   {/* Document Statistics */}
                   <div style={{ 
                     padding: '16px', 
-                    backgroundColor: '#f9fafb', 
+                    backgroundColor: 'rgba(30, 41, 59, 0.6)', 
                     borderRadius: '8px',
-                    border: '1px solid #e5e7eb'
+                    border: '1px solid rgba(148, 163, 184, 0.3)'
                   }}>
-                    <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>Document Statistics</h3>
+                    <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>Document Statistics</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', textAlign: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151' }}>{analysis.word_count || 0}</div>
-                        <p style={{ fontSize: '12px', color: '#6b7280' }}>Words</p>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f1f5f9' }}>{analysis.word_count || 0}</div>
+                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>Words</p>
                       </div>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151' }}>{(analysis.readability_score || 0).toFixed(1)}%</div>
-                        <p style={{ fontSize: '12px', color: '#6b7280' }}>Readability</p>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f1f5f9' }}>{(analysis.readability_score || 0).toFixed(1)}%</div>
+                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>Readability</p>
                       </div>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#374151' }}>{analysis.missing_sections?.length || 0}</div>
-                        <p style={{ fontSize: '12px', color: '#6b7280' }}>Missing Sections</p>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f1f5f9' }}>{analysis.missing_sections?.length || 0}</div>
+                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>Missing Sections</p>
                       </div>
                     </div>
                   </div>
@@ -1432,14 +1434,14 @@ export default function DocumentsPage() {
                   {analysis.missing_sections.length > 0 && (
                     <div style={{ 
                       padding: '16px', 
-                      backgroundColor: '#fef3c7', 
+                      backgroundColor: 'rgba(245, 158, 11, 0.15)', 
                       borderRadius: '8px',
-                      border: '1px solid #f59e0b'
+                      border: '1px solid rgba(245, 158, 11, 0.3)'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#d97706' }}>⚠️ Missing Sections</h3>
+                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#f59e0b' }}>⚠️ Missing Sections</h3>
                       <ul style={{ listStyle: 'disc', paddingLeft: '20px', margin: 0 }}>
                         {analysis.missing_sections.map((section, index) => (
-                          <li key={index} style={{ marginBottom: '8px', color: '#92400e' }}>{section}</li>
+                          <li key={index} style={{ marginBottom: '8px', color: '#f1f5f9' }}>{section}</li>
                         ))}
                       </ul>
                     </div>
@@ -1449,11 +1451,11 @@ export default function DocumentsPage() {
                   {Object.keys(analysis.keyword_density).length > 0 && (
                     <div style={{ 
                       padding: '16px', 
-                      backgroundColor: '#f9fafb', 
+                      backgroundColor: 'rgba(30, 41, 59, 0.6)', 
                       borderRadius: '8px',
-                      border: '1px solid #e5e7eb'
+                      border: '1px solid rgba(148, 163, 184, 0.3)'
                     }}>
-                      <h3 style={{ fontWeight: '600', marginBottom: '12px' }}>📊 Keyword Analysis</h3>
+                      <h3 style={{ fontWeight: '600', marginBottom: '12px', color: '#f1f5f9' }}>📊 Keyword Analysis</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(analysis.keyword_density).map(([keyword, density]) => (
                           <div key={keyword} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1482,33 +1484,20 @@ export default function DocumentsPage() {
                   )}
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '32px' }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    border: '4px solid #e5e7eb',
-                    borderTop: '4px solid #2563eb',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                    margin: '0 auto 16px'
-                  }}></div>
-                  <p style={{ color: '#6b7280' }}>Analyzing document...</p>
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-slate-400">Analyzing document...</p>
                 </div>
               )}
               
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-                <button 
+              <div className="flex justify-end mt-6">
+                <Button 
                   onClick={() => setShowAnalysisModal(false)}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
-                  }}
+                  variant="outline"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
                 >
                   Close
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -1524,7 +1513,8 @@ export default function DocumentsPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(8px)',
             zIndex: 50,
             display: 'flex',
             alignItems: 'center',
@@ -1532,7 +1522,8 @@ export default function DocumentsPage() {
             padding: '16px'
           }}>
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               borderRadius: '12px',
               padding: '24px',
               maxWidth: '800px',
@@ -1540,14 +1531,16 @@ export default function DocumentsPage() {
               maxHeight: '80vh',
               overflow: 'hidden',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}>
               {/* Header */}
               <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#f1f5f9', marginBottom: '8px' }}>
                   🎯 Select Job for Analysis
                 </h3>
-                <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                <p style={{ color: '#94a3b8', fontSize: '14px' }}>
                   Choose a job to analyze your {jobSelectionDocument?.filename} against specific requirements
                 </p>
               </div>
@@ -1562,9 +1555,12 @@ export default function DocumentsPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid rgba(148, 163, 184, 0.3)',
                     borderRadius: '8px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                    color: '#f1f5f9',
+                    backdropFilter: 'blur(8px)'
                   }}
                 />
               </div>
@@ -1574,8 +1570,10 @@ export default function DocumentsPage() {
                 flex: 1, 
                 overflowY: 'auto', 
                 marginBottom: '20px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px'
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(30, 41, 59, 0.3)',
+                backdropFilter: 'blur(8px)'
               }}>
                 {jobs
                   .filter(job => 
@@ -1589,19 +1587,20 @@ export default function DocumentsPage() {
                       onClick={() => setSelectedJobForAnalysis(job)}
                       style={{
                         padding: '16px',
-                        borderBottom: index < jobs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        borderBottom: index < jobs.length - 1 ? '1px solid rgba(148, 163, 184, 0.3)' : 'none',
                         cursor: 'pointer',
-                        backgroundColor: selectedJobForAnalysis?.id === job.id ? '#eff6ff' : 'white',
-                        borderLeft: selectedJobForAnalysis?.id === job.id ? '4px solid #3b82f6' : '4px solid transparent'
+                        backgroundColor: selectedJobForAnalysis?.id === job.id ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                        borderLeft: selectedJobForAnalysis?.id === job.id ? '4px solid #3b82f6' : '4px solid transparent',
+                        transition: 'all 0.2s ease'
                       }}
                       onMouseEnter={(e) => {
                         if (selectedJobForAnalysis?.id !== job.id) {
-                          e.target.style.backgroundColor = '#f9fafb';
+                          e.target.style.backgroundColor = 'rgba(148, 163, 184, 0.1)';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (selectedJobForAnalysis?.id !== job.id) {
-                          e.target.style.backgroundColor = 'white';
+                          e.target.style.backgroundColor = 'transparent';
                         }
                       }}
                     >
@@ -1609,14 +1608,14 @@ export default function DocumentsPage() {
                         <div style={{ flex: 1 }}>
                           <h4 style={{ 
                             fontWeight: 'bold', 
-                            color: '#1f2937', 
+                            color: '#f1f5f9', 
                             marginBottom: '4px',
                             fontSize: '16px'
                           }}>
                             {job.title}
                           </h4>
                           <p style={{ 
-                            color: '#6b7280', 
+                            color: '#94a3b8', 
                             fontSize: '14px', 
                             marginBottom: '8px',
                             fontWeight: '500'
@@ -1624,13 +1623,13 @@ export default function DocumentsPage() {
                             🏢 {job.company}
                           </p>
                           {job.location && (
-                            <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>
+                            <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px' }}>
                               📍 {job.location}
                             </p>
                           )}
                           {job.description && (
                             <p style={{ 
-                              color: '#4b5563', 
+                              color: '#94a3b8', 
                               fontSize: '12px', 
                               lineHeight: '1.4',
                               maxHeight: '40px',
@@ -1642,8 +1641,8 @@ export default function DocumentsPage() {
                           )}
                         </div>
                         <div style={{ 
-                          backgroundColor: selectedJobForAnalysis?.id === job.id ? '#3b82f6' : '#e5e7eb',
-                          color: selectedJobForAnalysis?.id === job.id ? 'white' : '#6b7280',
+                          backgroundColor: selectedJobForAnalysis?.id === job.id ? '#3b82f6' : 'rgba(148, 163, 184, 0.3)',
+                          color: selectedJobForAnalysis?.id === job.id ? 'white' : '#94a3b8',
                           borderRadius: '50%',
                           width: '24px',
                           height: '24px',
@@ -1738,7 +1737,7 @@ export default function DocumentsPage() {
                       padding: '8px 16px',
                       border: 'none',
                       borderRadius: '6px',
-                      backgroundColor: selectedJobForAnalysis ? '#3b82f6' : '#d1d5db',
+                      backgroundColor: selectedJobForAnalysis ? '#1e40af' : '#374151',
                       color: 'white',
                       cursor: selectedJobForAnalysis ? 'pointer' : 'not-allowed',
                       fontWeight: '500'
@@ -1755,6 +1754,7 @@ export default function DocumentsPage() {
       
       {/* Premium Modal */}
       <PremiumModal />
+        </div>
       </div>
     </AuthGuard>
   );
