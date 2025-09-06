@@ -230,7 +230,7 @@ export default function JobList({ user, userProfile, filters = {} }) {
                     
                     <div className="text-gray-600 space-y-1">
                       <p className="font-medium">{job.company_name}</p>
-                      <p className="text-sm">📍 {job.location || 'Location not specified'}</p>
+                      <p className="text-sm">📍 {displayLocation(job)}</p>
                       <p className="text-sm">💰 {formatSalary(job)}</p>
                       <p className="text-sm">📅 Posted: {formatDate(job.created_at || job.posted_date)}</p>
                     </div>

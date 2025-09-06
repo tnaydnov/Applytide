@@ -20,6 +20,8 @@ from .api.profile import router as profile_router  # User Profile Management
 from .api.kanban import router as kanban_router  # Kanban/Pipeline Management
 from .preferences.router import router as preferences_router  # User Preferences
 from .auth.sessions import router as sessions_router
+from app.ai.router import router as ai_router
+
 
 
 
@@ -103,6 +105,8 @@ app.include_router(documents_router)
 app.include_router(profile_router)  # User Profile Management for Personalization
 app.include_router(kanban_router)  # Kanban/Pipeline Management
 app.include_router(preferences_router)  # User Preferences Storage
+app.include_router(ai_router)
+
 
 
 

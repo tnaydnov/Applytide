@@ -40,8 +40,6 @@ export default function JobsPage() {
     description: '',
     requirements: [],
     skills: [],
-    salary_min: '',
-    salary_max: '',
     remote_type: 'On-site',
     job_type: 'Full-time',
     source_url: ''
@@ -152,9 +150,6 @@ export default function JobsPage() {
           description: analyzedJob.description || '',
           requirements: analyzedJob.requirements || [],
           skills: analyzedJob.skills || [],
-          benefits: analyzedJob.benefits || [],
-          salary_min: analyzedJob.salary_min || '',
-          salary_max: analyzedJob.salary_max || '',
           remote_type: analyzedJob.remote_type || 'On-site',
           job_type: analyzedJob.job_type || 'Full-time',
           source_url: jobUrl
@@ -265,7 +260,7 @@ export default function JobsPage() {
     }
   }
 
-  // Handle array inputs for skills, requirements, benefits
+  // Handle array inputs for skills, requirements
   function handleArrayInput(field, value) {
     setManualJobData(prev => ({ ...prev, [field]: value.split('\n') }));
   }
@@ -288,56 +283,6 @@ export default function JobsPage() {
       .join('\n');
   }
 
-  // Parse job data for display (extract clean description and metadata)
-  function parseJobForDisplay(job) {
-    if (!job.description) {
-      return {
-        cleanDescription: '',
-        requirements: [],
-        skills: [],
-        benefits: []
-      };
-    }
-
-    let cleanDescription = job.description;
-    const requirements = [];
-    const skills = [];
-    const benefits = [];
-
-    // Extract and remove requirements section
-    const reqMatch = job.description.match(/\*\*Requirements:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
-    if (reqMatch) {
-      const reqText = reqMatch[1];
-      reqText.split('\n').forEach(req => {
-        const cleanReq = req.replace(/^• /, '').trim();
-        if (cleanReq) requirements.push(cleanReq);
-      });
-      cleanDescription = cleanDescription.replace(/\n\n\*\*Requirements:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
-    }
-
-    // Extract and remove skills section
-    const skillsMatch = job.description.match(/\*\*Required Skills:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
-    if (skillsMatch) {
-      const skillsText = skillsMatch[1];
-      skillsText.split(',').forEach(skill => {
-        const cleanSkill = skill.trim();
-        if (cleanSkill) skills.push(cleanSkill);
-      });
-      cleanDescription = cleanDescription.replace(/\n\n\*\*Required Skills:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
-    }
-
-    // Extract and remove benefits section
-    const benefitsMatch = job.description.match(/\*\*Benefits:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
-    if (benefitsMatch) {
-      cleanDescription = cleanDescription.replace(/\n\n\*\*Benefits:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
-    }
-
-    return {
-      cleanDescription: cleanDescription.trim(),
-      requirements,
-      skills
-    };
-  }
 
   // Toggle expanded state for job description
   function toggleJobExpanded(jobId) {
@@ -377,10 +322,9 @@ export default function JobsPage() {
     setSelectedJob(job);
     setJobDetailsMode('view');
     
-    // Parse requirements, skills, and benefits from description if they exist
+    // Parse requirements, skills from description if they exist
     let requirements = [];
     let skills = [];
-    let benefits = [];
     let cleanDescription = job.description || '';
     
     if (job.description) {
@@ -398,12 +342,6 @@ export default function JobsPage() {
         cleanDescription = cleanDescription.replace(/\n\n\*\*Required Skills:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
       }
       
-      // Extract benefits section
-      const benefitsMatch = job.description.match(/\*\*Benefits:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
-      if (benefitsMatch) {
-        cleanDescription = cleanDescription.replace(/\n\n\*\*Benefits:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
-      }
-      
       // Clean up the description
       cleanDescription = cleanDescription.trim();
     }
@@ -415,8 +353,6 @@ export default function JobsPage() {
       description: cleanDescription,
       requirements: requirements,
       skills: skills,
-      salary_min: job.salary_min || '',
-      salary_max: job.salary_max || '',
       remote_type: job.remote_type || 'On-site',
       job_type: job.job_type || 'Full-time',
       source_url: job.source_url || ''
@@ -465,15 +401,6 @@ export default function JobsPage() {
       
       if (editJobData.source_url && editJobData.source_url.trim()) {
         cleanData.source_url = editJobData.source_url.trim();
-      }
-      
-      // Only add salary if both values are provided and valid
-      if (editJobData.salary_min && !isNaN(parseInt(editJobData.salary_min))) {
-        cleanData.salary_min = parseInt(editJobData.salary_min);
-      }
-      
-      if (editJobData.salary_max && !isNaN(parseInt(editJobData.salary_max))) {
-        cleanData.salary_max = parseInt(editJobData.salary_max);
       }
       
       // Only add arrays if they have actual content
@@ -530,6 +457,153 @@ export default function JobsPage() {
 
     return () => clearTimeout(delayedSearch);
   }, [searchTerm, sortBy, sortOrder, locationFilter, remoteTypeFilter]);
+
+// --- Robust parsing for display-only (no DB writes) ---
+function parseJobForDisplay(job) {
+  const rawDesc = (job?.description || "").replace(/\r/g, "");
+  const existingReqs   = Array.isArray(job?.requirements) ? [...job.requirements] : [];
+  const existingSkills = Array.isArray(job?.skills) ? [...job.skills] : [];
+
+  // Only headers that begin a *requirements* block
+  const reqHeaders = [
+    "requirements",
+    "minimum requirements",
+    "must have",
+    "nice to have",
+    "qualifications",
+    "about you",
+    "what you'll need",
+    "what you bring",
+  ];
+
+  // Headers that begin a *skills/stack* block
+  const skillHeaders = [
+    "skills",
+    "required skills",
+    "preferred skills",
+    "nice to have skills",
+    "technical skills",
+    "tech stack",
+    "technology stack",
+    "our stack",
+    "stack",
+  ];
+
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const reqHeaderRe   = new RegExp(`^\\s*(?:${reqHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
+  const skillHeaderRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
+  const skillInlineRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:\\s*(.+)$`, "i");
+
+  const isBullet        = (s) => /^\s*(?:[-–—•·*]|\d+\.)\s+/.test(s);
+  const normalizeBullet = (s) => s.replace(/^\s*(?:[-–—•·*]|\d+\.)\s+/, "").trim();
+
+  const cleanToken = (s) =>
+    s.replace(/^[•\-–—·*\s]+/, "")
+     .replace(/[.,;:()\s]+$/g, "")
+     .replace(/\s+/g, " ")
+     .trim();
+
+  const tokenizeSkillList = (s) => {
+    const parts = s.split(/[,\|/•·]+/).map(cleanToken).filter(Boolean);
+    return parts.filter((t) => t.split(/\s+/).length <= 4 && !/[.!?]$/.test(t));
+  };
+
+  // Heuristic: a one-line requirement without a bullet
+  const looksLikeRequirementLine = (s) => {
+    const t = s.trim();
+    if (!t) return false;
+    if (t.length > 220) return false;       // long paragraphs ≠ bullets
+    if (/\.\s*[A-Z]/.test(t)) return false; // multiple sentences
+    return true;
+  };
+
+  const lines = rawDesc.split("\n");
+  const descOut    = [];
+  const foundReqs  = [];
+  const foundSkills= [];
+
+  let inReqBlock = false;
+  let inSkillsBlock = false;
+  let lastPushed = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.replace(/\*\*/g, ""); // be resilient to **Markdown** headings
+
+    // ---- Headers ----
+    if (reqHeaderRe.test(line))   { inReqBlock = true;  inSkillsBlock = false; continue; }
+    if (skillHeaderRe.test(line)) { inSkillsBlock = true; inReqBlock   = false; continue; }
+
+    // Inline "Skills: Python, Go"
+    const mInline = line.match(skillInlineRe);
+    if (mInline && mInline[1]) { foundSkills.push(...tokenizeSkillList(mInline[1])); continue; }
+
+    // ---- Requirement block ----
+    if (inReqBlock) {
+      if (isBullet(line)) { foundReqs.push(normalizeBullet(line)); continue; }
+      if (skillHeaderRe.test(line)) { inReqBlock = false; inSkillsBlock = true; continue; }
+      if (line.trim() === "") { inReqBlock = false; continue; }
+      if (looksLikeRequirementLine(line)) { foundReqs.push(cleanToken(line)); continue; }
+      // Anything else ends the block and falls through
+      inReqBlock = false;
+    }
+
+    // ---- Skills block ----
+    if (inSkillsBlock) {
+      if (isBullet(line)) { foundSkills.push(cleanToken(normalizeBullet(line))); continue; }
+      if (line.trim() === "") { inSkillsBlock = false; continue; }
+      const maybeList = tokenizeSkillList(line);
+      if (maybeList.length >= 2) { foundSkills.push(...maybeList); continue; }
+      inSkillsBlock = false; // fall through
+    }
+
+    // ---- Normal description line ----
+    const trimmed = raw.trimEnd();
+    if (trimmed !== lastPushed) { descOut.push(trimmed); lastPushed = trimmed; }
+  }
+
+  // Tidy description
+  const cleanDescription = descOut.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+
+  // De-dupe helpers (case-insensitive, ignore trailing punctuation)
+  const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+  const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
+
+  const reqMap = new Map();
+  [...existingReqs, ...foundReqs].filter(Boolean).forEach((s) => {
+    const key = canon(String(s));
+    if (!key) return;
+    if (!reqMap.has(key)) reqMap.set(key, pretty(String(s)));
+  });
+
+  const skillMap = new Map();
+  [...existingSkills, ...foundSkills].filter(Boolean).forEach((s) => {
+    const key = canon(String(s));
+    if (!key) return;
+    if (!skillMap.has(key)) skillMap.set(key, pretty(String(s)));
+  });
+
+  return {
+    cleanDescription,
+    requirements: Array.from(reqMap.values()),
+    skills: Array.from(skillMap.values()),
+  };
+}
+
+
+
+// --- UI fallback for missing locations (grabs "Location: ..." from text) ---
+function displayLocation(job) {
+  const loc = (job?.location || "").trim();
+  if (loc) return loc;
+
+  const source = (job?.description || "") + "\n" + (job?.company_name || "");
+  const m = source.match(/(?:^|\n)\s*Location\s*:\s*([^\n]+)\n?/i);
+  if (m && m[1]) return m[1].trim();
+
+  return "Not specified";
+}
+
 
   return (
     <AuthGuard>
@@ -721,7 +795,7 @@ export default function JobsPage() {
                 {/* Job Details */}
                 <div className="section">
                   <h3 className="modal-title text-base mb-3">Job Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="field-label">
                         Location
@@ -761,37 +835,6 @@ export default function JobsPage() {
                         <option value="Contract">Contract</option>
                         <option value="Internship">Internship</option>
                       </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Salary */}
-                <div className="section">
-                  <h3 className="modal-title text-base mb-3">Compensation</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="field-label">
-                        Minimum Salary
-                      </label>
-                      <Input
-                        type="number"
-                        value={manualJobData.salary_min}
-                        onChange={e => setManualJobData(prev => ({ ...prev, salary_min: e.target.value }))}
-                        placeholder="120000"
-                        className="text-sm font-medium text-slate-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label">
-                        Maximum Salary
-                      </label>
-                      <Input
-                        type="number"
-                        value={manualJobData.salary_max}
-                        onChange={e => setManualJobData(prev => ({ ...prev, salary_max: e.target.value }))}
-                        placeholder="180000"
-                        className="text-sm font-medium text-slate-100"
-                      />
                     </div>
                   </div>
                 </div>
@@ -945,7 +988,7 @@ export default function JobsPage() {
                     Location
                   </label>
                   {jobDetailsMode === 'view' ? (
-                    <p className="field-value-quiet">{selectedJob.location || 'Not specified'}</p>
+                    <p className="field-value-quiet">{displayLocation(selectedJob)}</p>
                   ) : (
                     <Input
                       value={editJobData?.location || ''}
@@ -996,38 +1039,6 @@ export default function JobsPage() {
                     </Select>
                   )}
                 </div>
-
-                {/* Salary Range */}
-                <div className="section">
-                  <label className="field-label">
-                    Salary Range
-                  </label>
-                  {jobDetailsMode === 'view' ? (
-                    <p className="field-value-quiet">
-                      {selectedJob.salary_min || selectedJob.salary_max ? 
-                        `$${selectedJob.salary_min || 'N/A'} - $${selectedJob.salary_max || 'N/A'}` : 
-                        'Not specified'
-                      }
-                    </p>
-                  ) : (
-                    <div className="flex space-x-2">
-                      <Input
-                        type="number"
-                        value={editJobData?.salary_min || ''}
-                        onChange={(e) => setEditJobData(prev => ({ ...prev, salary_min: e.target.value }))}
-                        placeholder="Min"
-                        className="text-sm font-medium text-slate-100"
-                      />
-                      <Input
-                        type="number"
-                        value={editJobData?.salary_max || ''}
-                        onChange={(e) => setEditJobData(prev => ({ ...prev, salary_max: e.target.value }))}
-                        placeholder="Max"
-                        className="text-sm font-medium text-slate-100"
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Source URL */}
@@ -1061,15 +1072,16 @@ export default function JobsPage() {
 
               {/* Description */}
               <div className="section">
-                <label className="field-label">
-                  Description
-                </label>
+                <label className="field-label">Description</label>
                 {jobDetailsMode === 'view' ? (
                   <div className="card-subtle">
-                    {editJobData?.description ? (
-                      <pre className="whitespace-pre-wrap text-sm font-medium text-slate-100 font-sans">
-                        {editJobData.description}
-                      </pre>
+                    {selectedJob?.description ? (
+                      (() => {
+                        const parsed = parseJobForDisplay(selectedJob);
+                        return parsed.cleanDescription
+                          ? <pre className="job-desc">{parsed.cleanDescription}</pre>
+                          : <p className="text-slate-500 italic">No description provided</p>;
+                      })()
                     ) : (
                       <p className="text-slate-500 italic">No description provided</p>
                     )}
@@ -1078,75 +1090,62 @@ export default function JobsPage() {
                   <Textarea
                     value={editJobData?.description || ''}
                     onChange={(e) => setEditJobData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Job description..."
+                    placeholder="Job description…"
                     rows={6}
                     className="text-sm font-medium text-slate-100"
                   />
                 )}
               </div>
 
+
+
               {/* Requirements */}
               <div className="section">
-                <label className="field-label">
-                  Requirements
-                </label>
-                {jobDetailsMode === 'view' ? (
-                  <div className="card-subtle">
-                    {editJobData?.requirements && editJobData.requirements.length > 0 ? (
-                      <ul className="list-disc list-inside space-y-1">
-                        {editJobData.requirements.map((req, index) => (
-                          <li key={index} className="text-sm font-medium text-slate-100">{req}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-slate-500 italic">No requirements specified</p>
-                    )}
-                  </div>
-                ) : (
-                  <Textarea
-                    value={editJobData?.requirements?.join('\n\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({
-                      ...prev,
-                      requirements: e.target.value.split('\n')
-                    }))}
-                    placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms"
-                    rows={4}
-                    className="text-sm font-medium text-slate-100"
-                  />
-                )}
-              </div>
+                <label className="field-label">Requirements</label>
+                {(() => {
+                  const parsed = parseJobForDisplay(selectedJob);
 
+                  const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+                  const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
+                  const dedupe = (arr) => Array.from(new Map(arr.filter(Boolean).map(s => [canon(s), pretty(s)])).values());
+
+                  const base = Array.isArray(selectedJob?.requirements) ? selectedJob.requirements : [];
+                  const reqs = dedupe([...(base || []), ...(parsed.requirements || [])]);
+
+                  return reqs.length ? (
+                    <ul className="list-disc list-inside space-y-1">
+                      {reqs.map((req, i) => <li key={i} className="text-sm font-medium text-slate-100">{req}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-500 italic">No requirements specified</p>
+                  );
+                })()}
+              </div>
               {/* Skills */}
               <div className="section">
-                <label className="field-label">
-                  Required Skills
-                </label>
-                {jobDetailsMode === 'view' ? (
-                  <div className="card-subtle">
-                    {editJobData?.skills && editJobData.skills.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {editJobData.skills.map((skill, index) => (
-                          <span key={index} className="bg-blue-900/50 text-blue-200 px-2 py-1 rounded-full text-sm font-medium border border-blue-500/30">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 italic">No skills specified</p>
-                    )}
-                  </div>
-                ) : (
-                  <Textarea
-                    value={editJobData?.skills?.join('\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({
-                      ...prev,
-                      skills: e.target.value.split('\n')
-                    }))}
-                    placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
-                    rows={3}
-                    className="text-sm font-medium text-slate-100"
-                  />
-                )}
+                <label className="field-label">Required Skills</label>
+                {(() => {
+                  const parsed = parseJobForDisplay(selectedJob);
+
+                  const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+                  const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
+                  const dedupe = (arr) => Array.from(new Map(arr.filter(Boolean).map(s => [canon(s), pretty(s)])).values());
+
+                  const base = Array.isArray(selectedJob?.skills) ? selectedJob.skills : [];
+                  const skills = dedupe([...(base || []), ...(parsed.skills || [])]);
+
+                  return skills.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {skills.map((s, i) => (
+                        <span key={i} className="bg-blue-900/50 text-blue-200 px-2 py-1 rounded-full text-sm font-medium border border-blue-500/30">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 italic">No skills specified</p>
+                  );
+                })()}
               </div>
 
               <div className="soft-divider my-2" />
@@ -1380,14 +1379,6 @@ export default function JobsPage() {
                           <div className="flex items-center">
                             <span className="mr-1">📍</span>
                             <span>{job.location}</span>
-                          </div>
-                        )}
-                        {job.salary_min && job.salary_max && (
-                          <div className="flex items-center">
-                            <span className="mr-1">💰</span>
-                            <span className="font-medium text-green-600 dark:text-green-400">
-                              ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
-                            </span>
                           </div>
                         )}
                       </div>
