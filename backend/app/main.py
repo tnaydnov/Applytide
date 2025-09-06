@@ -29,6 +29,19 @@ raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localho
 _norm = set(o.strip().rstrip('/') for o in raw_origins if o.strip())
 for extra in ["http://127.0.0.1:3000", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3001"]:
     _norm.add(extra)
+
+# Add support for Chrome extensions and common job sites
+chrome_ext_origins = [
+    "https://www.linkedin.com",
+    "https://linkedin.com", 
+    "https://www.indeed.com",
+    "https://indeed.com",
+    "https://www.glassdoor.com",
+    "https://glassdoor.com"
+]
+for origin in chrome_ext_origins:
+    _norm.add(origin)
+
 ALLOWED_ORIGINS = list(_norm)
 
 app = FastAPI(title="Applytide API")

@@ -28,7 +28,8 @@ services:
     env_file: .env
     environment:
       PORT: 8000
-      ALLOWED_ORIGINS: http://localhost:3000
+      ALLOWED_ORIGINS: "http://localhost:3000,https://www.linkedin.com,https://www.indeed.com,https://www.glassdoor.com"
+      CORS_DEBUG: "1"
       DATABASE_URL: postgresql+psycopg2://jobflow:jobflow@pg:5432/jobflow
       REDIS_URL: redis://redis:6379/0
       SMTP_HOST: ${SMTP_HOST:-maildev}
