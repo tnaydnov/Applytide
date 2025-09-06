@@ -1069,8 +1069,8 @@ export default function DocumentsPage() {
           />
           
           {/* Modal content */}
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl mx-4 max-h-[90vh] overflow-auto">
-            <div className="glass-card border border-white/30 rounded-2xl p-6 backdrop-blur-xl bg-slate-900/95 shadow-2xl">
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl mx-4 max-h-[50vh] overflow-auto">
+            <div className="glass-card border border-white/30 rounded-2xl p-6 backdrop-blur-xl bg-slate-900/95 shadow-2xl max-h-screen overflow-y-auto">
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
                   🔍 Document Analysis Results

@@ -40,7 +40,6 @@ export default function JobsPage() {
     description: '',
     requirements: [],
     skills: [],
-    benefits: [],
     salary_min: '',
     salary_max: '',
     remote_type: 'On-site',
@@ -204,9 +203,6 @@ export default function JobsPage() {
       if (manualJobData.skills?.length) {
         cleanData.skills = manualJobData.skills.map(s => s.trim()).filter(Boolean);
       }
-      if (manualJobData.benefits?.length) {
-        cleanData.benefits = manualJobData.benefits.map(b => b.trim()).filter(Boolean);
-      }
 
       await api.createManualJob(cleanData);
       toast.success("Job created successfully!");
@@ -233,7 +229,6 @@ export default function JobsPage() {
       description: '',
       requirements: [],
       skills: [],
-      benefits: [],
       salary_min: '',
       salary_max: '',
       remote_type: 'On-site',
@@ -252,6 +247,21 @@ export default function JobsPage() {
       toast.success("Application created! Check your pipeline.");
     } catch (err) { 
       toast.error(`Failed to create application: ${err.message || err}`);
+    }
+  }
+
+  async function deleteJob(jobId) {
+    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await api.deleteJob(jobId);
+      // Remove the job from the local state
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
+      toast.success("Job deleted successfully!");
+    } catch (err) {
+      toast.error(`Failed to delete job: ${err.message || err}`);
     }
   }
 
@@ -319,19 +329,13 @@ export default function JobsPage() {
     // Extract and remove benefits section
     const benefitsMatch = job.description.match(/\*\*Benefits:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
     if (benefitsMatch) {
-      const benefitsText = benefitsMatch[1];
-      benefitsText.split('\n').forEach(benefit => {
-        const cleanBenefit = benefit.replace(/^• /, '').trim();
-        if (cleanBenefit) benefits.push(cleanBenefit);
-      });
       cleanDescription = cleanDescription.replace(/\n\n\*\*Benefits:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
     }
 
     return {
       cleanDescription: cleanDescription.trim(),
       requirements,
-      skills,
-      benefits
+      skills
     };
   }
 
@@ -397,7 +401,6 @@ export default function JobsPage() {
       // Extract benefits section
       const benefitsMatch = job.description.match(/\*\*Benefits:\*\*\n(.*?)(?=\n\n\*\*|$)/s);
       if (benefitsMatch) {
-        benefits = benefitsMatch[1].split('\n').map(benefit => benefit.replace(/^• /, '').trim()).filter(benefit => benefit);
         cleanDescription = cleanDescription.replace(/\n\n\*\*Benefits:\*\*\n.*?(?=\n\n\*\*|$)/s, '');
       }
       
@@ -412,7 +415,6 @@ export default function JobsPage() {
       description: cleanDescription,
       requirements: requirements,
       skills: skills,
-      benefits: benefits,
       salary_min: job.salary_min || '',
       salary_max: job.salary_max || '',
       remote_type: job.remote_type || 'On-site',
@@ -481,10 +483,6 @@ export default function JobsPage() {
       
       if (editJobData.skills && editJobData.skills.length > 0) {
         cleanData.skills = editJobData.skills.filter(skill => skill.trim());
-      }
-      
-      if (editJobData.benefits && editJobData.benefits.length > 0) {
-        cleanData.benefits = editJobData.benefits.filter(benefit => benefit.trim());
       }
 
       console.log('Updating job with data:', cleanData);
@@ -821,7 +819,7 @@ export default function JobsPage() {
                   <div>
                     <Textarea
                       rows={4}
-                      value={manualJobData.requirements.join('\n')}
+                      value={manualJobData.requirements.join('\n\n')}
                       onChange={e => handleArrayInput('requirements', e.target.value)}
                       placeholder="5+ years of experience in software development&#10;Strong knowledge of React and Node.js&#10;Experience with cloud platforms (AWS, GCP, Azure)"
                       className="w-full text-sm font-medium text-slate-100"
@@ -838,20 +836,6 @@ export default function JobsPage() {
                       value={manualJobData.skills.join('\n')}
                       onChange={e => handleArrayInput('skills', e.target.value)}
                       placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
-                      className="w-full text-sm font-medium text-slate-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Benefits */}
-                <div className="section">
-                  <h3 className="modal-title text-base mb-3">Benefits & Perks</h3>
-                  <div>
-                    <Textarea
-                      rows={3}
-                      value={manualJobData.benefits.join('\n')}
-                      onChange={e => handleArrayInput('benefits', e.target.value)}
-                      placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
                       className="w-full text-sm font-medium text-slate-100"
                     />
                   </div>
@@ -888,10 +872,10 @@ export default function JobsPage() {
           isOpen={showJobDetailsModal} 
           onClose={closeJobDetails}
           title={jobDetailsMode === 'view' ? "Job Details" : "Edit Job"}
-          size="lg"
+          size="full"
         >
           {selectedJob && (
-            <div className="space-y-6">
+            <div className="space-y-6 h-96 max-h-[90vh] overflow-y-auto">
               {/* Job Header */}
               <div className="pb-4">
                 <div className="flex justify-between items-start">
@@ -1120,7 +1104,7 @@ export default function JobsPage() {
                   </div>
                 ) : (
                   <Textarea
-                    value={editJobData?.requirements?.join('\n') || ''}
+                    value={editJobData?.requirements?.join('\n\n') || ''}
                     onChange={(e) => setEditJobData(prev => ({
                       ...prev,
                       requirements: e.target.value.split('\n')
@@ -1159,37 +1143,6 @@ export default function JobsPage() {
                       skills: e.target.value.split('\n')
                     }))}
                     placeholder="JavaScript&#10;React&#10;Node.js&#10;PostgreSQL&#10;Docker"
-                    rows={3}
-                    className="text-sm font-medium text-slate-100"
-                  />
-                )}
-              </div>
-
-              {/* Benefits */}
-              <div className="section">
-                <label className="field-label">
-                  Benefits & Perks
-                </label>
-                {jobDetailsMode === 'view' ? (
-                  <div className="card-subtle">
-                    {editJobData?.benefits && editJobData.benefits.length > 0 ? (
-                      <ul className="list-disc list-inside space-y-1">
-                        {editJobData.benefits.map((benefit, index) => (
-                          <li key={index} className="text-sm font-medium text-slate-100">{benefit}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-slate-500 italic">No benefits specified</p>
-                    )}
-                  </div>
-                ) : (
-                  <Textarea
-                    value={editJobData?.benefits?.join('\n') || ''}
-                    onChange={(e) => setEditJobData(prev => ({
-                      ...prev,
-                      benefits: e.target.value.split('\n')
-                    }))}
-                    placeholder="Health, dental, and vision insurance&#10;401(k) with company matching&#10;Flexible work hours&#10;Professional development budget"
                     rows={3}
                     className="text-sm font-medium text-slate-100"
                   />
@@ -1538,6 +1491,14 @@ export default function JobsPage() {
                         className="btn-orchid"
                       >
                         <span className="mr-1">📝</span> Apply Now
+                      </Button>
+                      <Button
+                        onClick={() => deleteJob(job.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-red-800/50 hover:border-red-700/50"
+                      >
+                        <span className="mr-1">🗑️</span> Delete
                       </Button>
                     </div>
                   </div>

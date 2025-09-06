@@ -1,0 +1,20 @@
+/* applytide-button.css */
+#applytide-button.applytide-save-button {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 600;
+  border: none;
+  background: #6d28d9;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+#applytide-button.applytide-save-button.applytide-button-hover { filter: brightness(1.12); }
+#applytide-button.applytide-save-button.applytide-button-loading { opacity: 0.75; cursor: default; }
+#applytide-button.applytide-save-button.applytide-button-success { background: #10b981; }
+#applytide-button.applytide-save-button.applytide-button-error   { background: #ef4444; }
