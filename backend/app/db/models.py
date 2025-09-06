@@ -1,9 +1,14 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, DateTime, Text, ForeignKey, Integer
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, JSON, Integer
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from .base import Base
+from .session import engine
+
+IS_POSTGRES = engine.dialect.name == "postgresql"   # (don't use engine.name)
+JSONList = JSONB if IS_POSTGRES else JSON
 
 def now_utc():
     return datetime.now(timezone.utc)
@@ -35,17 +40,25 @@ class Company(Base):
 # ---------- Jobs ----------
 class Job(Base):
     __tablename__ = "jobs"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True)
+
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     title: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
     location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     remote_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    salary_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    salary_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # NEW: only this column is added
+    job_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirements: Mapped[list[str]] = mapped_column(JSONList, nullable=False, default=list)
+    skills: Mapped[list[str]] = mapped_column(JSONList, nullable=False, default=list)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
 
 # ---------- Resumes ----------
 class Resume(Base):
