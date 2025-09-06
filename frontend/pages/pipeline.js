@@ -1513,10 +1513,10 @@ function JobDetailModal({ application, onClose }) {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] p-4">
       <div className="modal-backdrop" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="modal-glass rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="modal-glass rounded-lg max-w-4xl w-full max-h-[calc(100vh-2rem)] my-4 flex flex-col">
           {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
             <h2 className="text-xl font-semibold text-white drop-shadow-lg">Application Details</h2>
             <button
               onClick={onClose}
@@ -1529,7 +1529,7 @@ function JobDetailModal({ application, onClose }) {
           </div>
 
         {/* Modal Content */}
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Job Header */}
           <div className="border-b border-white/10 pb-4">
             <h3 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
@@ -1752,20 +1752,6 @@ function JobDetailModal({ application, onClose }) {
             </div>
           )}
 
-          {/* Benefits */}
-          {application.job?.benefits && application.job.benefits.length > 0 && (
-            <div>
-              <h4 className="field-label">🎁 Benefits & Perks</h4>
-              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/10">
-                <ul className="list-disc list-inside space-y-1">
-                  {application.job.benefits.map((benefit, index) => (
-                    <li key={index} className="text-sm text-white/90">{benefit}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
           {/* Application Metadata */}
           <div className="border-t border-white/10 pt-4">
             <div className="text-sm text-white/60 space-y-1">
@@ -1779,7 +1765,7 @@ function JobDetailModal({ application, onClose }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-white/10 bg-white/5">
+        <div className="flex justify-end space-x-3 p-6 border-t border-white/10 bg-white/5 flex-shrink-0">
           <Button variant="outline" onClick={onClose} className="border-white/20 text-white hover:bg-white/10">
             Close
           </Button>
@@ -1888,8 +1874,8 @@ function NoteModal({ application, onClose }) {
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] p-4">
       <div className="modal-backdrop" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="modal-glass rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="modal-glass rounded-xl max-w-2xl w-full max-h-[calc(100vh-2rem)] my-4 flex flex-col">
           {/* Modal Header */}
           <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
             <h2 className="text-xl font-semibold text-white drop-shadow-lg">Notes</h2>

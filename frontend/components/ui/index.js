@@ -110,7 +110,7 @@ export function Modal({ open, onClose, children }) {
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         zIndex: 10001,
         maxWidth: '90vw',
-        maxHeight: '90vh',
+        maxHeight: 'calc(100vh - 2rem)',
         overflow: 'auto',
         border: '1px solid #e5e7eb'
       }}>

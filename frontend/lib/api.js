@@ -237,6 +237,8 @@ export const api = {
     apiFetch("/jobs/manual", { method: "POST", body: JSON.stringify(payload) }).then(r => r.json()),
   updateJob: (jobId, payload) =>
     apiFetch(`/jobs/${jobId}`, { method: "PUT", body: JSON.stringify(payload) }).then(r => r.json()),
+  deleteJob: (jobId) =>
+    apiFetch(`/jobs/${jobId}`, { method: "DELETE" }),
 
   // Get current user info including premium status
   getCurrentUser: () =>

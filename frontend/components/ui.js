@@ -211,10 +211,10 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' })
   return !isOpen ? null : (
     <div className="fixed inset-0 z-50">
       <div className="modal-backdrop" onClick={onClose} />
-      <div className="fixed inset-0 flex items-start sm:items-center justify-center p-4">
-        <div className={`w-full ${sizes[size]} modal-glass px-6 py-5`} role="dialog" aria-modal="true">
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div className={`relative w-full ${sizes[size]} modal-glass max-h-[85vh] flex flex-col`} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
           {title && (
-            <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
               <h3 className="text-xl font-semibold text-slate-100">{title}</h3>
               <button
                 onClick={onClose}
@@ -228,13 +228,12 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' })
             </div>
           )}
 
-          <div className="space-y-5">{children}</div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 min-h-0">{children}</div>
 
           {footer && (
-            <div className="mt-5 pt-4 soft-divider"></div>
-          )}
-          {footer && (
-            <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">{footer}</div>
+            <div className="border-t border-white/10 p-6 flex-shrink-0">
+              <div className="flex flex-col sm:flex-row justify-end gap-2">{footer}</div>
+            </div>
           )}
         </div>
       </div>

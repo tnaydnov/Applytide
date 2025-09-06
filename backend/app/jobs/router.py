@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, delete
 from ..db.session import get_db
 from ..db import models
 from ..auth.deps import get_current_user
@@ -402,6 +402,67 @@ def update_job(
     db.commit()
     db.refresh(job)
     return job
+
+
+@router.delete("/{job_id}")
+def delete_job(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Delete a job (only for jobs owned by the current user)"""
+    
+    # Get the job and verify ownership
+    job = db.execute(
+        select(models.Job).where(
+            models.Job.id == job_id,
+            models.Job.user_id == current_user.id
+        )
+    ).scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or not authorized")
+    
+    # First delete all related applications and their dependencies
+    applications = db.execute(
+        select(models.Application).where(models.Application.job_id == job_id)
+    ).scalars().all()
+    
+    for app in applications:
+        # Delete application attachments
+        db.execute(
+            delete(models.ApplicationAttachment).where(
+                models.ApplicationAttachment.application_id == app.id
+            )
+        )
+        
+        # Delete stages
+        db.execute(
+            delete(models.Stage).where(
+                models.Stage.application_id == app.id
+            )
+        )
+        
+        # Delete notes
+        db.execute(
+            delete(models.Note).where(
+                models.Note.application_id == app.id
+            )
+        )
+        
+        # Delete the application itself
+        db.delete(app)
+    
+    # Delete match results for this job
+    db.execute(
+        delete(models.MatchResult).where(models.MatchResult.job_id == job_id)
+    )
+    
+    # Finally delete the job
+    db.delete(job)
+    db.commit()
+    
+    return {"message": "Job deleted successfully"}
 
 
 @router.post("/scrape", response_model=JobCreate)
