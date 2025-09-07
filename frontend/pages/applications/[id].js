@@ -1,21 +1,61 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import { Button, Card, Input, Textarea, Select, Badge } from "../../components/ui";
-import { useToast } from '../../lib/toast';
+import { useToast } from "../../lib/toast";
 import Link from "next/link";
+
+/** ---------- constants & helpers (logic only; no UI changes) ---------- */
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+
+const ALLOWED_STATUSES = ["Applied", "Phone Screen", "Tech", "On-site", "Offer", "Accepted", "Rejected"];
+const normalizeStatus = (s) => (s === "Saved" ? "Applied" : s);
+
+const statusConfig = {
+  Applied: { color: "bg-blue-100 text-blue-800", icon: "📨" },
+  "Phone Screen": { color: "bg-yellow-100 text-yellow-800", icon: "📞" },
+  Tech: { color: "bg-purple-100 text-purple-800", icon: "💻" },
+  "On-site": { color: "bg-indigo-100 text-indigo-800", icon: "🏢" },
+  Offer: { color: "bg-green-100 text-green-800", icon: "🎉" },
+  Accepted: { color: "bg-emerald-100 text-emerald-800", icon: "✅" },
+  Rejected: { color: "bg-red-100 text-red-800", icon: "❌" },
+};
+
+const fmtMB = (bytes) => ((bytes || 0) / 1024 / 1024).toFixed(2);
+const toLocalInputValue = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
+};
+const toISOFromLocal = (value) => (value ? new Date(value).toISOString() : undefined);
+
+/** -------------------------------------------------------------------- */
 
 export default function AppDetailPage() {
   const router = useRouter();
-  const { id } = router.query;
-  const [data, setData] = useState(null);
-  const [note, setNote] = useState("");
-  const [stage, setStage] = useState({ name: "Phone Screen", scheduled_at: "", notes: "" });
-  const [loading, setLoading] = useState(true);
-  const [attachments, setAttachments] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadLoading, setUploadLoading] = useState(false);
   const toast = useToast();
+
+  // id is undefined until router is ready; also guard against string[]
+  const appId = useMemo(
+    () => (Array.isArray(router.query.id) ? router.query.id[0] : router.query.id),
+    [router.query.id]
+  );
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // notes
+  const [note, setNote] = useState("");
+
+  // add stage form
+  const [stage, setStage] = useState({ name: "Phone Screen", scheduled_at: "", notes: "" });
+
+  // attachments uploads
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   // scoring
   const [resumes, setResumes] = useState([]);
@@ -24,31 +64,15 @@ export default function AppDetailPage() {
   const [selectedResume, setSelectedResume] = useState("");
   const [scoring, setScoring] = useState(false);
 
-  const statusConfig = {
-    "Applied": { color: "bg-blue-100 text-blue-800", icon: "📨" },
-    "Phone Screen": { color: "bg-yellow-100 text-yellow-800", icon: "📞" },
-    "Tech": { color: "bg-purple-100 text-purple-800", icon: "💻" },
-    "On-site": { color: "bg-indigo-100 text-indigo-800", icon: "🏢" },
-    "Offer": { color: "bg-green-100 text-green-800", icon: "🎉" },
-    "Accepted": { color: "bg-emerald-100 text-emerald-800", icon: "✅" },
-    "Rejected": { color: "bg-red-100 text-red-800", icon: "❌" }
-  };
-
-  const ALLOWED_STATUSES = ["Applied","Phone Screen","Tech","On-site","Offer","Accepted","Rejected"];
-  const normalizeStatus = (s) => (s === "Saved" ? "Applied" : s);
-
-  async function load() {
-    if (!id) return;
+  /** ---------------------------- data load ---------------------------- */
+  async function load(idToLoad) {
+    if (!idToLoad) return;
     setLoading(true);
     try {
-      const [appData, resumeData] = await Promise.all([
-        api.getAppDetail(id),
-        api.listResumes()
-      ]);
+      const [appData, resumeData] = await Promise.all([api.getAppDetail(idToLoad), api.listResumes()]);
       setData(appData);
       setResumes(resumeData);
-      setSelectedResume(appData.application.resume_id || "");
-      setAttachments(appData.attachments || []);
+      setSelectedResume(appData?.application?.resume_id || "");
     } catch (err) {
       toast.error("Failed to load application details");
     } finally {
@@ -56,177 +80,195 @@ export default function AppDetailPage() {
     }
   }
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    if (!router.isReady || !appId) return;
+    load(appId);
+  }, [router.isReady, appId]);
 
-  // Quick action handlers
+  /** ----------------------- quick actions (status) -------------------- */
   async function quickStatusChange(newStatus) {
+    if (!appId) return;
     try {
       const next = normalizeStatus(newStatus);
-      await api.updateApplication(id, { status: next });
-      setData(prev => ({
-        ...prev,
-        application: { ...prev.application, status: next }
-      }));
+      // optimistic update
+      setData((prev) =>
+        prev ? { ...prev, application: { ...prev.application, status: next } } : prev
+      );
+      await api.updateApplication(appId, { status: next });
       toast.success(`Status changed to ${next}`);
     } catch (err) {
-      toast.error(`Failed to update status: ${err.message || err}`);
+      toast.error(`Failed to update status: ${err?.message || err}`);
+      // fallback reload to correct UI if optimistic update was wrong
+      load(appId);
     }
   }
 
   async function quickAddFollowUp() {
+    if (!appId) return;
     const followUpDate = new Date();
     followUpDate.setDate(followUpDate.getDate() + 3);
-    
+
     try {
-      const payload = { 
-        name: "Follow-up", 
+      await api.addStage(appId, {
+        name: "Follow-up",
         scheduled_at: followUpDate.toISOString(),
-        notes: "Automated follow-up reminder" 
-      };
-      await api.addStage(id, payload);
-      await load();
+        notes: "Automated follow-up reminder",
+      });
+      await load(appId);
       toast.success("Follow-up reminder added for 3 days from now");
     } catch (err) {
-      toast.error(`Failed to add follow-up: ${err.message || err}`);
+      toast.error(`Failed to add follow-up: ${err?.message || err}`);
     }
   }
 
   async function quickAddInterview() {
+    if (!appId) return;
     const interviewDate = new Date();
     interviewDate.setDate(interviewDate.getDate() + 7);
-    interviewDate.setHours(14, 0, 0); // 2 PM default
-    
+    interviewDate.setHours(14, 0, 0);
+
     try {
-      const payload = { 
-        name: "Interview", 
+      await api.addStage(appId, {
+        name: "Interview",
         scheduled_at: interviewDate.toISOString(),
-        notes: "Scheduled interview" 
-      };
-      await api.addStage(id, payload);
-      await load();
+        notes: "Scheduled interview",
+      });
+      await load(appId);
       toast.success("Interview scheduled for next week");
     } catch (err) {
-      toast.error(`Failed to add interview: ${err.message || err}`);
+      toast.error(`Failed to add interview: ${err?.message || err}`);
     }
   }
 
-  // File upload handlers
-  async function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  /** --------------------------- attachments -------------------------- */
+  async function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !appId) return;
 
     setUploadLoading(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE}/applications/${appId}/attachments`, {
+        method: "POST",
+        headers: authHeader(),
+        body: formData,
       });
-      
-      if (response.ok) {
-        await load(); // Reload to get updated attachments
-        toast.success("File uploaded successfully!");
-        event.target.value = ''; // Clear file input
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || "Upload failed");
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error?.detail || "Upload failed");
       }
+
+      await load(appId);
+      toast.success("File uploaded successfully!");
     } catch (err) {
-      toast.error(`Upload failed: ${err.message || err}`);
+      toast.error(err?.message || "Upload failed");
     } finally {
+      e.target.value = "";
       setUploadLoading(false);
     }
   }
 
   async function deleteAttachment(attachmentId) {
+    if (!appId) return;
     if (!confirm("Are you sure you want to delete this file?")) return;
-    
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments/${attachmentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const res = await fetch(`${API_BASE}/applications/${appId}/attachments/${attachmentId}`, {
+        method: "DELETE",
+        headers: authHeader(),
       });
-      
-      if (response.ok) {
-        await load(); // Reload to get updated attachments
-        toast.success("File deleted successfully!");
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || "Delete failed");
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error?.detail || "Delete failed");
       }
+      await load(appId);
+      toast.success("File deleted successfully!");
     } catch (err) {
-      toast.error(`Delete failed: ${err.message || err}`);
+      toast.error(err?.message || "Delete failed");
     }
   }
 
   function downloadAttachment(attachmentId, filename) {
-    const downloadUrl = `${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/applications/${id}/attachments/${attachmentId}/download`;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!appId) return;
+    // direct URL download (works if the endpoint doesn't require Authorization header)
+    const url = `${API_BASE}/applications/${appId}/attachments/${attachmentId}/download`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "download";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
+  /** ----------------------------- notes ------------------------------ */
   async function addNote() {
+    if (!appId) return;
     if (!note.trim()) {
       toast.error("Please enter a note");
       return;
     }
-    
-    try { 
-      await api.addNote(id, note); 
-      setNote(""); 
-      await load();
+    try {
+      await api.addNote(appId, note.trim());
+      setNote("");
+      await load(appId);
       toast.success("Note added successfully!");
-    } catch (e) { 
-      toast.error(`Failed to add note: ${e.message || e}`);
+    } catch (e) {
+      toast.error(`Failed to add note: ${e?.message || e}`);
     }
   }
 
+  /** ----------------------------- stages ----------------------------- */
   async function addStage() {
+    if (!appId) return;
     try {
       const payload = { name: normalizeStatus(stage.name) };
-      if (stage.scheduled_at) payload.scheduled_at = new Date(stage.scheduled_at).toISOString();
+      const dt = toISOFromLocal(stage.scheduled_at);
+      if (dt) payload.scheduled_at = dt;
       if (stage.notes) payload.notes = stage.notes;
-      
-      await api.addStage(id, payload);
-      setStage({ ...stage, notes: "" });
-      await load();
+
+      await api.addStage(appId, payload);
+      setStage((s) => ({ ...s, notes: "" }));
+      await load(appId);
       toast.success(`Added ${stage.name} stage!`);
-    } catch (e) { 
-      toast.error(`Failed to add stage: ${e.message || e}`);
+    } catch (e) {
+      toast.error(`Failed to add stage: ${e?.message || e}`);
     }
   }
 
+  /** ------------------------------ score ----------------------------- */
   async function doScore() {
-    if (!selectedResume) { 
+    if (!appId) return;
+    if (!selectedResume) {
       toast.error("Please select a resume to score against");
-      return; 
+      return;
     }
-    
     setScoring(true);
     try {
-      const res = await api.apiFetch(`/match/score?resume_id=${selectedResume}&job_id=${data.job.id}`, { method: "POST" }).then(r=>r.json());
-      setScore(res.score);
-      setKeywords({ present: res.keywords_present, missing: res.keywords_missing });
-      toast.success(`Match score calculated: ${res.score}%`);
-    } catch (e) { 
-      toast.error(`Scoring failed: ${e.message || e}`);
+      const r = await api
+        .apiFetch(`/match/score?resume_id=${selectedResume}&job_id=${data.job.id}`, { method: "POST" })
+        .then((x) => x.json());
+      setScore(r.score);
+      setKeywords({ present: r.keywords_present || [], missing: r.keywords_missing || [] });
+      toast.success(`Match score calculated: ${r.score}%`);
+    } catch (e) {
+      toast.error(`Scoring failed: ${e?.message || e}`);
     } finally {
       setScoring(false);
     }
   }
 
+  /** ---------------------------- derived UI -------------------------- */
+  const normalized = useMemo(
+    () => normalizeStatus(data?.application?.status || "Applied"),
+    [data?.application?.status]
+  );
+  const currentStatus = statusConfig[normalized] || { color: "bg-gray-100 text-gray-800", icon: "📋" };
+
+  /** ------------------------------ render ---------------------------- */
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -253,9 +295,6 @@ export default function AppDetailPage() {
     );
   }
 
-  const normalized = normalizeStatus(data.application.status);
-  const currentStatus = statusConfig[normalized] || { color: "bg-gray-100 text-gray-800", icon: "📋" };
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -265,13 +304,14 @@ export default function AppDetailPage() {
             ← Back to Pipeline
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{data.job.title}</h1>
+
           {data.job.company_name && (
             <div className="flex items-center space-x-4">
               <p className="text-xl text-indigo-600 font-medium">{data.job.company_name}</p>
               {data.job.company_website && (
-                <a 
-                  href={data.job.company_website} 
-                  target="_blank" 
+                <a
+                  href={data.job.company_website}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-gray-500 hover:text-indigo-600 flex items-center"
                 >
@@ -281,6 +321,7 @@ export default function AppDetailPage() {
               )}
             </div>
           )}
+
           <div className="flex items-center space-x-4">
             <Badge variant="default" size="lg">
               <span className="mr-2">{currentStatus.icon}</span>
@@ -303,18 +344,16 @@ export default function AppDetailPage() {
             <span className="text-2xl">⚡</span>
             <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Change */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Move Status</label>
-              <Select
-                value={normalized}
-                onChange={e => quickStatusChange(e.target.value)}
-                className="w-full"
-              >
-                {ALLOWED_STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
+              <Select value={normalized} onChange={(e) => quickStatusChange(e.target.value)} className="w-full">
+                {ALLOWED_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -322,12 +361,7 @@ export default function AppDetailPage() {
             {/* Quick Follow-up */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Schedule Reminder</label>
-              <Button
-                onClick={quickAddFollowUp}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
+              <Button onClick={quickAddFollowUp} variant="outline" size="sm" className="w-full">
                 📅 Follow-up in 3 days
               </Button>
             </div>
@@ -335,12 +369,7 @@ export default function AppDetailPage() {
             {/* Quick Interview */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Add Interview</label>
-              <Button
-                onClick={quickAddInterview}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
+              <Button onClick={quickAddInterview} variant="outline" size="sm" className="w-full">
                 🗓️ Schedule Interview
               </Button>
             </div>
@@ -373,7 +402,7 @@ export default function AppDetailPage() {
             <span className="text-2xl">💼</span>
             <h2 className="text-xl font-semibold text-gray-900">Job Details</h2>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
               {data.resume_label && (
@@ -386,9 +415,9 @@ export default function AppDetailPage() {
               )}
 
               {data.job.source_url && (
-                <a 
-                  href={data.job.source_url} 
-                  target="_blank" 
+                <a
+                  href={data.job.source_url}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
@@ -398,9 +427,9 @@ export default function AppDetailPage() {
               )}
 
               {data.job.company_website && (
-                <a 
-                  href={data.job.company_website} 
-                  target="_blank" 
+                <a
+                  href={data.job.company_website}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
@@ -452,26 +481,19 @@ export default function AppDetailPage() {
             <span className="text-2xl">🎯</span>
             <h2 className="text-xl font-semibold text-gray-900">Resume Match Analysis</h2>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <Select
-                label="Select Resume to Analyze"
-                value={selectedResume}
-                onChange={e => setSelectedResume(e.target.value)}
-              >
+              <Select label="Select Resume to Analyze" value={selectedResume} onChange={(e) => setSelectedResume(e.target.value)}>
                 <option value="">(Select a resume)</option>
-                {resumes.map(r => (
-                  <option key={r.id} value={r.id}>{r.label}</option>
+                {resumes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
                 ))}
               </Select>
-              
-              <Button 
-                onClick={doScore} 
-                disabled={!selectedResume}
-                loading={scoring}
-                className="w-full"
-              >
+
+              <Button onClick={doScore} disabled={!selectedResume} className="w-full">
                 {scoring ? "Analyzing..." : "Analyze Match"}
               </Button>
             </div>
@@ -495,13 +517,15 @@ export default function AppDetailPage() {
                     Matching Keywords ({keywords.present.length})
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {keywords.present.map(k => (
-                      <Badge key={k} variant="success" size="sm">{k}</Badge>
+                    {keywords.present.map((k) => (
+                      <Badge key={k} variant="success" size="sm">
+                        {k}
+                      </Badge>
                     ))}
                   </div>
                 </div>
               )}
-              
+
               {keywords.missing.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-red-800 flex items-center">
@@ -509,8 +533,10 @@ export default function AppDetailPage() {
                     Missing Keywords ({keywords.missing.length})
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {keywords.missing.map(k => (
-                      <Badge key={k} variant="danger" size="sm">{k}</Badge>
+                    {keywords.missing.map((k) => (
+                      <Badge key={k} variant="danger" size="sm">
+                        {k}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -554,8 +580,8 @@ export default function AppDetailPage() {
               </label>
             </div>
           </div>
-          
-          {attachments.length === 0 ? (
+
+          {(data.attachments || []).length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <div className="text-4xl mb-2">📁</div>
               <p>No files attached yet</p>
@@ -563,35 +589,34 @@ export default function AppDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {attachments.map(attachment => (
-                <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+              {data.attachments.map((a) => (
+                <div key={a.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       <span className="text-2xl">
-                        {attachment.content_type?.includes('image') ? '🖼️' : 
-                         attachment.content_type?.includes('pdf') ? '📄' : 
-                         attachment.content_type?.includes('doc') ? '📝' : '📎'}
+                        {a.content_type?.includes("image")
+                          ? "🖼️"
+                          : a.content_type?.includes("pdf")
+                          ? "📄"
+                          : a.content_type?.includes("doc")
+                          ? "📝"
+                          : "📎"}
                       </span>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">{attachment.filename}</p>
+                      <p className="font-medium text-gray-900">{a.filename}</p>
                       <p className="text-sm text-gray-500">
-                        {(attachment.file_size / 1024 / 1024).toFixed(2)} MB • 
-                        {new Date(attachment.created_at).toLocaleDateString()}
+                        {fmtMB(a.file_size)} MB • {new Date(a.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button
-                      onClick={() => downloadAttachment(attachment.id, attachment.filename)}
-                      variant="outline"
-                      size="sm"
-                    >
+                    <Button onClick={() => downloadAttachment(a.id, a.filename)} variant="outline" size="sm">
                       <span className="mr-1">⬇️</span>
                       Download
                     </Button>
                     <Button
-                      onClick={() => deleteAttachment(attachment.id)}
+                      onClick={() => deleteAttachment(a.id)}
                       variant="outline"
                       size="sm"
                       className="text-red-600 hover:text-red-700"
@@ -614,16 +639,16 @@ export default function AppDetailPage() {
             <span className="text-2xl">📅</span>
             <h2 className="text-xl font-semibold text-gray-900">Application Timeline</h2>
           </div>
-          
-          {data.stages.length === 0 ? (
+
+          {(data.stages || []).length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <div className="text-4xl mb-2">📋</div>
               <p>No stages added yet</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {data.stages.map((stageItem, index) => (
-                <div key={stageItem.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
+              {data.stages.map((s, index) => (
+                <div key={s.id} className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
                       <span className="text-sm font-medium text-indigo-600">{index + 1}</span>
@@ -631,62 +656,52 @@ export default function AppDetailPage() {
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-gray-900">{stageItem.name}</span>
-                      {stageItem.outcome && (
-                        <Badge variant={stageItem.outcome === 'passed' ? 'success' : 'danger'} size="sm">
-                          {stageItem.outcome}
+                      <span className="font-semibold text-gray-900">{s.name}</span>
+                      {s.outcome && (
+                        <Badge variant={s.outcome === "passed" ? "success" : "danger"} size="sm">
+                          {s.outcome}
                         </Badge>
                       )}
                     </div>
-                    {stageItem.scheduled_at && (
-                      <p className="text-sm text-gray-600">
-                        📅 {new Date(stageItem.scheduled_at).toLocaleString()}
-                      </p>
+                    {s.scheduled_at && (
+                      <p className="text-sm text-gray-600">📅 {new Date(s.scheduled_at).toLocaleString()}</p>
                     )}
-                    {stageItem.notes && (
-                      <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                        {stageItem.notes}
-                      </p>
-                    )}
+                    {s.notes && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{s.notes}</p>}
                   </div>
                 </div>
               ))}
             </div>
           )}
-          
+
           {/* Add Stage Form */}
           <div className="border-t pt-6 space-y-4">
             <h3 className="font-medium text-gray-900">Add New Stage</h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <Select
-                label="Stage Type"
-                value={stage.name}
-                onChange={e => setStage({ ...stage, name: e.target.value })}
-              >
-                {ALLOWED_STATUSES.map(x => (
-                  <option key={x} value={x}>{x}</option>
+              <Select label="Stage Type" value={stage.name} onChange={(e) => setStage({ ...stage, name: e.target.value })}>
+                {ALLOWED_STATUSES.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
                 ))}
               </Select>
-              
+
               <Input
                 label="Schedule (Optional)"
                 type="datetime-local"
                 value={stage.scheduled_at}
-                onChange={e => setStage({ ...stage, scheduled_at: e.target.value })}
+                onChange={(e) => setStage({ ...stage, scheduled_at: e.target.value })}
               />
             </div>
-            
+
             <Textarea
               label="Notes (Optional)"
               rows={3}
               placeholder="Add any notes about this stage..."
               value={stage.notes}
-              onChange={e => setStage({ ...stage, notes: e.target.value })}
+              onChange={(e) => setStage({ ...stage, notes: e.target.value })}
             />
-            
-            <Button onClick={addStage}>
-              Add Stage
-            </Button>
+
+            <Button onClick={addStage}>Add Stage</Button>
           </div>
         </div>
       </Card>
@@ -698,34 +713,32 @@ export default function AppDetailPage() {
             <span className="text-2xl">📝</span>
             <h2 className="text-xl font-semibold text-gray-900">Notes</h2>
           </div>
-          
-          {data.notes.length === 0 ? (
+
+          {(data.notes || []).length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <div className="text-4xl mb-2">📝</div>
               <p>No notes added yet</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {data.notes.map(noteItem => (
-                <div key={noteItem.id} className="border border-gray-200 rounded-lg p-4">
+              {data.notes.map((n) => (
+                <div key={n.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">
-                      {new Date(noteItem.created_at).toLocaleString()}
-                    </span>
+                    <span className="text-sm text-gray-500">{new Date(n.created_at).toLocaleString()}</span>
                   </div>
-                  <p className="text-gray-900">{noteItem.body}</p>
+                  <p className="text-gray-900">{n.body}</p>
                 </div>
               ))}
             </div>
           )}
-          
+
           <div className="border-t pt-6 space-y-4">
             <Textarea
               label="Add New Note"
               rows={3}
               placeholder="Write a note about this application..."
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={(e) => setNote(e.target.value)}
             />
             <Button onClick={addNote} disabled={!note.trim()}>
               Add Note

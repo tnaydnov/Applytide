@@ -1,53 +1,36 @@
 {
   "manifest_version": 3,
-  "name": "Applytide – Job Clipper",
-  "version": "1.0.4",
-  "description": "Extract job details from (almost) any site and save to Applytide.",
-  
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting",
-    "tabs"
-  ],
-  
+  "name": "Applytide",
+  "version": "1.0.0",
+  "description": "Save jobs to Applytide and auto-apply.",
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "https://*/*",
-    "http://*/*"
+    "https://app.applytide.com/*",
+    "http://localhost:8000/*",
+    "<all_urls>"
   ],
-  
-  "action": {
-    "default_title": "Save job to Applytide"
-  },
-  
   "background": {
     "service_worker": "background.js"
   },
-  
   "content_scripts": [
     {
-      "matches": ["https://*/*", "http://*/*"],
-      "js": ["job-extractor.js"],
-      "css": ["applytide-button.css"],
-      "run_at": "document_idle",
-      "all_frames": true
+      "matches": ["<all_urls>"],
+      "js": ["job-extractor.js", "panel.js"],
+      "css": ["applytide-button.css", "panel.css"],
+      "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [{
+    "resources": ["panel.css"],
+    "matches": ["<all_urls>"]
+  }],
+
+  "action": { "default_title": "Save job to Applytide" },
   
   "commands": {
     "applytide:set-token": {
       "suggested_key": { "default": "Alt+Shift+A" },
       "description": "Set Applytide API token"
     }
-  },
-  
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "*.css",
-        "assets/*"
-      ],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

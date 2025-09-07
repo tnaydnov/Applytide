@@ -5,7 +5,7 @@ import { Card, Button, Badge } from './ui';
 export default function JobList({ user, userProfile, filters = {} }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState('date'); // 'date', 'salary', 'title'
+  const [sortBy, setSortBy] = useState('date'); // 'date', 'title'
   const [error, setError] = useState(null);
 
   const loadJobs = useCallback(async () => {
@@ -28,8 +28,6 @@ export default function JobList({ user, userProfile, filters = {} }) {
       const jobsList = jobsData?.jobs || jobsData?.data || jobsData || [];
       
       if (jobsList.length === 0) {
-        console.log('No jobs found in database');
-        setError('No jobs found. Add some jobs to get started!');
         setJobs([]);
         return;
       }
@@ -54,8 +52,6 @@ export default function JobList({ user, userProfile, filters = {} }) {
     
     return jobsList.filter(job => {
       const jobLocation = (job.location || '').toLowerCase();
-      const jobTitle = (job.title || '').toLowerCase();
-      const jobCompany = (job.company_name || '').toLowerCase();
       
       // Show remote jobs to everyone
       if (jobLocation.includes('remote')) {
@@ -80,10 +76,6 @@ export default function JobList({ user, userProfile, filters = {} }) {
   const sortJobs = (jobsList) => {
     return [...jobsList].sort((a, b) => {
       switch (sortBy) {
-        case 'salary':
-          const salaryA = parseInt(a.salary_max || a.salary_min || '0');
-          const salaryB = parseInt(b.salary_max || b.salary_min || '0');
-          return salaryB - salaryA;
         case 'title':
           return (a.title || '').localeCompare(b.title || '');
         case 'date':
@@ -101,36 +93,30 @@ export default function JobList({ user, userProfile, filters = {} }) {
 
   const sortedJobs = sortJobs(jobs);
 
-  const formatSalary = (job) => {
-    if (job.salary_min && job.salary_max) {
-      return `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`;
-    } else if (job.salary_min) {
-      return `$${job.salary_min.toLocaleString()}+`;
-    } else if (job.salary_max) {
-      return `Up to $${job.salary_max.toLocaleString()}`;
-    }
-    return 'Salary not specified';
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not available';
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
 
-  const getJobTypeColor = (type) => {
-    switch (type?.toLowerCase()) {
-      case 'full-time':
-        return 'bg-green-100 text-green-800';
-      case 'part-time':
-        return 'bg-blue-100 text-blue-800';
-      case 'contract':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'remote':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  // Consistent badge mapping with your Badge variants
+  const jobTypeToVariant = (type) => {
+    switch ((type || '').toLowerCase()) {
+      case 'full-time': return 'success';
+      case 'part-time': return 'info';
+      case 'contract':  return 'warning';
+      case 'remote':    return 'primary';
+      default:          return 'default';
     }
+  };
+
+  // Match the display helper used on jobs page
+  const displayLocation = (job) => {
+    const loc = (job?.location || '').trim();
+    if (loc) return loc;
+    const source = (job?.description || '') + "\n" + (job?.company_name || '');
+    const m = source.match(/(?:^|\n)\s*Location\s*:\s*([^\n]+)\n?/i);
+    return m && m[1] ? m[1].trim() : 'Not specified';
   };
 
   if (loading) {
@@ -167,34 +153,30 @@ export default function JobList({ user, userProfile, filters = {} }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Available Jobs</h2>
-          <p className="text-gray-600">Find your next opportunity ({jobs.length} jobs)</p>
+          <h2 className="text-2xl font-bold text-slate-100">Available Jobs</h2>
+          <p className="text-slate-400">Find your next opportunity ({jobs.length} jobs)</p>
         </div>
         
         {/* Controls */}
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
           {/* Sort Options */}
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Sort by:</label>
+            <label className="text-sm font-medium text-slate-300">Sort by:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="input-glass input-cyan px-3 py-1 text-sm"
             >
               <option value="date">Date Posted</option>
-              <option value="salary">Salary</option>
               <option value="title">Job Title</option>
             </select>
           </div>
           
-          <Button 
-            onClick={loadJobs}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm"
-          >
+          <Button onClick={loadJobs} size="sm">
             🔄 Refresh
           </Button>
         </div>
@@ -203,40 +185,35 @@ export default function JobList({ user, userProfile, filters = {} }) {
       {/* Job Cards */}
       {sortedJobs.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
+          <div className="text-slate-500 mb-4">
             <svg className="h-16 w-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6.5" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Jobs Available</h3>
-          <p className="text-gray-600">Check back later for new opportunities or adjust your filters.</p>
+          <h3 className="text-lg font-medium text-slate-100 mb-2">No Jobs Available</h3>
+          <p className="text-slate-400">Check back later for new opportunities or adjust your filters.</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {sortedJobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-lg transition-shadow duration-200">
-              <div className="p-6">
+            <Card key={job.id} className="glass-card hover:border-white/20 transition-shadow duration-200">
+              <div>
                 <div className="flex flex-col sm:flex-row justify-between items-start space-y-4 sm:space-y-0">
                   {/* Job Info */}
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                      {job.job_type && (
-                        <Badge className={getJobTypeColor(job.job_type)}>
-                          {job.job_type}
-                        </Badge>
-                      )}
+                      <h3 className="text-lg font-semibold text-slate-100">{job.title}</h3>
+                      {job.job_type && <Badge variant={jobTypeToVariant(job.job_type)} size="sm">{job.job_type}</Badge>}
                     </div>
                     
-                    <div className="text-gray-600 space-y-1">
-                      <p className="font-medium">{job.company_name}</p>
-                      <p className="text-sm">📍 {job.location || 'Location not specified'}</p>
-                      <p className="text-sm">💰 {formatSalary(job)}</p>
+                    <div className="text-slate-300 space-y-1">
+                      <p className="font-medium text-indigo-400">{job.company_name}</p>
+                      <p className="text-sm">📍 {displayLocation(job)}</p>
                       <p className="text-sm">📅 Posted: {formatDate(job.created_at || job.posted_date)}</p>
                     </div>
                     
                     {job.description && (
-                      <p className="text-gray-600 text-sm mt-3 line-clamp-2">
+                      <p className="text-slate-300 text-sm mt-3 line-clamp-3">
                         {job.description.length > 150 
                           ? `${job.description.substring(0, 150)}...`
                           : job.description
@@ -248,27 +225,17 @@ export default function JobList({ user, userProfile, filters = {} }) {
                   {/* Actions */}
                   <div className="flex flex-col space-y-2 sm:ml-6">
                     <Button 
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white whitespace-nowrap"
+                      className="btn-orchid whitespace-nowrap"
                       onClick={() => {
-                        if (job.url) {
-                          window.open(job.url, '_blank');
+                        const url = job.url || job.source_url;
+                        if (url) {
+                          window.open(url, '_blank', 'noopener,noreferrer');
                         } else {
                           alert('Job application URL not available');
                         }
                       }}
                     >
                       Apply Now
-                    </Button>
-                    
-                    <Button 
-                      variant="outline"
-                      className="text-gray-600 border-gray-300 hover:bg-gray-50 whitespace-nowrap"
-                      onClick={() => {
-                        // TODO: Implement save job functionality
-                        alert('Save job functionality coming soon!');
-                      }}
-                    >
-                      💾 Save
                     </Button>
                   </div>
                 </div>
