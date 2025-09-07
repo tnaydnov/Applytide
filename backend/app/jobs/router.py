@@ -8,8 +8,6 @@ from ..db.session import get_db
 from ..db import models
 from ..auth.deps import get_current_user
 from .schemas import JobCreate, JobOut, ScrapeIn, JobSearchOut, ManualJobCreate
-from .scraper import scrape_job
-from .openai_analyzer import analyze_job_with_openai
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_search_filter, apply_sorting
 from ..core.search import search_service
 
@@ -506,108 +504,5 @@ def delete_job(
     
     return {"message": "Job deleted successfully"}
 
-
-@router.post("/scrape", response_model=JobCreate)
-def scrape_job_basic(payload: ScrapeIn, current_user: models.User = Depends(get_current_user)):
-    """
-    Basic job scraping (fallback for non-premium users)
-    """
-    try:
-        data = scrape_job(str(payload.url))
-        return JobCreate(**data)
-    except Exception as e:
-        error_msg = str(e)
-        url_str = str(payload.url).lower()
-        if "linkedin.com" in url_str:
-            error_msg = "LinkedIn URLs are not supported due to anti-bot protection. Try using the company's direct career page instead."
-        elif "403" in error_msg or "forbidden" in error_msg.lower():
-            error_msg = "Access forbidden. This site blocks automated requests. Try a different URL."
-        elif "timeout" in error_msg.lower():
-            error_msg = "Request timed out. The site may be slow or blocking requests."
-        elif "404" in error_msg or "not found" in error_msg.lower():
-            error_msg = "Page not found. Please check if the URL is correct."
-        else:
-            error_msg = f"Failed to scrape URL: {error_msg}"
-        
-        raise HTTPException(status_code=400, detail=error_msg)
-
-
-@router.post("/ai-analyze", response_model=JobCreate)
-async def analyze_job_with_ai(
-    payload: ScrapeIn, 
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    AI-powered job analysis using OpenAI (Premium feature only)
-    """
-    # Check if user is premium
-    if not current_user.is_premium:
-        raise HTTPException(
-            status_code=403, 
-            detail="AI job analysis is a premium feature. Please upgrade your account to access this functionality."
-        )
-    
-    # Check if premium is still valid (if expiration date is set)
-    if current_user.premium_expires_at:
-        from datetime import datetime, timezone
-        if datetime.now(timezone.utc) > current_user.premium_expires_at:
-            raise HTTPException(
-                status_code=403, 
-                detail="Your premium subscription has expired. Please renew to continue using AI features."
-            )
-    
-    try:
-        # Use AI analyzer as primary method for premium users
-        data = await analyze_job_with_openai(str(payload.url))
-        
-        # Convert to JobCreate format
-        job_data = {
-            "title": data.get("title", ""),
-            "company_name": data.get("company_name", ""),
-            "location": data.get("location"),
-            "remote_type": data.get("remote_type"),
-            "salary_min": data.get("salary_min"),
-            "salary_max": data.get("salary_max"),
-            "description": data.get("description"),
-            "source_url": str(payload.url)
-        }
-        
-        return JobCreate(**job_data)
-        
-    except Exception as e:
-        error_msg = str(e)
-        
-        # Try fallback to basic scraper if AI analysis fails
-        try:
-            print(f"AI analysis failed: {error_msg}. Falling back to basic scraper...")
-            data = scrape_job(str(payload.url))
             
-            # Convert to JobCreate format
-            job_data = {
-                "title": data.get("title", ""),
-                "company_name": data.get("company_name", ""),
-                "location": data.get("location"),
-                "remote_type": data.get("remote_type"),
-                "salary_min": data.get("salary_min"),
-                "salary_max": data.get("salary_max"),
-                "description": data.get("description"),
-                "source_url": str(payload.url)
-            }
             
-            return JobCreate(**job_data)
-            
-        except Exception as fallback_error:
-            # If both AI and scraper fail, provide helpful error messages
-            if "OPENAI_API_KEY" in error_msg:
-                error_msg = "AI analysis service is temporarily unavailable. Please try again later or use manual job entry."
-            elif "insufficient content" in error_msg.lower():
-                error_msg = "This page doesn't contain enough job information for analysis. Try using manual job entry instead."
-            elif "access restrictions" in error_msg.lower():
-                error_msg = "This page requires JavaScript or has access restrictions. Try copying the job details and using manual entry."
-            elif "analysis failed" in error_msg.lower():
-                error_msg = f"AI analysis failed: {error_msg}"
-            else:
-                error_msg = f"Failed to analyze job posting: {error_msg}"
-            
-            raise HTTPException(status_code=400, detail=error_msg)
