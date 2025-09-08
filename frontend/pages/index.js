@@ -123,14 +123,6 @@ export default function Home() {
           <div className="text-center space-y-8">
             {/* Attention-grabbing headline */}
             <div className="space-y-4">
-              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full shadow-lg animate-bounce">
-                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span style={{color: 'white', fontWeight: 'bold', fontSize: '14px'}}>
-                  New: Smart Job Application Tracker
-                </span>
-              </div>
               
               {/* Applytide Logo */}
               <div className="flex justify-center py-6">

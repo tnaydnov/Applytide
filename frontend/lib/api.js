@@ -107,7 +107,9 @@ export async function login(email, password, remember = false) {
       throw new Error(error.detail || 'Login failed');
     }
     
-    return true;
+    // Return the actual response data
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Login error:', error);
     throw error;

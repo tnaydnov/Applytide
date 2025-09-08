@@ -39,14 +39,19 @@ def create_refresh_token(
     family: str | None = None, 
     user_agent: str = None, 
     ip_address: str = None,
-    extended: bool = False  # Add this parameter
+    extended: bool = False,
+    ttl_days: int = None
 ) -> tuple[str, str]:
     """Return (token, family_id). family is constant across rotations."""
     family_id = family or str(uuid.uuid4())
     jti = str(uuid.uuid4())
     
     # Use extended duration for "remember me"
-    ttl_days = settings.REFRESH_TTL_EXTENDED_DAYS if extended else settings.REFRESH_TTL_DAYS
+    if ttl_days is None:
+        # Default extended period is 30 days, or fallback to regular period × 4
+        extended_days = getattr(settings, 'REFRESH_TTL_EXTENDED_DAYS', 
+                               getattr(settings, 'REFRESH_TTL_DAYS', 7) * 4)
+        ttl_days = extended_days if extended else settings.REFRESH_TTL_DAYS
     expires_at = _exp_days(ttl_days)
     
     payload = {

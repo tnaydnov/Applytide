@@ -152,7 +152,13 @@ async def login(
         print(f"Failed to create user session: {e}")
     
     # Calculate cookie expiration
-    refresh_days = settings.REFRESH_EXTENDED_TTL_DAYS if form_data.remember_me else settings.REFRESH_TTL_DAYS
+    if form_data.remember_me:
+        # Default extended period is 30 days, or 4x regular period
+        refresh_days = getattr(settings, 'REFRESH_EXTENDED_TTL_DAYS', 
+                            getattr(settings, 'REFRESH_TTL_EXTENDED_DAYS',
+                                    settings.REFRESH_TTL_DAYS * 4))
+    else:
+        refresh_days = settings.REFRESH_TTL_DAYS
     
     # Set cookies
     response.set_cookie(

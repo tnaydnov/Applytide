@@ -3,7 +3,6 @@ import AuthGuard from "../components/AuthGuard";
 import "../styles/globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 import { ToastProvider } from '../lib/toast';
-
 import Head from 'next/head';
 
 // Pages that don't require authentication

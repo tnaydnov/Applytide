@@ -4,6 +4,7 @@ import { Card, Badge, Button, ResponsiveContainer } from "../components/ui";
 import NavBar from "../components/NavBar";
 import { format } from "date-fns";
 import { useRouter } from 'next/router';
+import { api } from "../lib/api";
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState([]);
@@ -26,9 +27,7 @@ export default function SessionsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/sessions`, {
-        credentials: 'include'
-      });
+      const response = await api.apiFetch("/auth/sessions");
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -49,9 +48,8 @@ export default function SessionsPage() {
       try {
         setRevoking(sessionId);
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/sessions/revoke`, {
+        const response = await api.apiFetch("/auth/sessions/revoke", {
           method: 'POST',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           },
