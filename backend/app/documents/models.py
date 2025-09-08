@@ -35,7 +35,7 @@ class ATSScore(BaseModel):
     readability_score: float = Field(..., ge=0, le=100)
     technical_skills_score: Optional[float] = Field(None, ge=0, le=100)
     soft_skills_score: Optional[float] = Field(None, ge=0, le=100)
-    suggestions: List[str] = []
+    suggestions: List[str] = Field(default_factory=list)
 
 class DocumentVersion(BaseModel):
     """Document version information"""
@@ -53,17 +53,17 @@ class DocumentTemplate(BaseModel):
     type: DocumentType
     category: str
     preview_url: Optional[str] = None
-    template_data: Dict[str, Any]
+    template_data: Dict[str, Any] = Field(default_factory=dict)
     is_premium: bool = False
 
 class DocumentAnalysis(BaseModel):
     """Enhanced document analysis results"""
     word_count: int
-    keyword_density: Dict[str, float]
+    keyword_density: Dict[str, float] = Field(default_factory=dict)
     readability_score: float
     ats_score: ATSScore
-    suggested_improvements: List[str]
-    missing_sections: List[str]
+    suggested_improvements: List[str] = Field(default_factory=list)
+    missing_sections: List[str] = Field(default_factory=list)
     # Enhanced fields for detailed analysis
     job_match_summary: Optional[Dict[str, Any]] = None
     keyword_analysis: Optional[Dict[str, Any]] = None
@@ -75,15 +75,15 @@ class CoverLetterRequest(BaseModel):
     resume_id: Optional[str] = None
     tone: str = Field(default="professional", pattern="^(professional|enthusiastic|confident|creative)$")
     length: str = Field(default="medium", pattern="^(short|medium|long)$")
-    focus_areas: List[str] = []
+    focus_areas: List[str] = Field(default_factory=list)
     custom_intro: Optional[str] = None
 
 class DocumentOptimizationRequest(BaseModel):
     """Document optimization request"""
     document_id: str
     job_id: Optional[str] = None
-    target_keywords: List[str] = []
-    optimization_goals: List[str] = []
+    target_keywords: List[str] = Field(default_factory=list)
+    optimization_goals: List[str] = Field(default_factory=list)
 
 class DocumentResponse(BaseModel):
     """Standard document response"""
@@ -98,8 +98,8 @@ class DocumentResponse(BaseModel):
     version_count: int
     current_version: int
     ats_score: Optional[float] = None
-    tags: List[str] = []
-    metadata: Dict[str, Any] = {}
+    tags: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class DocumentListResponse(BaseModel):
     """Document list response"""

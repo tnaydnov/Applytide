@@ -45,3 +45,13 @@ openai==1.40.0
 extruct>=0.16.0
 w3lib>=2.1.2
 readability-lxml>=0.8.1
+reportlab>=4.0.0
+
+# HTML to DOCX conversion
+html2docx>=1.1.0
+
+# HTML to PDF conversion 
+weasyprint>=60.1
+
+# For HTML processing
+beautifulsoup4>=4.12.2

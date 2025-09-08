@@ -489,3 +489,42 @@ a {
   font-size: 14px;
   line-height: 1.6;
 }
+
+/* Dark-select readability */
+:root .dark select,
+:root .dark select option {
+  color: #e5e7eb !important;        /* Tailwind slate-200 */
+  background-color: #0b1220 !important; /* your dark bg */
+}
+
+select, select option {
+  color: #111827;          /* gray-900 */
+  background: #ffffff;     /* white */
+}
+.dark select {
+  color: #f3f4f6;          /* gray-100 */
+  background: #1f2937;     /* gray-800 */
+}
+.dark select option {
+  color: #111827;          /* force readable inside dropdown list */
+  background: #ffffff;
+}
+
+
+@layer base {
+  /* Make native form controls prefer dark rendering */
+  :root, body, select, option {
+    color-scheme: dark;
+  }
+
+  /* When the browser allows styling of options, ensure contrast */
+  select option {
+    background-color: #0f172a; /* slate-900 */
+    color: #e2e8f0;           /* slate-100 */
+  }
+  select option:checked,
+  select option:hover {
+    background-color: #1f2937; /* slate-800 */
+    color: #e5e7eb;           /* slate-200 */
+  }
+}

@@ -2,7 +2,6 @@
 from typing import TypeVar, Generic, List, Any, Dict
 from pydantic import BaseModel
 from sqlalchemy.orm import Query
-from sqlalchemy import func
 from math import ceil
 
 T = TypeVar('T')
@@ -17,6 +16,7 @@ class PaginationParams(BaseModel):
     class Config:
         extra = "allow"  # Allow additional filter parameters
 
+
 class PaginatedResponse(BaseModel, Generic[T]):
     items: List[T]
     total: int
@@ -26,6 +26,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     has_next: bool
     has_prev: bool
 
+
 def paginate_query(
     query,
     params: PaginationParams,
@@ -34,61 +35,51 @@ def paginate_query(
 ) -> Dict[str, Any]:
     """
     Paginate a SQLAlchemy query and return pagination metadata.
-    
+
     Args:
         query: The main query to paginate (Query or Select object)
         params: Pagination parameters
         total_query: Optional separate query for counting (useful when main query is complex)
         db_session: Database session for executing Select queries
-    
+
     Returns:
         Dict with 'items', 'total', 'page', 'page_size', 'pages', 'has_next', 'has_prev'
     """
     # Validate pagination parameters
     page = max(1, params.page)
     page_size = min(100, max(1, params.page_size))  # Limit to 100 items per page
-    
-    # Get total count
-    from sqlalchemy.orm import Query
+
     from sqlalchemy.sql import Select
-    
+
+    # Get total count
     if total_query is not None:
         if isinstance(total_query, Query):
-            # Old style Query object
             total = total_query.scalar() or 0
         else:
-            # New style Select object, needs session
             total = db_session.execute(total_query).scalar() or 0
     else:
         if isinstance(query, Query):
-            # Old style Query object
             total = query.count()
         else:
-            # For Select objects, create a count query
+            # For Select objects, create a count query (drop ORDER BY for speed)
             from sqlalchemy import func, select
-            count_query = select(func.count()).select_from(query.subquery())
+            count_query = select(func.count()).select_from(query.order_by(None).subquery())
             total = db_session.execute(count_query).scalar() or 0
-    
+
     # Calculate pagination metadata
     pages = ceil(total / page_size) if total > 0 else 1
     has_next = page < pages
     has_prev = page > 1
-    
+
     # Apply pagination to query
     offset = (page - 1) * page_size
-    
-    # Check if it's a SQLAlchemy Query (old style) or Select (new style)
-    from sqlalchemy.orm import Query
-    from sqlalchemy.sql import Select
-    
+
     if isinstance(query, Query):
-        # Old style Query object
         items = query.offset(offset).limit(page_size).all()
     else:
-        # New style Select object
         paginated_query = query.offset(offset).limit(page_size)
         items = db_session.execute(paginated_query).scalars().all()
-    
+
     return {
         "items": items,
         "total": total,
@@ -96,61 +87,42 @@ def paginate_query(
         "page_size": page_size,
         "pages": pages,
         "has_next": has_next,
-        "has_prev": has_prev
+        "has_prev": has_prev,
     }
 
 
 def apply_search_filter(query: Query, model_class, search_term: str, search_fields: List[str]):
     """
     Apply search filter to query across multiple fields.
-    
-    Args:
-        query: SQLAlchemy query
-        model_class: The model class being queried
-        search_term: Search term to filter by
-        search_fields: List of field names to search in
-    
-    Returns:
-        Query with search filter applied
     """
     if not search_term or not search_fields:
         return query
-    
+
     search_conditions = []
     for field_name in search_fields:
         field = getattr(model_class, field_name, None)
         if field is not None:
             search_conditions.append(field.ilike(f"%{search_term}%"))
-    
+
     if search_conditions:
         from sqlalchemy import or_
         query = query.filter(or_(*search_conditions))
-    
+
     return query
 
 
 def apply_sorting(query: Query, model_class, sort_field: str, order: str = "desc"):
     """
     Apply sorting to query.
-    
-    Args:
-        query: SQLAlchemy query
-        model_class: The model class being queried
-        sort_field: Field name to sort by
-        order: "asc" or "desc"
-    
-    Returns:
-        Query with sorting applied
     """
     field = getattr(model_class, sort_field, None)
     if field is None:
-        # Fallback to created_at if field doesn't exist
         field = getattr(model_class, 'created_at', None)
-    
+
     if field is not None:
         if order.lower() == "asc":
             query = query.order_by(field.asc())
         else:
             query = query.order_by(field.desc())
-    
+
     return query

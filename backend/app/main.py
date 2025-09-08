@@ -6,7 +6,6 @@ from .middleware.security import SecurityHeadersMiddleware
 from .middleware.rate_limiting import GlobalRateLimitMiddleware
 from .auth.router import router as auth_router
 from .jobs.router import router as jobs_router
-from .resumes.router import router as resumes_router
 from .applications.router import router as applications_router
 from .ws.router import router as ws_router
 from .dashboard.router import router as dashboard_router
@@ -92,7 +91,6 @@ if os.getenv("CORS_DEBUG", "0") == "1":
 app.include_router(auth_router)
 app.include_router(sessions_router)
 app.include_router(jobs_router)
-app.include_router(resumes_router)
 app.include_router(applications_router)
 app.include_router(ws_router)
 app.include_router(dashboard_router)

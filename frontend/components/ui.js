@@ -135,14 +135,26 @@ export const Select = ({ label, error, helperText, className = "", children, ...
   return (
     <div className={`space-y-2 ${className}`}>
       {label && <label className="block text-sm font-semibold text-gray-200">{label}</label>}
-      <select
-        className={`block w-full rounded-xl bg-slate-900/60 border border-white/10 text-slate-100 
+      <div className="relative">
+        <select
+          className={`block w-full rounded-xl bg-slate-900 border border-white/10 text-slate-100
   focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-all duration-300 px-4 py-3
+  appearance-none [color-scheme:dark]
   ${error ? "border-red-400 focus:ring-red-500/60 focus:border-red-500/60" : ""}`}
-        {...props}
-      >
-        {children}
-      </select>
+          style={{ colorScheme: "dark" }}  /* extra safety for Safari */
+          {...props}
+        >
+          {children}
+        </select>
+        {/* custom arrow */}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300"
+          viewBox="0 0 20 20" fill="currentColor"
+        >
+          <path d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
+        </svg>
+      </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       {helperText && !error && <p className="text-sm text-gray-400">{helperText}</p>}
     </div>

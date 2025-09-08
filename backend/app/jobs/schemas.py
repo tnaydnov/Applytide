@@ -1,7 +1,9 @@
-from pydantic import BaseModel, HttpUrl
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
 import uuid
+
+from pydantic import BaseModel, HttpUrl
+
 
 class JobCreate(BaseModel):
     title: str
@@ -15,6 +17,7 @@ class JobCreate(BaseModel):
     requirements: Optional[List[str]] = None
     skills: Optional[List[str]] = None
     source_url: Optional[str] = None
+
 
 class ManualJobCreate(BaseModel):
     title: str
@@ -30,6 +33,7 @@ class ManualJobCreate(BaseModel):
 
     class Config:
         extra = "ignore"
+
 
 class JobOut(BaseModel):
     id: uuid.UUID
@@ -51,17 +55,18 @@ class JobOut(BaseModel):
 
 
 class JobSearchOut(BaseModel):
-    """Job search result with relevance scoring"""
+    """Job search result with relevance scoring (comes from the search index)."""
     id: str
     title: str
     description: Optional[str] = None
     location: Optional[str] = None
     remote_type: Optional[str] = None
     source_url: Optional[str] = None
-    created_at: str
+    created_at: str  # index commonly stores strings; pydantic will coerce if needed
     company_name: Optional[str] = None
     company_website: Optional[str] = None
     relevance_score: float
+
 
 class ScrapeIn(BaseModel):
     url: HttpUrl

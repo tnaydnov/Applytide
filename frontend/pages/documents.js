@@ -4,7 +4,6 @@ import api, { getTokens } from '../lib/api';
 import AuthGuard from "../components/AuthGuard";
 import { PremiumBadge, usePremiumFeature } from "../components/PremiumFeature";
 
-// ==== Config ====
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const DOCUMENT_TYPES = [
@@ -24,75 +23,76 @@ const DOCUMENT_STATUS = [
   { value: 'template', label: 'Template', color: 'blue'   }
 ];
 
-// Keep letters, numbers, spaces, dashes/underscores; strip any extension the user typed
 function sanitizeName(name) {
   return (name || '')
-    .replace(/\.[^/.]+$/, '')        // drop any extension the user entered
-    .replace(/[^a-z0-9 _-]+/gi, '')  // keep simple safe chars
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[^a-z0-9 _-]+/gi, '')
     .trim();
 }
 
-// Normalize company/name fields from different API shapes
 const getCompany = (job) => job?.company || job?.company_name || 'Unknown Company';
 const getDocName = (d) => d?.name || d?.file_name || d?.filename || 'Untitled';
 
 export default function DocumentsPage() {
   const { checkPremium, PremiumModal } = usePremiumFeature();
 
-  // Data
   const [documents, setDocuments] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [resumes, setResumes] = useState([]);
 
-  // UI state
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Upload dialog
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadForm, setUploadForm] = useState({
-    file: null,
-    type: 'resume',
-    name: '',
-    metadata: {}
-  });
+  const [uploadForm, setUploadForm] = useState({ file: null, type: 'resume', name: '', metadata: {} });
 
-  // Cover letter dialog
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
   const [coverLetterForm, setCoverLetterForm] = useState({
-    job_id: '',
-    resume_id: '',
-    tone: 'professional',
-    length: 'medium',
-    focus_areas: [],
-    custom_intro: ''
+    job_id: '', resume_id: '', tone: 'professional', length: 'medium', focus_areas: [], custom_intro: ''
   });
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState('');
 
-  // Analysis dialog
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
-  const [selectedJobId, setSelectedJobId] = useState(''); // used for context label
+  const [selectedJobId, setSelectedJobId] = useState('');
   const [analysis, setAnalysis] = useState(null);
+  const [analysisUseAI, setAnalysisUseAI] = useState(true);
 
-  // Job selection dialog
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [jobPickerDoc, setJobPickerDoc] = useState(null);
   const [jobSearchTerm, setJobSearchTerm] = useState('');
   const [selectedJobForAnalysis, setSelectedJobForAnalysis] = useState(null);
 
-  // Filters & pagination
-  const [pagination, setPagination] = useState({
-    page: 1,
-    page_size: 20,
-    total: 0,
-    has_next: false,
-    has_prev: false
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [adjustDoc, setAdjustDoc] = useState(null);
+  const [adjustForm, setAdjustForm] = useState({
+    job_id: '',
+    mode: 'conservative',
+    use_ai: true,
+    save_as_new: true,
+    new_name: '',
+    output: 'docx', // <--- NEW
   });
+  const [adjustResultText, setAdjustResultText] = useState('');
+
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [genFormat, setGenFormat] = useState('docx');
+  const [answers, setAnswers] = useState({
+    full_name: '',
+    title_or_objective: '',
+    summary: '',
+    skills: '',
+    links: '',
+    experience: [],
+    projects: [],
+    education: [],
+    certifications: []
+  });
+
+  const [pagination, setPagination] = useState({ page: 1, page_size: 20, total: 0, has_next: false, has_prev: false });
   const [filters, setFilters] = useState({ type: '', status: '', search: '' });
 
-  // Tiny toast
   const toast = {
     success: (m) => showToast('green', `✅ ${m}`),
     error:   (m) => showToast('red',   `❌ ${m}`),
@@ -106,7 +106,6 @@ export default function DocumentsPage() {
     setTimeout(() => document.body.removeChild(el), 3000);
   }
 
-  // Loaders
   useEffect(() => {
     loadDocuments();
     loadJobs();
@@ -143,12 +142,9 @@ export default function DocumentsPage() {
 
   async function loadResumes() {
     try {
-      const response = await api.listResumes();
-      const resumesData = response.items || response || [];
-      setResumes(resumesData);
+      const resp = await api.getResumes();
+      setResumes((resp.documents || []).map(d => ({ id: d.id, label: d.name || d.file_name || 'Resume' })));
     } catch (e) {
-      // non-fatal
-      // eslint-disable-next-line no-console
       console.error('Failed to load resumes:', e);
     }
   }
@@ -159,20 +155,16 @@ export default function DocumentsPage() {
       const jobsData = response.items || [];
       setJobs(jobsData);
     } catch (e) {
-      // non-fatal
-      // eslint-disable-next-line no-console
       console.error('Failed to load jobs:', e);
     }
   }
 
-  // ===== Upload =====
   async function handleUpload() {
     if (uploading) return;
     if (!uploadForm.file) return toast.error('Please select a file to upload');
 
     try {
       setUploading(true);
-
       const ext = uploadForm.file.name.includes('.')
         ? uploadForm.file.name.substring(uploadForm.file.name.lastIndexOf('.'))
         : '';
@@ -195,12 +187,7 @@ export default function DocumentsPage() {
       const headers = {};
       if (access_token) headers.Authorization = `Bearer ${access_token}`;
 
-      const resp = await fetch(`${API_BASE_URL}/documents/upload`, {
-        method: 'POST',
-        headers,
-        body: formData
-      });
-
+      const resp = await fetch(`${API_BASE_URL}/documents/upload`, { method: 'POST', headers, body: formData });
       if (!resp.ok) throw new Error(`Upload failed (${resp.status})`);
       await resp.json().catch(() => ({}));
 
@@ -208,6 +195,7 @@ export default function DocumentsPage() {
       setShowUpload(false);
       setUploadForm({ file: null, type: 'resume', name: '', metadata: {} });
       await loadDocuments();
+      await loadResumes();
     } catch (e) {
       toast.error(`Upload failed: ${e.message || e}`);
     } finally {
@@ -215,8 +203,7 @@ export default function DocumentsPage() {
     }
   }
 
-  // ===== Analysis (single path; handles general or job-specific) =====
-  async function runAnalysis(document, jobId = '') {
+  async function runAnalysis(document, jobId = '', useAI = analysisUseAI) {
     if (document?.type && document.type !== 'resume') {
       toast.error('Analysis is only available for resumes.');
       return;
@@ -228,24 +215,12 @@ export default function DocumentsPage() {
       setAnalysis(null);
       setShowAnalysis(true);
 
-      const { access_token } =
-        typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('tokens') || '{}') : {};
-      const headers = {};
-      if (access_token) headers.Authorization = `Bearer ${access_token}`;
-
-      const url = jobId
-        ? `${API_BASE_URL}/documents/${document.id}/analyze?job_id=${jobId}`
-        : `${API_BASE_URL}/documents/${document.id}/analyze`;
-
-      const response = await fetch(url, { method: 'POST', headers });
-      if (!response.ok) throw new Error(`Analysis failed: ${response.status}`);
-
-      const result = await response.json();
+      const result = await api.analyzeDocument(document.id, { jobId, use_ai: !!useAI });
       if (result?.success === false) throw new Error(result.error || 'Analysis failed');
 
       setAnalysis(result || {});
       const score = result?.ats_score?.overall_score ?? 0;
-      toast.success(`Analysis complete${jobId ? '' : ''}! ATS Score: ${Number(score).toFixed(1)}%`);
+      toast.success(`Analysis complete! ATS Score: ${Number(score).toFixed(1)}%`);
     } catch (e) {
       toast.error(`Analysis failed: ${e.message || e}`);
       setShowAnalysis(false);
@@ -254,13 +229,13 @@ export default function DocumentsPage() {
     }
   }
 
-  // ===== Cover Letter =====
   async function generateCoverLetter() {
     if (!coverLetterForm.job_id) return toast.error('Please select a job');
     if (!coverLetterForm.resume_id) return toast.error('Please select a resume');
 
     checkPremium(async () => {
       try {
+        // Expect your api client to POST to /documents/cover-letter/generate
         const response = await api.generateCoverLetter(coverLetterForm);
         if (response?.cover_letter) {
           setGeneratedCoverLetter(response.cover_letter);
@@ -316,8 +291,17 @@ export default function DocumentsPage() {
       await api.deleteDocument(documentId);
       toast.success('Document deleted successfully');
       loadDocuments();
+      loadResumes();
     } catch (e) {
       toast.error(`Delete failed: ${e.message || e}`);
+    }
+  }
+
+  async function previewDocument(document) {
+    try {
+      await api.previewDocument(document.id);
+    } catch (e) {
+      toast.error(`Preview failed: ${e.message || e}`);
     }
   }
 
@@ -391,9 +375,7 @@ export default function DocumentsPage() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-slate-200">Document Manager</h1>
-              <p className="text-slate-400 mt-2">
-                Manage your resumes, cover letters, and other documents with AI-powered optimization
-              </p>
+              <p className="text-slate-400 mt-2">Manage your resumes, cover letters, and other documents with AI-powered optimization</p>
             </div>
             <div className="flex gap-3">
               <Button
@@ -434,32 +416,15 @@ export default function DocumentsPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Select
-                  value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                  className="input-glass input-cyan"
-                >
+                <Select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })} className="input-glass input-cyan">
                   <option value="">All Types</option>
-                  {DOCUMENT_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
+                  {DOCUMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </Select>
-
-                <Select
-                  value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="input-glass input-cyan"
-                >
+                <Select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} className="input-glass input-cyan">
                   <option value="">All Status</option>
-                  {DOCUMENT_STATUS.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
+                  {DOCUMENT_STATUS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </Select>
-
-                <Button
-                  onClick={() => setFilters({ type: '', status: '', search: '' })}
-                  className="input-glass input-cyan text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300"
-                >
+                <Button onClick={() => setFilters({ type: '', status: '', search: '' })} className="input-glass input-cyan text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300">
                   Clear Filters
                 </Button>
               </div>
@@ -487,9 +452,7 @@ export default function DocumentsPage() {
               </div>
               <h3 className="text-xl font-semibold text-slate-200 mb-2">No documents found</h3>
               <p className="text-slate-400 mb-6">Upload your first document to get started</p>
-              <Button onClick={() => setShowUpload(true)} className="bg-blue-600 hover:bg-blue-700">
-                Upload Document
-              </Button>
+              <Button onClick={() => setShowUpload(true)} className="bg-blue-600 hover:bg-blue-700">Upload Document</Button>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -514,24 +477,13 @@ export default function DocumentsPage() {
                     </div>
 
                     <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Size:</span>
-                        <span className="text-slate-200">{((document.file_size || 0) / 1024).toFixed(1)} KB</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Created:</span>
-                        <span className="text-slate-200">{document.created_at ? new Date(document.created_at).toLocaleDateString() : '-'}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Version:</span>
-                        <span className="text-slate-200">v{document.current_version ?? 1}</span>
-                      </div>
+                      <div className="flex justify-between text-sm"><span className="text-slate-400">Size:</span><span className="text-slate-200">{((document.file_size || 0) / 1024).toFixed(1)} KB</span></div>
+                      <div className="flex justify-between text-sm"><span className="text-slate-400">Created:</span><span className="text-slate-200">{document.created_at ? new Date(document.created_at).toLocaleDateString() : '-'}</span></div>
+                      <div className="flex justify-between text-sm"><span className="text-slate-400">Version:</span><span className="text-slate-200">v{document.current_version ?? 1}</span></div>
                       {document.ats_score != null && (
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-400">ATS Score:</span>
-                          <span className={getScoreColor(document.ats_score)}>
-                            {Number(document.ats_score).toFixed(1)}%
-                          </span>
+                          <span className={getScoreColor(document.ats_score)}>{Number(document.ats_score).toFixed(1)}%</span>
                         </div>
                       )}
                     </div>
@@ -539,16 +491,9 @@ export default function DocumentsPage() {
                     <div className="flex gap-2">
                       {document.type === 'resume' && (
                         <div className="flex-1">
-                          <Button
-                            onClick={() => runAnalysis(document)}
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            disabled={analyzing}
-                          >
+                          <Button onClick={() => runAnalysis(document)} variant="outline" size="sm" className="w-full" disabled={analyzing}>
                             {analyzing ? '🔄' : '🔍'} {analyzing ? 'Analyzing...' : 'Analyze'}
                           </Button>
-
                           {jobs.length > 0 && (
                             <div className="mt-2">
                               <Button
@@ -565,22 +510,9 @@ export default function DocumentsPage() {
                         </div>
                       )}
 
-                      <Button
-                        onClick={() => api.downloadDocument(document.id)}
-                        variant="outline"
-                        size="sm"
-                        className="px-3"
-                      >
-                        📥
-                      </Button>
-                      <Button
-                        onClick={() => deleteDocument(document.id)}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 px-3"
-                      >
-                        🗑️
-                      </Button>
+                      <Button onClick={() => previewDocument(document)} variant="outline" size="sm" className="px-3">👁️</Button>
+                      <Button onClick={() => api.downloadDocument(document.id)} variant="outline" size="sm" className="px-3">📥</Button>
+                      <Button onClick={() => deleteDocument(document.id)} variant="outline" size="sm" className="text-red-600 hover:text-red-700 px-3">🗑️</Button>
                     </div>
                   </Card>
                 );
@@ -588,68 +520,30 @@ export default function DocumentsPage() {
             </div>
           )}
 
-          {/* Pagination */}
           {pagination.total > pagination.page_size && (
             <div className="flex justify-center items-center gap-4 mt-8">
-              <Button
-                onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                disabled={!pagination.has_prev}
-                variant="outline"
-              >
-                Previous
-              </Button>
-              <span className="text-gray-600">
-                Page {pagination.page} of {Math.ceil(pagination.total / pagination.page_size)}
-              </span>
-              <Button
-                onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                disabled={!pagination.has_next}
-                variant="outline"
-              >
-                Next
-              </Button>
+              <Button onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })} disabled={!pagination.has_prev} variant="outline">Previous</Button>
+              <span className="text-gray-600">Page {pagination.page} of {Math.ceil(pagination.total / pagination.page_size)}</span>
+              <Button onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })} disabled={!pagination.has_next} variant="outline">Next</Button>
             </div>
           )}
 
-          {/* ================= Upload Dialog (compact height) ================= */}
+          {/* Upload Modal */}
           {showUpload && (
             <>
-              <div
-                onClick={() => setShowUpload(false)}
-                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 cursor-pointer"
-              />
+              <div onClick={() => setShowUpload(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 cursor-pointer" />
               <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-                <div
-                  className="modal-surface w-full max-w-md rounded-2xl ring-1 p-6"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="modal-surface w-full max-w-md rounded-2xl ring-1 p-6" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-slate-100">Upload Document</h3>
-                    <button
-                      onClick={() => setShowUpload(false)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition"
-                      aria-label="Close"
-                      type="button"
-                    >
-                      ✕
-                    </button>
+                    <button onClick={() => setShowUpload(false)} className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition" aria-label="Close" type="button">✕</button>
                   </div>
 
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 tracking-wide uppercase mb-2">
-                        Document Type
-                      </label>
-                      <Select
-                        value={uploadForm.type}
-                        onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value })}
-                        className="w-full text-sm font-medium text-slate-100"
-                      >
-                        {DOCUMENT_TYPES.map(type => (
-                          <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
+                                            <label className="block text-xs font-semibold text-slate-400 tracking-wide uppercase mb-2">Document Type</label>
+                      <Select value={uploadForm.type} onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value })} className="w-full text-sm font-medium text-slate-100">
+                        {DOCUMENT_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
                       </Select>
                     </div>
 
@@ -662,35 +556,18 @@ export default function DocumentsPage() {
                         placeholder="e.g., Tomer Naydnov – English Resume"
                         className="w-full input-glass"
                       />
-                      <p className="text-xs text-slate-400 mt-1">
-                        We’ll keep your file extension and use this as the display name.
-                      </p>
+                      <p className="text-xs text-slate-400 mt-1">We’ll keep your file extension and use this as the display name.</p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-slate-200 mb-2">File</label>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
-                        className="w-full input-glass"
-                      />
+                      <input type="file" accept=".pdf,.doc,.docx,.txt" onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })} className="w-full input-glass" />
                       <p className="text-xs text-slate-400 mt-1">Supported formats: PDF, DOC, DOCX, TXT</p>
                     </div>
 
                     <div className="flex gap-3 justify-end pt-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowUpload(false)}
-                        className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleUpload}
-                        disabled={uploading || !uploadForm.file}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
+                      <Button variant="outline" onClick={() => setShowUpload(false)} className="border-slate-600 text-slate-300 hover:bg-slate-700/50">Cancel</Button>
+                      <Button onClick={handleUpload} disabled={uploading || !uploadForm.file} className="bg-blue-600 hover:bg-blue-700 text-white">
                         {uploading ? 'Uploading...' : 'Upload'}
                       </Button>
                     </div>
@@ -700,33 +577,21 @@ export default function DocumentsPage() {
             </>
           )}
 
-          {/* ================= Cover Letter Modal (unchanged structure) ================= */}
+          {/* ================= Cover Letter Modal ================= */}
           {showCoverLetterModal && (
             <>
-              <div
-                onClick={() => setShowCoverLetterModal(false)}
-                style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 10000, cursor: 'pointer' }}
-              />
-              <div
-                style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 10001, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto', border: '1px solid #e5e7eb' }}
-              >
+              <div onClick={() => setShowCoverLetterModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 10000, cursor: 'pointer' }} />
+              <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 10001, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto', border: '1px solid #e5e7eb' }}>
                 <div style={{ padding: '24px', minWidth: '600px' }}>
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-lg">✨</span>
-                      </div>
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center"><span className="text-white text-lg">✨</span></div>
                       <div>
                         <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Generate AI Cover Letter</h2>
                         <PremiumBadge size="sm" />
                       </div>
                     </div>
-                    <button
-                      onClick={() => setShowCoverLetterModal(false)}
-                      style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B7280' }}
-                    >
-                      ✕
-                    </button>
+                    <button onClick={() => setShowCoverLetterModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B7280' }}>✕</button>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
@@ -734,43 +599,23 @@ export default function DocumentsPage() {
                     <div>
                       <div style={{ marginBottom: '16px' }}>
                         <label className="field-label">Target Job *</label>
-                        <select
-                          value={coverLetterForm.job_id}
-                          onChange={(e) => setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value })}
-                          className="w-full input-glass"
-                        >
+                        <select value={coverLetterForm.job_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value })} className="w-full input-glass">
                           <option value="">Select a job...</option>
-                          {jobs.map(job => (
-                            <option key={job.id} value={job.id}>
-                              {job.title} at {getCompany(job)}
-                            </option>
-                          ))}
+                          {jobs.map(job => <option key={job.id} value={job.id}>{job.title} at {getCompany(job)}</option>)}
                         </select>
                       </div>
 
                       <div style={{ marginBottom: '16px' }}>
                         <label className="field-label">Resume *</label>
-                        <select
-                          value={coverLetterForm.resume_id}
-                          onChange={(e) => setCoverLetterForm({ ...coverLetterForm, resume_id: e.target.value })}
-                          className="w-full input-glass"
-                        >
+                        <select value={coverLetterForm.resume_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, resume_id: e.target.value })} className="w-full input-glass">
                           <option value="">Select your resume...</option>
-                          {resumes.map(resume => (
-                            <option key={resume.id} value={resume.id}>
-                              {resume.file_name || resume.label || `Resume ${resume.id}`}
-                            </option>
-                          ))}
+                          {resumes.map(resume => <option key={resume.id} value={resume.id}>{resume.label || `Resume ${resume.id}`}</option>)}
                         </select>
                       </div>
 
                       <div style={{ marginBottom: '16px' }}>
                         <label className="field-label">Tone</label>
-                        <select
-                          value={coverLetterForm.tone}
-                          onChange={(e) => setCoverLetterForm({ ...coverLetterForm, tone: e.target.value })}
-                          className="w-full input-glass"
-                        >
+                        <select value={coverLetterForm.tone} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, tone: e.target.value })} className="w-full input-glass">
                           <option value="professional">Professional</option>
                           <option value="enthusiastic">Enthusiastic</option>
                           <option value="confident">Confident</option>
@@ -780,11 +625,7 @@ export default function DocumentsPage() {
 
                       <div style={{ marginBottom: '16px' }}>
                         <label className="field-label">Length</label>
-                        <select
-                          value={coverLetterForm.length}
-                          onChange={(e) => setCoverLetterForm({ ...coverLetterForm, length: e.target.value })}
-                          className="w-full input-glass"
-                        >
+                        <select value={coverLetterForm.length} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, length: e.target.value })} className="w-full input-glass">
                           <option value="short">Short (200-300 words)</option>
                           <option value="medium">Medium (300-400 words)</option>
                           <option value="long">Long (400-500 words)</option>
@@ -818,125 +659,72 @@ export default function DocumentsPage() {
                       />
                       {generatedCoverLetter && (
                         <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(generatedCoverLetter); alert('Cover letter copied to clipboard!'); }}
-                            className="btn-ghost px-3 py-1 rounded"
-                          >
-                            📋 Copy
-                          </button>
-                          <button
-                            onClick={saveCoverLetterAsDocument}
-                            className="btn-ghost px-3 py-1 rounded"
-                          >
-                            💾 Save as Document
-                          </button>
+                          <button onClick={() => { navigator.clipboard.writeText(generatedCoverLetter); alert('Cover letter copied to clipboard!'); }} className="btn-ghost px-3 py-1 rounded">📋 Copy</button>
+                          <button onClick={saveCoverLetterAsDocument} className="btn-ghost px-3 py-1 rounded">💾 Save as Document</button>
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => setShowCoverLetterModal(false)}
-                      className="btn-ghost px-4 py-2 rounded"
-                    >
-                      Close
-                    </button>
+                    <button onClick={() => setShowCoverLetterModal(false)} className="btn-ghost px-4 py-2 rounded">Close</button>
                   </div>
                 </div>
               </div>
             </>
           )}
 
-          {/* ================= Analysis Modal (tall, single scrollbar) ================= */}
+          {/* ================= Analysis Modal ================= */}
           {showAnalysis && (
             <>
-              <div
-                onClick={() => setShowAnalysis(false)}
-                className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer"
-              />
+              <div onClick={() => setShowAnalysis(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer" />
               <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-                <div
-                  className="w-full max-w-5xl h-[85vh] modal-surface rounded-2xl ring-1 overflow-hidden"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="w-full max-w-5xl h-[85vh] modal-surface rounded-2xl ring-1 overflow-hidden" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
                   {/* Header */}
                   <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
                     <div>
-                      <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
-                        🔍 Document Analysis Results
-                      </h2>
-                      {analysis?.job_context && (
+                      <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">🔍 Document Analysis Results</h2>
+                      {selectedJobId && (
                         <p className="text-sm text-slate-400 mt-1">
-                          For: {analysis.job_context.title} at {analysis.job_context.company}
+                          Against job ID: <span className="text-slate-200">{selectedJobId}</span>
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => setShowAnalysis(false)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition"
-                      aria-label="Close"
-                      type="button"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-slate-200 flex items-center gap-2">
+                        <input type="checkbox" checked={analysisUseAI} onChange={(e) => setAnalysisUseAI(e.target.checked)} />
+                        Use AI suggestions
+                      </label>
+                      <Button onClick={() => runAnalysis(selectedDocument, selectedJobId, analysisUseAI)} size="sm" variant="outline">↻ Re-run</Button>
+                      <button onClick={() => setShowAnalysis(false)} className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition" aria-label="Close" type="button">✕</button>
+                    </div>
                   </div>
 
-                  {/* Body (single scroll area) */}
+                  {/* Body */}
                   <div className="h-[calc(85vh-64px)] overflow-y-auto px-6 py-5">
-                    {/* Type callout */}
-                    <div
-                      className={`p-4 rounded-lg border mb-6 ${
-                        selectedJobId
-                          ? 'bg-blue-900/30 border-blue-500/30 text-blue-200'
-                          : 'bg-amber-900/30 border-amber-500/30 text-amber-200'
-                      }`}
-                    >
+                    <div className={`p-4 rounded-lg border mb-6 ${selectedJobId ? 'bg-blue-900/30 border-blue-500/30 text-blue-200' : 'bg-amber-900/30 border-amber-500/30 text-amber-200'}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-base">{selectedJobId ? '🎯' : '📊'}</span>
-                        <strong className="text-slate-200">
-                          {selectedJobId ? 'Job-Specific Analysis' : 'General Resume Analysis'}
-                        </strong>
+                        <strong className="text-slate-200">{selectedJobId ? 'Job-Specific Analysis' : 'General Resume Analysis'}</strong>
                       </div>
                       <p className="text-sm text-slate-300 m-0">
                         {selectedJobId
-                          ? 'This analysis compares your document against specific job requirements, providing targeted feedback and keyword matching scores.'
-                          : 'This is a general analysis without job context. For better insights, analyze against a specific job to see how well your document matches job requirements.'}
+                          ? 'This analysis compares your resume against job skills/requirements and provides targeted feedback.'
+                          : 'This is a general analysis. Select a job for tailored matching.'}
                       </p>
                     </div>
 
-                    {/* Content */}
                     {analysis ? (
                       <div className="flex flex-col gap-6">
-                        {/* Header: score block */}
+                        {/* Score block */}
                         <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
-                          {analysis.ats_score?.technical_skills_score != null &&
-                          analysis.ats_score?.soft_skills_score != null ? (
-                            <>
-                              <h3 className="font-semibold mb-2 text-slate-100">🎯 Job-Specific Analysis</h3>
-                              <p className="text-sm text-slate-400 mb-4">Analysis tailored to the selected job requirements</p>
-                            </>
-                          ) : (
-                            <>
-                              <h3 className="font-semibold mb-2 text-slate-100">📋 General Resume Analysis</h3>
-                              <p className="text-sm text-slate-400 mb-4">
-                                Comprehensive review of resume structure and completeness. Select a job for targeted analysis.
-                              </p>
-                            </>
-                          )}
-
                           <div className="text-center mb-4">
                             <div
                               className="text-4xl font-bold"
                               style={{
                                 color:
-                                  (analysis.ats_score?.overall_score || 0) >= 80
-                                    ? '#059669'
-                                    : (analysis.ats_score?.overall_score || 0) >= 60
-                                    ? '#d97706'
-                                    : '#dc2626'
+                                  (analysis.ats_score?.overall_score || 0) >= 80 ? '#059669' :
+                                  (analysis.ats_score?.overall_score || 0) >= 60 ? '#d97706' : '#dc2626'
                               }}
                             >
                               {(analysis.ats_score?.overall_score || 0).toFixed(1)}%
@@ -946,9 +734,7 @@ export default function DocumentsPage() {
                             </p>
                             {analysis.job_match_summary && (
                               <p className="text-sm text-slate-300 mt-2">
-                                {typeof analysis.job_match_summary === 'string'
-                                  ? analysis.job_match_summary
-                                  : analysis.job_match_summary?.summary}
+                                {typeof analysis.job_match_summary === 'string' ? analysis.job_match_summary : analysis.job_match_summary?.summary}
                               </p>
                             )}
                           </div>
@@ -957,17 +743,7 @@ export default function DocumentsPage() {
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {analysis.ats_score?.technical_skills_score != null && (
                               <div className="text-center p-3 rounded bg-blue-500/20 border border-blue-500/30">
-                                <div
-                                  className="text-xl font-bold"
-                                  style={{
-                                    color:
-                                      analysis.ats_score.technical_skills_score >= 80
-                                        ? '#10b981'
-                                        : analysis.ats_score.technical_skills_score >= 60
-                                        ? '#f59e0b'
-                                        : '#ef4444'
-                                  }}
-                                >
+                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.technical_skills_score >= 80 ? '#10b981' : analysis.ats_score.technical_skills_score >= 60 ? '#f59e0b' : '#ef4444' }}>
                                   {(analysis.ats_score.technical_skills_score || 0).toFixed(1)}%
                                 </div>
                                 <p className="text-xs text-slate-300">Technical Skills</p>
@@ -975,17 +751,7 @@ export default function DocumentsPage() {
                             )}
                             {analysis.ats_score?.soft_skills_score != null && (
                               <div className="text-center p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
-                                <div
-                                  className="text-xl font-bold"
-                                  style={{
-                                    color:
-                                      analysis.ats_score.soft_skills_score >= 80
-                                        ? '#10b981'
-                                        : analysis.ats_score.soft_skills_score >= 60
-                                        ? '#f59e0b'
-                                        : '#ef4444'
-                                  }}
-                                >
+                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.soft_skills_score >= 80 ? '#10b981' : analysis.ats_score.soft_skills_score >= 60 ? '#f59e0b' : '#ef4444' }}>
                                   {(analysis.ats_score.soft_skills_score || 0).toFixed(1)}%
                                 </div>
                                 <p className="text-xs text-slate-300">Soft Skills</p>
@@ -993,17 +759,7 @@ export default function DocumentsPage() {
                             )}
                             {analysis.ats_score?.keyword_score != null && (
                               <div className="text-center p-3 rounded bg-amber-500/20 border border-amber-500/30">
-                                <div
-                                  className="text-xl font-bold"
-                                  style={{
-                                    color:
-                                      analysis.ats_score.keyword_score >= 80
-                                        ? '#10b981'
-                                        : analysis.ats_score.keyword_score >= 60
-                                        ? '#f59e0b'
-                                        : '#ef4444'
-                                  }}
-                                >
+                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.keyword_score >= 80 ? '#10b981' : analysis.ats_score.keyword_score >= 60 ? '#f59e0b' : '#ef4444' }}>
                                   {analysis.ats_score.keyword_score.toFixed(1)}%
                                 </div>
                                 <p className="text-xs text-slate-300">Keywords</p>
@@ -1011,17 +767,7 @@ export default function DocumentsPage() {
                             )}
                             {analysis.ats_score?.formatting_score != null && (
                               <div className="text-center p-3 rounded bg-indigo-500/20 border border-indigo-500/30">
-                                <div
-                                  className="text-xl font-bold"
-                                  style={{
-                                    color:
-                                      analysis.ats_score.formatting_score >= 80
-                                        ? '#10b981'
-                                        : analysis.ats_score.formatting_score >= 60
-                                        ? '#f59e0b'
-                                        : '#ef4444'
-                                  }}
-                                >
+                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.formatting_score >= 80 ? '#10b981' : analysis.ats_score.formatting_score >= 60 ? '#f59e0b' : '#ef4444' }}>
                                   {analysis.ats_score.formatting_score.toFixed(1)}%
                                 </div>
                                 <p className="text-xs text-slate-300">Formatting</p>
@@ -1030,151 +776,84 @@ export default function DocumentsPage() {
                           </div>
                         </div>
 
-                        {/* Detailed Keyword Analysis (job-specific only) */}
-                        {analysis.keyword_analysis && analysis.ats_score?.technical_skills_score != null && (
+                        {/* Keyword Analysis */}
+                        {analysis.keyword_analysis && (
                           <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
-                            <h3 className="font-semibold mb-4 text-blue-300">🎯 Detailed Keyword Analysis</h3>
+                            <h3 className="font-semibold mb-4 text-blue-300">🎯 Keyword Analysis</h3>
 
-                            {/* Technical */}
-                            {analysis.keyword_analysis.technical_skills && (
-                              <div className="mb-5">
-                                <h4 className="font-semibold mb-3 text-slate-100">💻 Technical Skills</h4>
-
-                                {Array.isArray(analysis.keyword_analysis.technical_skills.found) &&
-                                  analysis.keyword_analysis.technical_skills.found.length > 0 && (
-                                    <div className="mb-2">
-                                      <p className="text-sm text-emerald-400 mb-2 font-medium">
-                                        ✅ Found ({analysis.keyword_analysis.technical_skills.found.length}/{analysis.keyword_analysis.technical_skills.required?.length || analysis.keyword_analysis.technical_skills.found.length})
-                                      </p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {analysis.keyword_analysis.technical_skills.found.map((skill, idx) => (
-                                          <span key={idx} className="px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                            {skill}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {Array.isArray(analysis.keyword_analysis.technical_skills.missing) &&
-                                  analysis.keyword_analysis.technical_skills.missing.length > 0 && (
-                                    <div>
-                                      <p className="text-sm text-red-400 mb-2 font-medium">❌ Missing ({analysis.keyword_analysis.technical_skills.missing.length})</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {analysis.keyword_analysis.technical_skills.missing.map((skill, idx) => (
-                                          <span key={idx} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                                            {skill}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                            {Array.isArray(analysis.keyword_analysis.keywords_found) && analysis.keyword_analysis.keywords_found.length > 0 && (
+                              <div className="mb-4">
+                                <p className="text-sm text-emerald-400 mb-2 font-medium">✅ Found</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {analysis.keyword_analysis.keywords_found.map((k, i) => (
+                                    <span key={i} className="px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 border border-emerald-200">{k}</span>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
-                            {/* Soft */}
-                            {analysis.keyword_analysis.soft_skills && (
-                              <div className="mb-5">
-                                <h4 className="font-semibold mb-3 text-slate-100">🤝 Soft Skills</h4>
-
-                                {Array.isArray(analysis.keyword_analysis.soft_skills.found) &&
-                                  analysis.keyword_analysis.soft_skills.found.length > 0 && (
-                                    <div className="mb-2">
-                                      <p className="text-sm text-emerald-400 mb-2 font-medium">
-                                        ✅ Found ({analysis.keyword_analysis.soft_skills.found.length}/{analysis.keyword_analysis.soft_skills.required?.length || analysis.keyword_analysis.soft_skills.found.length})
-                                      </p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {analysis.keyword_analysis.soft_skills.found.map((skill, idx) => (
-                                          <span key={idx} className="px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                            {skill}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {Array.isArray(analysis.keyword_analysis.soft_skills.missing) &&
-                                  analysis.keyword_analysis.soft_skills.missing.length > 0 && (
-                                    <div>
-                                      <p className="text-sm text-red-400 mb-2 font-medium">❌ Missing ({analysis.keyword_analysis.soft_skills.missing.length})</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {analysis.keyword_analysis.soft_skills.missing.map((skill, idx) => (
-                                          <span key={idx} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                                            {skill}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                            {Array.isArray(analysis.keyword_analysis.keywords_missing) && analysis.keyword_analysis.keywords_missing.length > 0 && (
+                              <div className="mb-4">
+                                <p className="text-sm text-red-400 mb-2 font-medium">❌ Missing</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {analysis.keyword_analysis.keywords_missing.map((k, i) => (
+                                    <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-300 border border-red-500/30">{k}</span>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
-                            {/* Summary */}
-                            <div className="p-3 rounded bg-slate-900/60 border border-white/10">
-                              <p className="text-sm text-slate-100 m-0">
-                                <strong>Summary:</strong>{' '}
-                                {(analysis.keyword_analysis.matched_keywords?.length || 0)} of {(analysis.keyword_analysis.total_job_keywords || 0)} job keywords found (
-                                {(
-                                  ((analysis.keyword_analysis.matched_keywords?.length || 0) /
-                                    Math.max(analysis.keyword_analysis.total_job_keywords || 1, 1)) *
-                                  100
-                                ).toFixed(1)}% match)
-                              </p>
-                            </div>
+                            {/* Density bars */}
+                            {analysis.keyword_analysis.keyword_density && Object.keys(analysis.keyword_analysis.keyword_density).length > 0 && (
+                              <div className="mt-3">
+                                <h4 className="font-semibold mb-2 text-slate-100">📊 Density</h4>
+                                <div className="flex flex-col gap-2">
+                                  {Object.entries(analysis.keyword_analysis.keyword_density).map(([k, d]) => (
+                                    <div key={k} className="flex items-center justify-between">
+                                      <span className="text-slate-300">{k}</span>
+                                      <div className="flex items-center">
+                                        <div className="w-24 h-2 bg-slate-200 rounded mr-2 overflow-hidden">
+                                          <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.min(Number(d) * 10, 100)}%` }} />
+                                        </div>
+                                        <span className="text-xs text-slate-400">{Number(d).toFixed(1)}%</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Suggested improvements */}
+                        {Array.isArray(analysis.suggested_improvements) && analysis.suggested_improvements.length > 0 && (
+                          <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
+                            <h3 className="font-semibold mb-3 text-slate-100">🛠 Suggested Improvements</h3>
+                            <ul className="list-disc pl-5 m-0 space-y-2 text-slate-100">
+                              {analysis.suggested_improvements.map((s, i) => <li key={i}>{s}</li>)}
+                            </ul>
                           </div>
                         )}
 
                         {/* Missing skills */}
-                        {analysis.missing_skills &&
-                          ((analysis.missing_skills.technical?.length || 0) > 0 ||
-                            (analysis.missing_skills.critical_missing?.length || 0) > 0) && (
-                            <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
-                              <h3 className="font-semibold mb-3 text-red-300">⚠️ Missing Skills & Keywords</h3>
-                              {Array.isArray(analysis.missing_skills.critical_missing) &&
-                                analysis.missing_skills.critical_missing.length > 0 && (
-                                  <div className="mb-3">
-                                    <p className="text-xs text-slate-300 mb-2">Critical missing keywords:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {analysis.missing_skills.critical_missing.map((s, i) => (
-                                        <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/25 text-red-300 border border-red-500/40">
-                                          {s}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              {Array.isArray(analysis.missing_skills.technical) &&
-                                analysis.missing_skills.technical.length > 0 && (
-                                  <div>
-                                    <p className="text-xs text-slate-300 mb-2">Missing technical skills:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {analysis.missing_skills.technical.slice(0, 10).map((s, i) => (
-                                        <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/25 text-red-300 border border-red-500/40">
-                                          {s}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
+                        {analysis.missing_skills && (
+                          <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
+                            <h3 className="font-semibold mb-3 text-red-300">⚠️ Missing Skills & Keywords</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {(Array.isArray(analysis.missing_skills) ? analysis.missing_skills : analysis.missing_skills.skills || []).slice(0, 30).map((s, i) => (
+                                <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/25 text-red-300 border border-red-500/40">{s}</span>
+                              ))}
                             </div>
-                          )}
+                          </div>
+                        )}
 
                         {/* Stats */}
                         <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
                           <h3 className="font-semibold mb-3 text-slate-100">Document Statistics</h3>
                           <div className="grid grid-cols-3 gap-3 text-center">
-                            <div>
-                              <div className="text-lg font-bold text-slate-100">{analysis.word_count || 0}</div>
-                              <p className="text-xs text-slate-400">Words</p>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-slate-100">{(analysis.readability_score || 0).toFixed(1)}%</div>
-                              <p className="text-xs text-slate-400">Readability</p>
-                            </div>
-                            <div>
-                              <div className="text-lg font-bold text-slate-100">{analysis.missing_sections?.length || 0}</div>
-                              <p className="text-xs text-slate-400">Missing Sections</p>
-                            </div>
+                            <div><div className="text-lg font-bold text-slate-100">{analysis.word_count || 0}</div><p className="text-xs text-slate-400">Words</p></div>
+                            <div><div className="text-lg font-bold text-slate-100">{(analysis.readability_score || 0).toFixed(1)}%</div><p className="text-xs text-slate-400">Readability</p></div>
+                            <div><div className="text-lg font-bold text-slate-100">{analysis.missing_sections?.length || 0}</div><p className="text-xs text-slate-400">Missing Sections</p></div>
                           </div>
                         </div>
 
@@ -1183,30 +862,8 @@ export default function DocumentsPage() {
                           <div className="p-4 rounded-lg border bg-amber-500/10 border-amber-500/30">
                             <h3 className="font-semibold mb-3 text-amber-300">⚠️ Missing Sections</h3>
                             <ul className="list-disc pl-5 m-0 space-y-2 text-slate-100">
-                              {analysis.missing_sections.map((s, i) => (
-                                <li key={i}>{s}</li>
-                              ))}
+                              {analysis.missing_sections.map((s, i) => <li key={i}>{s}</li>)}
                             </ul>
-                          </div>
-                        )}
-
-                        {/* Keyword density */}
-                        {analysis.keyword_density && Object.keys(analysis.keyword_density || {}).length > 0 && (
-                          <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
-                            <h3 className="font-semibold mb-3 text-slate-100">📊 Keyword Analysis</h3>
-                            <div className="flex flex-col gap-2">
-                              {Object.entries(analysis.keyword_density).map(([k, d]) => (
-                                <div key={k} className="flex items-center justify-between">
-                                  <span className="text-slate-300">{k}</span>
-                                  <div className="flex items-center">
-                                    <div className="w-24 h-2 bg-slate-200 rounded mr-2 overflow-hidden">
-                                      <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.min(Number(d) * 10, 100)}%` }} />
-                                    </div>
-                                    <span className="text-xs text-slate-400">{Number(d).toFixed(1)}%</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
                           </div>
                         )}
                       </div>
@@ -1222,64 +879,33 @@ export default function DocumentsPage() {
             </>
           )}
 
-          {/* ================= Job Selection Modal (tall, single scrollbar) ================= */}
+          {/* ================= Job Selection Modal ================= */}
           {showJobPicker && (
             <>
-              <div
-                onClick={() => { setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); }}
-                className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer"
-              />
+              <div onClick={() => { setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); }} className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer" />
               <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-                <div
-                  className="w-full max-w-4xl h-[85vh] modal-surface rounded-2xl ring-1 overflow-hidden flex flex-col"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Header */}
+                <div className="w-full max-w-4xl h-[85vh] modal-surface rounded-2xl ring-1 overflow-hidden flex flex-col" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
                   <div className="px-6 py-4 border-b border-white/10 bg-white/5">
                     <h3 className="text-xl font-bold text-slate-100">🎯 Select Job for Analysis</h3>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Choose a job to analyze your {getDocName(jobPickerDoc)} against specific requirements
-                    </p>
+                    <p className="text-slate-400 text-sm mt-1">Choose a job to analyze your {getDocName(jobPickerDoc)} against specific requirements</p>
                   </div>
-
-                  {/* Search */}
                   <div className="p-4">
-                    <Input
-                      type="text"
-                      placeholder="🔍 Search jobs by title, company, or keywords..."
-                      value={jobSearchTerm}
-                      onChange={(e) => setJobSearchTerm(e.target.value)}
-                      className="input-glass"
-                    />
+                    <Input type="text" placeholder="🔍 Search jobs by title, company, or keywords..." value={jobSearchTerm} onChange={(e) => setJobSearchTerm(e.target.value)} className="input-glass" />
                   </div>
-
-                  {/* List (single scroll area) */}
                   <div className="flex-1 overflow-y-auto mx-4 mb-4 rounded-lg border border-white/10">
                     {filteredJobs.length ? (
-                      filteredJobs.map((job, idx) => {
+                      filteredJobs.map((job) => {
                         const isSelected = String(selectedJobForAnalysis?.id) === String(job.id);
                         return (
-                          <button
-                            key={job.id}
-                            onClick={() => setSelectedJobForAnalysis(job)}
-                            className={`w-full text-left p-4 border-b border-white/10 transition ${
-                              isSelected ? 'bg-blue-500/20 ring-1 ring-blue-500/40' : 'hover:bg-white/5'
-                            }`}
-                          >
+                          <button key={job.id} onClick={() => setSelectedJobForAnalysis(job)} className={`w-full text-left p-4 border-b border-white/10 transition ${isSelected ? 'bg-blue-500/20 ring-1 ring-blue-500/40' : 'hover:bg-white/5'}`}>
                             <div className="flex items-start justify-between">
                               <div className="pr-3">
                                 <h4 className="font-semibold text-slate-100 mb-1">{job.title}</h4>
                                 <p className="text-sm text-slate-400 mb-1">🏢 {getCompany(job)}</p>
                                 {job.location && <p className="text-xs text-slate-400 mb-2">📍 {job.location}</p>}
-                                {job.description && (
-                                  <p className="text-xs text-slate-400 line-clamp-3">{job.description}</p>
-                                )}
+                                {job.description && <p className="text-xs text-slate-400 line-clamp-3">{job.description}</p>}
                               </div>
-                              <span className={`flex-none w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-blue-600 text-white' : 'bg-white/20 text-slate-300'}`}>
-                                {isSelected ? '✓' : '○'}
-                              </span>
+                              <span className={`flex-none w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-blue-600 text-white' : 'bg-white/20 text-slate-300'}`}>{isSelected ? '✓' : '○'}</span>
                             </div>
                           </button>
                         );
@@ -1288,45 +914,11 @@ export default function DocumentsPage() {
                       <div className="p-10 text-center text-slate-400">No jobs found matching “{jobSearchTerm}”.</div>
                     )}
                   </div>
-
-                  {/* Footer */}
                   <div className="px-6 py-4 border-t border-white/10 bg-white/5 flex justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => { setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); }}
-                      className="border-slate-600 text-slate-300 hover:bg-slate-700/50"
-                    >
-                      Cancel
-                    </Button>
+                    <Button variant="outline" onClick={() => { setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); }} className="border-slate-600 text-slate-300 hover:bg-slate-700/50">Cancel</Button>
                     <div className="flex gap-2">
-                      <Button
-                        variant="default"
-                        onClick={() => {
-                          runAnalysis(jobPickerDoc, '');
-                          setShowJobPicker(false);
-                          setJobPickerDoc(null);
-                          setSelectedJobForAnalysis(null);
-                          setJobSearchTerm('');
-                        }}
-                        className="bg-slate-200/10 text-slate-100 hover:bg-slate-200/20"
-                      >
-                        📊 Quick Analysis (No Job)
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          if (selectedJobForAnalysis) {
-                            runAnalysis(jobPickerDoc, selectedJobForAnalysis.id);
-                            setShowJobPicker(false);
-                            setJobPickerDoc(null);
-                            setSelectedJobForAnalysis(null);
-                            setJobSearchTerm('');
-                          }
-                        }}
-                        disabled={!selectedJobForAnalysis}
-                        className="bg-blue-700 hover:bg-blue-800 disabled:bg-slate-700 disabled:cursor-not-allowed"
-                      >
-                        🎯 Analyze Against Selected Job
-                      </Button>
+                      <Button variant="default" onClick={() => { runAnalysis(jobPickerDoc, ''); setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); }} className="bg-slate-200/10 text-slate-100 hover:bg-slate-200/20">📊 Quick Analysis (No Job)</Button>
+                      <Button onClick={() => { if (selectedJobForAnalysis) { runAnalysis(jobPickerDoc, selectedJobForAnalysis.id); setShowJobPicker(false); setJobPickerDoc(null); setSelectedJobForAnalysis(null); setJobSearchTerm(''); } }} disabled={!selectedJobForAnalysis} className="bg-blue-700 hover:bg-blue-800 disabled:bg-slate-700 disabled:cursor-not-allowed">🎯 Analyze Against Selected Job</Button>
                     </div>
                   </div>
                 </div>
@@ -1341,3 +933,4 @@ export default function DocumentsPage() {
     </AuthGuard>
   );
 }
+

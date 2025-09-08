@@ -1,62 +1,286 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 from typing import List, Dict, Any, Optional, Tuple
-import os
+from pathlib import Path
 import uuid
-import shutil
-from datetime import datetime
 import json
 import re
-from pathlib import Path
+import os
+import mimetypes
+from fastapi import HTTPException
+import tempfile
+
+
+
+from docx import Document as _Docx  # for .docx text extraction
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from ..db import models
 from ..services.pdf_extractor import PDFExtractor
-from ..services.ai_cover_letter import AICoverLetterService
+from ..services.ai_cover_letter import AICoverLetterService  # used if available
 from .models import (
     DocumentType, DocumentStatus, DocumentFormat,
-    DocumentAnalysis, ATSScore, CoverLetterRequest, DocumentOptimizationRequest
+    DocumentAnalysis, ATSScore, CoverLetterRequest, DocumentOptimizationRequest,
+    DocumentResponse, DocumentListResponse
 )
+
+# Optional OpenAI (sync) for resume adjust/generation/AI suggestions
+try:
+    from openai import OpenAI
+    _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+except Exception:  # library not installed
+    OpenAI = None
+    _OPENAI_API_KEY = ""
+
+SAFE_BULLET = "•"
+
 
 
 def _sanitize_display_name(name: Optional[str]) -> str:
-    """
-    Keep a safe base name (no extension, simple chars).
-    """
     if not name:
         return ""
-    # drop extension if user typed one
     base = re.sub(r"\.[^./\\]+$", "", name).strip()
-    # keep letters, numbers, spaces, _, -
     base = re.sub(r"[^a-zA-Z0-9 _-]+", "", base).strip()
-    return base
-
+    return base or "document"
 
 
 class DocumentService:
-    """Advanced document management service with AI capabilities"""
-    
+    """Document management + analysis + AI helpers."""
+
     def __init__(self):
         self.upload_dir = Path("/app/uploads/documents")
         self.upload_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize core services
+
         self.pdf_extractor = PDFExtractor()
-        
-        # Initialize AI service for cover letters (future feature)
-        self.ai_cover_letter_service = None
+
+        self.ai_cover_letter_service: Optional[AICoverLetterService] = None
         try:
             self.ai_cover_letter_service = AICoverLetterService()
-        except ValueError as e:
-            print(f"AI service not available: {e}. Using template fallback.")
-        
-        # ATS-friendly keywords and patterns
-        self.ats_keywords = {
-            'technical': ['python', 'javascript', 'react', 'node.js', 'sql', 'aws', 'docker', 'kubernetes'],
-            'soft_skills': ['leadership', 'communication', 'teamwork', 'problem-solving', 'analytical'],
-            'experience': ['years', 'experience', 'developed', 'managed', 'led', 'implemented'],
-            'education': ['degree', 'bachelor', 'master', 'certification', 'training']
+        except Exception as e:
+            print(f"[documents] AI cover letter unavailable: {e}")
+
+        # Lazily create a basic OpenAI client for resume adjust/gen if key present
+        self._llm = None
+        if OpenAI and _OPENAI_API_KEY:
+            try:
+                self._llm = OpenAI(api_key=_OPENAI_API_KEY)
+            except Exception as e:
+                print(f"[documents] OpenAI init failed: {e}")
+                self._llm = None
+
+    # ============== Core helpers ==============
+
+
+    def _extract_text(self, file_path: Path) -> str:
+        ext = file_path.suffix.lower()
+        try:
+            if ext == ".txt":
+                return file_path.read_text(encoding="utf-8", errors="ignore")
+
+            if ext == ".pdf":
+                data = file_path.read_bytes()
+                res = self.pdf_extractor.extract_text(data)
+                return res.get("text", "")
+
+            if ext in (".docx", ".doc"):
+                try:
+                    d = _Docx(str(file_path))
+                except Exception:
+                    # legacy .doc not supported by python-docx; return placeholder instead of crashing
+                    if ext == ".doc":
+                        return "Legacy .doc file: text extraction requires conversion to .docx"
+                    raise
+                parts = []
+                # paragraphs
+                for p in d.paragraphs:
+                    txt = p.text.strip()
+                    if txt:
+                        parts.append(txt)
+                # tables
+                for t in d.tables:
+                    for row in t.rows:
+                        row_txt = " | ".join(cell.text.strip() for cell in row.cells if cell and cell.text)
+                        if row_txt:
+                            parts.append(row_txt)
+                text = "\n".join(parts)
+                # normalize bullets if present
+                text = re.sub(r"^[\u2022\u25CF\-]\s*", SAFE_BULLET + " ", text, flags=re.M)
+                return text
+        except Exception as e:
+            return f"Error extracting text: {e}"
+        return ""
+
+    def _sidecar_path(self, file_path: Path) -> Path:
+        return file_path.with_suffix(file_path.suffix + ".meta.json")
+
+    def _read_sidecar(self, file_path: Path) -> Dict[str, Any]:
+        meta_path = self._sidecar_path(file_path)
+        if meta_path.exists():
+            try:
+                return json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        return {}
+
+    def _write_sidecar(self, file_path: Path, data: Dict[str, Any]) -> None:
+        meta_path = self._sidecar_path(file_path)
+        try:
+            meta_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"[documents] failed writing sidecar: {e}")
+
+    
+    def _parse_resume_sections(self, text: str) -> Dict[str, Any]:
+        """
+        Heuristically split resume text into sections + bullets based on common headings
+        and the SAFE_BULLET character.
+        """
+        headings = {
+            "summary": "Summary",
+            "skills": "Technical Skills",
+            "technical skills": "Technical Skills",
+            "experience": "Work Experience",
+            "work experience": "Work Experience",
+            "projects": "Projects",
+            "education": "Education",
+            "certifications": "Certifications",
+            "achievements": "Achievements",
+            "volunteering": "Volunteering",
+            "languages": "Languages",
+            "military": "Military Service",
+            "military service": "Military Service",
+        }
+
+        lines = [ln.rstrip() for ln in text.splitlines()]
+        # Try to read header (name + contact) from the first non-empty lines
+        header_name = ""
+        header_contacts: list[str] = []
+
+        i = 0
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+        if i < len(lines):
+            header_name = lines[i].strip()
+            i += 1
+        # collect next up-to-2 contact lines if they look like contacts/links
+        while i < len(lines) and len(header_contacts) < 3 and lines[i].strip():
+            header_contacts.append(lines[i].strip())
+            i += 1
+
+        # Section collection
+        sections: Dict[str, Dict[str, Any]] = {}
+        cur_key = "Summary"
+        sections[cur_key] = {"header": cur_key, "body": [], "bullets": []}
+
+        def push_line(line: str):
+            if not line:
+                return
+            if line.lstrip().startswith(SAFE_BULLET) or line.lstrip().startswith("- "):
+                sections[cur_key]["bullets"].append(line.lstrip().lstrip(SAFE_BULLET).lstrip("-").strip())
+            else:
+                sections[cur_key]["body"].append(line)
+
+        # advance to first blank after header
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+
+        # parse remaining
+        while i < len(lines):
+            raw = lines[i].strip()
+            low = raw.lower().rstrip(":")
+            # detect heading lines
+            if low in headings:
+                cur_key = headings[low]
+                if cur_key not in sections:
+                    sections[cur_key] = {"header": cur_key, "body": [], "bullets": []}
+            else:
+                push_line(raw)
+            i += 1
+
+        return {
+            "name": header_name,
+            "contacts": header_contacts,
+            "sections": [sections[k] for k in [
+                "Summary", "Technical Skills", "Projects", "Education",
+                "Work Experience", "Certifications", "Achievements",
+                "Volunteering", "Languages", "Military Service"
+            ] if k in sections]
         }
     
+    @staticmethod
+    def _tighten_lines(text: str) -> str:
+        # Remove repeated blank lines, trim spaces
+        lines = [ln.rstrip() for ln in (text or "").splitlines()]
+        out = []
+        prev_blank = False
+        for ln in lines:
+            is_blank = (ln.strip() == "")
+            if is_blank and prev_blank:
+                continue
+            out.append(ln)
+            prev_blank = is_blank
+        return "\n".join(out).strip()
+
+    @staticmethod
+    def _heading_norm(s: str) -> str:
+        return (s or "").strip().lower().replace(":", "")
+
+    @staticmethod
+    def _is_heading(line: str) -> bool:
+        # Call the static method properly
+        k = DocumentService._heading_norm(line)
+        return k in {
+            "summary", "professional summary",
+            "skills", "technical skills", "tech skills",
+            "experience", "work experience", "employment",
+            "projects", 
+            "education",
+            "achievements", "awards",
+            "military service"
+        }
+
+    @staticmethod
+    def _parse_sections_from_text(text: str) -> Dict[str, List[str]]:
+        """
+        Parse LLM/deterministic text into sections keyed by canonical names.
+        Keeps ordering similar to your current layout.
+        """
+        order = [
+            "summary",
+            "technical skills",
+            "work experience", 
+            "projects",
+            "education",
+            "achievements",
+            "military service",
+        ]
+        sec_map = {k: [] for k in order}
+        current = None
+        for raw in (text or "").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            if DocumentService._is_heading(line):
+                k = DocumentService._heading_norm(line)
+                if k in ("skills", "tech skills"): k = "technical skills"
+                if k in ("experience", "employment"): k = "work experience"
+                current = k
+                continue
+            if current is None:
+                # before any heading -> assume this is header/summary; push to summary
+                current = "summary"
+            sec_map[current].append(line)
+        # drop empties but preserve order
+        return {k: v for k, v in sec_map.items() if v}
+
+    @staticmethod
+    def _limit_list(items, n):
+        return list(items or [])[:n]
+
+    # ============== Public API ==============
+
     def upload_document(
         self,
         db: Session,
@@ -65,292 +289,620 @@ class DocumentService:
         filename: str,
         document_type: DocumentType,
         display_name: Optional[str] = None,
-        metadata: Dict[str, Any] = None
-    ) -> models.Resume:  # Using existing Resume model for now
-        """Upload and process a new document"""
-
-        # Resolve extension from the original upload
-        p = Path(filename)
-        ext = p.suffix.lower()  # e.g. ".pdf", ".docx"
-        if not ext:
-            ext = ".bin"
-
-        # Generate unique storage name
+        metadata: Dict[str, Any] | None = None,
+    ) -> models.Resume:
+        ext = Path(filename).suffix.lower() or ".bin"
         file_id = uuid.uuid4()
-        unique_filename = f"{file_id}{ext}"
-        file_path = self.upload_dir / unique_filename
+        unique_name = f"{file_id}{ext}"
+        file_path = self.upload_dir / unique_name
+        file_path.write_bytes(file_content)
 
-        # Save the raw file bytes
-        with open(file_path, "wb") as f:
-            f.write(file_content)
+        text_content = self._extract_text(file_path)
+        safe_label = _sanitize_display_name(display_name or Path(filename).stem)
 
-        # Extract text (best effort)
-        text_content = self._extract_text(file_path, ext)
-
-        # Compute display label (DB label) – prefer user-supplied, sanitize, no extension
-        safe_display = _sanitize_display_name(display_name) or p.stem or "document"
-        print(f"[UPLOAD] display_name={display_name} sanitized={safe_display} original_filename={filename}")
-
-        # Create DB row — label is the user-facing name (no extension)
-        document = models.Resume(
+        row = models.Resume(
             id=file_id,
             user_id=uuid.UUID(user_id) if user_id else None,
-            label=safe_display,
+            label=safe_label,
             file_path=str(file_path),
-            text=text_content
+            text=text_content,
         )
-        db.add(document)
+        db.add(row)
         db.commit()
-        db.refresh(document)
-        print(f"[UPLOAD] DB label={document.label} file_path={document.file_path}")
+        db.refresh(row)
 
-        # Sidecar meta used by list/get/download to resolve type, name, and extension
-        meta = {
-            "document_id": str(document.id),
-            "type": document_type.value,                    # exact chosen type from the UI
-            "name": safe_display,                           # display name (no extension)
-            "original_filename": filename,                  # full original name from user upload
-            "original_extension": ext,                      # ".pdf", ".docx", etc
+        side = {
+            "document_id": str(row.id),
+            "type": document_type.value,
+            "name": safe_label,
+            "original_filename": filename,
+            "original_extension": ext,
+            "status": DocumentStatus.ACTIVE.value,
             "metadata": metadata or {},
-            "created_at": document.created_at.isoformat(),
+            "created_at": row.created_at.isoformat(),
         }
-        meta_path = Path(document.file_path).with_suffix(Path(document.file_path).suffix + ".meta.json")
-        try:
-            meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
-        except Exception as e:
-            print(f"Failed to write document meta: {e}")
-
-        # Optional: initial analysis hook
-        self._analyze_document(db, document.id, text_content)
-
-        return document
-
-
+        self._write_sidecar(file_path, side)
+        return row
     
-    async def generate_cover_letter(
+    # ----------- List / Get / Delete / Status -----------
+
+    def resolve_document_response(self, row: models.Resume) -> DocumentResponse:
+        p = Path(row.file_path)
+        side = self._read_sidecar(p)
+        resolved_type = DocumentType(side.get("type", "resume"))
+        resolved_name = side.get("name", row.label)
+        resolved_meta = side.get("metadata", {})
+        resolved_status = DocumentStatus(side.get("status", DocumentStatus.ACTIVE.value))
+        raw_ext = (p.suffix[1:] if p.suffix else "txt").lower()
+        ext = {"doc": "docx"}.get(raw_ext, raw_ext)  # normalize legacy .doc to docx
+        fmt = DocumentFormat(ext if ext in {"pdf", "docx", "txt", "html"} else "txt")
+        size = 0
+        try:
+            size = p.stat().st_size
+        except Exception:
+            if row.text:
+                size = len(row.text.encode("utf-8"))
+        return DocumentResponse(
+            id=str(row.id),
+            type=resolved_type,
+            name=resolved_name,
+            status=resolved_status,
+            format=fmt,
+            file_size=size,
+            created_at=row.created_at,
+            updated_at=row.created_at,
+            version_count=1,
+            current_version=1,
+            tags=[],
+            metadata=resolved_meta,
+            ats_score=None,
+        )
+
+    def list_documents(
         self,
         db: Session,
         user_id: str,
-        request: CoverLetterRequest
-    ) -> dict:
-        """Generate AI-powered cover letter with intelligent analysis"""
-        
-        # Get resume content if provided
-        resume_content = ""
-        if request.resume_id:
-            resume = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.resume_id)).first()
-            if resume:
-                resume_content = resume.text or ""
-        
-        # Get user profile information
-        user = db.query(models.User).filter(models.User.id == uuid.UUID(user_id)).first()
-        user_profile = {
-            "email": user.email if user else None,
-            "name": getattr(user, 'full_name', None) if user else None
-        }
-        
-        # Use template-based cover letter generation only
-        return self._generate_template_cover_letter(db, request, resume_content)
-    
-    def _generate_template_cover_letter(
-        self,
-        db: Session, 
-        request: CoverLetterRequest,
-        resume_content: str
-    ) -> dict:
-        """Fallback template-based cover letter generation"""
-        
-        # Get job details with company name
-        job_query = select(models.Job, models.Company.name.label('company_name')).join(
-            models.Company, models.Job.company_id == models.Company.id, isouter=True
-        ).where(models.Job.id == uuid.UUID(request.job_id))
-        
-        result = db.execute(job_query).first()
-        if not result:
-            raise ValueError("Job not found")
-        
-        job, company_name = result
-        
-        # Generate cover letter content using template
-        cover_letter = self._generate_cover_letter_content(
-            job=job,
-            company_name=company_name or "the company",
-            resume_content=resume_content,
-            tone=request.tone,
-            length=request.length,
-            focus_areas=request.focus_areas,
-            custom_intro=request.custom_intro
+        page: int,
+        page_size: int,
+        filter_type: Optional[DocumentType],
+        filter_status: Optional[DocumentStatus],
+        query: Optional[str] = None,
+    ) -> DocumentListResponse:
+        rows = (
+            db.query(models.Resume)
+            .filter(models.Resume.user_id == uuid.UUID(user_id))
+            .order_by(models.Resume.created_at.desc())
+            .all()
         )
-        
-        word_count = len(cover_letter.split())
-        return {
-            "cover_letter": cover_letter,
-            "word_count": word_count,
-            "estimated_reading_time": f"{word_count // 200 + 1} minutes",
-            "ai_model_used": "template_fallback"
-        }
-    
+
+        q_lower = (query or "").strip().lower()
+        items: List[DocumentResponse] = []
+
+        for r in rows:
+            resp = self.resolve_document_response(r)
+
+            if filter_type and resp.type != filter_type:
+                continue
+            if filter_status and resp.status != filter_status:
+                continue
+
+            if q_lower:
+                side = self._read_sidecar(Path(r.file_path))
+                haystack = " ".join([
+                    resp.name or "",
+                    r.label or "",
+                    r.text or "",
+                    json.dumps(side.get("metadata", {}), ensure_ascii=False),
+                ]).lower()
+                if q_lower not in haystack:
+                    continue
+
+            items.append(resp)
+
+        total = len(items)
+        start = max(0, (page - 1) * page_size)
+        end = start + page_size
+        pages = max(1, (total + page_size - 1) // page_size)
+
+        return DocumentListResponse(
+            documents=items[start:end],
+            total=total,
+            page=page,
+            page_size=page_size,
+            has_next=page < pages,
+            has_prev=page > 1,
+        )
+
+    def get_document(self, db: Session, user_id: str, document_id: str) -> DocumentResponse:
+        try:
+            doc = (
+                db.query(models.Resume)
+                .filter(models.Resume.id == uuid.UUID(document_id), models.Resume.user_id == uuid.UUID(user_id))
+                .first()
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid document ID")
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return self.resolve_document_response(doc)
+
+    def delete_document(self, db: Session, user_id: str, document_id: str) -> None:
+        doc = (
+            db.query(models.Resume)
+            .filter(models.Resume.id == uuid.UUID(document_id), models.Resume.user_id == uuid.UUID(user_id))
+            .first()
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        try:
+            Path(doc.file_path).unlink(missing_ok=True)
+            self._sidecar_path(Path(doc.file_path)).unlink(missing_ok=True)
+        except Exception:
+            pass
+        db.delete(doc)
+        db.commit()
+
+    def update_status(
+        self, db: Session, user_id: str, document_id: str, status: DocumentStatus
+    ) -> DocumentResponse:
+        doc = (
+            db.query(models.Resume)
+            .filter(models.Resume.id == uuid.UUID(document_id), models.Resume.user_id == uuid.UUID(user_id))
+            .first()
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        p = Path(doc.file_path)
+        side = self._read_sidecar(p)
+        side["status"] = status.value
+        self._write_sidecar(p, side)
+        return self.resolve_document_response(doc)
+
+    # ----------- Download / Preview -----------
+
+    def resolve_download(self, db: Session, user_id: str, document_id: str) -> Tuple[Path, str, str]:
+        doc = (
+            db.query(models.Resume)
+            .filter(models.Resume.id == uuid.UUID(document_id), models.Resume.user_id == uuid.UUID(user_id))
+            .first()
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        path = Path(doc.file_path)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Stored file missing")
+
+        side = self._read_sidecar(path)
+        display_name = (side.get("name") or doc.label or path.stem).strip()
+        safe_name = "".join(c for c in display_name if c.isalnum() or c in " _-").strip() or "document"
+        filename = f"{safe_name}{path.suffix}"
+        media, _ = mimetypes.guess_type(str(path))
+        if not media:
+            media = "application/octet-stream"
+        return path, filename, media
+
+    def get_preview_payload(self, db: Session, user_id: str, document_id: str) -> Tuple[str, Dict[str, Any]]:
+        doc = (
+            db.query(models.Resume)
+            .filter(models.Resume.id == uuid.UUID(document_id), models.Resume.user_id == uuid.UUID(user_id))
+            .first()
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        p = Path(doc.file_path)
+        ext = p.suffix.lower()
+
+        # If it's a PDF, show it directly
+        if ext == ".pdf" and p.exists():
+            media, _ = mimetypes.guess_type(str(p))
+            return "inline_file", {"path": str(p), "media": media or "application/pdf"}
+
+        # For DOCX files, try to find or generate a preview
+        if ext == ".docx":
+            # First try to use an existing preview PDF
+            preview_pdf = p.with_suffix(".preview.pdf")
+            if preview_pdf.exists():
+                return "inline_file", {"path": str(preview_pdf), "media": "application/pdf"}
+            
+            # If no preview exists and we have OpenAI, try to generate HTML preview
+            if self._llm is not None:
+                try:
+                    html_content = self._generate_html_via_openai(doc.text or "")
+                    return "html", {"content": html_content}
+                except Exception as e:
+                    print(f"[documents] Failed to generate HTML preview via OpenAI: {e}")
+            
+            # Fallback to basic HTML preview
+            try:
+                # Process the replacements before the f-string
+                processed_text = doc.text.replace('•', '<div class="bullet">')
+                processed_text = processed_text.replace('\n•', '</div>\n<div class="bullet">')
+                processed_text = processed_text.replace('\n', '<br>')
+                
+                html_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Resume Preview</title>
+                    <style>
+                        body {{
+                            font-family: 'Calibri', Arial, sans-serif;
+                            line-height: 1.4;
+                            padding: 40px;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            color: #333;
+                        }}
+                        h1 {{
+                            font-size: 18px;
+                            font-weight: bold;
+                            border-bottom: 1px solid #ddd;
+                            padding-bottom: 8px;
+                            margin-top: 20px;
+                        }}
+                        .bullet {{
+                            margin-left: 20px;
+                            position: relative;
+                        }}
+                        .bullet:before {{
+                            content: "•";
+                            position: absolute;
+                            left: -15px;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <h1>Resume Preview</h1>
+                    <div style="white-space: pre-wrap;">{processed_text}</div>
+                </body>
+                </html>
+                """
+                return "html", {"content": html_content}
+            except Exception:
+                pass
+
+        # Default to text preview
+        text = doc.text or ""
+        return "text", {"text": text or "(no preview text available)"}
+
+
+    # ============== Analysis ==============
+
     def analyze_document_ats(
         self,
         db: Session,
         document_id: str,
-        job_id: Optional[str] = None,
-        user_id: Optional[str] = None
+        job_id: Optional[str],
+        user_id: Optional[str],
+        use_ai: bool = False,
     ) -> DocumentAnalysis:
-        """Analyze document for ATS compatibility"""
-        
-        # Get document with user authorization check
-        query = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(document_id))
+        q = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(document_id))
         if user_id:
-            query = query.filter(models.Resume.user_id == uuid.UUID(user_id))
-        
-        document = query.first()
-        if not document:
+            q = q.filter(models.Resume.user_id == uuid.UUID(user_id))
+        doc = q.first()
+        if not doc:
             raise ValueError("Document not found or access denied")
-        
-        text_content = document.text or ""
-        
-        # Get job keywords if job provided
-        job_keywords = []
+        resume_text = doc.text or ""
+
+        job_keywords: List[str] = []
+        required_tech: List[str] = []
+        req_phrases: List[str] = []
         if job_id:
             job = db.query(models.Job).filter(models.Job.id == uuid.UUID(job_id)).first()
             if job:
-                job_keywords = self._extract_keywords_from_job(job)
-        
-        # Perform analysis
-        analysis = self._perform_ats_analysis(text_content, job_keywords)
-        return analysis
-    
-    def optimize_document(
+                required_tech = [(s or "").strip().lower() for s in (job.skills or []) if s]
+                req_phrases = [(r or "").strip().lower() for r in (job.requirements or []) if r]
+                job_keywords = list({*required_tech, *self._extract_keywords_from_job(job)})
+
+        if job_id:
+            analysis = self._analyze_against_job(
+                resume_text=resume_text,
+                required_tech=required_tech,
+                requirements=req_phrases,
+                extra_keywords=job_keywords,
+                use_ai=use_ai and self._llm is not None,
+            )
+        else:
+            analysis = self._perform_general_resume_analysis(resume_text)
+
+        if job_id:
+            ats = ATSScore(
+                overall_score=analysis["overall_score"],
+                formatting_score=analysis["formatting_score"],
+                keyword_score=analysis["keyword_score"],
+                readability_score=analysis["readability_score"],
+                technical_skills_score=analysis["technical_skills_score"],
+                soft_skills_score=analysis["soft_skills_score"],
+                suggestions=analysis["recommendations"],
+            )
+            return DocumentAnalysis(
+                word_count=analysis["word_count"],
+                keyword_density=analysis.get("keyword_analysis", {}).get("keyword_density", {}),
+                readability_score=analysis["readability_score"],
+                ats_score=ats,
+                suggested_improvements=analysis["recommendations"],
+                missing_sections=[],
+                job_match_summary={"summary": analysis.get("job_match_summary", "")},
+                keyword_analysis=analysis.get("keyword_analysis"),
+                missing_skills={"skills": analysis.get("missing_skills", [])},
+            )
+        else:
+            ats = ATSScore(
+                overall_score=analysis["overall_score"],
+                formatting_score=analysis["formatting_score"],
+                keyword_score=analysis["completeness_score"],
+                readability_score=analysis["readability_score"],
+                technical_skills_score=None,
+                soft_skills_score=None,
+                suggestions=analysis["suggestions"],
+            )
+            return DocumentAnalysis(
+                word_count=analysis["word_count"],
+                keyword_density={},
+                readability_score=analysis["readability_score"],
+                ats_score=ats,
+                suggested_improvements=analysis["suggestions"],
+                missing_sections=analysis["missing_sections"],
+                job_match_summary={"summary": "General resume analysis - select a job for detailed matching"},
+                keyword_analysis={"keywords_found": [], "keywords_missing": []},
+                missing_skills={"skills": []},
+            )
+
+    def _normalize_tokens(self, text: str) -> List[str]:
+        toks = re.findall(r"[a-zA-Z0-9\+\#\.]{2,}", text.lower())
+        fix = {"nodejs": "node.js", "node": "node.js"}
+        out = []
+        for t in toks:
+            out.append(fix.get(t, t))
+        return out
+
+    def _analyze_against_job(
         self,
-        db: Session,
-        request: DocumentOptimizationRequest
-    ) -> str:
-        """Optimize document for better ATS scores"""
-        
-        # Get document
-        document = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.document_id)).first()
-        if not document:
-            raise ValueError("Document not found")
-        
-        # Get job context if provided
-        job_context = None
-        if request.job_id:
-            job_context = db.query(models.Job).filter(models.Job.id == uuid.UUID(request.job_id)).first()
-        
-        # Generate optimized version
-        optimized_content = self._optimize_document_content(
-            original_content=document.text or "",
-            job_context=job_context,
-            target_keywords=request.target_keywords,
-            optimization_goals=request.optimization_goals
-        )
-        
-        return optimized_content
-    
-    def get_document_templates(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get available document templates"""
-        
-        templates = [
-            {
-                "id": "modern-resume-1",
-                "name": "Modern Professional Resume",
-                "description": "Clean, ATS-friendly resume template with modern design",
-                "type": "resume",
-                "category": "professional",
-                "is_premium": False,
-                "preview_url": "/templates/previews/modern-resume-1.png"
-            },
-            {
-                "id": "tech-resume-1", 
-                "name": "Tech Industry Resume",
-                "description": "Optimized for software engineering and tech roles",
-                "type": "resume",
-                "category": "technology",
-                "is_premium": False,
-                "preview_url": "/templates/previews/tech-resume-1.png"
-            },
-            {
-                "id": "cover-letter-professional",
-                "name": "Professional Cover Letter",
-                "description": "Standard professional cover letter template",
-                "type": "cover_letter",
-                "category": "professional",
-                "is_premium": False,
-                "preview_url": "/templates/previews/cover-letter-professional.png"
-            }
+        resume_text: str,
+        required_tech: List[str],
+        requirements: List[str],
+        extra_keywords: List[str],
+        use_ai: bool,
+    ) -> Dict[str, Any]:
+        text_lower = resume_text.lower()
+        tokens = set(self._normalize_tokens(resume_text))
+
+        req_tech_norm = [s.lower() for s in required_tech if s]
+        found_tech = [s for s in req_tech_norm if s in text_lower]
+        tech_score = (len(found_tech) / max(1, len(set(req_tech_norm)))) * 100
+
+        req_keywords: List[str] = []
+        for line in requirements:
+            req_keywords.extend(self._normalize_tokens(line))
+        req_keywords = list({k for k in req_keywords if len(k) >= 3})
+        found_req = [k for k in req_keywords if k in tokens]
+        req_score = (len(found_req) / max(1, len(req_keywords))) * 100
+
+        extra_norm = [k.lower() for k in extra_keywords if k]
+        found_extra = [k for k in extra_norm if k in text_lower]
+        keyword_score = min(100.0, (len(set(found_extra)) / max(1, len(set(extra_norm)))) * 100)
+
+        soft_lib = [
+            "leadership", "communication", "teamwork", "collaboration",
+            "problem solving", "analytical", "mentoring", "ownership",
         ]
-        
-        if category:
-            templates = [t for t in templates if t["category"] == category]
-        
-        return templates
-    
-    def _extract_text(self, file_path: Path, file_extension: str) -> str:
-        """Extract text content from uploaded file using enhanced PDF extractor"""
-        try:
-            if file_extension.lower() == '.txt':
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    return f.read()
-            elif file_extension.lower() == '.pdf':
-                # Use our enhanced PDF extractor
-                with open(file_path, 'rb') as f:
-                    pdf_content = f.read()
-                extraction_result = self.pdf_extractor.extract_text(pdf_content)
-                return extraction_result.get("text", "Failed to extract PDF text")
-            elif file_extension.lower() in ['.doc', '.docx']:
-                # Placeholder for Word document extraction (can be enhanced later)
-                return "Word document text extraction not implemented yet"
-            else:
-                return "Unsupported file format"
-        except Exception as e:
-            return f"Error extracting text: {str(e)}"
-    
-    def _analyze_document(self, db: Session, document_id: uuid.UUID, text_content: str):
-        """Perform initial document analysis"""
-        # Placeholder for document analysis
-        pass
-    
-    def _generate_cover_letter_content(
-        self,
-        job,
-        company_name: str,
-        resume_content: str,
-        tone: str,
-        length: str,
-        focus_areas: List[str],
-        custom_intro: Optional[str]
-    ) -> str:
-        """Generate cover letter content using AI templates"""
-        
-        # Extract key information
-        job_title = job.title
-        
-        # Generate intro
+        found_soft = [s for s in soft_lib if s in text_lower]
+        soft_score = (len(found_soft) / len(soft_lib)) * 100
+
+        formatting_score = 80.0 if SAFE_BULLET in resume_text or "-" in resume_text else 60.0
+        readability_score = 85.0 if len(resume_text.split()) >= 200 else 60.0
+
+        overall = (
+            0.45 * tech_score
+            + 0.25 * req_score
+            + 0.20 * keyword_score
+            + 0.10 * soft_score
+        )
+
+        recommendations: List[str] = []
+        missing_tech = [s for s in set(req_tech_norm) if s not in text_lower]
+        missing_soft = [s for s in soft_lib if s not in text_lower]
+        if missing_tech:
+            recommendations.append(f"Highlight these relevant skills if you have them: {', '.join(missing_tech[:8])}")
+        if req_score < 60:
+            recommendations.append("Mirror wording from the job’s requirements in your bullets where truthful.")
+        if keyword_score < 60:
+            recommendations.append("Add role/industry keywords from the job post (titles, domain terms).")
+
+        if use_ai and self._llm is not None:
+            try:
+                prompt = (
+                    "You are a resume-tailoring assistant. Your job is to produce 5–8 HIGH-IMPACT, TRUTH-PRESERVING suggestions.\n"
+                    "Rules: no fabrications; suggestions only, each ≤ 220 chars."
+                )
+                msg = [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": f"RESUME:\n{resume_text[:6000]}"},
+                    {"role": "user", "content": f"JOB SKILLS:\n{', '.join(required_tech)}\n\nREQUIREMENTS:\n" + "\n".join(requirements[:40])},
+                ]
+                resp = self._llm.chat.completions.create(
+                    model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
+                    temperature=0.2,
+                    messages=msg,
+                    max_tokens=500,
+                )
+                llm_suggestions = (resp.choices[0].message.content or "").strip()
+                if llm_suggestions:
+                    for line in re.split(r"[\r\n]+", llm_suggestions):
+                        line = line.strip(" -•\t")
+                        if 8 <= len(line) <= 220:
+                            recommendations.append(line)
+            except Exception as e:
+                print(f"[documents] AI suggestion failed: {e}")
+
+        job_match_summary = (
+            f"Tech skills match: {tech_score:.0f}%, Requirements match: {req_score:.0f}%, "
+            f"Keywords: {keyword_score:.0f}%"
+        )
+
+        return {
+            "word_count": len(resume_text.split()),
+            "overall_score": overall,
+            "formatting_score": formatting_score,
+            "readability_score": readability_score,
+            "keyword_score": keyword_score,
+            "technical_skills_score": tech_score,
+            "soft_skills_score": soft_score,
+            "recommendations": recommendations,
+            "missing_sections": [],
+            "job_match_summary": job_match_summary,
+            "keyword_analysis": {
+                "keywords_found": list({*found_tech, *found_extra}),
+                "keywords_missing": missing_tech,
+                "keyword_density": {k: resume_text.lower().count(k) for k in set(found_tech)},
+            },
+            "missing_skills": missing_tech + missing_soft,
+        }
+
+    def _perform_general_resume_analysis(self, text_content: str) -> dict:
+        from .service import SAFE_BULLET
+        import re
+        lines = text_content.split("\n")
+        words = text_content.split()
+        word_count = len(words)
+
+        contact_score, structure_score, content_score, formatting_score = 0, 0, 0, 0
+        email_ok = bool(re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', text_content))
+        if email_ok: contact_score += 33
+        phone_ok = bool(re.search(r'\+?\d[\d\s\-().]{7,}', text_content))
+        if phone_ok: contact_score += 33
+        name_ok = bool(re.search(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', text_content))
+        if name_ok: contact_score += 34
+
+        tl = text_content.lower()
+        for key in ("experience", "education", "skills"):
+            if key in tl: structure_score += 33.3
+
+        if 200 <= word_count <= 1200: content_score += 35
+        if SAFE_BULLET in text_content or "-" in text_content: content_score += 25
+        if re.search(r'\b\d{4}\b', text_content): content_score += 20
+        if any(v in tl for v in ("managed", "built", "developed", "designed")): content_score += 20
+
+        non_ascii = [c for c in text_content if ord(c) > 126]
+        if len(non_ascii) < 0.05 * max(1, len(text_content)): formatting_score += 40
+        if len([ln for ln in lines if not ln.strip()]) < 0.35 * max(1, len(lines)): formatting_score += 35
+
+        overall = (contact_score + structure_score + content_score + formatting_score) / 4.0
+        return {
+            "word_count": word_count,
+            "overall_score": overall,
+            "formatting_score": formatting_score,
+            "readability_score": content_score,
+            "completeness_score": (contact_score + structure_score) / 2.0,
+            "suggestions": [
+                *([] if email_ok else ["Add a professional email."]),
+                *([] if phone_ok else ["Add a phone number."]),
+                *([] if name_ok else ["Ensure your name is prominent at the top."]),
+            ],
+            "missing_sections": [s for s in ("experience", "education", "skills") if s not in tl],
+        }
+
+    def _extract_keywords_from_job(self, job) -> List[str]:
+        import re
+        kws = set()
+        if job.title:
+            kws.update([w.lower() for w in re.findall(r'\b[A-Za-z]{3,}\b', job.title)])
+        if job.description:
+            txt = job.description.lower()
+            tech_patterns = [
+                r'\b(python|javascript|java|c\+\+|c#|php|ruby|go|rust)\b',
+                r'\b(react|angular|vue|node\.?js|express|django|flask|spring)\b',
+                r'\b(sql|mysql|postgresql|mongodb|redis|elasticsearch)\b',
+                r'\b(aws|azure|gcp|docker|kubernetes|jenkins|git)\b',
+                r'\b(html|css|scss|sass|bootstrap|tailwind)\b',
+                r'\b(api|rest|graphql|microservices|devops|ci/cd)\b',
+            ]
+            for pat in tech_patterns:
+                kws.update(re.findall(pat, txt))
+        return list(kws)
+
+    # ============== Optimizer ==============
+
+    def optimize_document(self, db: Session, request: DocumentOptimizationRequest) -> str:
+        doc = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.document_id)).first()
+        if not doc:
+            raise ValueError("Document not found")
+        optimized = doc.text or ""
+        for kw in request.target_keywords or []:
+            if kw.lower() not in optimized.lower():
+                optimized += f"\n{SAFE_BULLET} Experience with {kw}"
+        notes = "\n\n[Optimization goals]\n" + "\n".join(f"{SAFE_BULLET} {g}" for g in (request.optimization_goals or []))
+        return optimized + notes
+
+    # ============== Cover letter ==============
+
+    async def generate_cover_letter(self, db: Session, user_id: str, request: CoverLetterRequest) -> dict:
+        resume_content = ""
+        if request.resume_id:
+            r = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.resume_id)).first()
+            if r:
+                resume_content = r.text or ""
+
+        if self.ai_cover_letter_service is not None:
+            try:
+                result = await self.ai_cover_letter_service.generate_intelligent_cover_letter(
+                    db=db,
+                    job_id=request.job_id,
+                    resume_content=resume_content,
+                    user_profile={},
+                    tone=request.tone,
+                    length=request.length,
+                )
+                if result.get("success"):
+                    return result
+            except Exception as e:
+                print(f"[documents] AI cover letter failed, falling back: {e}")
+
+        return self._generate_template_cover_letter(db, request, resume_content)
+
+    def _generate_template_cover_letter(self, db: Session, request: CoverLetterRequest, resume_content: str) -> dict:
+        q = (
+            db.query(models.Job, models.Company.name.label("company_name"))
+            .outerjoin(models.Company, models.Job.company_id == models.Company.id)
+            .filter(models.Job.id == uuid.UUID(request.job_id))
+        )
+        result = q.first()
+        if not result:
+            raise ValueError("Job not found")
+        job, company_name = result
+        cover_letter = self._cover_letter_text(
+            job_title=job.title,
+            company_name=company_name or "the company",
+            tone=request.tone,
+            length=request.length,
+            focus_areas=request.focus_areas,
+            custom_intro=request.custom_intro,
+        )
+        wc = len(cover_letter.split())
+        return {
+            "success": True,
+            "cover_letter": cover_letter,
+            "word_count": wc,
+            "estimated_reading_time": f"{max(1, wc // 200)} minutes",
+            "model_used": "template_fallback",
+        }
+
+    def _cover_letter_text(self, job_title: str, company_name: str, tone: str, length: str,
+                           focus_areas: List[str], custom_intro: Optional[str]) -> str:
         intro = custom_intro or f"I am writing to express my strong interest in the {job_title} position at {company_name}."
-        
-        # Generate body based on tone and focus areas
         if tone == "enthusiastic":
-            body_tone = "I am excited about the opportunity to contribute to your team and bring my passion for technology to this role."
+            body_tone = "I am excited about the opportunity to contribute to your team and bring my passion to this role."
         elif tone == "confident":
             body_tone = "With my proven track record and expertise, I am confident I would be a valuable addition to your team."
-        else:  # professional
+        else:
             body_tone = "I believe my background and experience make me well-suited for this position."
-        
-        # Build focus areas content
-        focus_content = ""
-        if focus_areas:
-            focus_content = f"\\n\\nI am particularly drawn to this role because of my experience in {', '.join(focus_areas)}."
-        
-        # Generate conclusion
+        focus = f"\n\nI am particularly drawn to this role because of my experience in {', '.join(focus_areas)}." if focus_areas else ""
         conclusion = f"Thank you for considering my application. I look forward to the opportunity to discuss how I can contribute to {company_name}'s success."
-        
-        # Combine all parts
-        cover_letter = f"""Dear Hiring Manager,
+        return f"""Dear Hiring Manager,
 
 {intro}
 
-{body_tone}{focus_content}
+{body_tone}{focus}
 
 Based on the job requirements, I have relevant experience that aligns well with what you're looking for. My background includes the skills and qualifications mentioned in the job posting.
 
@@ -358,523 +910,43 @@ Based on the job requirements, I have relevant experience that aligns well with 
 
 Sincerely,
 [Your Name]"""
-        
-        return cover_letter
-    
-    def _extract_keywords_from_job(self, job) -> List[str]:
-        """Extract relevant keywords from job posting using NLP techniques"""
-        import re
-        
-        keywords = set()
-        
-        # Extract from title - often contains key role keywords
-        if job.title:
-            title_words = re.findall(r'\b[A-Za-z]{3,}\b', job.title)
-            keywords.update(word.lower() for word in title_words)
-        
-        # Extract from description with improved logic
-        if job.description:
-            description = job.description.lower()
-            
-            # Technical skills patterns
-            tech_patterns = [
-                r'\b(python|javascript|java|c\+\+|c#|php|ruby|go|rust|swift)\b',
-                r'\b(react|angular|vue|node\.?js|express|django|flask|spring)\b',
-                r'\b(sql|mysql|postgresql|mongodb|redis|elasticsearch)\b',
-                r'\b(aws|azure|gcp|docker|kubernetes|jenkins|git)\b',
-                r'\b(html|css|scss|sass|bootstrap|tailwind)\b',
-                r'\b(api|rest|graphql|microservices|devops|ci/cd)\b'
-            ]
-            
-            for pattern in tech_patterns:
-                matches = re.findall(pattern, description)
-                keywords.update(matches)
-            
-            # Soft skills and qualifications
-            soft_patterns = [
-                r'\b(leadership|management|communication|teamwork|collaboration)\b',
-                r'\b(problem.solving|analytical|critical.thinking|creative)\b',
-                r'\b(agile|scrum|project.management|mentoring)\b'
-            ]
-            
-            for pattern in soft_patterns:
-                matches = re.findall(pattern, description)
-                keywords.update(match.replace('.', ' ') for match in matches)
-            
-            # Years of experience
-            exp_pattern = r'(\d+)\+?\s*years?\s*(of\s*)?(experience|exp)'
-            exp_matches = re.findall(exp_pattern, description)
-            if exp_matches:
-                years = exp_matches[0][0]
-                keywords.add(f"{years} years experience")
-            
-            # Education requirements
-            edu_patterns = [
-                r'\b(bachelor|master|phd|degree|diploma|certificate)\b',
-                r'\b(computer science|engineering|mathematics|business)\b'
-            ]
-            
-            for pattern in edu_patterns:
-                matches = re.findall(pattern, description)
-                keywords.update(matches)
-            
-            # Common job requirement phrases
-            requirement_phrases = [
-                'required', 'preferred', 'must have', 'should have',
-                'experience with', 'knowledge of', 'proficient in',
-                'familiar with', 'skilled in'
-            ]
-            
-            # Extract context around requirement phrases
-            for phrase in requirement_phrases:
-                pattern = f'{phrase}[^.]*'
-                matches = re.findall(pattern, description)
-                for match in matches:
-                    # Extract meaningful words from the requirement
-                    words = re.findall(r'\b[A-Za-z]{3,}\b', match)
-                    keywords.update(word.lower() for word in words[-5:])  # Take last 5 words
-        
-        # Filter out common stop words and very generic terms
-        stop_words = {
-            'required', 'preferred', 'experience', 'knowledge', 'skills',
-            'ability', 'strong', 'excellent', 'good', 'work', 'working',
-            'team', 'environment', 'company', 'position', 'role', 'job',
-            'candidate', 'applicant', 'person', 'individual', 'professional'
-        }
-        
-        filtered_keywords = [kw for kw in keywords if len(kw) > 2 and kw not in stop_words]
-        
-        return list(filtered_keywords)
-    
-    def _perform_ats_analysis(self, text_content: str, job_keywords: List[str]) -> DocumentAnalysis:
-        """Perform enhanced ATS compatibility analysis using advanced analyzer"""
-        
-        # If we have job keywords, use our enhanced analyzer
-        if job_keywords:
-            # Create a pseudo job description from keywords for the analyzer
-            job_description = f"Required skills and qualifications: {', '.join(job_keywords)}"
-            
-            # Use basic analysis since ATS analyzer was removed
-            basic_analysis = self._analyze_document_basic(text_content, job_description)
-            
-            # Extract basic data
-            ats_score = ATSScore(
-                overall_score=basic_analysis.get('overall_score', 0),
-                formatting_score=basic_analysis.get('formatting_score', 0),
-                keyword_score=basic_analysis.get('keyword_score', 0),
-                readability_score=basic_analysis.get('readability_score', 0),
-                technical_skills_score=basic_analysis.get('technical_skills_score', 0),
-                soft_skills_score=basic_analysis.get('soft_skills_score', 0),
-                suggestions=basic_analysis.get('recommendations', [])
-            )
-            
-            return DocumentAnalysis(
-                word_count=basic_analysis.get('word_count', len(text_content.split())),
-                keyword_density=basic_analysis.get('keyword_analysis', {}).get('keyword_density', {}),
-                readability_score=basic_analysis.get('readability_score', 0),
-                ats_score=ats_score,
-                suggested_improvements=basic_analysis.get('recommendations', []),
-                missing_sections=basic_analysis.get('missing_sections', []),
-                # Fixed fields for frontend - ensure proper types
-                job_match_summary={"summary": basic_analysis.get('job_match_summary', '')},
-                keyword_analysis=basic_analysis.get('keyword_analysis'),
-                missing_skills={"skills": basic_analysis.get('missing_skills', [])}
-            )
-        else:
-            # General resume analysis focused on structure and completeness
-            general_analysis = self._perform_general_resume_analysis(text_content)
-            
-            # Extract scores from general analysis
-            formatting_score = general_analysis['formatting_score']
-            readability_score = general_analysis['readability_score']
-            keyword_score = general_analysis['completeness_score']  # Use completeness instead of keywords
-            overall_score = general_analysis['overall_score']
-            word_count = general_analysis['word_count']
-            
-            suggestions = general_analysis['suggestions']
-            missing_sections = general_analysis['missing_sections']
-            
-            ats_score = ATSScore(
-                overall_score=overall_score,
-                formatting_score=formatting_score,
-                keyword_score=keyword_score,
-                readability_score=readability_score,
-                technical_skills_score=None,  # Don't show for general analysis
-                soft_skills_score=None,  # Don't show for general analysis
-                suggestions=suggestions
-            )
-            
-            return DocumentAnalysis(
-                word_count=word_count,
-                keyword_density={},  # Not applicable for general analysis
-                readability_score=readability_score,
-                ats_score=ats_score,
-                suggested_improvements=suggestions,
-                missing_sections=missing_sections,
-                # General analysis doesn't match against job
-                job_match_summary={"summary": "General resume analysis - select a job for detailed matching"},
-                keyword_analysis={"keywords_found": [], "keywords_missing": []},
-                missing_skills={"skills": []}
-            )
-    
-    def _optimize_document_content(
-        self,
-        original_content: str,
-        job_context,
-        target_keywords: List[str],
-        optimization_goals: List[str]
-    ) -> str:
-        """Generate optimized document content"""
-        
-        # This is a simplified version - in production, use advanced NLP/AI
-        optimized_content = original_content
-        
-        # Add target keywords if missing
-        for keyword in target_keywords:
-            if keyword.lower() not in original_content.lower():
-                # Insert keyword naturally (simplified approach)
-                optimized_content += f"\\n• Experience with {keyword}"
-        
-        # Add optimization notes
-        optimization_notes = "\\n\\n[AI Optimization Notes:]\\n"
-        for goal in optimization_goals:
-            optimization_notes += f"• Optimized for: {goal}\\n"
-        
-        return optimized_content + optimization_notes
 
-    def _perform_general_resume_analysis(self, text_content: str) -> dict:
-        """Perform general resume analysis focused on structure and completeness"""
-        import re
-        
-        text_lower = text_content.lower()
-        lines = text_content.split('\n')
-        words = text_content.split()
-        word_count = len(words)
-        
-        # 1. CONTACT INFORMATION ANALYSIS
-        contact_score = 0
-        contact_issues = []
-        
-        # Check for name (usually in first few lines)
-        name_patterns = [
-            r'\b[A-Z][a-z]+ [A-Z][a-z]+\b',  # First Last
-            r'\b[A-Z][a-z]+ [A-Z]\. [A-Z][a-z]+\b'  # First M. Last
-        ]
-        has_name = any(re.search(pattern, text_content) for pattern in name_patterns)
-        if has_name:
-            contact_score += 25
-        else:
-            contact_issues.append("Full name not clearly identified")
-        
-        # Check for email
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        has_email = bool(re.search(email_pattern, text_content))
-        if has_email:
-            contact_score += 25
-        else:
-            contact_issues.append("Email address missing")
-        
-        # Check for phone - improved patterns for international formats
-        phone_patterns = [
-            r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',  # US format (xxx-xxx-xxxx)
-            r'\(\d{3}\)\s?\d{3}[-.]?\d{4}',   # (xxx) xxx-xxxx
-            r'\+\d{1,4}[-.\s]\d{2,3}[-.\s]\d{7,10}',  # International (+972-50-5752650)
-            r'\b\d{3}[-.]?\d{5,6}\b',         # International (972-52650)
-            r'\b\d{10,15}\b',                 # Simple long number
-            r'\b972[-.\s]?\d{2}[-.\s]?\d{7}\b',  # Israeli format specifically (972-50-5752650)
-            r'\+972[-.\s]?\d{2}[-.\s]?\d{7}',    # +972-50-5752650 format
-            r'Phone[-:\s]*\+?\d+[-.\s\d]+',    # "Phone: +xxx-xxx-xxxxxxx"
-        ]
-        
-        has_phone = False
-        for pattern in phone_patterns:
-            if re.search(pattern, text_content, re.IGNORECASE):
-                has_phone = True
-                break
-        
-        if has_phone:
-            contact_score += 25
-        else:
-            contact_issues.append("Phone number missing or not in standard format")
-        
-        # Check for location (city, state or country)
-        location_keywords = ['city', 'state', 'country', 'address', 'location']
-        location_patterns = [
-            r'\b[A-Z][a-z]+,\s*[A-Z]{2}\b',  # City, ST
-            r'\b[A-Z][a-z]+,\s*[A-Z][a-z]+\b'  # City, Country
-        ]
-        has_location = (any(keyword in text_lower for keyword in location_keywords) or 
-                       any(re.search(pattern, text_content) for pattern in location_patterns))
-        if has_location:
-            contact_score += 25
-        else:
-            contact_issues.append("Location information unclear")
-        
-        # 2. SECTION STRUCTURE ANALYSIS
-        structure_score = 0
-        required_sections = {
-            'experience': ['experience', 'work history', 'employment', 'professional experience'],
-            'education': ['education', 'academic', 'degree', 'university', 'college'],
-            'skills': ['skills', 'technical skills', 'competencies', 'abilities'],
-        }
-        
-        important_sections = {
-            'summary': ['summary', 'objective', 'profile', 'about'],
-            'projects': ['projects', 'portfolio', 'accomplishments'],
-            'certifications': ['certifications', 'certificates', 'licenses']
-        }
-        
-        missing_sections = []
-        found_sections = []
-        
-        # Check required sections
-        for section, keywords in required_sections.items():
-            if any(keyword in text_lower for keyword in keywords):
-                structure_score += 33.33
-                found_sections.append(section)
-            else:
-                missing_sections.append(f"{section.title()} section")
-        
-        # Check important sections (bonus points)
-        bonus_score = 0
-        for section, keywords in important_sections.items():
-            if any(keyword in text_lower for keyword in keywords):
-                bonus_score += 10
-                found_sections.append(section)
-        
-        structure_score = min(100, structure_score + bonus_score)
-        
-        # 3. CONTENT QUALITY ANALYSIS
-        content_score = 0
-        content_issues = []
-        
-        # Word count assessment
-        if word_count < 200:
-            content_issues.append("Resume appears too short (under 200 words)")
-        elif word_count > 1000:
-            content_issues.append("Resume might be too long (over 1000 words)")
-        else:
-            content_score += 30
-        
-        # Check for bullet points or structured content
-        bullet_patterns = [r'•', r'\*', r'-\s', r'\d+\.']
-        has_bullets = any(re.search(pattern, text_content) for pattern in bullet_patterns)
-        if has_bullets:
-            content_score += 25
-        else:
-            content_issues.append("Consider using bullet points for better readability")
-        
-        # Check for dates (indicating experience timeline)
-        date_patterns = [
-            r'\b\d{4}\b',  # Years
-            r'\b\d{1,2}/\d{4}\b',  # MM/YYYY
-            r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b'  # Month Year
-        ]
-        date_count = sum(len(re.findall(pattern, text_content)) for pattern in date_patterns)
-        if date_count >= 2:
-            content_score += 25
-        else:
-            content_issues.append("Include dates for experience and education")
-        
-        # Check for action verbs
-        action_verbs = ['managed', 'developed', 'created', 'implemented', 'designed', 'led', 
-                       'built', 'improved', 'increased', 'achieved', 'delivered', 'collaborated']
-        found_verbs = sum(1 for verb in action_verbs if verb in text_lower)
-        if found_verbs >= 3:
-            content_score += 20
-        else:
-            content_issues.append("Use more action verbs to describe achievements")
-        
-        # 4. FORMATTING ASSESSMENT
-        formatting_score = 0
-        formatting_issues = []
-        
-        # Check line length variation (indicates structure)
-        line_lengths = [len(line) for line in lines if line.strip()]
-        if line_lengths:
-            avg_length = sum(line_lengths) / len(line_lengths)
-            length_variance = sum((l - avg_length) ** 2 for l in line_lengths) / len(line_lengths)
-            
-            if length_variance > 100:  # Good variance indicates structure
-                formatting_score += 30
-            else:
-                formatting_issues.append("Consider improving document structure and formatting")
-        
-        # Check for excessive whitespace or formatting issues
-        empty_lines = sum(1 for line in lines if not line.strip())
-        if empty_lines / max(len(lines), 1) < 0.3:  # Not too many empty lines
-            formatting_score += 35
-        else:
-            formatting_issues.append("Reduce excessive whitespace")
-        
-        # Check for consistent formatting (allow common resume characters)
-        # Allow: letters, numbers, spaces, punctuation, common symbols used in resumes
-        valid_chars_pattern = r'[^\w\s\.\-,()@/:|+#&;\'"•–\[\]{}=<>%*~`]'
-        special_chars = re.findall(valid_chars_pattern, text_content)
-        
-        # Accept en dash (–) and bullet (•) as normal
-        import unicodedata
-        allowed_resume_chars = {
-            '|', '+', '#', '&',
-            '•',        # U+2022 bullet
-            '●',        # U+25CF black circle  <-- your PDF uses this
-            '◦',        # U+25E6 white bullet
-            '▪', '▫',   # U+25AA, U+25AB small squares
-            '–', '—',   # U+2013 en dash, U+2014 em dash
-            '·',        # U+00B7 middle dot (often used as bullets)
-            '‣', '▪', '►'  # other common resume bullets
-        }
-        def is_allowed(char):
-            norm = unicodedata.normalize('NFKC', char)
-            return norm in allowed_resume_chars
-        if not special_chars:
-            formatting_score += 35
-        else:
-            problematic_chars = [char for char in set(special_chars) if not is_allowed(char)]
-            if problematic_chars:
-                formatting_issues.append(f"Document may contain unusual characters: {', '.join(set(problematic_chars[:5]))}")
-            else:
-                formatting_score += 35  # All found characters are normal for resumes
-        
-        # 5. CALCULATE OVERALL SCORES
-        overall_score = (contact_score + structure_score + content_score + formatting_score) / 4
-        
-        # Generate comprehensive suggestions
-        suggestions = []
-        suggestions.extend(contact_issues)
-        suggestions.extend(content_issues)
-        suggestions.extend(formatting_issues)
-        
-        if not suggestions:
-            suggestions.append("Great! Your resume structure looks solid. Select a specific job to get targeted analysis.")
-        
-        return {
-            'word_count': word_count,
-            'overall_score': overall_score,
-            'formatting_score': formatting_score,
-            'readability_score': content_score,  # Use content score as readability
-            'completeness_score': (contact_score + structure_score) / 2,
-            'contact_score': contact_score,
-            'structure_score': structure_score,
-            'content_score': content_score,
-            'suggestions': suggestions,
-            'missing_sections': missing_sections,
-            'found_sections': found_sections
-        }
+    # ============== Templates (added) ==============
 
-    def _analyze_document_basic(self, text_content: str, job_description: str = None) -> dict:
-        """Enhanced document analysis with job-specific matching"""
-        import re
-        
-        words = text_content.split()
-        word_count = len(words)
-        text_lower = text_content.lower()
-        
-        if job_description:
-            # JOB-SPECIFIC ANALYSIS
-            job_desc_lower = job_description.lower()
-            
-            # Extract technical skills from job description
-            tech_skills = [
-                'python', 'javascript', 'java', 'c++', 'c#', 'php', 'ruby', 'go', 'rust',
-                'react', 'angular', 'vue', 'nodejs', 'express', 'django', 'flask',
-                'sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch',
-                'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'git',
-                'html', 'css', 'bootstrap', 'api', 'rest', 'graphql', 'microservices'
-            ]
-            
-            soft_skills = [
-                'leadership', 'management', 'communication', 'teamwork', 'collaboration',
-                'problem solving', 'analytical', 'critical thinking', 'creative',
-                'agile', 'scrum', 'project management', 'mentoring'
-            ]
-            
-            # Find required skills in job description
-            required_tech = [skill for skill in tech_skills if skill in job_desc_lower]
-            required_soft = [skill for skill in soft_skills if skill in job_desc_lower]
-            
-            # Find matching skills in resume
-            found_tech = [skill for skill in required_tech if skill in text_lower]
-            found_soft = [skill for skill in required_soft if skill in text_lower]
-            
-            # Calculate specific scores
-            tech_score = (len(found_tech) / max(len(required_tech), 1)) * 100
-            soft_score = (len(found_soft) / max(len(required_soft), 1)) * 100
-            
-            # Overall keyword matching
-            job_keywords = re.findall(r'\b\w{4,}\b', job_desc_lower)
-            resume_keywords = re.findall(r'\b\w{4,}\b', text_lower)
-            
-            keyword_matches = len(set(job_keywords) & set(resume_keywords))
-            keyword_score = min(100, (keyword_matches / max(len(set(job_keywords)), 1)) * 100)
-            
-            overall_score = (tech_score + soft_score + keyword_score) / 3
-            
-            # Generate specific recommendations with keyword details
-            recommendations = []
-            missing_tech = [skill for skill in required_tech if skill not in text_lower]
-            missing_soft = [skill for skill in required_soft if skill not in text_lower]
-            
-            if missing_tech:
-                recommendations.append(f"Consider highlighting these technical skills: {', '.join(missing_tech[:5])}")
-            
-            if missing_soft:
-                recommendations.append(f"Consider emphasizing these soft skills: {', '.join(missing_soft[:3])}")
-            
-            if keyword_score < 60:
-                recommendations.append("Include more keywords from the job description")
-            
-            if tech_score > 80 and soft_score > 80:
-                recommendations.append("Excellent skill match! Consider highlighting specific achievements.")
-            
-            job_match_summary = f"Technical skills match: {tech_score:.0f}%, Soft skills match: {soft_score:.0f}%, Overall keyword relevance: {keyword_score:.0f}%"
-            
-            # Detailed keyword analysis for frontend
-            keyword_analysis = {
-                'keywords_found': found_tech + found_soft,
-                'keywords_missing': missing_tech + missing_soft,
-                'technical_skills': {
-                    'required': required_tech,
-                    'found': found_tech,
-                    'missing': missing_tech
-                },
-                'soft_skills': {
-                    'required': required_soft,
-                    'found': found_soft,
-                    'missing': missing_soft
-                },
-                'keyword_density': {skill: text_lower.count(skill) for skill in found_tech + found_soft},
-                'total_job_keywords': len(required_tech) + len(required_soft),
-                'matched_keywords': found_tech + found_soft
-            }
-            
-            return {
-                'word_count': word_count,
-                'overall_score': overall_score,
-                'formatting_score': 80,  # Assume good formatting for job-specific
-                'keyword_score': keyword_score,
-                'readability_score': 85,  # Focus on matching rather than readability
-                'technical_skills_score': tech_score,
-                'soft_skills_score': soft_score,
-                'recommendations': recommendations,
-                'missing_sections': [],
-                'job_match_summary': job_match_summary,
-                'keyword_analysis': keyword_analysis,
-                'missing_skills': missing_tech + missing_soft
-            }
-        else:
-            # GENERAL ANALYSIS (fallback)
-            return {
-                'word_count': word_count,
-                'overall_score': 75,
-                'formatting_score': 75,
-                'keyword_score': 50,
-                'readability_score': 80,
-                'technical_skills_score': 0,
-                'soft_skills_score': 0,
-                'recommendations': ['Select a specific job for detailed analysis'],
-                'missing_sections': [],
-                'job_match_summary': 'General analysis performed',
-                'keyword_analysis': {'keyword_density': {}},
-                'missing_skills': []
-            }
+    def get_document_templates(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Return a lightweight, hard-coded set of templates.
+        You can replace this with DB-backed templates later.
+        """
+        templates = [
+            {
+                "id": "basic-resume-1",
+                "name": "Clean Resume",
+                "description": "Simple, ATS-friendly layout.",
+                "type": "resume",
+                "category": "resume",
+                "preview_url": None,
+                "is_premium": False,
+            },
+            {
+                "id": "modern-resume-1",
+                "name": "Modern Resume",
+                "description": "Subtle typography, clear sections.",
+                "type": "resume",
+                "category": "resume",
+                "preview_url": None,
+                "is_premium": True,
+            },
+            {
+                "id": "classic-cover-1",
+                "name": "Classic Cover Letter",
+                "description": "Professional tone and structure.",
+                "type": "cover_letter",
+                "category": "cover_letter",
+                "preview_url": None,
+                "is_premium": False,
+            },
+        ]
+        if category:
+            templates = [t for t in templates if t["category"] == category]
+        return templates
