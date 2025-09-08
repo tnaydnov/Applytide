@@ -55,3 +55,5 @@ weasyprint>=60.1
 
 # For HTML processing
 beautifulsoup4>=4.12.2
+
+bcrypt==3.2.2

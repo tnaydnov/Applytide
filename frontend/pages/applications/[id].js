@@ -7,7 +7,6 @@ import Link from "next/link";
 
 /** ---------- constants & helpers (logic only; no UI changes) ---------- */
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 const ALLOWED_STATUSES = ["Applied", "Phone Screen", "Tech", "On-site", "Offer", "Accepted", "Rejected"];
 const normalizeStatus = (s) => (s === "Saved" ? "Applied" : s);
@@ -152,7 +151,7 @@ export default function AppDetailPage() {
 
       const res = await fetch(`${API_BASE}/applications/${appId}/attachments`, {
         method: "POST",
-        headers: authHeader(),
+        credentials: 'include',
         body: formData,
       });
 
@@ -178,7 +177,7 @@ export default function AppDetailPage() {
     try {
       const res = await fetch(`${API_BASE}/applications/${appId}/attachments/${attachmentId}`, {
         method: "DELETE",
-        headers: authHeader(),
+        credentials: 'include',
       });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));

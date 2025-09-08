@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
+import { useAuth } from "../contexts/AuthContext";
 import { logout } from "../lib/api";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(null);
+  const { user, loading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -18,28 +19,13 @@ export default function ProfilePage() {
   const toast = useToast();
 
   useEffect(() => {
-    // Load user data from tokens
-    function loadUserData() {
-      try {
-        const tokens = typeof window !== 'undefined' ? localStorage.getItem('tokens') : null;
-        if (tokens) {
-          const tokenData = JSON.parse(tokens);
-          if (tokenData.email) {
-            const userData = {
-              email: tokenData.email,
-              joinDate: tokenData.loginTime ? new Date(tokenData.loginTime).toLocaleDateString() : 'Unknown'
-            };
-            setUser(userData);
-            setFormData(prev => ({ ...prev, email: userData.email }));
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      }
+    if (user) {
+      setFormData(prev => ({ 
+        ...prev, 
+        email: user.email || '' 
+      }));
     }
-
-    loadUserData();
-  }, []);
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -89,6 +75,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
+    router.push('/login');
   };
 
   const handleDeleteAccount = () => {

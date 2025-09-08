@@ -2,9 +2,10 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { logout, apiFetch } from "../lib/api";
 import { PremiumModal } from "./PremiumFeature";
+import { useAuth } from "../contexts/AuthContext";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 const publicLinks = [
   { label: "Sign In", href: "/login", icon: "login" },
 ];
@@ -12,66 +13,31 @@ const publicLinks = [
 export default function NavBar() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const userBtnRef = useRef(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-
-  // Check if user is authenticated and get user info
-  useEffect(() => {
-    function checkAuth() {
-      try {
-        const tokens = typeof window !== 'undefined' ? localStorage.getItem('tokens') : null;
-        if (tokens) {
-          const tokenData = JSON.parse(tokens);
-          if (tokenData.access_token && tokenData.refresh_token) {
-            // Create user object with stored email
-            setUser({ 
-              authenticated: true,
-              email: tokenData.email || 'user@example.com'
-            });
-            checkPremiumStatus();
-          } else {
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        // Invalid tokens
-        setUser(null);
-      }
-    }
-
-    checkAuth();
-
-    // Listen for auth changes (login/logout)
-    const handleAuthChange = () => {
-      checkAuth();
-    };
-
-    const handleStorageChange = () => {
-      checkAuth();
-    };
-
-    window.addEventListener('authChange', handleAuthChange);
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('authChange', handleAuthChange);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  
+  // Replace the existing user state with AuthContext
+  const { user, isAuthenticated, logout: authLogout } = useAuth();
 
   async function checkPremiumStatus() {
     try {
-      const tokens = typeof window !== 'undefined' ? 
-        JSON.parse(localStorage.getItem("tokens") || "{}") : {};
-      
-      if (tokens.access_token) {
-        // For now, assume user is not premium (since we don't have premium backend yet)
+      // Use the authenticated state from AuthContext instead of localStorage
+      if (isAuthenticated) {
+        // Make an API call with credentials to check premium status
+        const response = await fetch(`${API_BASE || 'http://localhost:8000'}/user/premium-status`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setIsPremium(data.isPremium);
+        } else {
+          setIsPremium(false);
+        }
+      } else {
         setIsPremium(false);
       }
     } catch (error) {
@@ -97,7 +63,7 @@ export default function NavBar() {
   { label: "Analytics", href: "/analytics", icon: "analytics", isPro: true },
   ];
 
-  const links = user ? authenticatedLinks : publicLinks;
+  const links = isAuthenticated ? authenticatedLinks : publicLinks;
 
   const renderIcon = (iconName) => {
     const iconClass = "h-5 w-5";
@@ -152,11 +118,10 @@ export default function NavBar() {
 
   const isActive = (href) => router.pathname === href;
 
-  const handleLogout = () => {
-    logout();
-    setUser(null);
+  function handleLogout() {
+    authLogout();
     router.push('/login');
-  };
+  }
 
   return (
     <nav className="glass-nav shadow-lg border-b border-gray-200 sticky top-0 z-40">
@@ -164,7 +129,7 @@ export default function NavBar() {
         <div className="flex justify-between h-16">
           {/* Logo and brand */}
           <div className="flex items-center">
-            <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-3 group">
+            <Link href={isAuthenticated ? "/dashboard" : "/"} className="flex items-center space-x-3 group">
               <img 
                 src="/images/logomark.svg" 
                 alt="Applytide" 
@@ -222,7 +187,7 @@ export default function NavBar() {
             </div>
 
             {/* User Menu */}
-            {user && (
+            {isAuthenticated && user && (
               <div className="relative">
                 <button
                   ref={userBtnRef}
@@ -237,10 +202,10 @@ export default function NavBar() {
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
                     <span className="text-white font-semibold text-sm">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </span>
                   </div>
-                  <span className="text-sm font-medium hidden sm:block">{user.email || 'User'}</span>
+                  <span className="text-sm font-medium hidden sm:block">{user?.email || 'User'}</span>
                   <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>

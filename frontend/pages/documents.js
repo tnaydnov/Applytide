@@ -33,6 +33,7 @@ function sanitizeName(name) {
 const getCompany = (job) => job?.company || job?.company_name || 'Unknown Company';
 const getDocName = (d) => d?.name || d?.file_name || d?.filename || 'Untitled';
 
+
 export default function DocumentsPage() {
   const { checkPremium, PremiumModal } = usePremiumFeature();
 
@@ -59,36 +60,19 @@ export default function DocumentsPage() {
   const [analysis, setAnalysis] = useState(null);
   const [analysisUseAI, setAnalysisUseAI] = useState(true);
 
+  const hasKeywordScore = analysis?.ats_score?.keyword_score != null;
+  const hasKeywordAI = !!analysis?.ai_detailed_analysis?.keywords;    
+
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [jobPickerDoc, setJobPickerDoc] = useState(null);
   const [jobSearchTerm, setJobSearchTerm] = useState('');
   const [selectedJobForAnalysis, setSelectedJobForAnalysis] = useState(null);
 
-  const [showAdjust, setShowAdjust] = useState(false);
-  const [adjustDoc, setAdjustDoc] = useState(null);
-  const [adjustForm, setAdjustForm] = useState({
-    job_id: '',
-    mode: 'conservative',
-    use_ai: true,
-    save_as_new: true,
-    new_name: '',
-    output: 'docx', // <--- NEW
-  });
-  const [adjustResultText, setAdjustResultText] = useState('');
+  const [showPreviewNotice, setShowPreviewNotice] = useState(false);
+  const [previewNoticeDoc, setPreviewNoticeDoc] = useState(null);
 
-  const [showGenerator, setShowGenerator] = useState(false);
-  const [genFormat, setGenFormat] = useState('docx');
-  const [answers, setAnswers] = useState({
-    full_name: '',
-    title_or_objective: '',
-    summary: '',
-    skills: '',
-    links: '',
-    experience: [],
-    projects: [],
-    education: [],
-    certifications: []
-  });
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState({}); 
 
   const [pagination, setPagination] = useState({ page: 1, page_size: 20, total: 0, has_next: false, has_prev: false });
   const [filters, setFilters] = useState({ type: '', status: '', search: '' });
@@ -203,7 +187,7 @@ export default function DocumentsPage() {
     }
   }
 
-  async function runAnalysis(document, jobId = '', useAI = analysisUseAI) {
+  async function runAnalysis(document, jobId = '') {
     if (document?.type && document.type !== 'resume') {
       toast.error('Analysis is only available for resumes.');
       return;
@@ -215,8 +199,19 @@ export default function DocumentsPage() {
       setAnalysis(null);
       setShowAnalysis(true);
 
-      const result = await api.analyzeDocument(document.id, { jobId, use_ai: !!useAI });
+      const result = await api.analyzeDocument(document.id, {jobId});
       if (result?.success === false) throw new Error(result.error || 'Analysis failed');
+
+      if (result.technical_skills || result.keywords || result.soft_skills || result.formatting) {
+        // If AI data is at root level, add it to ai_detailed_analysis
+        result.ai_detailed_analysis = {
+          technical_skills: result.technical_skills,
+          keywords: result.keywords,
+          soft_skills: result.soft_skills,
+          formatting: result.formatting,
+          overall_suggestions: result.overall_suggestions
+        };
+      }
 
       setAnalysis(result || {});
       const score = result?.ats_score?.overall_score ?? 0;
@@ -299,6 +294,14 @@ export default function DocumentsPage() {
 
   async function previewDocument(document) {
     try {
+      // Check if document is DOCX format
+      if (document.format?.toLowerCase() === 'docx') {
+        // Show the centered notification instead of a toast
+        setPreviewNoticeDoc(document);
+        setShowPreviewNotice(true);
+        return;
+      }
+      
       await api.previewDocument(document.id);
     } catch (e) {
       toast.error(`Preview failed: ${e.message || e}`);
@@ -367,6 +370,229 @@ export default function DocumentsPage() {
         );
     }
   };
+
+  const updateDocumentStatus = async (documentId, newStatus) => {
+    try {
+      await api.setDocumentStatus(documentId, newStatus);
+      toast.success(`Document status updated to ${newStatus}`);
+      loadDocuments(); // Refresh the list
+    } catch (e) {
+      toast.error(`Failed to update status: ${e.message || e}`);
+    }
+  };
+
+  // Replace the entire ExpandableScoreCategory function starting at line 594
+function ExpandableScoreCategory({ title, score, description, details, categoryKey }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  console.log("Complete analysis object:", analysis);
+  
+  // Get the appropriate data from the AI analysis
+  const aiData = analysis?.ai_detailed_analysis?.[categoryKey];
+  
+  // Check if aiData exists and has improvements
+  const hasAIData = !!aiData && (
+    Array.isArray(aiData.improvements) || 
+    Array.isArray(aiData.strengths) || 
+    Array.isArray(aiData.weaknesses)
+  );
+  const improvements = aiData?.improvements || [];
+  const strengths = aiData?.strengths || [];
+  const weaknesses = aiData?.weaknesses || [];
+
+  console.log("AI Data for", categoryKey, ":", aiData);
+  console.log("Improvements array:", improvements);
+  
+  return (
+    <div className="rounded-lg border border-white/10 overflow-hidden">
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-3 focus:outline-none hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center">
+          <span className={`inline-block w-2 h-2 mr-3 rounded-full ${
+            score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+          }`}></span>
+          <span className="font-medium text-slate-200">{title}</span>
+        </div>
+        <div className="flex items-center">
+          <span className={`mr-3 font-semibold ${
+            score >= 80 ? 'text-green-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400'
+          }`}>
+            {score.toFixed(1)}%
+          </span>
+          <svg 
+            className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+      
+      {isExpanded && (
+        <div className="p-4 bg-slate-900/50 border-t border-white/10">
+          <p className="text-sm text-slate-300 mb-4">{description}</p>
+          
+          {/* Show missing elements if provided in AI data */}
+          {aiData?.missing_elements && Array.isArray(aiData.missing_elements) && aiData.missing_elements.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs uppercase tracking-wider text-slate-400 mb-2">Missing Elements</h4>
+              <div className="flex flex-wrap gap-2">
+                {aiData.missing_elements.map((item, i) => (
+                  <span 
+                    key={i} 
+                    className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-300 border border-red-500/30"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Strengths from AI analysis */}
+          {hasAIData && strengths.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs uppercase tracking-wider text-green-400 mb-2">Strengths</h4>
+              <ul className="space-y-1">
+                {strengths.map((strength, i) => (
+                  <li key={i} className="text-sm flex items-start">
+                    <span className="text-green-400 mr-2">✓</span>
+                    <span className="text-slate-200">{strength}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Weaknesses from AI analysis */}
+          {hasAIData && weaknesses.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs uppercase tracking-wider text-amber-400 mb-2">Areas to Improve</h4>
+              <ul className="space-y-1">
+                {weaknesses.map((weakness, i) => (
+                  <li key={i} className="text-sm flex items-start">
+                    <span className="text-amber-400 mr-2">!</span>
+                    <span className="text-slate-200">{weakness}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Improvements with examples from AI */}
+          {hasAIData ? (
+            improvements.length > 0 ? (
+              <div className="mt-4">
+                <h4 className="text-xs uppercase tracking-wider text-indigo-400 mb-2">Personalized Suggestions</h4>
+                <div className="space-y-3">
+                  {improvements.map((improvement, i) => (
+                    <div key={i} className="bg-slate-800/60 rounded-lg p-3 border border-indigo-500/20">
+                      <p className="text-sm text-slate-100 mb-2">{improvement.suggestion}</p>
+                      
+                      {improvement.example_before && improvement.example_after && (
+                        <div className="mt-2 text-xs">
+                          <div className="flex gap-2 items-center mb-1">
+                            <div className="bg-red-500/20 px-2 py-0.5 rounded text-red-300">Before</div>
+                            <div className="text-slate-400">{improvement.example_before}</div>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <div className="bg-green-500/20 px-2 py-0.5 rounded text-green-300">After</div>
+                            <div className="text-slate-300">{improvement.example_after}</div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {improvement.example && !improvement.example_before && (
+                        <div className="mt-2 text-xs">
+                          <div className="flex gap-2 items-center">
+                            <div className="bg-blue-500/20 px-2 py-0.5 rounded text-blue-300">Example</div>
+                            <div className="text-slate-300">{improvement.example}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-3 text-slate-400 text-sm">No personalized suggestions available.</div>
+            )
+          ) : (
+            <div className="text-center py-3 text-slate-400 text-sm">No personalized suggestions for this category.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+  async function generateAiSuggestions(category, score, details) {
+    setAiSuggestionLoading(true);
+    
+    try {
+      // Use your existing AI API or LLM service
+      // This is just a mockup - you'll need to implement the actual API call
+      const prompt = `Based on a ${category} score of ${score}%, provide 3 specific, actionable 
+      suggestions to improve this aspect of the resume. 
+      ${details ? `These elements are missing: ${Array.isArray(details) ? details.join(', ') : 
+        (details.keywords_missing ? details.keywords_missing.join(', ') : '')}` : ''}
+      Make suggestions industry-agnostic but practical.`;
+      
+      // Example response structure - replace with actual API call
+      const response = await new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            suggestions: [
+              `Identify the 3-5 most relevant ${category.toLowerCase()} from the job description and ensure they're prominently featured in your resume with specific examples of how you've used them.`,
+              `Quantify your ${category.toLowerCase()} achievements with metrics (%, $, time saved) to demonstrate concrete impact.`,
+              `Reorganize your ${category.toLowerCase()} section to list the most job-relevant skills first, using industry-standard terminology.`
+            ]
+          });
+        }, 1000);
+      });
+      
+      setAiSuggestions({
+        ...aiSuggestions,
+        [category]: response.suggestions
+      });
+      
+      toast.success(`Generated AI suggestions for ${category}`);
+    } catch (e) {
+      toast.error(`Failed to generate suggestions: ${e.message}`);
+    } finally {
+      setAiSuggestionLoading(false);
+    }
+  }
+
+  async function getDetailedSuggestion(suggestion, index) {
+    setAiSuggestionLoading(true);
+    
+    try {
+      // Example implementation - replace with your actual API call
+      const response = await new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            before: "Managed team projects and ensured deadlines were met.",
+            after: "Led cross-functional team of 8 engineers, delivering 3 critical projects 15% ahead of schedule through implementation of Agile methodologies and daily stand-ups.",
+            explanation: "The improved version quantifies team size (8 engineers), specifies achievements (15% ahead of schedule), and mentions specific methodologies (Agile, daily stand-ups)."
+          });
+        }, 1000);
+      });
+      
+      // Show this in a modal or expandable section
+      setDetailedExample({
+        suggestion,
+        ...response
+      });
+      
+    } catch (e) {
+      toast.error(`Failed to generate example: ${e.message}`);
+    } finally {
+      setAiSuggestionLoading(false);
+    }
+  }
 
   return (
     <AuthGuard>
@@ -460,20 +686,53 @@ export default function DocumentsPage() {
                 const docType = DOCUMENT_TYPES.find(t => t.value === document.type) || { value: 'other', label: 'Other', icon: 'other' };
                 const docStatus = DOCUMENT_STATUS.find(s => s.value === document.status) || DOCUMENT_STATUS[0];
                 const name = getDocName(document);
-
+                
+                const format = document.format?.toUpperCase() || 'TXT';
                 return (
                   <Card key={document.id} className="p-6 hover:shadow-lg transition-shadow glass-card glass-cyan">
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="text-2xl mr-3">{renderIcon(docType.icon)}</div>
-                        <div>
-                          <h3 className="font-semibold text-slate-200 truncate">{name}</h3>
-                          <p className="text-sm text-slate-400">{docType.label}</p>
+                      <div className="flex items-center flex-1 min-w-0 overflow-hidden">
+                        <div className="text-2xl mr-3 flex-shrink-0">{renderIcon(docType.icon)}</div>
+                        <div className="min-w-0 overflow-hidden flex-1">
+                          <h3 
+                            className="font-semibold text-slate-200 truncate w-full"
+                            title={name}
+                          >
+                            {name}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-slate-400">{docType.label}</p>
+                            <span className="px-1.5 py-0.5 bg-slate-700 text-xs font-medium rounded text-slate-300">
+                              {format}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${docStatus.color}-900/50 text-${docStatus.color}-300 border border-${docStatus.color}-500/30`}>
-                        {docStatus.label}
-                      </span>
+                      <div className="relative group ml-2 flex-shrink-0">
+                        <span 
+                          className={`px-2 py-1 rounded-full text-xs font-medium bg-${docStatus.color}-900/50 text-${docStatus.color}-300 border border-${docStatus.color}-500/30 cursor-pointer`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.nextElementSibling.classList.toggle('hidden');
+                          }}
+                        >
+                          {docStatus.label} ▾
+                        </span>
+                        <div className="absolute right-0 top-full mt-1 hidden z-10 bg-slate-800 border border-slate-700 rounded-md shadow-lg py-1 min-w-[120px]">
+                          {DOCUMENT_STATUS.map(status => (
+                            <button
+                              key={status.value}
+                              className={`w-full text-left px-3 py-1.5 text-sm ${status.value === document.status ? 'bg-slate-700 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+                              onClick={(evt) => {
+                                updateDocumentStatus(document.id, status.value);
+                                evt.currentTarget.parentElement.classList.add('hidden');
+                              }}
+                            >
+                              {status.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2 mb-4">
@@ -487,31 +746,72 @@ export default function DocumentsPage() {
                       )}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="mt-4">
+                      {/* Primary action for resume documents */}
                       {document.type === 'resume' && (
-                        <div className="flex-1">
-                          <Button onClick={() => runAnalysis(document)} variant="outline" size="sm" className="w-full" disabled={analyzing}>
-                            {analyzing ? '🔄' : '🔍'} {analyzing ? 'Analyzing...' : 'Analyze'}
+                        <div className="mb-3">
+                          <Button 
+                            onClick={() => runAnalysis(document)} 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full bg-blue-600/30 hover:bg-blue-600/50 text-blue-100 border-blue-500/30" 
+                            disabled={analyzing}
+                          >
+                            {analyzing ? '🔄' : '🔍'} {analyzing ? 'Analyzing...' : 'Analyze Resume'}
                           </Button>
-                          {jobs.length > 0 && (
-                            <div className="mt-2">
-                              <Button
-                                onClick={() => { setJobPickerDoc(document); setShowJobPicker(true); }}
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
-                                disabled={analyzing}
-                              >
-                                🎯 Analyze against specific job ({jobs.length} available)
-                              </Button>
-                            </div>
-                          )}
                         </div>
                       )}
-
-                      <Button onClick={() => previewDocument(document)} variant="outline" size="sm" className="px-3">👁️</Button>
-                      <Button onClick={() => api.downloadDocument(document.id)} variant="outline" size="sm" className="px-3">📥</Button>
-                      <Button onClick={() => deleteDocument(document.id)} variant="outline" size="sm" className="text-red-600 hover:text-red-700 px-3">🗑️</Button>
+                      
+                      {/* Action buttons - consistent across all document types */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button 
+                          onClick={() => previewDocument(document)} 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex flex-col items-center justify-center py-2 h-auto"
+                          title={document.format?.toLowerCase() === 'docx' ? "DOCX preview not available" : "Preview document"}
+                        >
+                          <span className="text-lg mb-1">👁️</span>
+                          <span className="text-xs">Preview</span>
+                        </Button>
+                        
+                        <Button 
+                          onClick={() => api.downloadDocument(document.id)} 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex flex-col items-center justify-center py-2 h-auto"
+                          title="Download document"
+                        >
+                          <span className="text-lg mb-1">📥</span>
+                          <span className="text-xs">Download</span>
+                        </Button>
+                        
+                        <Button 
+                          onClick={() => deleteDocument(document.id)} 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex flex-col items-center justify-center py-2 h-auto text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                          title="Delete document"
+                        >
+                          <span className="text-lg mb-1">🗑️</span>
+                          <span className="text-xs">Delete</span>
+                        </Button>
+                      </div>
+                      
+                      {/* Secondary action for resume - only show if there are jobs */}
+                      {document.type === 'resume' && jobs.length > 0 && (
+                        <div className="mt-3">
+                          <Button
+                            onClick={() => { setJobPickerDoc(document); setShowJobPicker(true); }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-100 border-indigo-500/30"
+                            disabled={analyzing}
+                          >
+                            <span className="mr-1">🎯</span> Analyze with a Job ({jobs.length})
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </Card>
                 );
@@ -552,7 +852,7 @@ export default function DocumentsPage() {
                         type="text"
                         value={uploadForm.name}
                         onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
-                        placeholder="e.g., Tomer Naydnov – English Resume"
+                        placeholder="e.g., John Doe – Resume"
                         className="w-full input-glass"
                       />
                       <p className="text-xs text-slate-400 mt-1">We’ll keep your file extension and use this as the display name.</p>
@@ -690,11 +990,6 @@ export default function DocumentsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <label className="text-sm text-slate-200 flex items-center gap-2">
-                        <input type="checkbox" checked={analysisUseAI} onChange={(e) => setAnalysisUseAI(e.target.checked)} />
-                        Use AI suggestions
-                      </label>
-                      <Button onClick={() => runAnalysis(selectedDocument, selectedJobId, analysisUseAI)} size="sm" variant="outline">↻ Re-run</Button>
                       <button onClick={() => setShowAnalysis(false)} className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition" aria-label="Close" type="button">✕</button>
                     </div>
                   </div>
@@ -739,112 +1034,126 @@ export default function DocumentsPage() {
                           </div>
 
                           {/* Sub-scores */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="space-y-4">
                             {analysis.ats_score?.technical_skills_score != null && (
-                              <div className="text-center p-3 rounded bg-blue-500/20 border border-blue-500/30">
-                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.technical_skills_score >= 80 ? '#10b981' : analysis.ats_score.technical_skills_score >= 60 ? '#f59e0b' : '#ef4444' }}>
-                                  {(analysis.ats_score.technical_skills_score || 0).toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-slate-300">Technical Skills</p>
-                              </div>
+                              <ExpandableScoreCategory 
+                                title="Technical Skills" 
+                                score={analysis.ats_score.technical_skills_score} 
+                                description="How well your technical skills align with job requirements"
+                                categoryKey="technical_skills"
+                              />
                             )}
+                            
                             {analysis.ats_score?.soft_skills_score != null && (
-                              <div className="text-center p-3 rounded bg-emerald-500/20 border border-emerald-500/30">
-                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.soft_skills_score >= 80 ? '#10b981' : analysis.ats_score.soft_skills_score >= 60 ? '#f59e0b' : '#ef4444' }}>
-                                  {(analysis.ats_score.soft_skills_score || 0).toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-slate-300">Soft Skills</p>
-                              </div>
+                              <ExpandableScoreCategory 
+                                title="Soft Skills" 
+                                score={analysis.ats_score.soft_skills_score}
+                                description="Presence of important soft skills relevant to this role"
+                                categoryKey="soft_skills"
+                              />
                             )}
-                            {analysis.ats_score?.keyword_score != null && (
-                              <div className="text-center p-3 rounded bg-amber-500/20 border border-amber-500/30">
-                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.keyword_score >= 80 ? '#10b981' : analysis.ats_score.keyword_score >= 60 ? '#f59e0b' : '#ef4444' }}>
-                                  {analysis.ats_score.keyword_score.toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-slate-300">Keywords</p>
-                              </div>
+                            
+                            {(hasKeywordScore || hasKeywordAI) && (
+                              <ExpandableScoreCategory 
+                                title="Keywords" 
+                                score={analysis?.ats_score?.keyword_score ?? 0}
+                                description="Job-specific terminology and industry language match" 
+                                categoryKey="keywords"
+                              />
                             )}
+                            
                             {analysis.ats_score?.formatting_score != null && (
-                              <div className="text-center p-3 rounded bg-indigo-500/20 border border-indigo-500/30">
-                                <div className="text-xl font-bold" style={{ color: analysis.ats_score.formatting_score >= 80 ? '#10b981' : analysis.ats_score.formatting_score >= 60 ? '#f59e0b' : '#ef4444' }}>
-                                  {analysis.ats_score.formatting_score.toFixed(1)}%
-                                </div>
-                                <p className="text-xs text-slate-300">Formatting</p>
-                              </div>
+                              <ExpandableScoreCategory 
+                                title="Formatting" 
+                                score={analysis.ats_score.formatting_score}
+                                description="ATS-friendly structure and organization" 
+                                categoryKey="formatting"
+                              />
                             )}
                           </div>
                         </div>
 
-                        {/* Keyword Analysis */}
-                        {analysis.keyword_analysis && (
+                        {/* Enhanced Section Analysis - NEW */}
+                        {analysis.section_quality && Object.keys(analysis.section_quality).length > 0 && (
                           <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
-                            <h3 className="font-semibold mb-4 text-blue-300">🎯 Keyword Analysis</h3>
-
-                            {Array.isArray(analysis.keyword_analysis.keywords_found) && analysis.keyword_analysis.keywords_found.length > 0 && (
-                              <div className="mb-4">
-                                <p className="text-sm text-emerald-400 mb-2 font-medium">✅ Found</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {analysis.keyword_analysis.keywords_found.map((k, i) => (
-                                    <span key={i} className="px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 border border-emerald-200">{k}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {Array.isArray(analysis.keyword_analysis.keywords_missing) && analysis.keyword_analysis.keywords_missing.length > 0 && (
-                              <div className="mb-4">
-                                <p className="text-sm text-red-400 mb-2 font-medium">❌ Missing</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {analysis.keyword_analysis.keywords_missing.map((k, i) => (
-                                    <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-300 border border-red-500/30">{k}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Density bars */}
-                            {analysis.keyword_analysis.keyword_density && Object.keys(analysis.keyword_analysis.keyword_density).length > 0 && (
-                              <div className="mt-3">
-                                <h4 className="font-semibold mb-2 text-slate-100">📊 Density</h4>
-                                <div className="flex flex-col gap-2">
-                                  {Object.entries(analysis.keyword_analysis.keyword_density).map(([k, d]) => (
-                                    <div key={k} className="flex items-center justify-between">
-                                      <span className="text-slate-300">{k}</span>
-                                      <div className="flex items-center">
-                                        <div className="w-24 h-2 bg-slate-200 rounded mr-2 overflow-hidden">
-                                          <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.min(Number(d) * 10, 100)}%` }} />
-                                        </div>
-                                        <span className="text-xs text-slate-400">{Number(d).toFixed(1)}%</span>
-                                      </div>
+                            <h3 className="font-semibold mb-3 text-blue-300">📝 Section Quality Analysis</h3>
+                            <div className="space-y-3">
+                              {Object.entries(analysis.section_quality).map(([section, data]) => (
+                                <div key={section} className="flex items-center justify-between">
+                                  <span className="text-slate-200">{section}</span>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-24 h-2 bg-slate-700 rounded overflow-hidden">
+                                      <div 
+                                        className={`h-2 rounded ${data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                                        style={{ width: `${data.score}%` }}
+                                      />
                                     </div>
-                                  ))}
+                                    <span className="text-xs text-slate-400">{data.score.toFixed(0)}%</span>
+                                    {data.improvement_needed && (
+                                      <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded">Needs work</span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Suggested improvements */}
-                        {Array.isArray(analysis.suggested_improvements) && analysis.suggested_improvements.length > 0 && (
-                          <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
-                            <h3 className="font-semibold mb-3 text-slate-100">🛠 Suggested Improvements</h3>
-                            <ul className="list-disc pl-5 m-0 space-y-2 text-slate-100">
-                              {analysis.suggested_improvements.map((s, i) => <li key={i}>{s}</li>)}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Missing skills */}
-                        {analysis.missing_skills && (
-                          <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/30">
-                            <h3 className="font-semibold mb-3 text-red-300">⚠️ Missing Skills & Keywords</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {(Array.isArray(analysis.missing_skills) ? analysis.missing_skills : analysis.missing_skills.skills || []).slice(0, 30).map((s, i) => (
-                                <span key={i} className="px-2 py-1 text-xs rounded bg-red-500/25 text-red-300 border border-red-500/40">{s}</span>
                               ))}
                             </div>
                           </div>
                         )}
+
+                        {/* Action Verb Analysis - NEW */}
+                        {analysis.action_verb_count !== undefined && (
+                          <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
+                            <h3 className="font-semibold mb-3 text-blue-300">🔤 Language Analysis</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                                <div className="text-xl font-bold text-slate-100">{analysis.action_verb_count}</div>
+                                <p className="text-xs text-slate-400">Action Verbs</p>
+                                <div className="mt-2 text-xs text-slate-300">
+                                  {analysis.action_verb_count >= 10 ? 
+                                    'Strong use of action verbs' : 
+                                    'Consider adding more impactful verbs'}
+                                </div>
+                              </div>
+                              <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                                <div className="text-xl font-bold text-slate-100">
+                                  {analysis.readability_score ? analysis.readability_score.toFixed(0) + '%' : 'N/A'}
+                                </div>
+                                <p className="text-xs text-slate-400">Readability</p>
+                                <div className="mt-2 text-xs text-slate-300">
+                                  {(analysis.readability_score || 0) >= 70 ? 
+                                    'Good content structure' : 
+                                    'Content needs improvement'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Overall AI Recommendations */}
+                          {analysis?.ai_detailed_analysis?.overall_suggestions && analysis.ai_detailed_analysis.overall_suggestions.length > 0 && (
+                            <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
+                              <h3 className="font-semibold mb-3 text-slate-100 flex items-center">
+                                <span className="text-indigo-400 mr-2">✨</span> Key Recommendations
+                              </h3>
+                              
+                              <div className="grid gap-3">
+                                {analysis.ai_detailed_analysis.overall_suggestions.map((suggestion, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/10 hover:bg-indigo-500/15 transition-colors"
+                                  >
+                                    <div className="flex items-start">
+                                      <div className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-indigo-500/20 text-indigo-300 mr-3 mt-0.5">
+                                        {i + 1}
+                                      </div>
+                                      <div>
+                                        <p className="text-slate-200">{suggestion}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                         {/* Stats */}
                         <div className="p-4 rounded-lg border bg-slate-800/60 border-white/20">
@@ -927,6 +1236,48 @@ export default function DocumentsPage() {
 
           {/* Premium Modal */}
           <PremiumModal />
+          {/* DOCX Preview Notice */}
+          {showPreviewNotice && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setShowPreviewNotice(false)}>
+              <div 
+                className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl p-6 max-w-md mx-4" 
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-blue-500/20 p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-300">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 16v-4"/>
+                      <path d="M12 8h.01"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-100">Document Preview Unavailable</h3>
+                </div>
+                
+                <p className="text-slate-300 mb-4">
+                  DOCX files can't be previewed directly in the browser. Please download the file to view its contents.
+                </p>
+                
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => {
+                      api.downloadDocument(previewNoticeDoc.id);
+                      setShowPreviewNotice(false);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex-1 transition-colors"
+                  >
+                    Download Document
+                  </button>
+                  <button
+                    onClick={() => setShowPreviewNotice(false)}
+                    className="px-4 py-2 bg-transparent hover:bg-slate-700 border border-slate-600 text-slate-300 rounded-md transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AuthGuard>

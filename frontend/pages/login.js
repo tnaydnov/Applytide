@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { login, api } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
   const [mode, setMode] = useState("login");
@@ -10,22 +11,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const toast = useToast();
 
   // Check if user is already logged in and redirect
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const tokens = localStorage.getItem('tokens');
-      if (tokens) {
-        const parsed = JSON.parse(tokens);
-        if (parsed.access_token) {
-          router.push('/');
-          return;
-        }
-      }
+    if (isAuthenticated) {
+      router.push('/');
     }
-  }, [router]);
+  }, [isAuthenticated, router]);
 
   async function submit(e) {
     e.preventDefault();
@@ -33,10 +29,14 @@ export default function LoginPage() {
     
     try {
       if (mode === "login") {
-        await login(email, password);
-        toast.success("Welcome back!");
-        // Redirect to main page instead of pipeline
-        router.push("/");
+        const success = await login(email, password, remember);
+        if (success) {
+          toast.success("Welcome back!");
+          // Force a full page reload instead of Next.js navigation
+          window.location.replace('/dashboard');
+        } else {
+          toast.error("Login failed");
+        }
       } else {
         await api.register({
           email: email,
@@ -44,8 +44,8 @@ export default function LoginPage() {
           full_name: fullName
         });
         toast.success("Account created successfully! Welcome to Applytide!");
-        // Redirect to dashboard after successful registration
-        router.push("/dashboard");
+        // Force a full page reload for registration too
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       toast.error(err.message || err);
@@ -161,7 +161,19 @@ export default function LoginPage() {
             />
 
             {mode === "login" && (
-              <div className="text-right">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input 
+                    id="remember"
+                    type="checkbox"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded bg-slate-800"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  <label htmlFor="remember" className="ml-2 block text-sm text-gray-300">
+                    Remember me
+                  </label>
+                </div>
                 <button
                   type="button"
                   onClick={() => window.location.href = "/auth/reset"}

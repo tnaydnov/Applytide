@@ -62,6 +62,10 @@ class DocumentAnalysis(BaseModel):
     keyword_analysis: Optional[Dict[str, Any]] = None
     missing_skills: Optional[Dict[str, Any]] = None
 
+    ai_detailed_analysis: Optional[Dict[str, Any]] = None
+    section_quality: Optional[Dict[str, Any]] = None
+    action_verb_count: Optional[int] = None
+
 class CoverLetterRequest(BaseModel):
     """Cover letter generation request"""
     job_id: str

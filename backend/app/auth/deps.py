@@ -1,36 +1,67 @@
 import uuid
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
 from ..db.session import get_db
-from ..db.models import User
+from typing import Optional, Union
+from ..db import models
 from .tokens import decode_access
 
-security = HTTPBearer(auto_error=True)
+security = HTTPBearer(auto_error=False)
 
-def get_current_user(
-    creds: HTTPAuthorizationCredentials = Depends(security),
+async def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
-) -> User:
-    if not creds or creds.scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    token = creds.credentials
+    access_token: Optional[str] = Cookie(None),  # Try cookie first
+    authorization: Optional[str] = Depends(security)  # Fallback to header
+) -> models.User:
+    """Get current authenticated user from token in cookie or header"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    # First try cookie
+    token = access_token
+    
+    # If no cookie, try header
+    if not token and authorization:
+        scheme, param = authorization.scheme.lower(), authorization.credentials
+        if scheme != "bearer":
+            raise credentials_exception
+        token = param
+    
+    if not token:
+        raise credentials_exception
+        
     try:
-        data = decode_access(token)
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
-    user_id = data.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-
-    try:
-        uid = uuid.UUID(user_id)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid subject")
-
-    user = db.get(User, uid)
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        payload = decode_access(token)
+        token_id = payload.get("jti")
+        if token_id:
+            revoked = db.query(models.RefreshToken).filter(
+                models.RefreshToken.jti == token_id,
+                models.RefreshToken.revoked_at.is_not(None)
+            ).first()
+            if revoked:
+                raise credentials_exception
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+            
+        # Convert string to UUID if needed
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except ValueError:
+                raise credentials_exception
+    except Exception as e:
+        print(f"Token decode error: {e}")
+        raise credentials_exception
+        
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
+        
     return user

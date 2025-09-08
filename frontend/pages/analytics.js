@@ -5,6 +5,8 @@ import { BarChart, LineChart, PieChart, DonutChart, AreaChart } from "../compone
 import { PremiumModal } from "../components/PremiumFeature";
 import api from "../lib/api";
 import { useToast } from "../lib/toast";
+import { useAuth } from "../contexts/AuthContext";
+
 
 // Shared renderIcon function
 const renderIcon = (iconType) => {
@@ -57,6 +59,7 @@ const renderIcon = (iconType) => {
 };
 
 export default function Analytics() {
+  const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
   const [timeRange, setTimeRange] = useState('6m'); // 1m, 3m, 6m, 1y, all
@@ -67,7 +70,7 @@ export default function Analytics() {
 
   useEffect(() => {
     checkPremiumStatus();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isPremium) {
@@ -77,17 +80,17 @@ export default function Analytics() {
 
   async function checkPremiumStatus() {
     try {
-      const tokens = typeof window !== 'undefined' ? 
-        JSON.parse(localStorage.getItem("tokens") || "{}") : {};
-      
-      if (tokens.access_token) {
+      // Only check premium if user is authenticated
+      if (isAuthenticated) {
         const response = await fetch('/api/user/premium-status', {
-          headers: { Authorization: `Bearer ${tokens.access_token}` }
+          credentials: 'include'
         });
         if (response.ok) {
           const data = await response.json();
           setIsPremium(data.isPremium);
         }
+      } else {
+        setIsPremium(false);
       }
     } catch (error) {
       console.error('Premium status check failed:', error);

@@ -12,34 +12,37 @@ function authHeaders() {
   return h;
 }
 
+async function getExtensionToken() {
+  try {
+    const response = await fetch(`${API_HOST}/auth/extension-token`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to get extension token');
+    }
+    
+    const data = await response.json();
+    if (data.access_token) {
+      setToken(data.access_token);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Extension token error:', error);
+    return false;
+  }
+}
+
 // Try to read tokens from your web app tab (dev or prod)
 async function getTokenFromWebsite() {
   try {
-    const tabs = await chrome.tabs.query({ url: ["http://localhost:3000/*", "https://app.applytide.com/*"] });
-    if (!tabs.length) return false;
-    const result = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: () => {
-        try {
-          const raw =
-            localStorage.getItem("tokens") ||
-            localStorage.getItem("token") ||
-            localStorage.getItem("auth") ||
-            localStorage.getItem("access_token");
-          if (!raw) return null;
-          try {
-            const o = JSON.parse(raw);
-            return { access: o.access_token || o.access, refresh: o.refresh_token || o.refresh };
-          } catch {
-            return { access: raw, refresh: null };
-          }
-        } catch { return null; }
-      }
-    });
-    const tok = result?.[0]?.result;
-    if (tok?.access) {
-      setToken(tok.access, tok.refresh);
-      console.log("[Applytide bg] token loaded from website");
+    // Try getting a specific extension token from your backend
+    const success = await getExtensionToken();
+    if (success) {
+      console.log("[Applytide bg] token loaded from extension endpoint");
       return true;
     }
   } catch (e) {

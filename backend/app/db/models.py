@@ -155,6 +155,20 @@ class RefreshToken(Base):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    refresh_token_jti: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    client_id: Mapped[str] = mapped_column(String(100), nullable=False)  # Device identifier
+    device_type: Mapped[str] = mapped_column(String(50), nullable=False)  # "mobile", "desktop", etc.
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
 
 class EmailAction(Base):
     __tablename__ = "email_actions"

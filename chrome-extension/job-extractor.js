@@ -12,38 +12,17 @@
   // --- Token capture (unchanged)
   const APPLYTIDE_APP_HOSTS = ["localhost:3000", "app.applytide.com"];
   if (APPLYTIDE_APP_HOSTS.includes(location.host) && runtime) {
-    const checkTokens = () => {
-      try {
-        const raw =
-          localStorage.getItem("token") ||
-          localStorage.getItem("tokens") ||
-          localStorage.getItem("auth") ||
-          localStorage.getItem("access_token");
-        let access = null, refresh = null;
-        if (raw) {
-          try {
-            const o = JSON.parse(raw);
-            access = o.access_token || o.access || null;
-            refresh = o.refresh_token || o.refresh || null;
-          } catch {
-            access = raw;
-          }
-        }
-        if (access) {
-          runtime.sendMessage({ type: "APPLYTIDE_SET_TOKEN", token: access, refresh_token: refresh || "" });
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
+    // For cookie-based auth, we need a different approach
+    // Request a special extension token
+    const requestExtensionToken = () => {
+      runtime.sendMessage({ type: "APPLYTIDE_REQUEST_EXTENSION_TOKEN" });
     };
-    checkTokens();
-    const originalSetItem = localStorage.setItem;
-    localStorage.setItem = function (k, v) {
-      originalSetItem.apply(this, arguments);
-      if (k === "token" || k === "tokens" || k === "auth") setTimeout(checkTokens, 80);
-    };
+    
+    // Initial request
+    requestExtensionToken();
+    
+    // Setup a periodic refresh
+    setInterval(requestExtensionToken, 30 * 60 * 1000); // refresh every 30 minutes
   }
 
   // --- Utils

@@ -6,131 +6,112 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
    Tokens & Auth helpers
 ----------------------------------- */
 
-export function getTokens() {
-  if (typeof window === "undefined") return {};
-  try {
-    // new format
-    const raw = localStorage.getItem("tokens");
-    if (raw) return JSON.parse(raw);
-
-    // --- LEGACY COMPAT ---
-    const legacyAccess = localStorage.getItem("token") || localStorage.getItem("access_token");
-    const legacyRefresh = localStorage.getItem("refresh_token");
-    if (legacyAccess || legacyRefresh) {
-      const migrated = {
-        access_token: legacyAccess || undefined,
-        refresh_token: legacyRefresh || undefined,
-      };
-      localStorage.setItem("tokens", JSON.stringify(migrated));
-      localStorage.removeItem("token");
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      return migrated;
-    }
-    // ---------------------
-    return {};
-  } catch {
-    return {};
-  }
-}
-
-function setTokens(tokens) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("tokens", JSON.stringify(tokens));
-}
-
-export function logout() {
-  if (typeof window !== "undefined") {
-    const { refresh_token } = getTokens();
-
-    if (refresh_token) {
-      fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token }),
-      }).catch(() => {});
-    }
-
-    localStorage.removeItem("tokens");
-    window.dispatchEvent(new Event("authChange"));
-  }
-  window.location.href = "/login";
-}
-
 export async function logoutAll() {
   try {
     await apiFetch("/auth/logout_all", { method: "POST" });
   } catch {
-    // ignore
+    // ignore errors
   } finally {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("tokens");
-    }
+    // No need to manually remove items from localStorage
+    // The cookies will be cleared by the server response
     window.location.href = "/login";
   }
 }
 
-async function tryRefreshAndRetry(path, init) {
-  const { refresh_token } = getTokens();
-  if (!refresh_token) throw new Error("No refresh token");
-
-  const res = await fetch(`${API_BASE}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token }),
-  });
-  if (!res.ok) throw new Error("Refresh failed");
-
-  const data = await res.json();
-  setTokens({ access_token: data.access_token, refresh_token: data.refresh_token });
-
-  // retry original call
-  return apiFetch(path, init, false);
+export async function logout() {
+  try {
+    const response = await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Logout error:', error);
+    return false;
+  }
 }
 
-export async function apiFetch(path, init = {}, allowRetry = true) {
-  const { access_token } = getTokens();
-  const headers = new Headers(init.headers || {});
-  if (!headers.has("Content-Type") && !(init.body instanceof FormData)) {
-    headers.set("Content-Type", "application/json");
+async function refreshToken() {
+  try {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    return false;
   }
-  if (access_token) headers.set("Authorization", `Bearer ${access_token}`);
+}
 
-  const resp = await fetch(`${API_BASE}${path}`, { ...init, headers });
-
-  if (resp.status === 401 && allowRetry) {
-    try {
-      return await tryRefreshAndRetry(path, init);
-    } catch {
-      logout();
-      throw new Error("Auth expired");
+export async function apiFetch(endpoint, options = {}) {
+  try {
+    // Set credentials to include for all requests
+    const fetchOptions = {
+      ...options,
+      credentials: 'include',
+      headers: {
+        ...options.headers,
+        'Content-Type': options.headers?.['Content-Type'] || 'application/json'
+      }
+    };
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+    
+    // Only attempt refresh on 401 if we're not already trying to refresh/login
+    if (response.status === 401 && 
+        !endpoint.includes('/auth/refresh') && 
+        !endpoint.includes('/auth/login')) {
+      
+      try {
+        // Try to refresh the token
+        const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        // If refresh succeeded, retry original request
+        if (refreshResponse.ok) {
+          return await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed', refreshError);
+      }
     }
+    
+    return response;
+  } catch (error) {
+    console.error(`API fetch error for ${endpoint}:`, error);
+    throw error;
   }
-  return resp;
 }
 
-export async function login(email, password) {
-  const r = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const data = await r.json();
-
-  // Store tokens with user email for navbar display
-  setTokens({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    email,
-    loginTime: Date.now(),
-  });
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("authChange"));
+export async function login(email, password, remember = false) {
+  try {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+        remember_me: remember 
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Login failed');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
   }
-
-  return data;
 }
 
 /* -----------------------------------
@@ -180,6 +161,8 @@ export const api = {
   // Keep compatibility: api.login -> top-level login()
   login,
 
+  logout,
+
   // jobs
   listJobs: () => apiFetch("/jobs").then((r) => r.json()),
   scrapeJob: (url) =>
@@ -220,10 +203,9 @@ export const api = {
     if (name) formData.append("name", name);
     if (metadata) formData.append("metadata", JSON.stringify(metadata));
 
-    const { access_token } = getTokens();
     return fetch(`${API_BASE}/documents/upload`, {
       method: "POST",
-      headers: access_token ? { Authorization: `Bearer ${access_token}` } : {},
+      credentials: 'include',
       body: formData,
     }).then(async (r) => {
       if (!r.ok) throw new Error(await r.text());
@@ -236,9 +218,8 @@ export const api = {
 
   // Download (keeps robust filename parsing)
   downloadDocument: async (id) => {
-    const { access_token } = getTokens();
     const response = await fetch(`${API_BASE}/documents/${id}/download`, {
-      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error(await response.text());
 
@@ -303,13 +284,12 @@ export const api = {
     apiFetch(`/documents/${id}/status`, {
       method: "PUT",
       body: JSON.stringify({ new_status }),
-    }).then((r) => r.json()),
+    }),
 
   /* ---------- NEW: preview (opens a blob tab) ---------- */
   previewDocument: async (id) => {
-    const { access_token } = getTokens();
     const resp = await fetch(`${API_BASE}/documents/${id}/preview`, {
-      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+      credentials: 'include',
     });
     if (!resp.ok) throw new Error(await resp.text());
     const blob = await resp.blob();
@@ -324,11 +304,11 @@ export const api = {
     apiFetch(`/documents/?document_type=resume&page=1&page_size=200`).then((r) => r.json()),
 
   /* ---------- CHANGED: analyzeDocument now supports use_ai + jobId ---------- */
-  analyzeDocument: (documentId, { jobId, use_ai } = {}) =>
+  analyzeDocument: (documentId, { jobId} = {}) =>
     apiFetch(
       `/documents/${documentId}/analyze` +
         (jobId ? `?job_id=${encodeURIComponent(jobId)}` : "") +
-        (use_ai ? (jobId ? "&" : "?") + "use_ai=true" : ""),
+        (jobId ? "&" : "?") + "use_ai=true",
       { method: "POST" }
     ).then((r) => r.json()),
 
@@ -382,9 +362,8 @@ export const api = {
   // analytics
   getAnalytics: (timeRange = "6m") => apiFetch(`/analytics?range=${timeRange}`).then((r) => r.json()),
   exportAnalyticsPDF: async (timeRange = "6m") => {
-    const { access_token } = getTokens();
     const response = await fetch(`${API_BASE}/analytics/export/pdf?range=${timeRange}`, {
-      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error(await response.text());
     const blob = await response.blob();
@@ -398,9 +377,8 @@ export const api = {
     URL.revokeObjectURL(url);
   },
   exportAnalyticsCSV: async (timeRange = "6m") => {
-    const { access_token } = getTokens();
     const response = await fetch(`${API_BASE}/analytics/export/csv?range=${timeRange}`, {
-      headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+      credentials: 'include',
     });
     if (!response.ok) throw new Error(await response.text());
     const blob = await response.blob();
@@ -462,9 +440,8 @@ export function connectWS(onMsg) {
 ----------------------------------- */
 
 export async function downloadApplicationsCSV() {
-  const { access_token } = getTokens();
   const r = await fetch(`${API_BASE}/io/export/applications.csv`, {
-    headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    credentials: 'include',
   });
   if (!r.ok) throw new Error(await r.text());
   const blob = await r.blob();
@@ -479,12 +456,11 @@ export async function downloadApplicationsCSV() {
 }
 
 export async function importApplicationsCSV(file) {
-  const { access_token } = getTokens();
   const form = new FormData();
   form.append("file", file);
   const r = await fetch(`${API_BASE}/io/import/applications`, {
     method: "POST",
-    headers: access_token ? { Authorization: `Bearer ${access_token}` } : undefined,
+    credentials: 'include',
     body: form,
   });
   if (!r.ok) throw new Error(await r.text());

@@ -7,6 +7,7 @@ from ..config import settings
 from ..services.redis_client import r
 from ..db.session import get_db_session
 from ..db.models import RefreshToken, EmailAction
+from ..db import models
 
 
 def _now():
@@ -33,11 +34,20 @@ def create_access_token(user_id: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
-def create_refresh_token(user_id: str, family: str | None = None, user_agent: str = None, ip_address: str = None) -> tuple[str, str]:
+def create_refresh_token(
+    user_id: str, 
+    family: str | None = None, 
+    user_agent: str = None, 
+    ip_address: str = None,
+    extended: bool = False  # Add this parameter
+) -> tuple[str, str]:
     """Return (token, family_id). family is constant across rotations."""
     family_id = family or str(uuid.uuid4())
     jti = str(uuid.uuid4())
-    expires_at = _exp_days(settings.REFRESH_TTL_DAYS)
+    
+    # Use extended duration for "remember me"
+    ttl_days = settings.REFRESH_TTL_EXTENDED_DAYS if extended else settings.REFRESH_TTL_DAYS
+    expires_at = _exp_days(ttl_days)
     
     payload = {
         "sub": user_id,
@@ -77,6 +87,18 @@ def decode_access(token: str) -> dict:
     except JWTError:
         raise
 
+def update_user_session(jti: str, last_seen_at=None):
+    """Update the UserSession associated with a refresh token JTI"""
+    with get_db_session() as db:
+        session = db.query(models.UserSession).filter(
+            models.UserSession.refresh_token_jti == jti,
+            models.UserSession.is_active == True
+        ).first()
+        
+        if session:
+            if last_seen_at:
+                session.last_seen_at = last_seen_at
+            db.commit()
 
 def decode_refresh(token: str) -> dict:
     try:
@@ -93,6 +115,9 @@ def decode_refresh(token: str) -> dict:
                     raise JWTError("Token revoked")
                 if db_token.expires_at < _now():
                     raise JWTError("Token expired")
+            
+            # Update the associated user session
+            update_user_session(jti, _now())
         
         return data
     except JWTError:
