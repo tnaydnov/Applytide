@@ -479,7 +479,6 @@ export default function DocumentsPage() {
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm"><span className="text-slate-400">Size:</span><span className="text-slate-200">{((document.file_size || 0) / 1024).toFixed(1)} KB</span></div>
                       <div className="flex justify-between text-sm"><span className="text-slate-400">Created:</span><span className="text-slate-200">{document.created_at ? new Date(document.created_at).toLocaleDateString() : '-'}</span></div>
-                      <div className="flex justify-between text-sm"><span className="text-slate-400">Version:</span><span className="text-slate-200">v{document.current_version ?? 1}</span></div>
                       {document.ats_score != null && (
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-400">ATS Score:</span>

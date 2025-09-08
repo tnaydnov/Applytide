@@ -37,13 +37,6 @@ class ATSScore(BaseModel):
     soft_skills_score: Optional[float] = Field(None, ge=0, le=100)
     suggestions: List[str] = Field(default_factory=list)
 
-class DocumentVersion(BaseModel):
-    """Document version information"""
-    version_number: int
-    created_at: datetime
-    changes_summary: Optional[str] = None
-    file_path: str
-    file_size: int
 
 class DocumentTemplate(BaseModel):
     """Document template model"""
@@ -95,8 +88,6 @@ class DocumentResponse(BaseModel):
     file_size: int
     created_at: datetime
     updated_at: datetime
-    version_count: int
-    current_version: int
     ats_score: Optional[float] = None
     tags: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)

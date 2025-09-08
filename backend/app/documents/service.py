@@ -351,8 +351,6 @@ class DocumentService:
             file_size=size,
             created_at=row.created_at,
             updated_at=row.created_at,
-            version_count=1,
-            current_version=1,
             tags=[],
             metadata=resolved_meta,
             ats_score=None,
