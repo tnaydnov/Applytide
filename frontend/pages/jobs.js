@@ -14,8 +14,6 @@ export default function JobsPage() {
     has_next: false,
     has_prev: false
   });
-  const [resumes, setResumes] = useState([]);
-  const [selectedResume, setSelectedResume] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
@@ -80,16 +78,6 @@ export default function JobsPage() {
       setJobs([]);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadResumes() {
-    try {
-      const response = await api.listResumes();
-      const data = response.items || response;
-      setResumes(data);
-    } catch (err) {
-      toast.error("Failed to load resumes");
     }
   }
 
@@ -163,7 +151,6 @@ export default function JobsPage() {
   async function createApplication(jobId) {
     try {
       const payload = { job_id: jobId };
-      if (selectedResume) payload.resume_id = selectedResume;
       await api.createApp(payload);
       toast.success("Application created! Check your pipeline.");
     } catch (err) {
@@ -298,13 +285,12 @@ export default function JobsPage() {
     }
   }
 
-  // Initial load (jobs + resumes)
+  // Initial load (jobs)
   useEffect(() => {
     // safety: ensure page is scrollable on mount
     document.body.style.overflow = "";
     const timer = setTimeout(() => {
       loadJobs();
-      loadResumes();
     }, 100);
     return () => clearTimeout(timer);
   }, []);
@@ -931,24 +917,6 @@ export default function JobsPage() {
                 </div>
               )}
             </Modal>
-
-            {/* Resume Selection */}
-            <Card className="glass-card glass-rose">
-              <div className="flex items-center space-x-4">
-                <span className="text-lg">📄</span>
-                <Select
-                  label="Default Resume for Applications"
-                  value={selectedResume}
-                  onChange={e => setSelectedResume(e.target.value)}
-                  className="flex-1 input-glass input-rose"
-                >
-                  <option value="">(No resume selected)</option>
-                  {Array.isArray(resumes) && resumes.map(r => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
-                  ))}
-                </Select>
-              </div>
-            </Card>
 
             {/* Search & Filter */}
             <Card className="glass-card glass-amber">
