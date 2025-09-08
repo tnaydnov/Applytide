@@ -33,7 +33,9 @@ export default function LoginPage() {
         if (success) {
           toast.success("Welcome back!");
           // Force a full page reload instead of Next.js navigation
-          window.location.replace('/dashboard');
+          setTimeout(() => {
+            window.location.replace('/dashboard');
+          }, 500);  
         } else {
           toast.error("Login failed");
         }
@@ -97,16 +99,18 @@ export default function LoginPage() {
               color: rgb(226 232 240) !important;
             }
           `}</style>
-          <form onSubmit={submit} className="space-y-6 login-form">
+          <form onSubmit={submit} className="space-y-6 login-form" id="login-form" name="login-form">
             {mode === "register" && (
               <Input
                 label="Full Name"
                 type="text"
+                name="name"  // Add name attribute
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 placeholder="John Doe"
                 required
                 className="dark-input"
+                autocomplete="name"  // Add autocomplete
                 style={{
                   backgroundColor: 'rgb(15 23 42 / 0.8)',
                   color: 'rgb(226 232 240)',
@@ -123,11 +127,13 @@ export default function LoginPage() {
             <Input
               label="Email Address"
               type="email"
+              name="email"  // Add name attribute
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
               className="dark-input"
+              autocomplete={mode === "login" ? "username" : "email"}  // Proper autocomplete
               style={{
                 backgroundColor: 'rgb(15 23 42 / 0.8)',
                 color: 'rgb(226 232 240)',
@@ -143,11 +149,13 @@ export default function LoginPage() {
             <Input
               label="Password"
               type="password"
+              name="password"  // Add name attribute
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               required
               className="dark-input"
+              autocomplete={mode === "login" ? "current-password" : "new-password"}  // Proper autocomplete
               style={{
                 backgroundColor: 'rgb(15 23 42 / 0.8)',
                 color: 'rgb(226 232 240)',

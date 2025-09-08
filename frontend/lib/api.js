@@ -24,10 +24,15 @@ export async function logout() {
       method: 'POST',
       credentials: 'include'
     });
+    
+    // Clear any client-side state if needed
     return response.ok;
   } catch (error) {
     console.error('Logout error:', error);
     return false;
+  } finally {
+    // Always trigger a redirect in the calling code
+    // (the actual redirect happens in AuthContext.js)
   }
 }
 

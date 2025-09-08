@@ -298,7 +298,7 @@ def refresh_token(
 
 
 @router.post("/logout", response_model=schemas.MessageResponse)
-def logout(request: Request, response: Response):
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     """Logout from current device"""
     # Get refresh token from cookie
     refresh_token = request.cookies.get("refresh_token")
@@ -308,9 +308,18 @@ def logout(request: Request, response: Response):
             data = decode_refresh(refresh_token)
             jti = data.get("jti")
             revoke_refresh_token(jti)
-        except Exception:
+            
+            # Add this block to delete the session record
+            if jti:
+                db_session = db.query(models.UserSession).filter(
+                    models.UserSession.token_id == jti
+                ).first()
+                if db_session:
+                    db.delete(db_session)
+                    db.commit()
+        except Exception as e:
             # Already invalid, that's fine
-            pass
+            print(f"Error during logout: {e}")
     
     # Clear cookies regardless
     response.delete_cookie(key="access_token", path="/")

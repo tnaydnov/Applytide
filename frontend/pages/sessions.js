@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Card, Badge, Button, ResponsiveContainer } from "../components/ui";
-import NavBar from "../components/NavBar";
 import { format } from "date-fns";
 import { useRouter } from 'next/router';
-import { api } from "../lib/api";
+import { apiFetch } from "../lib/api";
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState([]);
@@ -27,7 +26,7 @@ export default function SessionsPage() {
       setLoading(true);
       setError(null);
       
-      const response = await api.apiFetch("/auth/sessions");
+      const response = await apiFetch("/auth/sessions");
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -48,7 +47,7 @@ export default function SessionsPage() {
       try {
         setRevoking(sessionId);
         
-        const response = await api.apiFetch("/auth/sessions/revoke", {
+        const response = await apiFetch("/auth/sessions/revoke", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

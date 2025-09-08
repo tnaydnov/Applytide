@@ -20,6 +20,8 @@ from .api.kanban import router as kanban_router  # Kanban/Pipeline Management
 from .preferences.router import router as preferences_router  # User Preferences
 from .auth.sessions import router as sessions_router
 from app.ai.router import router as ai_router
+from .tasks.cleanup import cleanup_expired_sessions
+from apscheduler.schedulers.background import BackgroundScheduler
 
 
 
@@ -106,7 +108,12 @@ app.include_router(preferences_router)  # User Preferences Storage
 app.include_router(ai_router)
 
 
-
+@app.on_event("startup")
+async def startup_event():
+    # Set up scheduler to run cleanup every day
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(cleanup_expired_sessions, 'interval', hours=24)
+    scheduler.start()
 
 @app.get("/health")
 def health():

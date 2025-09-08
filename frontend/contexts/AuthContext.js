@@ -183,11 +183,25 @@ export function AuthProvider({ children }) {
   
   async function logout() {
     try {
-      await api.logout();
-    } finally {
-      setUser(null);
+        // Call backend to invalidate the current session
+        await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+        });
+        
+        // Then clear user data locally
+        setUser(null);
+        setTokenExpiry(null);
+        
+        // Redirect to login
+        window.location.href = '/login';
+    } catch (err) {
+        console.error("Logout error:", err);
+        // Even if server logout fails, clear local data
+        setUser(null);
+        window.location.href = '/login';
     }
-  }
+    }
   
   const value = {
     user,
