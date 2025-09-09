@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Input, Select, Textarea, Badge } from '../components/ui';
-import api, { getTokens } from '../lib/api';
+import api from '../lib/api';
 import AuthGuard from "../components/AuthGuard";
 import { PremiumBadge, usePremiumFeature } from "../components/PremiumFeature";
 
@@ -167,11 +167,11 @@ export default function DocumentsPage() {
       if (desired) formData.append('name', desired);
       if (uploadForm.metadata) formData.append('metadata', JSON.stringify(uploadForm.metadata));
 
-      const { access_token } = getTokens() || {};
-      const headers = {};
-      if (access_token) headers.Authorization = `Bearer ${access_token}`;
-
-      const resp = await fetch(`${API_BASE_URL}/documents/upload`, { method: 'POST', headers, body: formData });
+      const resp = await fetch(`${API_BASE_URL}/documents/upload`, { 
+        method: 'POST', 
+        credentials: 'include', // Add this to send cookies
+        body: formData 
+      });
       if (!resp.ok) throw new Error(`Upload failed (${resp.status})`);
       await resp.json().catch(() => ({}));
 
@@ -264,11 +264,10 @@ export default function DocumentsPage() {
         length: coverLetterForm.length
       }));
 
-      const { access_token } = getTokens() || {};
       const response = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: 'POST',
-        body: formData,
-        headers: access_token ? { Authorization: `Bearer ${access_token}` } : {}
+        credentials: 'include', // Add this to send cookies
+        body: formData
       });
 
       if (!response.ok) throw new Error('Upload failed');
