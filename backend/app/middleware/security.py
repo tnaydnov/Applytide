@@ -21,21 +21,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Referrer Policy
             response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
             
-            # Content Security Policy
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline'; "
-                "style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data: https:; "
-                "font-src 'self'; "
-                "connect-src 'self' wss: https:; "
-                "frame-ancestors 'none';"
-            )
+            # Content Security Policy - stricter for production
+            csp_settings = {
+                "default-src": ["'self'"],
+                "script-src": ["'self'"],
+                "style-src": ["'self'"],
+                "img-src": ["'self'", "data:"],
+                "font-src": ["'self'"],
+                "connect-src": ["'self'", "https://api.applytide.com"],
+                "frame-src": ["'self'"],
+                "object-src": ["'none'"],
+                "base-uri": ["'self'"]
+            }
+            
+            # Only add unsafe-inline in development
+            if os.getenv("ENVIRONMENT") != "production":
+                csp_settings["script-src"].append("'unsafe-inline'")
+                csp_settings["style-src"].append("'unsafe-inline'")
+                
+            # Build CSP string
+            csp = "; ".join(f"{k} {' '.join(v)}" for k, v in csp_settings.items())
+            response.headers["Content-Security-Policy"] = csp
             
             # HSTS (HTTP Strict Transport Security)
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
             
             # Permissions Policy
             response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        
+        else:
+            # Development headers - less strict
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            
         return response

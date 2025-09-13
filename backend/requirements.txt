@@ -59,3 +59,5 @@ beautifulsoup4>=4.12.2
 bcrypt==3.2.2
 
 apscheduler>=3.10.0
+
+gunicorn==21.2.0

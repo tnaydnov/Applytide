@@ -5,16 +5,21 @@
   "description": "Save jobs to Applytide and auto-apply.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
-    "https://app.applytide.com/*",
-    "http://localhost:8000/*",
-    "<all_urls>"
+    "https://api.applytide.com/*",
+    "https://*.linkedin.com/jobs/*",
+    "https://*.indeed.com/viewjob*",
+    "https://*.glassdoor.com/job-listing/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://*.linkedin.com/jobs/*",
+        "https://*.indeed.com/viewjob*",
+        "https://*.glassdoor.com/job-listing/*"
+      ],
       "js": ["job-extractor.js", "panel.js"],
       "css": ["applytide-button.css", "panel.css"],
       "run_at": "document_idle"
@@ -22,11 +27,13 @@
   ],
   "web_accessible_resources": [{
     "resources": ["panel.css"],
-    "matches": ["<all_urls>"]
+    "matches": [
+      "https://*.linkedin.com/*",
+      "https://*.indeed.com/*",
+      "https://*.glassdoor.com/*"
+    ]
   }],
-
   "action": { "default_title": "Save job to Applytide" },
-  
   "commands": {
     "applytide:set-token": {
       "suggested_key": { "default": "Alt+Shift+A" },

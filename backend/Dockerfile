@@ -1,10 +1,11 @@
 FROM python:3.11-slim
 
-# Install system dependencies for Playwright
+# Install system dependencies for Playwright and netcat for health checks
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
     ca-certificates \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -41,8 +42,17 @@ RUN apt-get update && apt-get install -y \
 # Create upload directory with proper permissions
 RUN mkdir -p /app/uploads/documents && chmod 777 /app/uploads/documents
 
+# Copy application files
 COPY alembic.ini .
 COPY app ./app
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Use entrypoint script for migrations
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Use Gunicorn with multiple workers for production
+CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "60"]

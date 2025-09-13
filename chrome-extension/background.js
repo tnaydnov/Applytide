@@ -1,5 +1,7 @@
 // chrome-extension/background.js
-const API_HOST = "http://localhost:8000"; // or https://app.applytide.com
+const API_HOST = chrome.runtime.getManifest().version.includes('dev') 
+  ? "http://localhost:8000" 
+  : "https://applytide.com/api";
 
 let TOKEN = null;
 let REFRESH = null;

@@ -165,8 +165,8 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
         max_age=60 * 15,  # 15 minutes
         path="/"
     )
@@ -175,8 +175,8 @@ async def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
         max_age=60 * 60 * 24 * refresh_days,  # 7 or 30 days
         path="/auth"
     )
@@ -252,8 +252,8 @@ def refresh_token(
             key="access_token",
             value=new_access,
             httponly=True,
-            secure=False,
-            samesite="lax",
+            secure=settings.SECURE_COOKIES,
+            samesite=settings.SAME_SITE_COOKIES,
             max_age=60 * 15,  # 15 minutes
             path="/"
         )
@@ -264,8 +264,8 @@ def refresh_token(
             key="refresh_token",
             value=new_refresh,
             httponly=True,
-            secure=False,
-            samesite="lax",
+            secure=settings.SECURE_COOKIES,
+            samesite=settings.SAME_SITE_COOKIES,
             # Keep the same expiry as the original refresh token family
             path="/auth"
         )

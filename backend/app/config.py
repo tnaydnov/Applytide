@@ -10,30 +10,33 @@ class Settings:
 
     # JWT settings - different defaults for production vs development
     def _get_jwt_secret(self, key: str, dev_default: str) -> str:
-        value = os.getenv(key)
-        if value:
-            return value
-        
-        if self.ENVIRONMENT == "production":
-            raise ValueError(f"{key} must be set in production environment")
-        
-        return dev_default
+        value = os.getenv(key, "")
+        if not value or len(value) < 32:
+            # In production, require strong secrets
+            if self.ENVIRONMENT == "production":
+                raise ValueError(f"{key} must be set with a secure random string (32+ chars) in production")
+            # In dev, use default
+            return dev_default
+        return value
     
     @property
     def JWT_SECRET(self) -> str:
-        return self._get_jwt_secret("JWT_SECRET", "dev-access-secret")
+        return self._get_jwt_secret("JWT_SECRET", "dev-insecure-jwt-key-replace-in-production-environment")
     
     @property
     def REFRESH_SECRET(self) -> str:
-        return self._get_jwt_secret("REFRESH_SECRET", "dev-refresh-secret")
+        return self._get_jwt_secret("REFRESH_SECRET", "dev-insecure-refresh-key-replace-in-production-environment")
     
     ACCESS_TTL_MIN: int = int(os.getenv("ACCESS_TTL_MIN", "15"))
     
     @property
     def REFRESH_TTL_DAYS(self) -> int:
-        # Shorter refresh token lifetime in production
-        default = "7" if self.ENVIRONMENT == "production" else "30"
-        return int(os.getenv("REFRESH_TTL_DAYS", default))
+        # Shorter refresh token lifetime in development
+        return int(os.getenv("REFRESH_TTL_DAYS", "7" if self.ENVIRONMENT == "production" else "1"))
+
+    # Add new security settings
+    SECURE_COOKIES: bool = os.getenv("SECURE_COOKIES", "false").lower() == "true"
+    SAME_SITE_COOKIES: str = os.getenv("SAME_SITE_COOKIES", "lax")
 
     # Email settings
     SMTP_HOST: str = os.getenv("SMTP_HOST", "maildev")
@@ -41,7 +44,7 @@ class Settings:
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@applytide.local")
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@applytide.local")
     
     # Legacy compatibility
     SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@applytide.local")

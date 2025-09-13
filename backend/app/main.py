@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from .middleware.security import SecurityHeadersMiddleware
@@ -22,73 +22,51 @@ from .auth.sessions import router as sessions_router
 from app.ai.router import router as ai_router
 from .tasks.cleanup import cleanup_expired_sessions
 from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from .db.session import get_db
+from .services.redis_client import get_redis
 
-
-
-
-
-raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
-# Normalize and extend with common local variants automatically
-_norm = set(o.strip().rstrip('/') for o in raw_origins if o.strip())
-for extra in ["http://127.0.0.1:3000", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3001"]:
-    _norm.add(extra)
-
-# Add support for Chrome extensions and common job sites
-chrome_ext_origins = [
-    "https://www.linkedin.com",
-    "https://linkedin.com", 
-    "https://www.indeed.com",
-    "https://indeed.com",
-    "https://www.glassdoor.com",
-    "https://glassdoor.com"
-]
-for origin in chrome_ext_origins:
-    _norm.add(origin)
-
-ALLOWED_ORIGINS = list(_norm)
 
 app = FastAPI(title="Applytide API")
 
 # Add security middleware
+# CORS Configuration
 if os.getenv("ENVIRONMENT") == "production":
-    app.add_middleware(SecurityHeadersMiddleware)
+    # Production: strict CORS settings
+    origins = os.getenv("ALLOWED_ORIGINS", "https://applytide.com").split(",")
     app.add_middleware(
-        TrustedHostMiddleware, 
-        allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     )
-    # Add global rate limiting in production
+else:
+    # Development settings - more permissive
+    origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if os.getenv("CORS_DEBUG") == "1":
+        # Add job sites for extension development
+        origins.extend([
+            "https://www.linkedin.com",
+            "https://www.indeed.com",
+            "https://www.glassdoor.com",
+        ])
+    
     app.add_middleware(
-        GlobalRateLimitMiddleware,
-        max_requests=int(os.getenv("GLOBAL_RATE_LIMIT_REQUESTS", "1000")),
-        window_seconds=int(os.getenv("GLOBAL_RATE_LIMIT_WINDOW", "3600")),
-        enabled=True
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
-# Unified CORS configuration.
-# Always use explicit origin list from ALLOWED_ORIGINS env to guarantee header reflection.
-# If you truly want wildcard in local dev, add '*' to ALLOWED_ORIGINS.
+# Add TrustedHostMiddleware after CORSMiddleware
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["*"] ,  # be permissive during dev
-    expose_headers=["X-Total-Count", "Content-Disposition"],
+    TrustedHostMiddleware, 
+    allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost").split(",")
 )
 
-# Debug middleware (safe to keep in dev) to trace CORS behavior
-if os.getenv("CORS_DEBUG", "0") == "1":
-    from starlette.responses import Response
-    @app.middleware("http")
-    async def cors_debug_mw(request, call_next):
-        origin = request.headers.get('origin')
-        if origin:  # Only log when there's an Origin header (CORS request)
-            print(f"[CORS-DEBUG] Incoming Origin={origin} Method={request.method} Path={request.url.path}")
-        resp: Response = await call_next(request)
-        if origin:
-            acao = resp.headers.get('access-control-allow-origin')
-            print(f"[CORS-DEBUG] Outgoing ACAO={acao} Status={resp.status_code} Path={request.url.path}")
-        return resp
 
 app.include_router(auth_router)
 app.include_router(sessions_router)
@@ -107,6 +85,36 @@ app.include_router(kanban_router)  # Kanban/Pipeline Management
 app.include_router(preferences_router)  # User Preferences Storage
 app.include_router(ai_router)
 
+@app.get("/health", tags=["monitoring"])
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """Health check endpoint for monitoring"""
+    # Check database connection
+    try:
+        result = await db.execute("SELECT 1")
+        db_status = "healthy" if result else "unhealthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+    
+    # Check Redis connection
+    try:
+        redis = get_redis()
+        redis_ping = await redis.ping()
+        redis_status = "healthy" if redis_ping else "unhealthy"
+    except Exception as e:
+        redis_status = f"unhealthy: {str(e)}"
+    
+    # Overall status
+    overall = "healthy" if db_status == "healthy" and redis_status == "healthy" else "unhealthy"
+    
+    return {
+        "status": overall,
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": {
+            "database": db_status,
+            "redis": redis_status
+        },
+        "version": "1.0.0"
+    }
 
 @app.on_event("startup")
 async def startup_event():
@@ -114,10 +122,6 @@ async def startup_event():
     scheduler = BackgroundScheduler()
     scheduler.add_job(cleanup_expired_sessions, 'interval', hours=24)
     scheduler.start()
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
 
 @app.get("/")
 def root():

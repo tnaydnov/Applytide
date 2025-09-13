@@ -894,7 +894,7 @@ class DocumentService:
             try:
                 # Comprehensive AI analysis prompt
                 prompt = """You are an expert resume analyzer reviewing a resume for a specific job position.
-                Provide a thorough analysis with SPECIFIC, detailed, actionable suggestions formatted as structured JSON.
+                Provide a thorough analysis with MANY SPECIFIC, detailed, actionable suggestions formatted as structured JSON.
 
                 Infer the role/industry and locale primarily from the JOB INFO (title, location, requirements),
                 and secondarily from the RESUME TEXT. Using that context, decide which sections are *expected*.
@@ -902,6 +902,12 @@ class DocumentService:
                 
                 For each category, in addition to strengths/weaknesses, include a "missing_elements" list.
                 This must contain specific skills, terms, or competencies that are not present in the resume but are commonly expected for the role.
+                
+                IMPORTANT: For each category, provide BOTH:
+                1. Concrete suggestions based on what's already in the resume
+                2. Hypothetical suggestions that start with "If you have experience with..." for relevant skills/technologies that aren't mentioned but are valuable in this field
+                
+                Be generous with suggestions - aim for at least 3-5 improvements per category.
 
                 Analyze these DISTINCT categories:
                 1. Technical skills match - focus ONLY on programming languages, frameworks, tools, and technical competencies
@@ -948,8 +954,17 @@ class DocumentService:
                     {"suggestion": "specific suggestion", "example": "example text"}
                     ]
                 },
-                "overall_suggestions": ["3-4 highest impact recommendations prioritized by importance", or [] if none found"]
+                "overall_suggestions": ["5-7 highest impact recommendations prioritized by importance", or [] if none found"]
                 }
+
+                For each suggestion, make it SPECIFIC with concrete examples tailored to the resume context. When suggesting skills or experiences that aren't mentioned in the resume, clearly indicate these with phrases like "If you have experience with...", "Consider adding if relevant:", or "If you've worked with...".
+                
+                Make sure you provide a mix of:
+                1. Clear improvements to existing content
+                2. Suggestions for additional content that may be relevant to the job but missing from the resume
+                3. Industry-specific best practices for this particular role/field
+                
+                Aim for thoroughness - it's better to provide too many suggestions than too few.
                 """
                 
                 msg = [
