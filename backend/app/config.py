@@ -3,7 +3,9 @@ import os
 class Settings:
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
-    
+
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://applytide.com")
+
     # Core URLs / secrets from environment (docker-compose sets defaults)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+psycopg2://jobflow:jobflow@pg:5432/jobflow")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
