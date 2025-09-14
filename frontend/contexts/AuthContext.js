@@ -29,8 +29,10 @@ export function AuthProvider({ children }) {
         // If response is 401 and it's not a refresh/login request
         if (response.status === 401 && 
             !resource.includes('/auth/refresh') && 
-            !resource.includes('/auth/login')) {
-            
+            !resource.includes('/auth/login') &&
+            !resource.includes('/privacy') &&
+            !resource.includes('/')) {
+
             console.log('401 detected, attempting token refresh');
             
             try {
@@ -51,7 +53,12 @@ export function AuthProvider({ children }) {
             } else {
                 console.log('Token refresh failed, redirecting to login');
                 setUser(null);
-                if (!window.location.pathname.includes('/login')) {
+                if (!window.location.pathname.includes('/login') && 
+                    !window.location.pathname.includes('/register') &&
+                    !window.location.pathname.includes('/auth/reset') &&
+                    !window.location.pathname.includes('/auth/verify') &&
+                    !window.location.pathname.includes('/privacy') &&
+                    !window.location.pathname.includes('/')) {
                 window.location.href = '/login';
                 }
             }
