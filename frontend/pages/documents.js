@@ -228,20 +228,18 @@ export default function DocumentsPage() {
     if (!coverLetterForm.job_id) return toast.error('Please select a job');
     if (!coverLetterForm.resume_id) return toast.error('Please select a resume');
 
-    checkPremium(async () => {
-      try {
-        // Expect your api client to POST to /documents/cover-letter/generate
-        const response = await api.generateCoverLetter(coverLetterForm);
-        if (response?.cover_letter) {
-          setGeneratedCoverLetter(response.cover_letter);
-          toast.success('Cover letter generated successfully!');
-        } else {
-          throw new Error('No cover letter content received');
-        }
-      } catch (e) {
-        toast.error(`Generation failed: ${e.message || e}`);
+    try {
+      // Expect your api client to POST to /documents/cover-letter/generate
+      const response = await api.generateCoverLetter(coverLetterForm);
+      if (response?.cover_letter) {
+        setGeneratedCoverLetter(response.cover_letter);
+        toast.success('Cover letter generated successfully!');
+      } else {
+        throw new Error('No cover letter content received');
       }
-    }, "AI Cover Letter Generation");
+    } catch (e) {
+      toast.error(`Generation failed: ${e.message || e}`);
+    }
   }
 
   async function saveCoverLetterAsDocument() {
@@ -604,14 +602,13 @@ function ExpandableScoreCategory({ title, score, description, details, categoryK
             </div>
             <div className="flex gap-3">
               <Button
-                onClick={() => checkPremium(() => setShowCoverLetterModal(true), "AI Cover Letter Generation")}
+                onClick={() => setShowCoverLetterModal(true)}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 Generate Cover Letter
-                <PremiumBadge size="xs" />
               </Button>
               <Button onClick={() => setShowUpload(true)} className="bg-blue-600 hover:bg-blue-700">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -886,7 +883,6 @@ function ExpandableScoreCategory({ title, score, description, details, categoryK
                       <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center"><span className="text-white text-lg">✨</span></div>
                       <div>
                         <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Generate AI Cover Letter</h2>
-                        <PremiumBadge size="sm" />
                       </div>
                     </div>
                     <button onClick={() => setShowCoverLetterModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B7280' }}>✕</button>

@@ -481,9 +481,6 @@ export default function JobsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     <h3 className="font-semibold text-slate-200">Manual Entry</h3>
-                    <span className="px-2 py-1 bg-green-900/50 text-green-300 text-xs rounded-full border border-green-500/30">
-                      Free
-                    </span>
                   </div>
                   <p className="text-sm text-slate-400 mb-3">
                     Enter job details manually with our user-friendly form
