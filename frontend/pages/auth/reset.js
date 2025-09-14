@@ -24,7 +24,7 @@ export default function PasswordResetPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/password_reset_request`, {
+      const response = await fetch(`/api/auth/password_reset_request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -60,7 +60,7 @@ export default function PasswordResetPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/password_reset`, {
+      const response = await fetch(`/api/auth/password_reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, new_password: password }),

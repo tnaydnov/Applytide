@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
             
             try {
             // Call our own silentRefresh function
-            const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/refresh`, {
+            const refreshResponse = await fetch(`/api/auth/refresh`, {
                 method: 'POST',
                 credentials: 'include'
             });
@@ -107,7 +107,7 @@ export function AuthProvider({ children }) {
   async function silentRefresh() {
     try {
         console.log('Performing silent refresh...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/refresh`, {
+        const response = await fetch(`/api/auth/refresh`, {
         method: 'POST',
         credentials: 'include'
         });
@@ -132,8 +132,8 @@ export function AuthProvider({ children }) {
     async function checkAuthStatus() {
         try {
         setLoading(true);
-        
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/me`, {
+
+        const response = await fetch(`/api/auth/me`, {
             credentials: 'include'
         });
         
@@ -184,7 +184,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
         // Call backend to invalidate the current session
-        await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/auth/logout`, {
+        await fetch(`/api/auth/logout`, {
         method: 'POST',
         credentials: 'include'
         });

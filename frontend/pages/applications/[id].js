@@ -6,7 +6,7 @@ import { useToast } from "../../lib/toast";
 import Link from "next/link";
 
 /** ---------- constants & helpers (logic only; no UI changes) ---------- */
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = "/api";
 
 const ALLOWED_STATUSES = ["Applied", "Phone Screen", "Tech", "On-site", "Offer", "Accepted", "Rejected"];
 const normalizeStatus = (s) => (s === "Saved" ? "Applied" : s);

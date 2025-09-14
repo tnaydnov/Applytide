@@ -4,7 +4,7 @@ import api from '../lib/api';
 import AuthGuard from "../components/AuthGuard";
 import { PremiumBadge, usePremiumFeature } from "../components/PremiumFeature";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = "/api";
 
 const DOCUMENT_TYPES = [
   { value: 'resume',       label: 'Resume',       icon: 'resume' },

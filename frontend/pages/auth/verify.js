@@ -18,7 +18,7 @@ export default function VerifyEmailPage() {
 
   async function verifyEmail(verificationToken) {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/verify_email`, {
+      const response = await fetch(`/api/auth/verify_email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: verificationToken }),
@@ -47,7 +47,7 @@ export default function VerifyEmailPage() {
       const email = prompt("Please enter your email address:");
       if (!email) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/send_verification`, {
+      const response = await fetch(`/api/auth/send_verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

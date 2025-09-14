@@ -432,7 +432,8 @@ export const api = {
 ----------------------------------- */
 
 export function connectWS(onMsg) {
-  const base = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000").replace("http", "ws");
+  const wsBase = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const base = `${wsBase}//${window.location.host}/api`;
   const ws = new WebSocket(`${base}/ws/updates`);
   ws.onmessage = (e) => {
     try {

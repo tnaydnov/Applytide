@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { PremiumModal } from "./PremiumFeature";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = "/api";
 const publicLinks = [
   { label: "Sign In", href: "/login", icon: "login" },
 ];
@@ -27,7 +27,7 @@ export default function NavBar() {
       // Use the authenticated state from AuthContext instead of localStorage
       if (isAuthenticated) {
         // Make an API call with credentials to check premium status
-        const response = await fetch(`${API_BASE || 'http://localhost:8000'}/user/premium-status`, {
+        const response = await fetch(`/api/user/premium-status`, {
           credentials: 'include'
         });
         
