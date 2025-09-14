@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // Skip auth checks on public pages
     if (router.pathname === '/login' || router.pathname === '/register' || 
-        router.pathname === '/auth/reset' || router.pathname === '/auth/verify') {
+        router.pathname === '/auth/reset' || router.pathname === '/auth/verify' || router.pathname === '/privacy' || router.pathname === '/') {
       setLoading(false);
       return;
     }
