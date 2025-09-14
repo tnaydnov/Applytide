@@ -6,7 +6,7 @@ import { ToastProvider } from '../lib/toast';
 import Head from 'next/head';
 
 // Pages that don't require authentication
-const PUBLIC_PAGES = ['/', '/login', '/register', '/auth/reset', '/auth/verify'];
+const PUBLIC_PAGES = ['/', '/login', '/register', '/auth/reset', '/auth/verify', '/privacy'];
 
 export default function MyApp({ Component, pageProps, router }) {
   const isPublicPage = PUBLIC_PAGES.includes(router.pathname);

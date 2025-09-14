@@ -16,8 +16,6 @@ export default function Privacy() {
         <meta name="description" content="ApplyTide's privacy policy explains how we collect, use, and protect your information." />
         <meta name="robots" content="noindex" />
       </Head>
-
-      <NavBar />
       
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-bold mb-6 pb-2 border-b">Privacy Policy</h1>
