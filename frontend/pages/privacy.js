@@ -1,6 +1,6 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
-import Layout from '../components/Layout';
+import { useState } from 'react';
+import NavBar from '../components/NavBar';
 
 export default function Privacy() {
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', {
@@ -10,13 +10,15 @@ export default function Privacy() {
   }));
 
   return (
-    <Layout>
+    <>
       <Head>
         <title>Privacy Policy - ApplyTide</title>
         <meta name="description" content="ApplyTide's privacy policy explains how we collect, use, and protect your information." />
         <meta name="robots" content="noindex" />
       </Head>
 
+      <NavBar />
+      
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-bold mb-6 pb-2 border-b">Privacy Policy</h1>
         <p className="text-gray-600 mb-6">Last Updated: {currentDate}</p>
@@ -80,7 +82,8 @@ export default function Privacy() {
         <p className="mb-4">If you have any questions or concerns about our privacy policy or data practices, please contact us at:</p>
         <p className="mb-6">Email: privacy@applytide.com</p>
         
-          <p className="text-gray-600 italic mt-10">This privacy policy was last updated on {currentDate}.</p>
-        </div>
-      </Layout>
-    )};
+        <p className="text-gray-600 italic mt-10">This privacy policy was last updated on {currentDate}.</p>
+      </div>
+    </>
+  );
+}
