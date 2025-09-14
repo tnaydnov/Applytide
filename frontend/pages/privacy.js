@@ -80,6 +80,7 @@ export default function Privacy() {
         <p className="mb-4">If you have any questions or concerns about our privacy policy or data practices, please contact us at:</p>
         <p className="mb-6">Email: privacy@applytide.com</p>
         
-        <p className="text-gray-600 italic mt-10">This privacy policy was last updated on {currentDate}.</p>
-      </div>
-    </Layout>
+          <p className="text-gray-600 italic mt-10">This privacy policy was last updated on {currentDate}.</p>
+        </div>
+      </Layout>
+    )};
