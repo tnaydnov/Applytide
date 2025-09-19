@@ -7,7 +7,7 @@ while ! nc -z pg 5432; do
 done
 echo "PostgreSQL started"
 
-# echo "Running database migrations..."
-# alembic upgrade head
+echo "Running database migrations..."
+alembic upgrade head
 
 exec "$@"

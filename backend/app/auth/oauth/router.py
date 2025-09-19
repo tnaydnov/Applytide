@@ -33,10 +33,10 @@ async def callback_google(
     """
     if error:
         # Redirect to frontend with error
-        return RedirectResponse(f"/login?error={error}")
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?error={error}")
         
     if not code:
-        return RedirectResponse("/login?error=missing_code")
+        return RedirectResponse(f"{settings.FRONTEND_URL}/login?error=missing_code")
         
     try:
         # Extract user agent and IP
@@ -71,7 +71,7 @@ async def callback_google(
         create_user_session(db, user_id, jti, device_info)
         
         frontend_url = settings.FRONTEND_URL
-        print(f"Redirecting to: {frontend_url}/auth/callback")
+        print(f"Redirecting to: {frontend_url}/dashboard")
         
         # Set cookies consistent with your auth system
         response = RedirectResponse(f"{frontend_url}/dashboard")
@@ -98,5 +98,8 @@ async def callback_google(
         return response
     except Exception as e:
         print(f"OAuth error: {str(e)}")
+        print(f"OAuth error type: {type(e)}")
+        import traceback
+        print(f"OAuth traceback: {traceback.format_exc()}")
         # Also use the configured URL for error redirects
         return RedirectResponse(f"{settings.FRONTEND_URL}/login?error=oauth_failure")
