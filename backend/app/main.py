@@ -20,12 +20,15 @@ from .api.kanban import router as kanban_router  # Kanban/Pipeline Management
 from .preferences.router import router as preferences_router  # User Preferences
 from .auth.sessions import router as sessions_router
 from app.ai.router import router as ai_router
+from .feedback.router import router as feedback_router
 from .tasks.cleanup import cleanup_expired_sessions
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from .db.session import get_db
 from .services.redis_client import get_redis
+from app.auth.oauth.router import router as oauth_router
+from app.calendars.router import router as calendar_router
 
 
 app = FastAPI(title="Applytide API")
@@ -84,6 +87,9 @@ app.include_router(profile_router)  # User Profile Management for Personalizatio
 app.include_router(kanban_router)  # Kanban/Pipeline Management
 app.include_router(preferences_router)  # User Preferences Storage
 app.include_router(ai_router)
+app.include_router(feedback_router)
+app.include_router(oauth_router)
+app.include_router(calendar_router)
 
 @app.get("/health", tags=["monitoring"])
 async def health_check(db: AsyncSession = Depends(get_db)):

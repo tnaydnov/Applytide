@@ -126,30 +126,99 @@ class AICoverLetterService:
         }.get(tone, "formal and professional")
 
         system = (
-            "You are an expert career counselor and professional writer. "
-            "Write concise, tailored, high-quality cover letters. "
-            "Never invent facts; only use what the resume provides."
+            "You are an expert career counselor, professional writer, and talent acquisition specialist with 15+ years of experience. "
+            "Your expertise lies in crafting exceptional, personalized cover letters that secure interviews. "
+            "You have deep understanding of ATS systems, hiring manager psychology, and what makes candidates stand out. "
+            "CRITICAL: You must NEVER fabricate, invent, or assume any information not explicitly provided in the resume or profile. "
+            "Only use factual information from the candidate's actual experience, education, and skills."
         )
 
         prompt = (
-            f"Create a compelling, personalized cover letter.\n\n"
-            f"JOB DETAILS:\n"
-            f"- Position: {job_title}\n"
-            f"- Company: {company_name or 'Not specified'}\n"
-            f"- Location: {job_location}\n"
-            f"- Job Description:\n{job_desc}\n\n"
-            f"CANDIDATE INFORMATION:\n"
-            f"- Resume Content:\n{resume_text}\n\n"
-            f"- User Profile (JSON):\n{user_profile_json}\n\n"
-            f"REQUIREMENTS:\n"
-            f"- Length: {word_count} words\n"
-            f"- Tone: {tone_instructions}\n"
-            f"- Strong opening and closing\n"
-            f"- Make it feel specific to this role/company\n"
-            f"- Quote/rephrase resume facts; DO NOT invent experience or technologies\n"
-            f"- Highlight the most relevant achievements for this job\n"
-            f"- Keep paragraphs scannable\n\n"
-            f"Output a complete, ready-to-send cover letter."
+            f"Create an exceptional, highly personalized cover letter that will capture the hiring manager's attention and secure an interview.\n\n"
+            
+            f"=== TARGET POSITION ANALYSIS ===\n"
+            f"Position: {job_title}\n"
+            f"Company: {company_name or 'Not specified'}\n"
+            f"Location: {job_location}\n"
+            f"Job Description & Requirements:\n{job_desc}\n\n"
+            
+            f"=== CANDIDATE PROFILE & RESUME ===\n"
+            f"Resume Content:\n{resume_text}\n\n"
+            f"Additional Profile Information:\n{user_profile_json}\n\n"
+            
+            f"=== DETAILED ANALYSIS INSTRUCTIONS ===\n"
+            f"1. EDUCATION ANALYSIS:\n"
+            f"   - Extract ALL educational qualifications (degrees, certifications, courses)\n"
+            f"   - Identify relevant academic projects, thesis topics, or research\n"
+            f"   - Note any honors, GPA (if mentioned), or academic achievements\n"
+            f"   - Connect education directly to job requirements\n\n"
+            
+            f"2. PROFESSIONAL EXPERIENCE ANALYSIS:\n"
+            f"   - Examine EACH role for relevant responsibilities and achievements\n"
+            f"   - Extract quantifiable results (numbers, percentages, dollar amounts)\n"
+            f"   - Identify progression in responsibility and seniority\n"
+            f"   - Find transferable skills from different industries/roles\n"
+            f"   - Look for leadership, teamwork, and problem-solving examples\n\n"
+            
+            f"3. TECHNICAL & SOFT SKILLS MAPPING:\n"
+            f"   - Match candidate's technical skills to job requirements\n"
+            f"   - Identify programming languages, frameworks, tools mentioned\n"
+            f"   - Extract soft skills demonstrated through achievements\n"
+            f"   - Find industry-specific knowledge and expertise\n\n"
+            
+            f"4. JOB REQUIREMENT MATCHING:\n"
+            f"   - Analyze the job description for must-have vs nice-to-have skills\n"
+            f"   - Find direct matches between candidate experience and job needs\n"
+            f"   - Identify how candidate's unique background adds value\n"
+            f"   - Address any potential gaps honestly but positively\n\n"
+            
+            f"=== COVER LETTER STRUCTURE REQUIREMENTS ===\n"
+            f"Length: {word_count} words (strictly adhered to)\n"
+            f"Tone: {tone_instructions}\n\n"
+            
+            f"PARAGRAPH 1 - COMPELLING OPENING:\n"
+            f"- Hook with specific achievement or unique qualification\n"
+            f"- Mention the exact position and company name\n"
+            f"- Include one standout fact that matches a key job requirement\n\n"
+            
+            f"PARAGRAPH 2 - RELEVANT EXPERIENCE:\n"
+            f"- Highlight 2-3 most relevant professional experiences\n"
+            f"- Include specific, quantifiable achievements from resume\n"
+            f"- Connect each experience directly to job requirements\n"
+            f"- Use action verbs and concrete results\n\n"
+            
+            f"PARAGRAPH 3 - TECHNICAL & EDUCATIONAL FIT:\n"
+            f"- Showcase relevant technical skills and tools\n"
+            f"- Mention educational background if relevant to role\n"
+            f"- Highlight any certifications or specialized training\n"
+            f"- Demonstrate continuous learning and adaptability\n\n"
+            
+            f"PARAGRAPH 4 - VALUE PROPOSITION & CLOSING:\n"
+            f"- Summarize unique value candidate brings\n"
+            f"- Express genuine enthusiasm for company/role\n"
+            f"- Include confident call-to-action for interview\n"
+            f"- Professional sign-off\n\n"
+            
+            f"=== CRITICAL RULES (NON-NEGOTIABLE) ===\n"
+            f"❌ DO NOT invent experience, skills, or achievements\n"
+            f"❌ DO NOT assume technologies or tools not mentioned in resume\n"
+            f"❌ DO NOT create fictional projects or accomplishments\n"
+            f"❌ DO NOT exaggerate or embellish beyond what's stated\n"
+            f"✅ USE ONLY factual information from provided resume\n"
+            f"✅ QUOTE or rephrase actual achievements and experiences\n"
+            f"✅ STAY within the specified word count\n"
+            f"✅ MAINTAIN the requested tone throughout\n"
+            f"✅ ENSURE every claim is backed by resume evidence\n\n"
+            
+            f"=== QUALITY STANDARDS ===\n"
+            f"- ATS-friendly formatting and keyword optimization\n"
+            f"- Error-free grammar and professional language\n"
+            f"- Compelling storytelling that showcases candidate journey\n"
+            f"- Specific examples rather than generic statements\n"
+            f"- Clear demonstration of research about company/role\n"
+            f"- Confident but humble tone that builds trust\n\n"
+            
+            f"Generate a complete, polished, ready-to-send cover letter that will make the hiring manager excited to interview this candidate."
         )
 
         try:

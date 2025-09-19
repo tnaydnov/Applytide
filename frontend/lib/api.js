@@ -53,30 +53,28 @@ async function refreshToken() {
 export async function apiFetch(endpoint, options = {}) {
   try {
     // Set credentials to include for all requests
+    const isFormData = options?.body instanceof FormData;
+    const headers = {
+      ...(options.headers || {}),
+      ...(isFormData ? {} : { 'Content-Type': options.headers?.['Content-Type'] || 'application/json' }),
+    };
+
     const fetchOptions = {
       ...options,
       credentials: 'include',
-      headers: {
-        ...options.headers,
-        'Content-Type': options.headers?.['Content-Type'] || 'application/json'
-      }
+      headers,
     };
     
     const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
     
-    // Only attempt refresh on 401 if we're not already trying to refresh/login
-    if (response.status === 401 && 
-        !endpoint.includes('/auth/refresh') && 
+    if (response.status === 401 &&
+        !endpoint.includes('/auth/refresh') &&
         !endpoint.includes('/auth/login')) {
-      
       try {
-        // Try to refresh the token
         const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include'
         });
-        
-        // If refresh succeeded, retry original request
         if (refreshResponse.ok) {
           return await fetch(`${API_BASE}${endpoint}`, fetchOptions);
         }
@@ -84,7 +82,7 @@ export async function apiFetch(endpoint, options = {}) {
         console.error('Token refresh failed', refreshError);
       }
     }
-    
+
     return response;
   } catch (error) {
     console.error(`API fetch error for ${endpoint}:`, error);
@@ -147,22 +145,28 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      credentials: "include",
     });
     if (!r.ok) throw new Error(await r.text());
-    const response = await r.json();
 
-    setTokens({
-      access_token: response.access_token,
-      refresh_token: response.refresh_token,
-      email: data.email,
-      loginTime: Date.now(),
-    });
-
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("authChange"));
+    // If your server doesn't set cookies during register, auto-login:
+    // (Safe no-op if cookies already set)
+    try {
+      await login(data.email, data.password, true);
+    } catch (_) {
+      // ignore; caller can handle redirect/UI
     }
 
-    return response;
+    return r.json();
+  },
+
+  listResumes: async () => {
+    const res = await api.getResumes(); // may be {items: [...]}
+    const items = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+    return items.map(d => ({
+      id: d.id,
+      label: d.label || d.name || d.filename || 'Resume'
+    }));
   },
 
   // Keep compatibility: api.login -> top-level login()
@@ -421,6 +425,24 @@ export const api = {
   getUserJobPreferences: () => apiFetch("/profile/job-preferences").then((r) => r.json()),
   updateJobPreferences: (preferences) =>
     apiFetch("/profile/job-preferences", { method: "PUT", body: JSON.stringify(preferences) }).then((r) => r.json()),
+
+  // Auth profile management
+  updateProfile: (profileData) =>
+    apiFetch("/auth/profile", { method: "PUT", body: JSON.stringify(profileData) }).then((r) => r.json()),
+  updatePreferences: (preferences) =>
+    apiFetch("/auth/preferences", { method: "PUT", body: JSON.stringify(preferences) }).then((r) => r.json()),
+  changePassword: (passwordData) =>
+    apiFetch("/auth/change-password", { method: "POST", body: JSON.stringify(passwordData) }).then((r) => r.json()),
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiFetch("/auth/upload-avatar", { 
+      method: "POST", 
+      body: formData,
+      // Don't set Content-Type, let browser set it with boundary for FormData
+      headers: {} 
+    }).then((r) => r.json());
+  },
   getUserCareerGoals: () => apiFetch("/profile/career-goals").then((r) => r.json()),
   updateCareerGoals: (goals) =>
     apiFetch("/profile/career-goals", { method: "PUT", body: JSON.stringify(goals) }).then((r) => r.json()),
@@ -475,4 +497,16 @@ export async function importApplicationsCSV(file) {
   return r.json();
 }
 
-export default api;
+async function uploadApplicationAttachment(appId, formData) {
+  const r = await apiFetch(`/applications/${appId}/attachments`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!r.ok) throw new Error('Upload failed');
+  return r.json();
+}
+
+export default {
+  ...api,
+  uploadApplicationAttachment,
+};

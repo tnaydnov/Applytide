@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useRouter } from 'next/router';
+import { isPublicRoute, isPublicResource } from '../lib/routes';
 
 
 const AuthContext = createContext();
@@ -26,12 +27,8 @@ export function AuthProvider({ children }) {
         window.fetch = async function(resource, init = {}) {
         const response = await originalFetch(resource, init);
         
-        // If response is 401 and it's not a refresh/login request
-        if (response.status === 401 && 
-            !resource.includes('/auth/refresh') && 
-            !resource.includes('/auth/login') &&
-            !resource.includes('/privacy') &&
-            !resource.includes('/')) {
+        // If response is 401 and it's not a public resource
+        if (response.status === 401 && !isPublicResource(resource)) {
 
             console.log('401 detected, attempting token refresh');
             
@@ -53,12 +50,7 @@ export function AuthProvider({ children }) {
             } else {
                 console.log('Token refresh failed, redirecting to login');
                 setUser(null);
-                if (!window.location.pathname.includes('/login') && 
-                    !window.location.pathname.includes('/register') &&
-                    !window.location.pathname.includes('/auth/reset') &&
-                    !window.location.pathname.includes('/auth/verify') &&
-                    !window.location.pathname.includes('/privacy') &&
-                    !window.location.pathname.includes('/')) {
+                if (!isPublicRoute(window.location.pathname)) {
                 window.location.href = '/login';
                 }
             }
@@ -79,18 +71,15 @@ export function AuthProvider({ children }) {
   
   // Check auth status on mount
   useEffect(() => {
-    // Skip auth checks on public pages
-    if (router.pathname === '/login' || router.pathname === '/register' || 
-        router.pathname === '/auth/reset' || router.pathname === '/auth/verify' || router.pathname === '/privacy' || router.pathname === '/') {
-      setLoading(false);
-      return;
-    }
-    
+    // Always check auth status, but handle redirects differently for public vs private pages
     checkAuthStatus();
     
-    // Only set up polling if we're not on login page
-    const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Only set up polling if we're not on pure public pages (login, register, etc.)
+    // But always check on home page to show correct state
+    if (!isPublicRoute(router.pathname) || router.pathname === '/') {
+      const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
   }, [router.pathname]);
 
   useEffect(() => {
@@ -146,6 +135,8 @@ export function AuthProvider({ children }) {
         
         if (response.ok) {
             const userData = await response.json();
+            userData.isOAuthUser = userData.google_id ? true : false;
+            userData.googleConnected = userData.google_id ? true : false;
             setUser(userData);
             // Set token expiry time (15 minutes from now as a safe default)
             setTokenExpiry(Date.now() + (15 * 60 * 1000));
@@ -172,6 +163,8 @@ export function AuthProvider({ children }) {
       const response = await api.login({ email, password, remember_me: remember });
       
       if (response && response.user) {
+        response.user.isOAuthUser = response.user.google_id ? true : false;
+        response.user.googleConnected = response.user.google_id ? true : false;
         setUser(response.user);
         setTokenExpiry(Date.now() + (response.expires_in * 1000 || 15 * 60 * 1000));
         setError(null);

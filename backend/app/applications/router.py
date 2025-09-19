@@ -232,18 +232,21 @@ def update_application(app_id: uuid.UUID, payload: ApplicationUpdate, db: Sessio
     if not row:
         raise HTTPException(status_code=404, detail="Application not found")
     
+    new_status = (payload.status or row.status)
+    if new_status == "Saved":
+        new_status = "Applied"
+
     # Track status change if it's different
     old_status = row.status
-    if old_status != payload.status:
-        # Create a stage record to track this status change
+    if old_status != new_status:
         stage = models.Stage(
             application_id=app_id,
-            name=payload.status,
-            notes=f"Status changed from {old_status} to {payload.status}",
+            name=new_status,
+            notes=f"Status changed from {old_status} to {new_status}",
         )
         db.add(stage)
-    
-    row.status = payload.status
+
+    row.status = new_status
     row.updated_at = datetime.now(timezone.utc)
     db.add(row)
     db.commit()
@@ -263,7 +266,7 @@ def add_stage(app_id: uuid.UUID, payload: StageCreate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Application not found")
     stage = models.Stage(
         application_id=app_id,
-        name=payload.name,
+        name="Applied" if payload.name == "Saved" else payload.name,
         scheduled_at=payload.scheduled_at,
         outcome=payload.outcome,
         notes=payload.notes,
@@ -433,14 +436,33 @@ async def upload_attachment(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Get file size
-    file_size = os.path.getsize(file_path)
-    
     # Create database record
+    MAX = 10 * 1024 * 1024  # 10MB
+    os.makedirs(upload_dir, exist_ok=True)
+    file_extension = os.path.splitext(file.filename or "")[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(upload_dir, unique_filename)
+
+    total = 0
+    try:
+        with open(file_path, "wb") as buffer:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX:
+                    raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+                buffer.write(chunk)
+    except Exception:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
+
     attachment = models.ApplicationAttachment(
         application_id=app_id,
         filename=file.filename or "unknown",
-        file_size=file_size,
+        file_size=total,
         content_type=file.content_type or "application/octet-stream",
         file_path=file_path,
     )

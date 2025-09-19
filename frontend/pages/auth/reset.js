@@ -35,7 +35,13 @@ export default function PasswordResetPage() {
         toast.success("Password reset email sent!");
       } else {
         const data = await response.json();
-        toast.error(data.detail || "Failed to send reset email");
+        if (response.status === 404) {
+          // Email not registered
+          toast.error(data.detail || "This email is not registered");
+        } else {
+          // Other errors
+          toast.error(data.detail || "Failed to send reset email");
+        }
       }
     } catch (error) {
       toast.error("Network error occurred");
@@ -243,14 +249,27 @@ export default function PasswordResetPage() {
               : "Didn't receive the email? Check your spam folder."
             }
             {step === "request" && (
-              <button
-                onClick={() => router.push("/login")}
-                className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-              >
-                Sign in instead
-              </button>
+              <>
+                <button
+                  onClick={() => router.push("/login")}
+                  className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                >
+                  Sign in instead
+                </button>
+              </>
             )}
           </p>
+          {step === "request" && (
+            <p className="mt-2">
+              Don't have an account?{" "}
+              <button
+                onClick={() => router.push("/register")}
+                className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+              >
+                Create one here
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>

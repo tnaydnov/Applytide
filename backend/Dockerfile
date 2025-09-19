@@ -46,7 +46,7 @@ RUN mkdir -p /app/uploads/documents && chmod 777 /app/uploads/documents
 COPY alembic.ini .
 COPY app ./app
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

@@ -79,6 +79,11 @@ class EmailService:
                 <div style="text-align: center; color: #666; font-size: 12px;">
                     <p>This verification link will expire in 24 hours.</p>
                     <p>If you didn't create an account, you can safely ignore this email.</p>
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <p><strong>Applytide</strong><br>
+                        Web: <a href="https://applytide.com">applytide.com</a><br>
+                        Email: <a href="mailto:contact@applytide.com">contact@applytide.com</a></p>
+                    </div>
                 </div>
             </div>
         </body>
@@ -130,6 +135,11 @@ class EmailService:
                 <div style="text-align: center; color: #666; font-size: 12px;">
                     <p>This reset link will expire in 1 hour.</p>
                     <p>If you didn't request a password reset, you can safely ignore this email.</p>
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <p><strong>Applytide</strong><br>
+                        Web: <a href="https://applytide.com">applytide.com</a><br>
+                        Email: <a href="mailto:contact@applytide.com">contact@applytide.com</a></p>
+                    </div>
                 </div>
             </div>
         </body>

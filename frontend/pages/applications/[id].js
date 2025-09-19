@@ -32,6 +32,17 @@ const toLocalInputValue = (iso) => {
 };
 const toISOFromLocal = (value) => (value ? new Date(value).toISOString() : undefined);
 
+const safeDate = (iso) => (iso ? new Date(iso) : null);
+const fmtDate = (iso) => {
+  const d = safeDate(iso);
+  return d ? d.toLocaleDateString() : "—";
+};
+const fmtDateTime = (iso) => {
+  const d = safeDate(iso);
+  return d ? d.toLocaleString() : "—";
+};
+
+
 /** -------------------------------------------------------------------- */
 
 export default function AppDetailPage() {
@@ -63,6 +74,7 @@ export default function AppDetailPage() {
   const [selectedResume, setSelectedResume] = useState("");
   const [scoring, setScoring] = useState(false);
 
+  
   /** ---------------------------- data load ---------------------------- */
   async function load(idToLoad) {
     if (!idToLoad) return;
@@ -450,12 +462,12 @@ export default function AppDetailPage() {
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-400">📅</span>
                   <span className="text-gray-600">Applied:</span>
-                  <span className="font-medium">{new Date(data.application.created_at).toLocaleDateString()}</span>
+                  <span className="font-medium">{fmtDate(data.application.created_at)}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-400">🔄</span>
                   <span className="text-gray-600">Last Update:</span>
-                  <span className="font-medium">{new Date(data.application.updated_at).toLocaleDateString()}</span>
+                  <span className="font-medium">{fmtDate(data.application.updated_at)}</span>
                 </div>
               </div>
             </div>
@@ -605,7 +617,7 @@ export default function AppDetailPage() {
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{a.filename}</p>
                       <p className="text-sm text-gray-500">
-                        {fmtMB(a.file_size)} MB • {new Date(a.created_at).toLocaleDateString()}
+                        {fmtMB(a.file_size)} MB • {fmtDate(a.created_at)}
                       </p>
                     </div>
                   </div>
@@ -663,7 +675,7 @@ export default function AppDetailPage() {
                       )}
                     </div>
                     {s.scheduled_at && (
-                      <p className="text-sm text-gray-600">📅 {new Date(s.scheduled_at).toLocaleString()}</p>
+                      <p className="text-sm text-gray-600">📅 {fmtDateTime(s.scheduled_at)}</p>
                     )}
                     {s.notes && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{s.notes}</p>}
                   </div>
@@ -723,7 +735,7 @@ export default function AppDetailPage() {
               {data.notes.map((n) => (
                 <div key={n.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">{new Date(n.created_at).toLocaleString()}</span>
+                    <span className="text-sm text-gray-500">{fmtDateTime(n.created_at)}</span>
                   </div>
                   <p className="text-gray-900">{n.body}</p>
                 </div>

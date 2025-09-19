@@ -1,7 +1,10 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Change this line from npm ci to npm install
+RUN npm install
+# Add this line to explicitly install axios
+RUN npm install axios --save
 COPY . .
 RUN npm run build
 

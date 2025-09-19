@@ -53,6 +53,7 @@ export default function DocumentsPage() {
     job_id: '', resume_id: '', tone: 'professional', length: 'medium', focus_areas: [], custom_intro: ''
   });
   const [generatedCoverLetter, setGeneratedCoverLetter] = useState('');
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
 
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
@@ -228,6 +229,9 @@ export default function DocumentsPage() {
     if (!coverLetterForm.job_id) return toast.error('Please select a job');
     if (!coverLetterForm.resume_id) return toast.error('Please select a resume');
 
+    setIsGeneratingCoverLetter(true);
+    setGeneratedCoverLetter(''); // Clear previous content
+    
     try {
       // Expect your api client to POST to /documents/cover-letter/generate
       const response = await api.generateCoverLetter(coverLetterForm);
@@ -239,6 +243,9 @@ export default function DocumentsPage() {
       }
     } catch (e) {
       toast.error(`Generation failed: ${e.message || e}`);
+      setGeneratedCoverLetter(''); // Clear on error
+    } finally {
+      setIsGeneratingCoverLetter(false);
     }
   }
 
@@ -593,7 +600,7 @@ function ExpandableScoreCategory({ title, score, description, details, categoryK
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen">
         <div className="max-w-7xl mx-auto p-6">
           <div className="flex justify-between items-center mb-8">
             <div>
@@ -875,93 +882,137 @@ function ExpandableScoreCategory({ title, score, description, details, categoryK
           {/* ================= Cover Letter Modal ================= */}
           {showCoverLetterModal && (
             <>
-              <div onClick={() => setShowCoverLetterModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 10000, cursor: 'pointer' }} />
-              <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 10001, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto', border: '1px solid #e5e7eb' }}>
-                <div style={{ padding: '24px', minWidth: '600px' }}>
-                  <div className="flex items-center justify-between mb-6">
+              <div onClick={() => setShowCoverLetterModal(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 cursor-pointer" />
+              <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-4xl h-[85vh] modal-surface rounded-2xl ring-1 overflow-hidden" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+                  
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center"><span className="text-white text-lg">✨</span></div>
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-lg">✨</span>
+                      </div>
                       <div>
-                        <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Generate AI Cover Letter</h2>
+                        <h2 className="text-xl font-bold text-slate-200">Generate AI Cover Letter</h2>
+                        <p className="text-sm text-slate-400 mt-1">Create a tailored cover letter for your job application</p>
                       </div>
                     </div>
-                    <button onClick={() => setShowCoverLetterModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B7280' }}>✕</button>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setShowCoverLetterModal(false)} className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition" aria-label="Close" type="button">✕</button>
+                    </div>
                   </div>
+                  
+                  {/* Body */}
+                  <div className="h-[calc(85vh-64px)] overflow-y-auto px-6 py-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                      {/* Left column */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="field-label">Target Job *</label>
+                          <select value={coverLetterForm.job_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value })} className="w-full input-glass">
+                            <option value="">Select a job...</option>
+                            {jobs.map(job => <option key={job.id} value={job.id}>{job.title} at {getCompany(job)}</option>)}
+                          </select>
+                        </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
-                    {/* Left column */}
-                    <div>
-                      <div style={{ marginBottom: '16px' }}>
-                        <label className="field-label">Target Job *</label>
-                        <select value={coverLetterForm.job_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, job_id: e.target.value })} className="w-full input-glass">
-                          <option value="">Select a job...</option>
-                          {jobs.map(job => <option key={job.id} value={job.id}>{job.title} at {getCompany(job)}</option>)}
-                        </select>
+                        <div>
+                          <label className="field-label">Resume *</label>
+                          <select value={coverLetterForm.resume_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, resume_id: e.target.value })} className="w-full input-glass">
+                            <option value="">Select your resume...</option>
+                            {resumes.map(resume => <option key={resume.id} value={resume.id}>{resume.label || `Resume ${resume.id}`}</option>)}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="field-label">Tone</label>
+                          <select value={coverLetterForm.tone} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, tone: e.target.value })} className="w-full input-glass">
+                            <option value="professional">Professional</option>
+                            <option value="enthusiastic">Enthusiastic</option>
+                            <option value="confident">Confident</option>
+                            <option value="creative">Creative</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="field-label">Length</label>
+                          <select value={coverLetterForm.length} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, length: e.target.value })} className="w-full input-glass">
+                            <option value="short">Short (200-300 words)</option>
+                            <option value="medium">Medium (300-400 words)</option>
+                            <option value="long">Long (400-500 words)</option>
+                          </select>
+                        </div>
+
+                        <button
+                          onClick={generateCoverLetter}
+                          disabled={!coverLetterForm.job_id || !coverLetterForm.resume_id || isGeneratingCoverLetter}
+                          className={`w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+                            (!coverLetterForm.job_id || !coverLetterForm.resume_id || isGeneratingCoverLetter) 
+                              ? 'bg-slate-600 text-slate-400 cursor-not-allowed' 
+                              : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl'
+                          }`}
+                        >
+                          {isGeneratingCoverLetter ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              ✨ Generate Cover Letter
+                            </>
+                          )}
+                        </button>
                       </div>
 
-                      <div style={{ marginBottom: '16px' }}>
-                        <label className="field-label">Resume *</label>
-                        <select value={coverLetterForm.resume_id} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, resume_id: e.target.value })} className="w-full input-glass">
-                          <option value="">Select your resume...</option>
-                          {resumes.map(resume => <option key={resume.id} value={resume.id}>{resume.label || `Resume ${resume.id}`}</option>)}
-                        </select>
+                      {/* Right column */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="field-label">Generated Cover Letter</label>
+                          {isGeneratingCoverLetter ? (
+                            <div className="w-full h-80 p-3 bg-slate-800/50 border border-slate-600/30 rounded-lg text-slate-200 flex flex-col items-center justify-center space-y-4">
+                              <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                              <div className="text-center">
+                                <p className="text-lg font-medium text-slate-200">Creating your cover letter...</p>
+                                <p className="text-sm text-slate-400 mt-2">Analyzing your resume and matching it to the job requirements</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <textarea
+                              value={generatedCoverLetter}
+                              onChange={(e) => setGeneratedCoverLetter(e.target.value)}
+                              placeholder="Generated cover letter will appear here..."
+                              className="w-full h-80 p-3 bg-slate-800/50 border border-slate-600/30 rounded-lg text-slate-200 placeholder-slate-400 resize-vertical focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-200"
+                              readOnly={!generatedCoverLetter}
+                            />
+                          )}
+                          {generatedCoverLetter && (
+                            <div className="flex gap-2 mt-3 justify-end">
+                              <button 
+                                onClick={() => { navigator.clipboard.writeText(generatedCoverLetter); alert('Cover letter copied to clipboard!'); }} 
+                                className="btn-ghost px-3 py-1.5 rounded-lg text-sm"
+                              >
+                                📋 Copy
+                              </button>
+                              <button 
+                                onClick={saveCoverLetterAsDocument} 
+                                className="btn-ghost px-3 py-1.5 rounded-lg text-sm"
+                              >
+                                💾 Save as Document
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    </div>
 
-                      <div style={{ marginBottom: '16px' }}>
-                        <label className="field-label">Tone</label>
-                        <select value={coverLetterForm.tone} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, tone: e.target.value })} className="w-full input-glass">
-                          <option value="professional">Professional</option>
-                          <option value="enthusiastic">Enthusiastic</option>
-                          <option value="confident">Confident</option>
-                          <option value="creative">Creative</option>
-                        </select>
-                      </div>
-
-                      <div style={{ marginBottom: '16px' }}>
-                        <label className="field-label">Length</label>
-                        <select value={coverLetterForm.length} onChange={(e) => setCoverLetterForm({ ...coverLetterForm, length: e.target.value })} className="w-full input-glass">
-                          <option value="short">Short (200-300 words)</option>
-                          <option value="medium">Medium (300-400 words)</option>
-                          <option value="long">Long (400-500 words)</option>
-                        </select>
-                      </div>
-
-                      <button
-                        onClick={generateCoverLetter}
-                        disabled={!coverLetterForm.job_id || !coverLetterForm.resume_id}
-                        style={{
-                          width: '100%', padding: '12px 16px',
-                          backgroundColor: (!coverLetterForm.job_id || !coverLetterForm.resume_id) ? '#9ca3af' : '#7c3aed',
-                          color: 'white', border: 'none', borderRadius: '6px',
-                          cursor: (!coverLetterForm.job_id || !coverLetterForm.resume_id) ? 'not-allowed' : 'pointer',
-                          fontSize: '14px', fontWeight: '500'
-                        }}
+                    <div className="flex gap-3 justify-end pt-4 border-t border-white/10">
+                      <button 
+                        onClick={() => setShowCoverLetterModal(false)} 
+                        className="btn-ghost px-6 py-2.5 rounded-lg"
                       >
-                        ✨ Generate Cover Letter
+                        Close
                       </button>
                     </div>
-
-                    {/* Right column */}
-                    <div>
-                      <label className="field-label">Generated Cover Letter</label>
-                      <textarea
-                        value={generatedCoverLetter}
-                        onChange={(e) => setGeneratedCoverLetter(e.target.value)}
-                        placeholder="Generated cover letter will appear here..."
-                        style={{ width: '100%', height: '300px', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
-                        readOnly={!generatedCoverLetter}
-                      />
-                      {generatedCoverLetter && (
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
-                          <button onClick={() => { navigator.clipboard.writeText(generatedCoverLetter); alert('Cover letter copied to clipboard!'); }} className="btn-ghost px-3 py-1 rounded">📋 Copy</button>
-                          <button onClick={saveCoverLetterAsDocument} className="btn-ghost px-3 py-1 rounded">💾 Save as Document</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                    <button onClick={() => setShowCoverLetterModal(false)} className="btn-ghost px-4 py-2 rounded">Close</button>
                   </div>
                 </div>
               </div>

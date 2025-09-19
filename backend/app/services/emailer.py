@@ -8,5 +8,9 @@ def send_email(to: str, subject: str, body: str):
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as s:
-        s.send_message(msg)
+    
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        if settings.SMTP_USER and settings.SMTP_PASSWORD:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        server.send_message(msg)

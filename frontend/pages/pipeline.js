@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import ReactDOM from "react-dom";
 import { api, connectWS } from "../lib/api";
 import { Button, Card, Badge, Select } from "../components/ui";
@@ -12,7 +13,7 @@ if (typeof window !== "undefined") {
     .then((m) => {
       confettiFn = m.default;
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 /* --------------------------------- stages --------------------------------- */
@@ -431,7 +432,7 @@ function ApplicationCard({
           })
         );
         e.dataTransfer.effectAllowed = "move";
-      } catch {}
+      } catch { }
       onDragStart && onDragStart(application);
     },
     [application, onDragStart]
@@ -453,9 +454,8 @@ function ApplicationCard({
   return (
     <>
       <Card
-        className={`glass-card group hover:border-white/20 transition-all duration-300 animate-slideIn overflow-hidden relative ${
-          viewMode === "board" ? "text-sm" : ""
-        }`}
+        className={`glass-card group hover:border-white/20 transition-all duration-300 animate-slideIn overflow-hidden relative ${viewMode === "board" ? "text-sm" : ""
+          }`}
         style={{
           animationDelay: `${Math.random() * 200}ms`,
           userSelect: "none",
@@ -473,9 +473,8 @@ function ApplicationCard({
               onDelete(application.id);
             }
           }}
-          className={`absolute p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full transition-all duration-300 z-10 backdrop-blur-sm border border-red-400/30 hover:border-red-300/50 ${
-            viewMode === "board" ? "top-2 left-2" : "top-2 right-2"
-          }`}
+          className={`absolute p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full transition-all duration-300 z-10 backdrop-blur-sm border border-red-400/30 hover:border-red-300/50 ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"
+            }`}
           title="Delete application"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -491,9 +490,8 @@ function ApplicationCard({
           <div className={viewMode === "board" ? "mb-4" : "mb-4"}>
             <div className={`${viewMode === "board" ? "mb-3 text-center" : "mb-3"}`}>
               <h3
-                className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${
-                  viewMode === "board" ? "text-base line-clamp-2 px-2" : "text-xl"
-                }`}
+                className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${viewMode === "board" ? "text-base line-clamp-2 px-2" : "text-xl"
+                  }`}
               >
                 {application.job?.title || "Unknown Position"}
               </h3>
@@ -504,9 +502,8 @@ function ApplicationCard({
                 <div className={`flex items-center space-x-1 ${viewMode === "board" ? "justify-center px-2" : ""}`}>
                   <span className={viewMode === "board" ? "text-sm" : ""}>🏢</span>
                   <span
-                    className={`font-medium text-indigo-400 ${
-                      viewMode === "board" ? "text-sm truncate max-w-[120px]" : "text-sm truncate"
-                    }`}
+                    className={`font-medium text-indigo-400 ${viewMode === "board" ? "text-sm truncate max-w-[120px]" : "text-sm truncate"
+                      }`}
                   >
                     {application.job?.company?.name || application.job?.company_name}
                   </span>
@@ -669,18 +666,17 @@ function Column({
     try {
       const data = JSON.parse(e.dataTransfer.getData("text/plain"));
       if (data.currentStatus !== status) onMove(data.id, status);
-    } catch {}
+    } catch { }
   };
   return (
     <div className="w-full h-full">
       <div
-        className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col backdrop-blur-md ${
-          isDragOver
+        className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col backdrop-blur-md ${isDragOver
             ? isDropAllowed
               ? "border-green-400/60 shadow-lg shadow-green-500/20 scale-[1.02] bg-green-500/10"
               : "border-red-400/60 shadow-lg shadow-red-500/20 bg-red-500/10"
             : "border-white/20 hover:border-indigo-400/30 shadow-xl"
-        }`}
+          }`}
         style={{ minHeight: "500px", maxHeight: "75vh" }}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -692,9 +688,8 @@ function Column({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ring-2 ring-white/30 shadow-lg flex-shrink-0 ${
-                  statusConfig[status]?.bgColor || "bg-gray-500"
-                }`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ring-2 ring-white/30 shadow-lg flex-shrink-0 ${statusConfig[status]?.bgColor || "bg-gray-500"
+                  }`}
               >
                 {stageNumber}
               </div>
@@ -725,9 +720,8 @@ function Column({
         {/* drop zone hint */}
         {isDragOver && (
           <div
-            className={`p-2 text-center border-2 border-dashed ${
-              isDropAllowed ? "border-emerald-400 bg-emerald-400/20 text-emerald-100" : "border-red-400 bg-red-400/20 text-red-100"
-            }`}
+            className={`p-2 text-center border-2 border-dashed ${isDropAllowed ? "border-emerald-400 bg-emerald-400/20 text-emerald-100" : "border-red-400 bg-red-400/20 text-red-100"
+              }`}
           >
             <div className="text-xl mb-1">{isDropAllowed ? "⬇️" : "❌"}</div>
             <p className="text-xs font-medium">{isDropAllowed ? `Move to ${status}` : "Cannot drop"}</p>
@@ -845,7 +839,7 @@ export default function PipelinePage() {
       const id = setTimeout(async () => {
         try {
           await api.savePreference("pipeline_stages", { stages: currentStages });
-        } catch {}
+        } catch { }
       }, 800);
       return () => clearTimeout(id);
     }
@@ -1021,7 +1015,7 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           {/* header */}
@@ -1035,11 +1029,10 @@ export default function PipelinePage() {
               <div className="flex bg-white/10 border border-white/20 rounded-lg p-1 backdrop-blur-sm">
                 <button
                   onClick={() => setViewMode("cards")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    viewMode === "cards"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === "cards"
                       ? "bg-indigo-500 text-white shadow-sm"
                       : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
-                  }`}
+                    }`}
                 >
                   <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -1053,11 +1046,10 @@ export default function PipelinePage() {
                 </button>
                 <button
                   onClick={() => setViewMode("board")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    viewMode === "board"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === "board"
                       ? "bg-indigo-500 text-white shadow-sm"
                       : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
-                  }`}
+                    }`}
                 >
                   <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1364,9 +1356,8 @@ export default function PipelinePage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${
-                                    statusConfig[status]?.bgColor || "bg-gray-500"
-                                  }`}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md ${statusConfig[status]?.bgColor || "bg-gray-500"
+                                    }`}
                                 >
                                   {index + 1}
                                 </div>
@@ -1457,25 +1448,50 @@ export default function PipelinePage() {
 /* ----------------------------- Job Detail Modal ---------------------------- */
 function JobDetailModal({ application, onClose }) {
   const [stages, setStages] = useState([]);
-  const [loadingStages, setLoadingStages] = useState(false);
+  const [loadingStages, setLoadingStages] = useState(true);
+  const [attachments, setAttachments] = useState([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    if (application?.id) {
-      (async () => {
-        setLoadingStages(true);
-        try {
-          const stagesData = await api.getStages(application.id);
-          setStages(Array.isArray(stagesData) ? stagesData : []);
-        } catch {
+    let cancelled = false;
+    if (!application?.id) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/applications/${application.id}/detail`);
+        if (!res.ok) throw new Error("Failed to load application details");
+        const detail = await res.json();
+        if (cancelled) return;
+        setStages(detail.stages || []);
+        setAttachments(detail.attachments || []);
+      } catch (e) {
+        if (!cancelled) {
           setStages([]);
-        } finally {
-          setLoadingStages(false);
+          setAttachments([]);
         }
-      })();
-    }
+      } finally {
+        if (!cancelled) {
+          setLoadingStages(false);
+          setLoadingAttachments(false);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [application?.id]);
 
+
   if (!application) return null;
+
+  const appliedAt = application?.created_at ? new Date(application.created_at) : null;
+  const appliedOnText = appliedAt
+    ? appliedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "—";
+  const daysSinceAppliedText = appliedAt
+    ? Math.ceil((Date.now() - appliedAt.getTime()) / 86400000) + " days"
+    : "—";
+
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[9999] p-4">
@@ -1509,49 +1525,20 @@ function JobDetailModal({ application, onClose }) {
               </div>
               <div>
                 <h4 className="field-label">Applied On</h4>
-                <p className="field-value">
-                  {(() => {
-                    const possible = [
-                      application.created_at,
-                      application.applied_at,
-                      application.date_applied,
-                      application.application_date,
-                    ];
-                    const dateValue = possible.find((v) => v != null);
-                    if (!dateValue) return "Date not available";
-                    const d = new Date(dateValue);
-                    if (Number.isNaN(d.getTime())) return "Invalid date format";
-                    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-                  })()}
-                </p>
+                <p className="field-value">{appliedOnText}</p>
               </div>
               <div>
                 <h4 className="field-label">Days Since Applied</h4>
-                <p className="field-value">
-                  {(() => {
-                    const possible = [
-                      application.created_at,
-                      application.applied_at,
-                      application.date_applied,
-                      application.application_date,
-                    ];
-                    const dateValue = possible.find((v) => v != null);
-                    if (!dateValue) return "N/A";
-                    const created = new Date(dateValue);
-                    if (Number.isNaN(created.getTime())) return "N/A";
-                    const days = Math.ceil((Date.now() - created.getTime()) / 86400000);
-                    return `${days} days`;
-                  })()}
-                </p>
+                <p className="field-value">{daysSinceAppliedText}</p>
               </div>
             </div>
 
             <div>
-              <h4 className="field-label mb-3">Status History</h4>
+              <h4 className="field-label mb-3">Timeline</h4>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/10">
                 {loadingStages ? (
                   <div className="text-center text-white/70">
-                    <p>Loading status history...</p>
+                    <p>Loading timeline...</p>
                   </div>
                 ) : stages && stages.length > 0 ? (
                   <div className="space-y-2">
@@ -1577,6 +1564,7 @@ function JobDetailModal({ application, onClose }) {
               </div>
             </div>
 
+            {/* Location, Description and other details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {application.job?.location && (
                 <div>
@@ -1590,33 +1578,7 @@ function JobDetailModal({ application, onClose }) {
                   <p className="field-value">{application.job.remote_type}</p>
                 </div>
               )}
-              {application.job?.job_type && (
-                <div>
-                  <h4 className="field-label">⏰ Job Type</h4>
-                  <p className="field-value">{application.job.job_type}</p>
-                </div>
-              )}
             </div>
-
-            {application.priority && application.priority !== "normal" && (
-              <div>
-                <h4 className="field-label">Priority</h4>
-                <div className="field-value flex items-center">
-                  <span className="mr-2">{application.priority === "high" ? "🔥" : application.priority === "medium" ? "⭐" : "📌"}</span>
-                  <span
-                    className={`capitalize font-medium ${
-                      application.priority === "high"
-                        ? "text-red-300"
-                        : application.priority === "medium"
-                        ? "text-yellow-300"
-                        : "text-white/70"
-                    }`}
-                  >
-                    {application.priority} priority
-                  </span>
-                </div>
-              </div>
-            )}
 
             {application.job?.source_url && (
               <div>
@@ -1641,32 +1603,30 @@ function JobDetailModal({ application, onClose }) {
               </div>
             )}
 
-            {application.job?.requirements && application.job.requirements.length > 0 && (
+            {/* Attachments */}
+            {attachments && attachments.length > 0 && (
               <div>
-                <h4 className="field-label">✅ Requirements</h4>
+                <h4 className="field-label mb-3">Attachments</h4>
                 <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/10">
-                  <ul className="list-disc list-inside space-y-1">
-                    {application.job.requirements.map((req, index) => (
-                      <li key={index} className="text-sm text-white/90">
-                        {req}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {application.job?.skills && application.job.skills.length > 0 && (
-              <div>
-                <h4 className="field-label">🛠️ Required Skills</h4>
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/10">
-                  <div className="flex flex-wrap gap-2">
-                    {application.job.skills.map((skill, index) => (
-                      <span key={index} className="bg-cyan-500/20 text-cyan-200 px-2 py-1 rounded-full text-sm border border-cyan-400/30">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+                  {loadingAttachments ? (
+                    <div className="text-center text-white/70">
+                      <p>Loading attachments...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <span className="mr-2">📎</span>
+                            <span className="text-white">{attachment.filename}</span>
+                          </div>
+                          <span className="text-white/60">
+                            {attachment.created_at ? new Date(attachment.created_at).toLocaleDateString() : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1681,6 +1641,9 @@ function JobDetailModal({ application, onClose }) {
           </div>
 
           <div className="flex justify-end space-x-3 p-6 border-t border-white/10 bg-white/5 flex-shrink-0">
+            <Button onClick={() => router.push(`/applications/${application.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
+              View Full Application
+            </Button>
             <Button variant="outline" onClick={onClose} className="border-white/20 text-white hover:bg-white/10">
               Close
             </Button>
@@ -1691,6 +1654,8 @@ function JobDetailModal({ application, onClose }) {
     document.body
   );
 }
+
+export { JobDetailModal };
 
 /* --------------------------------- Notes Modal ---------------------------- */
 function NoteModal({ application, onClose }) {
@@ -1926,9 +1891,8 @@ function PipelineCustomizer({ stages, onStagesChange, availableStages, onClose }
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
-              className={`flex items-center glass-card border rounded-xl p-4 cursor-move hover:shadow-lg transition-all group ${
-                dragOverIndex === index ? "border-indigo-400/60 bg-indigo-500/20 shadow-lg shadow-indigo-500/20" : "border-white/20 hover:border-indigo-400/30"
-              } ${draggedStage?.index === index ? "opacity-50" : ""}`}
+              className={`flex items-center glass-card border rounded-xl p-4 cursor-move hover:shadow-lg transition-all group ${dragOverIndex === index ? "border-indigo-400/60 bg-indigo-500/20 shadow-lg shadow-indigo-500/20" : "border-white/20 hover:border-indigo-400/30"
+                } ${draggedStage?.index === index ? "opacity-50" : ""}`}
             >
               <div className="flex items-center text-indigo-400 mr-4">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

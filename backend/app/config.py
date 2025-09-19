@@ -4,7 +4,12 @@ class Settings:
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://applytide.com")
+    @property
+    def FRONTEND_URL(self) -> str:
+        if self.ENVIRONMENT == "production":
+            return os.getenv("FRONTEND_URL", "https://applytide.com")
+        else:
+            return os.getenv("FRONTEND_URL", "http://localhost")
 
     # Core URLs / secrets from environment (docker-compose sets defaults)
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+psycopg2://jobflow:jobflow@pg:5432/jobflow")
@@ -45,11 +50,16 @@ class Settings:
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "1025"))
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@applytide.local")
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@applytide.local")
+    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@applytide.com")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@applytide.com")
     
+    # Additional email addresses
+    CONTACT_EMAIL: str = os.getenv("CONTACT_EMAIL", "contact@applytide.com")
+    SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", "support@applytide.com")
+    BILLING_EMAIL: str = os.getenv("BILLING_EMAIL", "billing@applytide.com")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@applytide.com")
+
     # Legacy compatibility
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@applytide.local")
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000")
     
     # Security settings
@@ -65,5 +75,21 @@ class Settings:
     
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    @property
+    def GOOGLE_REDIRECT_URI(self) -> str:
+        base_url = self.FRONTEND_URL
+        # Remove trailing slash if present
+        base_url = base_url.rstrip('/')
+        
+        # Use environment variable with dynamic fallback
+        return os.getenv("GOOGLE_REDIRECT_URI", f"{base_url}/api/auth/google/callback")
+    GOOGLE_SCOPES = [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/calendar.events"
+    ]
 
 settings = Settings()

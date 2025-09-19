@@ -2,8 +2,10 @@ import Link from "next/link";
 import Head from "next/head";
 import { Button, Card } from "../components/ui";
 import { useState, useEffect } from "react";
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Home() {
+  const { user, isAuthenticated, loading } = useAuth();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   
   const testimonials = [
@@ -102,6 +104,28 @@ export default function Home() {
     }
   };
 
+  // Show loading state briefly to prevent auth flash
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Applytide - Track Every Job Application Like a Pro</title>
+          <meta name="description" content="Never lose track of job applications again. Organize, track, and manage your entire job search pipeline with AI insights and smart reminders." />
+        </Head>
+        <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)'}}>
+          <div className="text-center space-y-4">
+            <img 
+              src="/images/logomark.svg" 
+              alt="Applytide" 
+              className="h-16 w-16 mx-auto animate-pulse"
+            />
+            <div className="text-slate-300">Loading...</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -140,6 +164,15 @@ export default function Home() {
                 </div>
               </div>
               
+              {/* Personalized greeting for authenticated users */}
+              {isAuthenticated && user && (
+                <div className="mb-6">
+                  <p className="text-lg text-indigo-300 font-medium">
+                    Welcome back, {user.full_name?.split(' ')[0] || 'there'}! 👋
+                  </p>
+                </div>
+              )}
+              
               <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight leading-tight">
                 Track Every
                 <span className="block bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400 bg-clip-text text-transparent animate-pulse">
@@ -172,17 +205,31 @@ export default function Home() {
             
             {/* CTA Buttons */}
             <div className="flex justify-center items-center pt-4">
-              <Link href="/login">
-                <Button 
-                  size="xl" 
-                  className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold px-10 py-5 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Get Started
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard">
+                  <Button 
+                    size="xl" 
+                    className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold px-10 py-5 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login">
+                  <Button 
+                    size="xl" 
+                    className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold px-10 py-5 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Get Started
+                  </Button>
+                </Link>
+              )}
             </div>
             
             {/* Instant credibility - Platform stats */}
@@ -316,21 +363,37 @@ export default function Home() {
               Be part of the revolution from day one.
             </p>
             
-            <div className="pt-6">
-              <Link href="/login">
-                <Button 
-                  size="xl"
-                  className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 font-bold px-12 py-6 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300 border border-white/20"
-                >
-                  <svg className="w-6 h-6 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Get Started Now
-                </Button>
-              </Link>
-              <p className="text-sm opacity-75 mt-4">
-                ✅ Free to start • ✅ No commitment • ✅ Easy setup
-              </p>
+            <div className="pt-6 flex justify-center">
+              {isAuthenticated ? (
+                <Link href="/dashboard">
+                  <Button 
+                    size="xl"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 font-bold px-12 py-6 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300 border border-white/20"
+                  >
+                    <svg className="w-6 h-6 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Continue to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login">
+                  <Button 
+                    size="xl"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 font-bold px-12 py-6 text-xl shadow-2xl transform hover:scale-105 transition-all duration-300 border border-white/20"
+                  >
+                    <svg className="w-6 h-6 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Get Started Now
+                  </Button>
+                </Link>
+              )}
+              {!isAuthenticated && (
+                <p className="text-sm opacity-75 mt-4">
+                  ✅ Free to start • ✅ No commitment • ✅ Easy setup
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -10,6 +10,8 @@ import os
 import mimetypes
 from fastapi import HTTPException
 import tempfile
+from datetime import datetime
+
 
 
 
@@ -810,6 +812,42 @@ class DocumentService:
             out.append(fix.get(t, t))
         return out
 
+
+    def _log_analysis_data(self, job_meta, requirements, required_tech, resume_text):
+        """Save job analysis data to a timestamped log file"""
+        try:
+            # Use user home directory which always exists and is writable
+            from pathlib import Path
+            import os
+            from datetime import datetime
+            
+            # Use Desktop folder which is easy to find
+            log_dir = Path.home() / "Desktop" / "ApplytideLogs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create timestamped filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = log_dir / f"job_analysis_{timestamp}.txt"
+            
+            print(f"Saving analysis log to: {log_file}")
+            
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.write("===== JOB META =====\n")
+                f.write(f"{job_meta}\n\n")
+                f.write("===== REQUIREMENTS =====\n")
+                f.write("\n".join(requirements) + "\n\n")
+                f.write("===== REQUIRED TECH =====\n")
+                f.write("\n".join(required_tech) + "\n\n")
+                f.write("===== RESUME TEXT =====\n")
+                f.write(f"{resume_text}\n\n")
+            
+            return str(log_file)
+        except Exception as e:
+            print(f"Error writing analysis to log file: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return None
+
     def _analyze_against_job(
         self,
         resume_text: str,
@@ -966,7 +1004,9 @@ class DocumentService:
                 
                 Aim for thoroughness - it's better to provide too many suggestions than too few.
                 """
-                
+
+                self._log_analysis_data(job_meta, requirements, required_tech, resume_text)
+
                 msg = [
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": f"JOB INFO:\n{job_meta}\n\nREQUIREMENTS:\n" + "\n".join(requirements[:40])},

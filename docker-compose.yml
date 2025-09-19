@@ -42,6 +42,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_FROM: ${SMTP_FROM:-noreply@applytide.local}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
     networks:
       - applytide_network
     volumes:
@@ -77,6 +78,8 @@ services:
   nginx:
     image: nginx:alpine
     container_name: applytide_nginx
+    environment:
+      - SERVER_NAME=${SERVER_NAME:-localhost}
     ports:
       - "80:80"
     volumes:

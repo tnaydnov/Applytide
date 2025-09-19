@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,13 +21,58 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    first_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user", nullable=False)
+    
+    # Profile Information
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    website: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    github_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    
+    # Account Status
     is_premium: Mapped[bool] = mapped_column(default=False, nullable=False)
     premium_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # OAuth Integration
+    google_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    google_avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_oauth_user: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    # Settings & Preferences
+    language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    notification_email: Mapped[bool] = mapped_column(default=True, nullable=False)
+    notification_push: Mapped[bool] = mapped_column(default=True, nullable=False)
+    theme_preference: Mapped[str] = mapped_column(String(20), default="dark", nullable=False)
+    
+    # Calendar & API Access
     calendar_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    
+    # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+
+
+class OAuthToken(Base):
+    __tablename__ = "oauth_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)  # "google", "github", etc.
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    scope: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 
 # ---------- Companies ----------
@@ -180,7 +225,23 @@ class EmailAction(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
+class Reminder(Base):
+    __tablename__ = "reminders"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    application_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("applications.id"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    google_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    meet_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)   # <-- add
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
+    __table_args__ = (
+        UniqueConstraint('user_id', 'google_event_id', name='uq_user_google_event'),  # <-- optional but helpful
+    )
+    
 # ---------- User Preferences ----------
 class UserPreferences(Base):
     __tablename__ = "user_preferences"
@@ -188,5 +249,16 @@ class UserPreferences(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     preference_key: Mapped[str] = mapped_column(String(255), nullable=False)
     preference_value: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+# ---------- Reminder Notes ----------
+class ReminderNote(Base):
+    __tablename__ = "reminder_notes"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reminder_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reminders.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
