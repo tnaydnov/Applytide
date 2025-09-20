@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import ReactDOM from "react-dom";
 import { api, connectWS } from "../lib/api";
-import { Button, Card, Badge, Select } from "../components/ui";
+import { Button, Card, Badge, Select, Input } from "../components/ui";
 import { useToast } from "../lib/toast";
 import {
   getReminders as getGoogleReminders,
@@ -866,10 +866,30 @@ export default function PipelinePage() {
   const [showPipelineSettings, setShowPipelineSettings] = useState(false);
   const [currentStages, setCurrentStages] = useState(DEFAULT_STAGES);
   const [quickStatusFilter, setQuickStatusFilter] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeApplication, setActiveApplication] = useState(null);
 
   const router = useRouter();
   const closeDrawer = () =>
     router.push("/pipeline", undefined, { shallow: true });
+
+  useEffect(() => {
+    const appId = router.query?.app;
+    if (!appId) {
+      setDrawerOpen(false);
+      setActiveApplication(null);
+      return;
+    }
+
+    // find the app across all columns after data loads
+    const allApps = Object.values(columns || {}).flat();
+    const found = allApps.find(a => String(a.id) === String(appId));
+    if (found) {
+      setActiveApplication(found);
+      setDrawerOpen(true);
+    }
+  }, [router.query?.app, columns]);
+
 
   const wsRef = useRef(null);
   const toast = useToast();
@@ -1514,7 +1534,9 @@ export default function PipelinePage() {
           </div>
         </div>
       </div>
-      <ApplicationDrawerBody application={activeApplication} onClose={() => setDrawerOpen(false)} />
+      {drawerOpen && activeApplication && (
+        <ApplicationDrawerBody application={activeApplication} onClose={closeDrawer} />
+      )}
     </div>
   );
 }
@@ -1785,7 +1807,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
   async function removeAttachment(attId) {
     if (!confirm("Remove this attachment?")) return;
     try {
-      await apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
+      await api.apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
       await loadAttachments();
     } catch (e) {
       toast.error("Failed to remove attachment");
@@ -1797,7 +1819,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
     try {
       setShowDocsPicker(true);
       setLoadingDocs(true);
-      const res = await (api.listDocuments ? api.listDocuments() : apiFetch("/documents").then(r => r.json()));
+      const res = await (api.listDocuments ? api.listDocuments() : api.apiFetch("/documents").then(r => r.json()));
       setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
     } catch (e) {
       console.error(e);
@@ -1813,7 +1835,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       if (api.attachExistingDocument) {
         await api.attachExistingDocument(appId, docId);
       } else {
-        await apiFetch(`/applications/${appId}/attachments/from-document`, {
+        await api.apiFetch(`/applications/${appId}/attachments/from-document`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ document_id: docId })
