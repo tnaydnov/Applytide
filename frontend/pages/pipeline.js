@@ -1045,17 +1045,17 @@ export default function PipelinePage() {
     }
   }, [currentStages, toast]);
 
-  // useEffect(() => {
-  //   load();
-  //   // WebSocket connection for real-time updates
-  //   wsRef.current = connectWS((evt) => {
-  //     if (["stage_changed", "stage_added"].includes(evt.type)) {
-  //       load();
-  //       toast.success("Pipeline updated!");
-  //     }
-  //   });
-  //   return () => wsRef.current && wsRef.current.close();
-  // }, [load]);
+  useEffect(() => {
+    load();
+    // WebSocket connection for real-time updates
+    wsRef.current = connectWS((evt) => {
+      if (["stage_changed", "stage_added"].includes(evt.type)) {
+        load();
+        toast.success("Pipeline updated!");
+      }
+    });
+    return () => wsRef.current && wsRef.current.close();
+  }, [load]);
 
   /* ------------------------------ keyboard help ---------------------------- */
   useEffect(() => {
@@ -2290,6 +2290,9 @@ export function ApplicationDrawerBody({ application, onClose }) {
         </div>
       </div>
     </div>
+
+
+
 
   );
 }
