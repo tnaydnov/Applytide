@@ -21,6 +21,8 @@ from ..auth.deps import get_current_user
 from ..db.models import User
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_sorting
 from ..documents.service import DocumentService
+from pydantic import BaseModel
+
 
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
