@@ -1790,6 +1790,8 @@ export function ApplicationDrawerBody({ application, onClose }) {
   const [resume, setResume] = useState(null);
   const [showResumePicker, setShowResumePicker] = useState(false);
 
+  const router = useRouter();
+
   async function loadResume() {
     try {
       // Prefer dedicated API if you have it
@@ -1823,7 +1825,9 @@ export function ApplicationDrawerBody({ application, onClose }) {
     try {
       setShowResumePicker(true);
       setLoadingDocs(true);
-      const res = await (api.listDocuments ? api.listDocuments() : api.apiFetch("/documents").then(r => r.json()));
+      const res = await (api.listDocuments
+        ? api.listDocuments({ document_type: "resume" })
+        : api.apiFetch("/documents?document_type=resume&page_size=100").then(r => r.json()));
       setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
     } catch {
       toast.error("Couldn’t load documents");
@@ -2205,7 +2209,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
                   </div>
                   <a
                     className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100"
-                    href="/events"
+                    href="/reminders"
                   >
                     Open Events
                   </a>
@@ -2257,7 +2261,6 @@ export function ApplicationDrawerBody({ application, onClose }) {
 
             {/* Job details */}
             <div className="flex justify-between items-center">
-              // inside ApplicationDrawerBody footer or the button area:
               <Button
                 className="btn-ghost"
                 onClick={() => {
@@ -2284,18 +2287,6 @@ export function ApplicationDrawerBody({ application, onClose }) {
             )}
           </div>
         </div>
-
-        {/* X button */}
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full
-                   bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/15"
-          aria-label="Close"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
     </div>
 
