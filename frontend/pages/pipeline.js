@@ -5,6 +5,10 @@ import ReactDOM from "react-dom";
 import { api, connectWS } from "../lib/api";
 import { Button, Card, Badge, Select } from "../components/ui";
 import { useToast } from "../lib/toast";
+import {
+  getReminders as getGoogleReminders,
+  createReminder as createGoogleReminder,
+} from "../services/googleCalendar";
 
 /* ----------------------------- success confetti ---------------------------- */
 let confettiFn = null;
@@ -847,6 +851,8 @@ function Column({
 
 /* ---------------------------------- page ---------------------------------- */
 export default function PipelinePage() {
+
+
   const [columns, setColumns] = useState({});
   const [filteredColumns, setFilteredColumns] = useState({});
   const [loading, setLoading] = useState(true);
@@ -1508,7 +1514,7 @@ export default function PipelinePage() {
           </div>
         </div>
       </div>
-      <AppDrawer appId={router.query.app} onClose={closeDrawer} />
+      <ApplicationDrawerBody application={activeApplication} onClose={() => setDrawerOpen(false)} />
     </div>
   );
 }
@@ -1727,244 +1733,334 @@ export { JobDetailModal };
 
 
 /* ------------------------------ Application Drawer ------------------------------ */
-function AppDrawer({ appId, onClose }) {
-  const [app, setApp] = useState(null);
-  const [stages, setStages] = useState([]);
+export default function ApplicationDrawerBody({ application, onClose }) {
+  const toast = useToast();
   const [attachments, setAttachments] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  // fetch detail when opened
-  useEffect(() => {
-    let cancel = false;
-    async function load() {
-      if (!appId) return;
-      setLoading(true);
-      try {
-        // core app + job
-        const appDetail = await api.getAppDetail(appId);
-        // stages + attachments (same endpoint used by JobDetailModal)
-        const res = await fetch(`/api/applications/${appId}/detail`, { credentials: "include" });
-        const extra = res.ok ? await res.json() : {};
-        if (!cancel) {
-          setApp(appDetail);
-          setStages(extra.stages || []);
-          setAttachments(extra.attachments || []);
-        }
-      } catch {
-        if (!cancel) {
-          setApp(null);
-          setStages([]);
-          setAttachments([]);
-        }
-      } finally {
-        if (!cancel) setLoading(false);
-      }
+  const [allReminders, setAllReminders] = useState([]);
+  const [showCreateReminder, setShowCreateReminder] = useState(false);
+  const [creatingReminder, setCreatingReminder] = useState(false);
+  const [newReminder, setNewReminder] = useState({
+    title: "Follow-up",
+    type: "Follow-up",
+    due_date: "",
+    add_meet_link: false,
+    description: "",
+  });
+
+  const [showDocsPicker, setShowDocsPicker] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
+  const [showJobDetail, setShowJobDetail] = useState(false);
+  const appId = String(application?.id || application?.application_id);
+
+  // ----- Attachments -----
+  async function loadAttachments() {
+    try {
+      const res = await api.apiFetch(`/applications/${appId}/attachments`).then(r => r.json());
+      setAttachments(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
+    } catch (e) {
+      console.error(e);
+      setAttachments([]);
     }
-    load();
-    return () => { cancel = true; };
+  }
+  async function handleUploadFile(file) {
+    if (!file) return;
+    try {
+      setUploading(true);
+      const form = new FormData();
+      form.append("file", file);
+      await api.uploadApplicationAttachment(appId, form);  // exists (see reminders.js)
+      toast.success("Attachment uploaded");
+      await loadAttachments();
+    } catch (e) {
+      console.error(e);
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function removeAttachment(attId) {
+    if (!confirm("Remove this attachment?")) return;
+    try {
+      await apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
+      await loadAttachments();
+    } catch (e) {
+      toast.error("Failed to remove attachment");
+    }
+  }
+
+  // ----- Documents picker (attach without saving a new doc) -----
+  async function openDocsPicker() {
+    try {
+      setShowDocsPicker(true);
+      setLoadingDocs(true);
+      const res = await (api.listDocuments ? api.listDocuments() : apiFetch("/documents").then(r => r.json()));
+      setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn’t load documents");
+      setDocs([]);
+    } finally {
+      setLoadingDocs(false);
+    }
+  }
+  async function useExistingDocument(docId) {
+    try {
+      // Prefer a direct attach endpoint if you have it; this call name is a stub.
+      if (api.attachExistingDocument) {
+        await api.attachExistingDocument(appId, docId);
+      } else {
+        await apiFetch(`/applications/${appId}/attachments/from-document`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ document_id: docId })
+        });
+      }
+      toast.success("Attached from Documents");
+      setShowDocsPicker(false);
+      await loadAttachments();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to attach document");
+    }
+  }
+
+  // ----- Reminders for this application -----
+  async function loadReminders() {
+    try {
+      const list = await getGoogleReminders();
+      setAllReminders(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error(e);
+      setAllReminders([]);
+    }
+  }
+  const nextReminder = useMemo(() => {
+    const mine = allReminders
+      .filter(r => String(r.application_id) === appId)
+      .sort((a, b) => new Date(a.due_date || a.scheduled_at) - new Date(b.due_date || b.scheduled_at));
+    return mine[0] || null;
+  }, [allReminders, appId]);
+
+  async function createReminderInline(e) {
+    e?.preventDefault?.();
+    if (!newReminder.due_date) {
+      toast.error("Pick a date & time");
+      return;
+    }
+    try {
+      setCreatingReminder(true);
+      const payload = {
+        application_id: appId,
+        title: newReminder.type && !newReminder.title.toLowerCase().includes(newReminder.type.toLowerCase())
+          ? `${newReminder.type}: ${newReminder.title}` : newReminder.title,
+        description: newReminder.description || "",
+        due_date: new Date(newReminder.due_date).toISOString(),
+        add_meet_link: !!newReminder.add_meet_link,
+        email_notify: true,
+        timezone_str: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      };
+      await createGoogleReminder(payload);
+      toast.success("Reminder created");
+      setShowCreateReminder(false);
+      setNewReminder({ title: "Follow-up", type: "Follow-up", due_date: "", add_meet_link: false, description: "" });
+      await loadReminders();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to create reminder");
+    } finally {
+      setCreatingReminder(false);
+    }
+  }
+
+  useEffect(() => {
+    if (appId) {
+      loadAttachments();
+      loadReminders();
+    }
   }, [appId]);
 
-  // close on ESC
-  useEffect(() => {
-    if (!appId) return;
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [appId, onClose]);
-
-  if (!appId) return null;
-
-  const job = app?.job || {};
-  const application = app?.application || {};
-  const cfg = statusConfig[application.status] || DEFAULT_STATUS_STYLE;
-
   return (
-    <div className="fixed inset-0 z-[9999]">
-      {/* overlay */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-100 transition-opacity"
-        onClick={onClose}
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-2xl font-semibold text-slate-100">{application?.job?.title || application?.title || "Application"}</div>
+          <div className="text-slate-400">{application?.job?.company_name || application?.company_name}</div>
+        </div>
+        <button onClick={onClose} className="px-3 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300 hover:bg-slate-700">
+          Close
+        </button>
+      </div>
 
-      {/* panel */}
-      <aside
-        className="absolute right-0 top-0 h-full w-full sm:w-[560px] md:w-[640px] shadow-2xl"
-        aria-modal="true"
-        role="dialog"
-      >
-        <div className="h-full flex flex-col bg-gradient-to-br from-[#0f1424]/95 to-[#0b0f1b]/95 border-l border-white/10">
-          {/* header */}
-          <div className="p-4 md:p-6 border-b border-white/10 bg-white/5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">
-                  {(job.company_name || job.company?.name || "UK").slice(0,2).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-slate-100 font-semibold text-lg leading-tight truncate">
-                    {job.title || "Unknown Position"}
-                  </h2>
-                  <p className="text-sm text-indigo-300 truncate">
-                    {job.company_name || job.company?.name || "Unknown Company"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border ${cfg?.color?.includes("dark:") ? "bg-white/10 border-white/20 text-slate-200" : "bg-white/10 border-white/20 text-slate-200"}`}
-                  title="Current status"
-                >
-                  {cfg.icon}
-                  <span className="truncate max-w-[120px]">{application.status || "Applied"}</span>
-                </span>
-                <button
-                  onClick={onClose}
-                  className="tap-target p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 border border-white/10"
-                  aria-label="Close"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
+      {/* Details row (Applied / Last update) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-slate-800/40 border-slate-700/50">
+          <div className="text-sm text-slate-400">Applied</div>
+          <div className="text-slate-200">
+            {application?.applied_at ? new Date(application.applied_at).toLocaleDateString() :
+              application?.created_at ? new Date(application.created_at).toLocaleDateString() : "—"}
           </div>
-
-          {/* content */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-            {/* quick actions */}
-            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
-              <h3 className="text-slate-200 font-semibold mb-3 flex items-center gap-2">
-                <span className="w-7 h-7 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 grid place-items-center text-white">⚡</span>
-                Quick Actions
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Link href={`/applications/${appId}`}>
-                  <div className="tap-target bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg mobile-p-3 md:p-3 cursor-pointer">
-                    <div className="text-slate-200 font-medium">Open full view</div>
-                    <div className="text-xs text-slate-400">/applications/{appId}</div>
-                  </div>
-                </Link>
-
-                {job.source_url && (
-                  <a
-                    className="tap-target bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg mobile-p-3 md:p-3 cursor-pointer"
-                    href={job.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <div className="text-slate-200 font-medium">View job posting</div>
-                    <div className="text-xs text-slate-400 truncate">{job.source_url}</div>
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* meta */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
-                <h4 className="text-sm font-semibold text-slate-300 mb-2">Details</h4>
-                <div className="space-y-2 text-sm text-slate-300">
-                  {job.location && (
-                    <div className="flex items-center gap-2">
-                      <span>📍</span><span className="truncate">{job.location}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <span>📅</span>
-                    <span>Applied:</span>
-                    <span className="text-slate-200">
-                      {application.created_at ? new Date(application.created_at).toLocaleDateString() : "—"}
-                    </span>
-                  </div>
-                  {application.updated_at && (
-                    <div className="flex items-center gap-2">
-                      <span>🔄</span>
-                      <span>Last update:</span>
-                      <span className="text-slate-200">
-                        {new Date(application.updated_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
-                <h4 className="text-sm font-semibold text-slate-300 mb-2">Description</h4>
-                {job.description ? (
-                  <div className="text-sm text-slate-300 leading-relaxed break-words max-h-40 overflow-y-auto">
-                    {job.description}
-                  </div>
-                ) : (
-                  <div className="text-sm text-slate-500">No description provided</div>
-                )}
-              </div>
-            </div>
-
-            {/* attachments */}
-            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
-              <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                <span>📎</span>Attachments
-              </h4>
-              {loading ? (
-                <div className="text-slate-400 text-sm">Loading…</div>
-              ) : attachments.length === 0 ? (
-                <div className="text-slate-500 text-sm">No files attached</div>
-              ) : (
-                <div className="space-y-2">
-                  {attachments.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span>📄</span>
-                        <span className="truncate">{a.filename}</span>
-                      </div>
-                      <span className="text-slate-400">{a.created_at ? new Date(a.created_at).toLocaleDateString() : ""}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* timeline */}
-            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
-              <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                <span>🗓️</span>Timeline
-              </h4>
-              {loading ? (
-                <div className="text-slate-400 text-sm">Loading…</div>
-              ) : stages.length === 0 ? (
-                <div className="text-slate-500 text-sm">No status changes yet</div>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  {stages.map((s, i) => (
-                    <div key={s.id || i} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span>{(statusConfig[s.name] || DEFAULT_STATUS_STYLE).icon}</span>
-                        <span className="text-slate-200 truncate">{s.name}</span>
-                        {s.notes && <span className="text-slate-400 truncate">– {s.notes}</span>}
-                      </div>
-                      <span className="text-slate-400">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        </Card>
+        <Card className="bg-slate-800/40 border-slate-700/50">
+          <div className="text-sm text-slate-400">Last update</div>
+          <div className="text-slate-200">
+            {application?.updated_at ? new Date(application.updated_at).toLocaleDateString() : "—"}
           </div>
+        </Card>
+      </div>
 
-          {/* footer */}
-          <div className="p-4 md:p-6 border-t border-white/10 bg-white/5 flex items-center justify-between">
-            <Link href={`/applications/${appId}`}>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                Open Full View
-              </Button>
-            </Link>
-            <Button variant="outline" onClick={onClose} className="border-white/20 text-white hover:bg-white/10">
-              Close
-            </Button>
+      {/* Attachments */}
+      <Card className="bg-slate-800/40 border-slate-700/50">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-slate-200 font-semibold">Attachments</h3>
+          <div className="flex gap-2">
+            <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+              <input type="file" className="hidden" onChange={(e) => handleUploadFile(e.target.files?.[0])} />
+              {uploading ? "Uploading…" : "Upload"}
+            </label>
+            <Button variant="outline" onClick={openDocsPicker}>Use a document</Button>
           </div>
         </div>
-      </aside>
+
+        {attachments.length === 0 ? (
+          <div className="text-sm text-slate-400">No files attached</div>
+        ) : (
+          <div className="space-y-2">
+            {attachments.map(att => (
+              <div key={att.id} className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
+                <div className="truncate text-slate-200">{att.filename || att.name}</div>
+                <div className="flex items-center gap-2">
+                  {att.url && (
+                    <a
+                      className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
+                      href={`/api/applications/${appId}/attachments/${att.id}/download`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open
+                    </a>
+                  )}
+                  <Button variant="outline" onClick={() => removeAttachment(att.id)}>Remove</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Documents picker modal (simple inline) */}
+        {showDocsPicker && (
+          <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-slate-300 font-medium">Choose from Documents</div>
+              <Button variant="outline" onClick={() => setShowDocsPicker(false)}>Close</Button>
+            </div>
+            {loadingDocs ? (
+              <div className="text-sm text-slate-400">Loading…</div>
+            ) : docs.length === 0 ? (
+              <div className="text-sm text-slate-400">No documents found</div>
+            ) : (
+              <div className="space-y-2">
+                {docs.map(d => (
+                  <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
+                    <div className="truncate text-slate-200">{d.name || d.filename}</div>
+                    <Button size="sm" onClick={() => useExistingDocument(d.id)}>Attach</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Reminders */}
+      <Card className="bg-slate-800/40 border-slate-700/50">
+        <div className="flex items-center justify-between">
+          <h3 className="text-slate-200 font-semibold">Reminders</h3>
+          {!showCreateReminder && <Button size="sm" onClick={() => setShowCreateReminder(true)}>Add reminder</Button>}
+        </div>
+
+        {!nextReminder && !showCreateReminder && (
+          <div className="mt-2 text-sm text-slate-400">No reminders linked to this application.</div>
+        )}
+
+        {nextReminder && !showCreateReminder && (
+          <div className="mt-3 rounded-md bg-slate-900/50 border border-slate-700/50 p-3 flex items-center justify-between">
+            <div>
+              <div className="text-slate-100">{nextReminder.title || nextReminder.name}</div>
+              <div className="text-slate-400 text-sm">
+                {new Date(nextReminder.due_date || nextReminder.scheduled_at).toLocaleString()}
+              </div>
+            </div>
+            <a
+              className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100"
+              href="/events"
+            >
+              Open Events
+            </a>
+          </div>
+        )}
+
+        {showCreateReminder && (
+          <form className="mt-3 space-y-3" onSubmit={createReminderInline}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Select
+                value={newReminder.type}
+                onChange={(e) => setNewReminder(r => ({ ...r, type: e.target.value }))}
+              >
+                <option value="Follow-up">Follow-up</option>
+                <option value="Interview">Interview</option>
+                <option value="Deadline">Application Deadline</option>
+                <option value="Custom">Custom</option>
+              </Select>
+              <Input
+                value={newReminder.title}
+                onChange={(e) => setNewReminder(r => ({ ...r, title: e.target.value }))}
+                placeholder="Reminder title"
+              />
+              <Input
+                type="datetime-local"
+                value={newReminder.due_date}
+                onChange={(e) => setNewReminder(r => ({ ...r, due_date: e.target.value }))}
+              />
+              <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={!!newReminder.add_meet_link}
+                  onChange={(e) => setNewReminder(r => ({ ...r, add_meet_link: e.target.checked }))} />
+                Create Google Meet link
+              </label>
+            </div>
+            <textarea
+              rows={3}
+              className="w-full rounded-md bg-slate-900/50 border border-slate-700 text-slate-200"
+              placeholder="Notes…"
+              value={newReminder.description}
+              onChange={(e) => setNewReminder(r => ({ ...r, description: e.target.value }))}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button">Cancel</Button>
+              <Button disabled={creatingReminder} type="submit">{creatingReminder ? "Creating…" : "Create"}</Button>
+            </div>
+          </form>
+        )}
+      </Card>
+
+      {/* Job details */}
+      <div className="flex justify-between items-center">
+        <Button className="btn-ghost" onClick={() => setShowJobDetail(true)}>
+          🔎 Job details
+        </Button>
+        {/* We intentionally removed the “Open Full View” button */}
+      </div>
+
+      {showJobDetail && (
+        <JobDetailModal
+          application={application}
+          onClose={() => setShowJobDetail(false)}
+        />
+      )}
     </div>
   );
 }

@@ -797,3 +797,23 @@ select, select option {
 
 
 .glow-reminder { box-shadow: 0 0 0 1px rgba(99,102,241,.35), 0 8px 20px rgba(99,102,241,.25); }
+
+/* before: overflow-hidden or overflow-y-auto can block react-dnd previews */
+.pipeline-board {
+  overflow: visible;     /* ✅ lets the drag preview float above */
+}
+
+/* drawer mask/backdrop should NOT eat pointer events when closed */
+.drawer-mask {
+  pointer-events: none;
+}
+.drawer-mask[data-open="true"] {
+  pointer-events: auto;
+}
+
+.peeker {
+  pointer-events: none;                 /* container ignores */
+}
+.peeker > button {
+  pointer-events: auto;                 /* only the button is clickable */
+}

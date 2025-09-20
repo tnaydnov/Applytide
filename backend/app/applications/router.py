@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 import uuid
 import os
 import shutil
@@ -19,6 +20,8 @@ from ..ws.router import broadcast
 from ..auth.deps import get_current_user
 from ..db.models import User
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_sorting
+from ..documents.service import DocumentService
+
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
 
@@ -408,6 +411,63 @@ def _get_owned_app(db: Session, app_id: uuid.UUID, user_id: uuid.UUID) -> models
 
 
 # ---------- attachments ----------
+document_service = DocumentService()
+
+class AttachFromDocumentPayload(BaseModel):
+    document_id: str
+
+@router.post("/{app_id}/attachments/from-document", response_model=AttachmentOut)
+def attach_from_document(
+    app_id: uuid.UUID,
+    payload: AttachFromDocumentPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Attach an existing document to an application by copying the file."""
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    # Resolve the source file using your DocumentService
+    src_path, filename, media_type = document_service.resolve_download(
+        db=db, user_id=str(current_user.id), document_id=payload.document_id
+    )
+    if not src_path.exists():
+        raise HTTPException(status_code=404, detail="Source document file not found")
+
+    # Destination in your attachments area
+    upload_dir = Path("app/uploads/app_attachments")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = src_path.suffix
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    dst_path = upload_dir / unique_filename
+
+    # Copy file
+    dst_path.write_bytes(src_path.read_bytes())
+    size = dst_path.stat().st_size
+
+    # Persist attachment row
+    attachment = models.ApplicationAttachment(
+        application_id=app_id,
+        filename=filename or "document",
+        file_size=size,
+        content_type=media_type or "application/octet-stream",
+        file_path=str(dst_path),
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+
+    # best-effort broadcast
+    try:
+        import anyio
+        anyio.from_thread.run(broadcast, {"type": "attachment_added", "application_id": str(app_id)})
+    except Exception:
+        pass
+
+    return attachment
+
+
 @router.post("/{app_id}/attachments", response_model=AttachmentOut)
 async def upload_attachment(
     app_id: uuid.UUID,
@@ -415,39 +475,23 @@ async def upload_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload a file attachment for an application"""
+    """Upload a file attachment for an application (10MB limit, streamed)."""
     if not _get_owned_app(db, app_id, current_user.id):
         raise HTTPException(status_code=404, detail="Application not found")
-    
-    # Validate file size (10MB limit)
-    if file.size and file.size > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
-    
-    # Create upload directory if it doesn't exist
+
+    MAX = 10 * 1024 * 1024  # 10MB
     upload_dir = "app/uploads/app_attachments"
     os.makedirs(upload_dir, exist_ok=True)
-    
-    # Generate unique filename
-    file_extension = os.path.splitext(file.filename)[1] if file.filename else ""
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
-    
-    # Save file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Create database record
-    MAX = 10 * 1024 * 1024  # 10MB
-    os.makedirs(upload_dir, exist_ok=True)
-    file_extension = os.path.splitext(file.filename or "")[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+    ext = os.path.splitext(file.filename or "")[1]
+    unique_filename = f"{uuid.uuid4()}{ext}"
     file_path = os.path.join(upload_dir, unique_filename)
 
     total = 0
     try:
         with open(file_path, "wb") as buffer:
             while True:
-                chunk = await file.read(1024 * 1024)
+                chunk = await file.read(1024 * 1024)  # 1MB
                 if not chunk:
                     break
                 total += len(chunk)
@@ -469,14 +513,15 @@ async def upload_attachment(
     db.add(attachment)
     db.commit()
     db.refresh(attachment)
-    
+
     try:
         import anyio
         anyio.from_thread.run(broadcast, {"type": "attachment_added", "application_id": str(app_id)})
     except Exception:
         pass
-    
+
     return attachment
+
 
 
 @router.get("/{app_id}/attachments", response_model=List[AttachmentOut])
