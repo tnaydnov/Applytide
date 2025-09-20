@@ -120,6 +120,31 @@ export default function RemindersPage() {
   const toast = useToast();
   const calendarRef = useRef(null);
 
+  // Mobile detection and redirect
+  useEffect(() => {
+    const checkIsMobile = () => {
+      if (typeof window !== 'undefined') {
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          router.replace('/reminders_mobile');
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Check on mount
+    if (checkIsMobile()) return;
+
+    // Check on resize
+    const handleResize = () => {
+      checkIsMobile();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [router]);
+
   // State
   const [loading, setLoading] = useState(true);
   const [reminders, setReminders] = useState([]);
