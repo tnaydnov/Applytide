@@ -1974,17 +1974,17 @@ function PipelineCustomizer({ stages, onStagesChange, availableStages, onClose }
 
       <div>
         <h4 className="text-xl font-bold text-white mb-2">Available Stages</h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
           {availableStages
             .filter((stage) => !tempStages.includes(stage))
             .map((stage) => (
               <button
                 key={stage}
                 onClick={() => addStage(stage)}
-                className="flex items-center justify-center bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-200 rounded-xl p-4 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all text-sm border border-indigo-400/30 hover:border-indigo-300/50 hover:scale-105 group"
+                className="flex items-center bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-200 rounded-xl p-4 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all text-sm border border-indigo-400/30 hover:border-indigo-300/50 hover:scale-105 group min-h-[60px]"
               >
-                <span className="mr-2 text-lg">{statusConfig[stage]?.icon}</span>
-                <span className="truncate font-medium group-hover:text-white transition-colors">{stage}</span>
+                <span className="mr-3 text-lg flex-shrink-0">{statusConfig[stage]?.icon}</span>
+                <span className="font-medium group-hover:text-white transition-colors text-left flex-1">{stage}</span>
                 <svg className="w-4 h-4 ml-2 flex-shrink-0 text-indigo-400 group-hover:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
