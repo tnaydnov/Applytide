@@ -1298,7 +1298,7 @@ export default function PipelinePage() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">Start Your Job Hunt!</h3>
                   <p className="text-gray-300 mb-8 drop-shadow-sm">Add your first job application to begin tracking your progress through our beautiful pipeline.</p>
-                  <div className="space-y-3">
+                  <div className="flex justify-center">
                     <Link href="/jobs">
                       <Button className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg px-8 py-3 hover:shadow-xl transition-all duration-300 hover:scale-105">
                         <svg className="w-4 h-4 mr-2 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">

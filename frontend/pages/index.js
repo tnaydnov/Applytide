@@ -363,7 +363,7 @@ export default function Home() {
               Be part of the revolution from day one.
             </p>
             
-            <div className="pt-6 flex justify-center">
+            <div className="pt-6 flex flex-col items-center justify-center">
               {isAuthenticated ? (
                 <Link href="/dashboard">
                   <Button 
@@ -390,7 +390,7 @@ export default function Home() {
                 </Link>
               )}
               {!isAuthenticated && (
-                <p className="text-sm opacity-75 mt-4">
+                <p className="text-sm opacity-75 mt-4 text-center">
                   ✅ Free to start • ✅ No commitment • ✅ Easy setup
                 </p>
               )}

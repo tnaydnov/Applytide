@@ -353,17 +353,6 @@ export default function NavBar() {
                       </svg>
                       <span>Active Sessions</span>
                     </Link>
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
-                      </svg>
-                      <span>Dashboard</span>
-                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
