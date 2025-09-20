@@ -411,10 +411,11 @@ function ApplicationCard({
   viewMode = "board",
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const [showJobDetail, setShowJobDetail] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false); // Mobile move dialog
   const config = statusConfig[application.status] || DEFAULT_STATUS_STYLE;
+
+  const router = useRouter();
 
   const availableStatuses = useMemo(
     () => statuses.filter((s) => s !== application.status),
@@ -1507,6 +1508,7 @@ export default function PipelinePage() {
           </div>
         </div>
       </div>
+      <AppDrawer appId={router.query.app} onClose={closeDrawer} />
     </div>
   );
 }
@@ -2271,7 +2273,6 @@ function PipelineCustomizer({ stages, onStagesChange, availableStages, onClose }
           </Button>
         </div>
       </div>
-      <AppDrawer appId={router.query.app} onClose={closeDrawer} />
     </div>
   );
 }

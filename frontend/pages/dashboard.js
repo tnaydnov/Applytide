@@ -7,6 +7,62 @@ import { usePremiumFeature } from '../components/PremiumFeature';
 import Link from "next/link";
 import Head from "next/head";
 
+import Link from "next/link";
+
+function ActionCard({
+  icon = "✨",
+  title,
+  accentClass = "text-indigo-300",
+  subtitle,
+  description,
+  gradientClass = "from-indigo-500/10 to-purple-500/10",
+  borderClass = "border-indigo-500/20",
+  href,
+  onClick,
+}) {
+  const Inner = (
+    <div
+      className={`
+        relative rounded-xl border ${borderClass}
+        bg-gradient-to-r ${gradientClass}
+        p-4 md:p-5 h-full
+        transition-all
+        hover:border-white/30 hover:shadow-lg
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400
+        flex flex-col
+      `}
+    >
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 grid place-items-center w-9 h-9 rounded-lg bg-white/10">
+          <span className="text-xl">{icon}</span>
+        </div>
+        <div className="min-w-0">
+          <h3 className={`font-semibold ${accentClass} leading-tight`}>{title}</h3>
+          {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
+        </div>
+      </div>
+
+      {description && (
+        <p className="mt-3 text-sm text-slate-300 line-clamp-2">{description}</p>
+      )}
+    </div>
+  );
+
+  // Always render as a single block so spacing/hover are consistent
+  if (href) {
+    return (
+      <Link href={href} className="block h-full">
+        {Inner}
+      </Link>
+    );
+  }
+  return (
+    <button onClick={onClick} className="block w-full text-left h-full">
+      {Inner}
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const [applications, setApplications] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -26,7 +82,7 @@ export default function Dashboard() {
         api.getApplicationCards(),
         api.getMetrics()
       ]);
-      
+
       const applicationsData = applicationsResponse.items || applicationsResponse;
       setApplications(applicationsData);
       setMetrics(metricsData);
@@ -56,21 +112,21 @@ export default function Dashboard() {
   const now = new Date();
   const weekStart = new Date(now.getTime() - (now.getDay() * 24 * 60 * 60 * 1000));
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  
+
   const thisWeekApps = applications.filter(app => new Date(app.created_at) >= weekStart).length;
   const thisMonthApps = applications.filter(app => new Date(app.created_at) >= monthStart).length;
   const totalApps = metrics?.total_applications || 0;
 
   // Calculate response rate and other insights
-  const responseRate = totalApps > 0 ? Math.round(((applications.filter(app => 
+  const responseRate = totalApps > 0 ? Math.round(((applications.filter(app =>
     ['interview', 'phone screen', 'tech', 'on-site', 'offer'].includes(app.status?.toLowerCase() || '')).length / totalApps) * 100)) : 0;
-  
+
   const inProgressCount = Object.entries(metrics?.applications_by_status || {})
     .filter(([status]) => ['interview', 'phone screen', 'tech', 'on-site'].includes(status.toLowerCase()))
     .reduce((sum, [, count]) => sum + count, 0);
 
   const offerCount = metrics?.applications_by_status?.offer || 0;
-  
+
   // Get recent applications (last 3 for better UX)
   const recentApps = applications
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -85,7 +141,7 @@ export default function Dashboard() {
       <Head>
         <title>Command Center - Applytide</title>
       </Head>
-      
+
       <div className="mobile-p-4 space-y-6 max-w-7xl mx-auto">
         {/* AI-Powered Header with Personalized Insights */}
         <div className="relative overflow-hidden rounded-xl mobile-m-2 bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 p-4 md:p-8 border border-indigo-500/20">
@@ -101,7 +157,7 @@ export default function Dashboard() {
                 <div className="text-indigo-200 text-sm">Response Rate</div>
               </div>
             </div>
-            
+
             {/* AI Insights Bar */}
             <div className="bg-white/10 backdrop-blur-sm rounded-xl mobile-p-3 md:p-4 border border-white/20">
               <div className="flex items-center gap-3 mb-3">
@@ -143,8 +199,8 @@ export default function Dashboard() {
                   <span>{thisWeekApps}/{weeklyGoal}</span>
                 </div>
                 <div className="w-full bg-slate-700 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500" 
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500"
                     style={{ width: `${weekProgress}%` }}
                   ></div>
                 </div>
@@ -200,78 +256,56 @@ export default function Dashboard() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mobile-p-2">
-          
+
           {/* Left Column - Pipeline & Activity */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* AI-Powered Quick Actions */}
             <div className="glass-card glass-violet">
-              <div className="mobile-p-4 md:p-6">
-                <div className="flex items-center justify-between mb-4 md:mb-6">
-                  <h2 className="text-lg md:text-xl font-semibold text-slate-200 flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm">🚀</span>
-                    </div>
-                    Recommended Actions
-                  </h2>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-[1fr]">
+                <ActionCard
+                  icon="🎯"
+                  title="AI Job Matching"
+                  subtitle="Find perfect matches"
+                  description="3 new high-match positions found based on your profile"
+                  gradientClass="from-indigo-500/10 to-purple-500/10"
+                  borderClass="border-indigo-500/20"
+                  accentClass="text-indigo-300"
+                  onClick={() => checkPremium(() => { }, "AI Job Matching")}
+                />
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div 
-                    className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-indigo-500/40 transition-all group tap-target"
-                    onClick={() => checkPremium(() => {}, "AI Job Matching")}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-xl md:text-2xl">🎯</div>
-                      <div>
-                        <h3 className="font-semibold text-indigo-300 mobile-text-base">AI Job Matching</h3>
-                        <p className="text-xs text-slate-400">Find perfect matches</p>
-                      </div>
-                    </div>
-                    <p className="mobile-text-sm text-slate-300">3 new high-match positions found based on your profile</p>
-                  </div>
+                <ActionCard
+                  icon="✨"
+                  title="Generate Cover Letter"
+                  subtitle="AI-powered personalization"
+                  description="Create tailored cover letters in seconds"
+                  gradientClass="from-emerald-500/10 to-cyan-500/10"
+                  borderClass="border-emerald-500/20"
+                  accentClass="text-emerald-300"
+                  href="/documents"
+                />
 
-                  <Link href="/documents">
-                    <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-emerald-500/40 transition-all tap-target">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="text-xl md:text-2xl">✨</div>
-                        <div>
-                          <h3 className="font-semibold text-emerald-300 mobile-text-base">Generate Cover Letter</h3>
-                          <p className="text-xs text-slate-400">AI-powered personalization</p>
-                        </div>
-                      </div>
-                      <p className="mobile-text-sm text-slate-300">Create tailored cover letters in seconds</p>
-                    </div>
-                  </Link>
+                <ActionCard
+                  icon="📧"
+                  title="Smart Follow-ups"
+                  subtitle="Automated reminders"
+                  description="2 applications need follow-up this week"
+                  gradientClass="from-amber-500/10 to-orange-500/10"
+                  borderClass="border-amber-500/20"
+                  accentClass="text-amber-300"
+                  onClick={() => checkPremium(() => { }, "Follow-up Automation")}
+                />
 
-                  <div 
-                    className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-amber-500/40 transition-all tap-target"
-                    onClick={() => checkPremium(() => {}, "Follow-up Automation")}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-2xl">📧</div>
-                      <div>
-                        <h3 className="font-semibold text-amber-300">Smart Follow-ups</h3>
-                        <p className="text-xs text-slate-400">Automated reminders</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-300">2 applications need follow-up this week</p>
-                  </div>
-
-                  <div 
-                    className="bg-gradient-to-r from-rose-500/10 to-pink-500/10 border border-rose-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-rose-500/40 transition-all"
-                    onClick={() => checkPremium(() => {}, "Analytics Dashboard")}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="text-2xl">📈</div>
-                      <div>
-                        <h3 className="font-semibold text-rose-300">Performance Insights</h3>
-                        <p className="text-xs text-slate-400">Track your progress</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-300">Your response rate improved 12% this month</p>
-                  </div>
-                </div>
+                <ActionCard
+                  icon="📈"
+                  title="Performance Insights"
+                  subtitle="Track your progress"
+                  description="Your response rate improved 12% this month"
+                  gradientClass="from-rose-500/10 to-pink-500/10"
+                  borderClass="border-rose-500/20"
+                  accentClass="text-rose-300"
+                  onClick={() => checkPremium(() => { }, "Analytics Dashboard")}
+                />
               </div>
             </div>
 
@@ -324,13 +358,12 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className={`inline-flex px-3 py-2 text-xs font-medium rounded-lg border ${
-                              app.status === 'offer' ? 'text-emerald-300 bg-emerald-300/15 border-emerald-300/25' :
-                              app.status === 'interview' ? 'text-indigo-300 bg-indigo-300/15 border-indigo-300/25' :
-                              app.status === 'applied' ? 'text-amber-300 bg-amber-300/15 border-amber-300/25' :
-                              app.status === 'rejected' ? 'text-rose-300 bg-rose-300/15 border-rose-300/25' :
-                              'text-slate-300 bg-white/10 border-white/15'
-                            }`}>
+                            <span className={`inline-flex px-3 py-2 text-xs font-medium rounded-lg border ${app.status === 'offer' ? 'text-emerald-300 bg-emerald-300/15 border-emerald-300/25' :
+                                app.status === 'interview' ? 'text-indigo-300 bg-indigo-300/15 border-indigo-300/25' :
+                                  app.status === 'applied' ? 'text-amber-300 bg-amber-300/15 border-amber-300/25' :
+                                    app.status === 'rejected' ? 'text-rose-300 bg-rose-300/15 border-rose-300/25' :
+                                      'text-slate-300 bg-white/10 border-white/15'
+                              }`}>
                               {(app.status || 'applied').charAt(0).toUpperCase() + (app.status || 'applied').slice(1)}
                             </span>
                           </div>
@@ -345,7 +378,7 @@ export default function Dashboard() {
 
           {/* Right Column - Insights & Tools */}
           <div className="space-y-6">
-            
+
             {/* Weekly Progress */}
             <div className="glass-card glass-violet">
               <div className="p-6">
@@ -357,15 +390,15 @@ export default function Dashboard() {
                       <span className="text-indigo-400 font-medium">{thisWeekApps} / {weeklyGoal}</span>
                     </div>
                     <div className="w-full bg-slate-700 rounded-full h-3">
-                      <div 
-                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-1000 shadow-lg shadow-indigo-500/20" 
+                      <div
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-1000 shadow-lg shadow-indigo-500/20"
                         style={{ width: `${weekProgress}%` }}
                       ></div>
                     </div>
                     <p className="text-xs text-slate-400 mt-2">
-                      {weekProgress >= 100 ? '🎉 Goal achieved!' : 
-                       weekProgress >= 80 ? '🔥 Almost there!' : 
-                       '� Keep pushing!'}
+                      {weekProgress >= 100 ? '🎉 Goal achieved!' :
+                        weekProgress >= 80 ? '🔥 Almost there!' :
+                          '� Keep pushing!'}
                     </p>
                   </div>
 
@@ -404,7 +437,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </Link>
-                  
+
                   <Link href="/reminders">
                     <div className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
                       <div className="text-xl">⏰</div>
@@ -415,9 +448,9 @@ export default function Dashboard() {
                     </div>
                   </Link>
 
-                  <div 
+                  <div
                     className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30"
-                    onClick={() => checkPremium(() => {}, "Advanced Analytics")}
+                    onClick={() => checkPremium(() => { }, "Advanced Analytics")}
                   >
                     <div className="text-xl">📊</div>
                     <div>
@@ -439,9 +472,9 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-emerald-300 mb-2">You're doing great!</h3>
                 <p className="text-sm text-slate-300">
                   {totalApps === 0 ? "Every expert was once a beginner. Start your journey today!" :
-                   responseRate > 20 ? `${responseRate}% response rate is excellent! Keep it up!` :
-                   inProgressCount > 0 ? `${inProgressCount} active opportunities - you're in the game!` :
-                   "Consistency is key. Every application gets you closer to your goal!"}
+                    responseRate > 20 ? `${responseRate}% response rate is excellent! Keep it up!` :
+                      inProgressCount > 0 ? `${inProgressCount} active opportunities - you're in the game!` :
+                        "Consistency is key. Every application gets you closer to your goal!"}
                 </p>
               </div>
             </div>
