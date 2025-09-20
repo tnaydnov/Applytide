@@ -74,7 +74,7 @@ export default function PricingPage() {
     if (plan.price === 'Custom') return 'Custom';
     const price = billingCycle === 'monthly' ? plan.price.monthly : plan.price.yearly;
     if (price === 0) return 'Free';
-    
+
     if (billingCycle === 'yearly') {
       const monthlyEquivalent = (price / 12).toFixed(0);
       return `$${monthlyEquivalent}/mo`;
@@ -90,7 +90,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen py-12" style={{background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)'}}>
+    <div className="min-h-screen py-12" style={{ background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
@@ -98,12 +98,12 @@ export default function PricingPage() {
             Choose Your <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Success Plan</span>
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Accelerate your job search with powerful tools designed for modern job seekers. 
+            Accelerate your job search with powerful tools designed for modern job seekers.
             From basic tracking to AI-powered optimization.
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center space-x-3 mb-4">
+          <div className="sticky top-16 z-20 flex items-center justify-center space-x-3 mb-6">
             <span className={`text-sm ${billingCycle === 'monthly' ? 'text-white' : 'text-gray-400'}`}>
               Monthly
             </span>
@@ -112,9 +112,8 @@ export default function PricingPage() {
               className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  billingCycle === 'yearly' ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${billingCycle === 'yearly' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className={`text-sm ${billingCycle === 'yearly' ? 'text-white' : 'text-gray-400'}`}>
@@ -128,126 +127,114 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-12 items-stretch">
-          {plans.map((plan, index) => (
-            <Card key={plan.name} className={`relative pt-10 pb-6 px-4 sm:p-8 glass-card ${
-              plan.popular 
-                ? 'border-2 border-indigo-500 shadow-lg shadow-indigo-500/20 scale-105' 
-                : 'border border-white/10'
-            }`}>
-              {/* Popular Badge */}
-              {plan.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1">
-                  <span className="inline-flex items-center px-4 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        {/* Plans */}
+        <div
+          className="
+    md:grid md:grid-cols-2 md:gap-6
+    flex gap-4 overflow-x-auto snap-x snap-mandatory px-1
+    pb-2 -mx-4 sm:mx-0 md:overflow-visible
+  "
+        >
+          {plans.map((plan) => (
+            <Card
+              key={plan.name}
+              className={`
+        relative glass-card p-6 md:p-8
+        border ${plan.popular ? 'border-2 border-indigo-500' : 'border-white/10'}
+        shadow-lg ${plan.popular ? 'shadow-indigo-500/20' : 'shadow-black/10'}
+        rounded-2xl
+        /* Mobile: show as wide slides with snap */
+        min-w-[86%] sm:min-w-[75%] md:min-w-0 snap-center
+      `}
+            >
+              {/* Badges live INSIDE header to avoid overlap */}
+              <div className="flex items-center justify-center gap-3 mb-3">
+                {plan.popular && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
                     Most Popular
                   </span>
-                </div>
-              )}
-
-              {/* Coming Soon Badge */}
-              {plan.comingSoon && (
-                <div className="absolute top-0 right-2 -translate-y-1">
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg animate-pulse border-2 border-yellow-400">
-                    🚧 COMING SOON
+                )}
+                {plan.comingSoon && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                    🚧 Coming soon
                   </span>
-                </div>
-              )}
-
-              {/* Plan Header */}
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-300 mb-4">{plan.description}</p>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-white">
-                    {formatPrice(plan)}
-                  </span>
-                  {plan.price !== 'Custom' && plan.price.monthly > 0 && (
-                    <>
-                      <span className="text-gray-400 ml-1">
-                        {billingCycle === 'yearly' ? '/month' : ''}
-                      </span>
-                      {billingCycle === 'yearly' && (
-                        <div className="text-sm text-green-400 mt-1">
-                          {getYearlySavings(plan)} • Billed ${plan.price.yearly}/year
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                {plan.trialDays && (
-                  <div className="text-sm text-indigo-400 font-medium">
-                    🎉 {plan.trialDays} days free trial
-                  </div>
                 )}
               </div>
 
-              {/* Features List */}
-              <div className="space-y-4 mb-8">
-                {plan.features.map((feature, featureIndex) => (
-                  <div key={featureIndex} className="flex items-start">
-                    <div className="flex-shrink-0">
-                      {feature.included ? (
-                        <svg className="w-5 h-5 text-green-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              {/* Plan Header */}
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-white mb-1">{plan.name}</h3>
+                <p className="text-gray-300 mb-4">{plan.description}</p>
+                <div>
+                  <span className="text-4xl font-bold text-white">{formatPrice(plan)}</span>
+                  {plan.price !== 'Custom' && plan.price.monthly > 0 && billingCycle === 'yearly' && (
+                    <div className="text-sm text-green-400 mt-1">
+                      {getYearlySavings(plan)} • Billed ${plan.price.yearly}/year
+                    </div>
+                  )}
+                </div>
+                {plan.trialDays && (
+                  <div className="text-sm text-indigo-400 font-medium mt-2">🎉 {plan.trialDays} days free trial</div>
+                )}
+              </div>
+
+              {/* Features */}
+              <ul className="space-y-3 mb-6">
+                {plan.features.map((f, i) => (
+                  <li key={i} className="flex items-start">
+                    <div className="mt-0.5">
+                      {f.included ? (
+                        <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
-                        <svg className="w-5 h-5 text-gray-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg className="w-5 h-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       )}
                     </div>
                     <div className="ml-3 flex-1">
-                      <span className={`text-sm ${feature.included ? 'text-gray-200' : 'text-gray-500'}`}>
-                        {feature.name}
-                        {feature.note && (
-                          <span className="text-xs text-gray-400 ml-2">({feature.note})</span>
-                        )}
-                      </span>
-                      {feature.badge && (
-                        <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          feature.badge === 'AI' ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30' :
-                          feature.badge === 'New' ? 'bg-blue-900/30 text-blue-300 border border-blue-500/30' :
-                          feature.badge === 'Hot' ? 'bg-red-900/30 text-red-300 border border-red-500/30' :
-                          'bg-yellow-900/30 text-yellow-300 border border-yellow-500/30'
-                        }`}>
-                          {feature.badge}
+                      <span className={`text-sm ${f.included ? 'text-gray-200' : 'text-gray-500'}`}>{f.name}</span>
+                      {f.badge && (
+                        <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium
+                  ${f.badge === 'AI' ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30'
+                            : f.badge === 'Hot' ? 'bg-red-900/30 text-red-300 border border-red-500/30'
+                              : 'bg-blue-900/30 text-blue-300 border border-blue-500/30'}`}>
+                          {f.badge}
                         </span>
                       )}
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
 
-              {/* CTA Button */}
+              {/* CTA */}
               <Button
-                onClick={plan.comingSoon ? null : plan.ctaAction}
+                onClick={plan.comingSoon ? undefined : plan.ctaAction}
                 disabled={plan.comingSoon || (plan.name === 'Free' && user && !user.is_premium)}
-                className={`w-full ${
-                  plan.comingSoon 
-                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60' 
-                    : plan.popular 
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700' 
-                      : 'bg-gray-700 hover:bg-gray-600'
-                }`}
+                className={`w-full ${plan.comingSoon
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+                  : plan.popular
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
               >
-                {plan.comingSoon 
-                  ? '🚧 Coming Soon' 
-                  : (plan.name === 'Free' && user && !user.is_premium) 
-                    ? 'Current Plan' 
-                    : plan.cta
-                }
+                {plan.comingSoon ? '🚧 Coming Soon'
+                  : (plan.name === 'Free' && user && !user.is_premium)
+                    ? 'Current Plan'
+                    : plan.cta}
               </Button>
             </Card>
           ))}
         </div>
+
 
         {/* Feature Showcase */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-center text-white mb-12">
             Why Choose <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Applytide Premium</span>?
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
@@ -293,7 +280,7 @@ export default function PricingPage() {
         {/* FAQ Section */}
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-white mb-12">Frequently Asked Questions</h2>
-          
+
           <div className="space-y-6">
             {[
               {
