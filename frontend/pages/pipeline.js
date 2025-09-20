@@ -1733,7 +1733,7 @@ export { JobDetailModal };
 
 
 /* ------------------------------ Application Drawer ------------------------------ */
-export default function ApplicationDrawerBody({ application, onClose }) {
+export function ApplicationDrawerBody({ application, onClose }) {
   const toast = useToast();
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
