@@ -833,7 +833,7 @@ export default function JobsPage() {
                           (() => {
                             const parsed = parseJobForDisplay(selectedJob);
                             return parsed.cleanDescription
-                              ? <pre className="job-desc">{parsed.cleanDescription}</pre>
+                              ? <pre className="job-desc whitespace-pre-wrap break-words">{parsed.cleanDescription}</pre>
                               : <p className="text-slate-500 italic">No description provided</p>;
                           })()
                         ) : (
@@ -955,7 +955,7 @@ export default function JobsPage() {
                 </div>
 
                 {/* Filters Row */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 *:min-w-0">
                   <Input
                     placeholder="Location (e.g., Remote, NYC...)"
                     value={locationFilter}
@@ -995,7 +995,7 @@ export default function JobsPage() {
                 </div>
 
                 {/* Results Summary */}
-                <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center justify-between pt-2 border-t gap-2 *:min-w-0">
                   <p className="text-sm text-slate-300 dark:text-gray-400">
                     Showing {jobs.length} of {pagination.total} job{pagination.total !== 1 ? 's' : ''}{searchTerm && ` for "${searchTerm}"`}
                   </p>
@@ -1076,8 +1076,8 @@ export default function JobsPage() {
                       {/* Job Header */}
                       <div className="flex justify-between items-start space-x-4 mb-4">
                         <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-xl font-bold text-slate-100 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight">
+                          <div className="flex items-start justify-between gap-3 mb-2 *:min-w-0">
+                            <h3 className="text-xl font-bold text-slate-100 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight truncate">
                               {job.title}
                             </h3>
                             <div className="flex items-center space-x-2 ml-4">
@@ -1098,7 +1098,7 @@ export default function JobsPage() {
                           </div>
 
                           {/* Company and Location */}
-                          <div className="flex items-center space-x-4 text-sm text-slate-300 dark:text-gray-400 mb-3">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-300 dark:text-gray-400 mb-3">
                             {job.company_name && (
                               <div className="flex items-center">
                                 <span className="mr-1">🏢</span>
@@ -1118,7 +1118,7 @@ export default function JobsPage() {
                       {/* Job Description */}
                       {parsedJob.cleanDescription && (
                         <div className="mb-4">
-                          <div className="text-slate-300 dark:text-gray-300 text-sm leading-relaxed">
+                          <div className="text-slate-300 dark:text-gray-300 text-sm leading-relaxed break-words">
                             {(isExpanded ? descriptionLines : descriptionLines.slice(0, 3)).map((line, idx) => (
                               <div key={idx} className={line.startsWith('•') ? 'ml-4 mb-1' : 'mb-2'}>
                                 {line}

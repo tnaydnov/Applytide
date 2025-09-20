@@ -496,8 +496,7 @@ function ApplicationCard({
           <div className={viewMode === "board" ? "mb-4" : "mb-4"}>
             <div className={`${viewMode === "board" ? "mb-3 text-center" : "mb-3"}`}>
               <h3
-                className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${viewMode === "board" ? "text-base line-clamp-2 px-2" : "text-xl"
-                  }`}
+                className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${viewMode === "board" ? "text-base line-clamp-2 px-2 max-w-[85%]" : "text-xl"}`}
               >
                 {application.job?.title || "Unknown Position"}
               </h3>

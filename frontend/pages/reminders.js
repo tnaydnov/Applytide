@@ -120,31 +120,6 @@ export default function RemindersPage() {
   const toast = useToast();
   const calendarRef = useRef(null);
 
-  // Mobile detection and redirect
-  useEffect(() => {
-    const checkIsMobile = () => {
-      if (typeof window !== 'undefined') {
-        const isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-          router.replace('/reminders_mobile');
-          return true;
-        }
-      }
-      return false;
-    };
-
-    // Check on mount
-    if (checkIsMobile()) return;
-
-    // Check on resize
-    const handleResize = () => {
-      checkIsMobile();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [router]);
-
   // State
   const [loading, setLoading] = useState(true);
   const [reminders, setReminders] = useState([]);
@@ -991,16 +966,16 @@ export default function RemindersPage() {
               </div>
               {/* Month View Calendar */}
               {calendarView === "month" && (
-                <div className="calendar-container">
+                <div className="calendar-container overflow-x-auto -mx-4 px-4">
                   {/* Days of week header */}
-                  <div className="grid grid-cols-7 text-center text-xs text-slate-400 mb-1">
+                  <div className="grid grid-cols-7 text-center text-xs text-slate-400 mb-1 min-w-[560px] sm:min-w-0">
                     {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                       <div key={day} className="py-1">{day}</div>
                     ))}
                   </div>
 
                   {/* Calendar grid */}
-                  <div className="grid grid-cols-7 gap-1" ref={calendarRef}>
+                  <div className="grid grid-cols-7 gap-1 min-w-[560px] sm:min-w-0" ref={calendarRef}>
                     {generateMonthCalendarCells(selectedDate, reminders, googleEvents).map((cell, idx) => (
                       <div
                         key={idx}
@@ -1010,11 +985,11 @@ export default function RemindersPage() {
                             : 'bg-slate-900/30 border-slate-800/30 text-slate-500'
                           }
                           ${cell.isToday ? 'ring-1 ring-indigo-500' : ''}
-                          calendar-day-cell transition-colors duration-200
+                          calendar-day-cell transition-colors duration-200 break-words
                         `}
                       >
                         <div className="flex justify-between items-center mb-1">
-                          <span className={`text-xs font-medium p-1 rounded-full w-5 h-5 flex items-center justify-center
+                          <span className={`text-xs md:text-sm font-medium p-1 rounded-full w-5 h-5 flex items-center justify-center
                             ${cell.isToday ? 'bg-indigo-600 text-white' : ''}
                           `}>
                             {cell.date.getDate()}
@@ -1071,10 +1046,10 @@ export default function RemindersPage() {
 
               {/* Week View */}
               {calendarView === "week" && (
-                <div className="calendar-container">
-                  <div className="grid grid-cols-8 gap-1">
+                <div className="calendar-container overflow-x-auto -mx-4 px-4">
+                  <div className="grid grid-cols-8 gap-1 min-w-[720px] sm:min-w-0">
                     {/* Time column */}
-                    <div className="pr-2">
+                    <div className="pr-2 hidden xs:block w-[56px]">
                       {Array.from({ length: 24 }).map((_, hour) => (
                         <div key={hour} className="h-14 text-xs text-right pr-2 text-slate-500">
                           {hour === 0 ? "12 AM" : hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`}

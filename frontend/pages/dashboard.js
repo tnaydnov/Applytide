@@ -126,7 +126,7 @@ export default function Dashboard() {
         </div>
 
         {/* Smart Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mobile-p-2">{/* Applications This Week with Progress */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mobile-p-2 *:min-w-0">{/* Applications This Week with Progress */}
           <div className="glass-card glass-violet mobile-p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="text-xl md:text-2xl">📊</div>

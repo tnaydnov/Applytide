@@ -356,7 +356,7 @@ export default function AppDetailPage() {
             <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 *:min-w-0">
             {/* Status Change */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Move Status</label>
@@ -451,7 +451,7 @@ export default function AppDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="grid grid-cols-1 gap-2 text-sm">
+              <div className="grid grid-cols-1 gap-2 text-sm *:min-w-0">
                 {data.job.location && (
                   <div className="flex items-center space-x-2">
                     <span className="text-gray-400">📍</span>
