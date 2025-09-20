@@ -7,8 +7,6 @@ import { usePremiumFeature } from '../components/PremiumFeature';
 import Link from "next/link";
 import Head from "next/head";
 
-import Link from "next/link";
-
 function ActionCard({
   icon = "✨",
   title,
