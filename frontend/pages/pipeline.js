@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import ReactDOM from "react-dom";
-import { api, connectWS } from "../lib/api";
+import { api, connectWS, apiFetch } from "../lib/api";
 import { Button, Card, Badge, Select, Input } from "../components/ui";
 import { useToast } from "../lib/toast";
 import {
@@ -1047,6 +1047,7 @@ export default function PipelinePage() {
 
   useEffect(() => {
     load();
+    // WebSocket connection for real-time updates
     wsRef.current = connectWS((evt) => {
       if (["stage_changed", "stage_added"].includes(evt.type)) {
         load();
@@ -1054,7 +1055,7 @@ export default function PipelinePage() {
       }
     });
     return () => wsRef.current && wsRef.current.close();
-  }, [load, toast]);
+  }, [load]);
 
   /* ------------------------------ keyboard help ---------------------------- */
   useEffect(() => {
@@ -1797,7 +1798,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       // Prefer dedicated API if you have it
       const res = api.getApplicationResume
         ? await api.getApplicationResume(appId)
-        : await api.apiFetch(`/applications/${appId}/resume`).then(r => r.json());
+        : await apiFetch(`/applications/${appId}/resume`).then(r => r.json());
       setResume(res?.resume || res || null);
     } catch {
       setResume(null);
@@ -1812,7 +1813,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       if (api.uploadApplicationResume) {
         await api.uploadApplicationResume(appId, form);
       } else {
-        await api.apiFetch(`/applications/${appId}/resume/upload`, { method: "POST", body: form });
+        await apiFetch(`/applications/${appId}/resume/upload`, { method: "POST", body: form });
       }
       await loadResume();
       toast.success("Resume uploaded");
@@ -1827,7 +1828,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       setLoadingDocs(true);
       const res = await (api.listDocuments
         ? api.listDocuments({ document_type: "resume" })
-        : api.apiFetch("/documents?document_type=resume&page_size=100").then(r => r.json()));
+        : apiFetch("/documents?document_type=resume&page_size=100").then(r => r.json()));
       setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
     } catch {
       toast.error("Couldn’t load documents");
@@ -1842,7 +1843,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       if (api.attachExistingDocumentAsResume) {
         await api.attachExistingDocumentAsResume(appId, docId);
       } else {
-        await api.apiFetch(`/applications/${appId}/resume/from-document`, {
+        await apiFetch(`/applications/${appId}/resume/from-document`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ document_id: docId }),
@@ -1861,7 +1862,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       if (api.clearApplicationResume) {
         await api.clearApplicationResume(appId);
       } else {
-        await api.apiFetch(`/applications/${appId}/resume`, { method: "DELETE" });
+        await apiFetch(`/applications/${appId}/resume`, { method: "DELETE" });
       }
       setResume(null);
       toast.success("Resume cleared");
@@ -1875,7 +1876,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
   // ----- Attachments -----
   async function loadAttachments() {
     try {
-      const res = await api.apiFetch(`/applications/${appId}/attachments`).then(r => r.json());
+      const res = await apiFetch(`/applications/${appId}/attachments`).then(r => r.json());
       setAttachments(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
     } catch (e) {
       console.error(e);
@@ -1901,7 +1902,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
   async function removeAttachment(attId) {
     if (!confirm("Remove this attachment?")) return;
     try {
-      await api.apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
+      await apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
       await loadAttachments();
     } catch (e) {
       toast.error("Failed to remove attachment");
@@ -1913,7 +1914,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
     try {
       setShowDocsPicker(true);
       setLoadingDocs(true);
-      const res = await (api.listDocuments ? api.listDocuments() : api.apiFetch("/documents").then(r => r.json()));
+      const res = await (api.listDocuments ? api.listDocuments() : apiFetch("/documents").then(r => r.json()));
       setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
     } catch (e) {
       console.error(e);
@@ -1929,7 +1930,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       if (api.attachExistingDocument) {
         await api.attachExistingDocument(appId, docId);
       } else {
-        await api.apiFetch(`/applications/${appId}/attachments/from-document`, {
+        await apiFetch(`/applications/${appId}/attachments/from-document`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ document_id: docId })
@@ -2266,11 +2267,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
                 onClick={() => {
                   const id = application?.job?.id || application?.job_id;
                   if (!id) return toast.error("No job linked to this application");
-                  router.push(
-                    { pathname: "/jobs", query: { job: String(id), details: "1" } },
-                    undefined,
-                    { shallow: true }
-                  );
+                  setShowJobDetail(true);
                 }}
               >
                 🔎 Job details
