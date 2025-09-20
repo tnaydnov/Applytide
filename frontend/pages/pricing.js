@@ -103,7 +103,7 @@ export default function PricingPage() {
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center space-x-3 mb-8">
+          <div className="flex items-center justify-center space-x-3 mb-4">
             <span className={`text-sm ${billingCycle === 'monthly' ? 'text-white' : 'text-gray-400'}`}>
               Monthly
             </span>
@@ -129,7 +129,7 @@ export default function PricingPage() {
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
           {plans.map((plan, index) => (
             <Card key={plan.name} className={`relative p-8 glass-card ${
               plan.popular 

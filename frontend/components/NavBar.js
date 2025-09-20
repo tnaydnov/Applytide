@@ -427,7 +427,7 @@ export default function NavBar() {
 
       {/* Mobile User Dropdown - Show outside main nav for better positioning */}
       {isUserMenuOpen && !loading && isAuthenticated && user && (
-        <div className="md:hidden fixed inset-x-4 top-16 z-50 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20" data-user-menu>
+        <div className="md:hidden fixed inset-x-4 top-16 z-50 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20" data-user-menu style={{zIndex: 60}}>
           <div className="px-4 py-3 text-sm text-gray-300 border-b border-white/10">
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
@@ -496,7 +496,7 @@ export default function NavBar() {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto">
+        <div className="md:hidden fixed inset-x-0 top-16 bottom-0 z-50 bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto">
           <div className="mobile-p-4 space-y-1">
             {/* Navigation sections */}
             {links.map((item) => {
