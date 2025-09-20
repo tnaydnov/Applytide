@@ -1045,17 +1045,17 @@ export default function PipelinePage() {
     }
   }, [currentStages, toast]);
 
-  useEffect(() => {
-    load();
-    // WebSocket connection for real-time updates
-    wsRef.current = connectWS((evt) => {
-      if (["stage_changed", "stage_added"].includes(evt.type)) {
-        load();
-        toast.success("Pipeline updated!");
-      }
-    });
-    return () => wsRef.current && wsRef.current.close();
-  }, [load]);
+  // useEffect(() => {
+  //   load();
+  //   // WebSocket connection for real-time updates
+  //   wsRef.current = connectWS((evt) => {
+  //     if (["stage_changed", "stage_added"].includes(evt.type)) {
+  //       load();
+  //       toast.success("Pipeline updated!");
+  //     }
+  //   });
+  //   return () => wsRef.current && wsRef.current.close();
+  // }, [load]);
 
   /* ------------------------------ keyboard help ---------------------------- */
   useEffect(() => {
@@ -2267,7 +2267,11 @@ export function ApplicationDrawerBody({ application, onClose }) {
                 onClick={() => {
                   const id = application?.job?.id || application?.job_id;
                   if (!id) return toast.error("No job linked to this application");
-                  setShowJobDetail(true);
+                  router.push(
+                    { pathname: "/jobs", query: { job: String(id), details: "1" } },
+                    undefined,
+                    { shallow: true }
+                  );
                 }}
               >
                 🔎 Job details
@@ -2286,9 +2290,6 @@ export function ApplicationDrawerBody({ application, onClose }) {
         </div>
       </div>
     </div>
-
-
-
 
   );
 }
