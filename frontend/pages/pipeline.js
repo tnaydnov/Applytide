@@ -543,7 +543,7 @@ function ApplicationCard({
                   <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
                 </svg>
               </div>
-              
+
               {/* Mobile move button */}
               <button
                 className="md:hidden tap-target text-gray-400 hover:text-gray-300 p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
@@ -572,7 +572,11 @@ function ApplicationCard({
                     className="text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300 text-xs py-1.5 w-full"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowJobDetail(true);
+                      router.push(
+                        { pathname: "/pipeline", query: { app: application.id } },
+                        undefined,
+                        { shallow: true }
+                      );
                     }}
                   >
                     👁️ View
@@ -600,7 +604,11 @@ function ApplicationCard({
                     className="text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300 flex-shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowJobDetail(true);
+                      router.push(
+                        { pathname: "/pipeline", query: { app: application.id } },
+                        undefined,
+                        { shallow: true }
+                      );
                     }}
                   >
                     <span className="mr-1">👁️</span>
@@ -625,9 +633,8 @@ function ApplicationCard({
       </Card>
 
       {/* modals */}
-      {showJobDetail && <JobDetailModal application={application} onClose={() => setShowJobDetail(false)} />}
       {showNoteModal && <NoteModal application={application} onClose={() => setShowNoteModal(false)} />}
-      
+
       {/* Mobile Move Modal */}
       {showMoveModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -727,10 +734,10 @@ function Column({
     <div className="w-full h-full">
       <div
         className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col backdrop-blur-md ${isDragOver
-            ? isDropAllowed
-              ? "border-green-400/60 shadow-lg shadow-green-500/20 scale-[1.02] bg-green-500/10"
-              : "border-red-400/60 shadow-lg shadow-red-500/20 bg-red-500/10"
-            : "border-white/20 hover:border-indigo-400/30 shadow-xl"
+          ? isDropAllowed
+            ? "border-green-400/60 shadow-lg shadow-green-500/20 scale-[1.02] bg-green-500/10"
+            : "border-red-400/60 shadow-lg shadow-red-500/20 bg-red-500/10"
+          : "border-white/20 hover:border-indigo-400/30 shadow-xl"
           }`}
         style={{ minHeight: "500px", maxHeight: "75vh" }}
         onDragEnter={handleDragEnter}
@@ -852,6 +859,10 @@ export default function PipelinePage() {
   const [showPipelineSettings, setShowPipelineSettings] = useState(false);
   const [currentStages, setCurrentStages] = useState(DEFAULT_STAGES);
   const [quickStatusFilter, setQuickStatusFilter] = useState(null);
+
+  const router = useRouter();
+  const closeDrawer = () =>
+    router.push("/pipeline", undefined, { shallow: true });
 
   const wsRef = useRef(null);
   const toast = useToast();
@@ -1085,8 +1096,8 @@ export default function PipelinePage() {
                 <button
                   onClick={() => setViewMode("cards")}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === "cards"
-                      ? "bg-indigo-500 text-white shadow-sm"
-                      : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
+                    ? "bg-indigo-500 text-white shadow-sm"
+                    : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
                     }`}
                 >
                   <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1102,8 +1113,8 @@ export default function PipelinePage() {
                 <button
                   onClick={() => setViewMode("board")}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${viewMode === "board"
-                      ? "bg-indigo-500 text-white shadow-sm"
-                      : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
+                    ? "bg-indigo-500 text-white shadow-sm"
+                    : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
                     }`}
                 >
                   <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1712,6 +1723,250 @@ function JobDetailModal({ application, onClose }) {
 
 export { JobDetailModal };
 
+
+/* ------------------------------ Application Drawer ------------------------------ */
+function AppDrawer({ appId, onClose }) {
+  const [app, setApp] = useState(null);
+  const [stages, setStages] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // fetch detail when opened
+  useEffect(() => {
+    let cancel = false;
+    async function load() {
+      if (!appId) return;
+      setLoading(true);
+      try {
+        // core app + job
+        const appDetail = await api.getAppDetail(appId);
+        // stages + attachments (same endpoint used by JobDetailModal)
+        const res = await fetch(`/api/applications/${appId}/detail`, { credentials: "include" });
+        const extra = res.ok ? await res.json() : {};
+        if (!cancel) {
+          setApp(appDetail);
+          setStages(extra.stages || []);
+          setAttachments(extra.attachments || []);
+        }
+      } catch {
+        if (!cancel) {
+          setApp(null);
+          setStages([]);
+          setAttachments([]);
+        }
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancel = true; };
+  }, [appId]);
+
+  // close on ESC
+  useEffect(() => {
+    if (!appId) return;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [appId, onClose]);
+
+  if (!appId) return null;
+
+  const job = app?.job || {};
+  const application = app?.application || {};
+  const cfg = statusConfig[application.status] || DEFAULT_STATUS_STYLE;
+
+  return (
+    <div className="fixed inset-0 z-[9999]">
+      {/* overlay */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-100 transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* panel */}
+      <aside
+        className="absolute right-0 top-0 h-full w-full sm:w-[560px] md:w-[640px] shadow-2xl"
+        aria-modal="true"
+        role="dialog"
+      >
+        <div className="h-full flex flex-col bg-gradient-to-br from-[#0f1424]/95 to-[#0b0f1b]/95 border-l border-white/10">
+          {/* header */}
+          <div className="p-4 md:p-6 border-b border-white/10 bg-white/5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md flex-shrink-0">
+                  {(job.company_name || job.company?.name || "UK").slice(0,2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-slate-100 font-semibold text-lg leading-tight truncate">
+                    {job.title || "Unknown Position"}
+                  </h2>
+                  <p className="text-sm text-indigo-300 truncate">
+                    {job.company_name || job.company?.name || "Unknown Company"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border ${cfg?.color?.includes("dark:") ? "bg-white/10 border-white/20 text-slate-200" : "bg-white/10 border-white/20 text-slate-200"}`}
+                  title="Current status"
+                >
+                  {cfg.icon}
+                  <span className="truncate max-w-[120px]">{application.status || "Applied"}</span>
+                </span>
+                <button
+                  onClick={onClose}
+                  className="tap-target p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 border border-white/10"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* content */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            {/* quick actions */}
+            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
+              <h3 className="text-slate-200 font-semibold mb-3 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 grid place-items-center text-white">⚡</span>
+                Quick Actions
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link href={`/applications/${appId}`}>
+                  <div className="tap-target bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg mobile-p-3 md:p-3 cursor-pointer">
+                    <div className="text-slate-200 font-medium">Open full view</div>
+                    <div className="text-xs text-slate-400">/applications/{appId}</div>
+                  </div>
+                </Link>
+
+                {job.source_url && (
+                  <a
+                    className="tap-target bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg mobile-p-3 md:p-3 cursor-pointer"
+                    href={job.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <div className="text-slate-200 font-medium">View job posting</div>
+                    <div className="text-xs text-slate-400 truncate">{job.source_url}</div>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* meta */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">Details</h4>
+                <div className="space-y-2 text-sm text-slate-300">
+                  {job.location && (
+                    <div className="flex items-center gap-2">
+                      <span>📍</span><span className="truncate">{job.location}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span>📅</span>
+                    <span>Applied:</span>
+                    <span className="text-slate-200">
+                      {application.created_at ? new Date(application.created_at).toLocaleDateString() : "—"}
+                    </span>
+                  </div>
+                  {application.updated_at && (
+                    <div className="flex items-center gap-2">
+                      <span>🔄</span>
+                      <span>Last update:</span>
+                      <span className="text-slate-200">
+                        {new Date(application.updated_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">Description</h4>
+                {job.description ? (
+                  <div className="text-sm text-slate-300 leading-relaxed break-words max-h-40 overflow-y-auto">
+                    {job.description}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-500">No description provided</div>
+                )}
+              </div>
+            </div>
+
+            {/* attachments */}
+            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
+              <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                <span>📎</span>Attachments
+              </h4>
+              {loading ? (
+                <div className="text-slate-400 text-sm">Loading…</div>
+              ) : attachments.length === 0 ? (
+                <div className="text-slate-500 text-sm">No files attached</div>
+              ) : (
+                <div className="space-y-2">
+                  {attachments.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span>📄</span>
+                        <span className="truncate">{a.filename}</span>
+                      </div>
+                      <span className="text-slate-400">{a.created_at ? new Date(a.created_at).toLocaleDateString() : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* timeline */}
+            <div className="glass-card border border-white/10 rounded-xl mobile-p-4 md:p-5">
+              <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                <span>🗓️</span>Timeline
+              </h4>
+              {loading ? (
+                <div className="text-slate-400 text-sm">Loading…</div>
+              ) : stages.length === 0 ? (
+                <div className="text-slate-500 text-sm">No status changes yet</div>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  {stages.map((s, i) => (
+                    <div key={s.id || i} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span>{(statusConfig[s.name] || DEFAULT_STATUS_STYLE).icon}</span>
+                        <span className="text-slate-200 truncate">{s.name}</span>
+                        {s.notes && <span className="text-slate-400 truncate">– {s.notes}</span>}
+                      </div>
+                      <span className="text-slate-400">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* footer */}
+          <div className="p-4 md:p-6 border-t border-white/10 bg-white/5 flex items-center justify-between">
+            <Link href={`/applications/${appId}`}>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                Open Full View
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={onClose} className="border-white/20 text-white hover:bg-white/10">
+              Close
+            </Button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 /* --------------------------------- Notes Modal ---------------------------- */
 function NoteModal({ application, onClose }) {
   const [notes, setNotes] = useState([]);
@@ -2016,6 +2271,7 @@ function PipelineCustomizer({ stages, onStagesChange, availableStages, onClose }
           </Button>
         </div>
       </div>
+      <AppDrawer appId={router.query.app} onClose={closeDrawer} />
     </div>
   );
 }

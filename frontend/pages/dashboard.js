@@ -153,7 +153,7 @@ export default function Dashboard() {
           </div>
 
           {/* Active Pipeline */}
-          <div className="glass-card glass-amber p-6">
+          <div className="glass-card glass-amber mobile-p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="text-2xl">🔥</div>
               <div className="text-xs text-slate-400">Active</div>
@@ -259,7 +259,7 @@ export default function Dashboard() {
                   </div>
 
                   <div 
-                    className="bg-gradient-to-r from-rose-500/10 to-pink-500/10 border border-rose-500/20 rounded-xl p-4 cursor-pointer hover:border-rose-500/40 transition-all"
+                    className="bg-gradient-to-r from-rose-500/10 to-pink-500/10 border border-rose-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-rose-500/40 transition-all"
                     onClick={() => checkPremium(() => {}, "Analytics Dashboard")}
                   >
                     <div className="flex items-center gap-3 mb-2">
@@ -392,11 +392,11 @@ export default function Dashboard() {
 
             {/* Smart Tools */}
             <div className="glass-card glass-amber">
-              <div className="p-6">
+              <div className="mobile-p-4 md:p-6">
                 <h3 className="text-lg font-semibold text-slate-200 mb-4">Smart Tools</h3>
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-4">
                   <Link href="/documents">
-                    <div className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
+                    <div className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
                       <div className="text-xl">�</div>
                       <div>
                         <div className="text-sm font-medium text-slate-200">Documents</div>
@@ -406,7 +406,7 @@ export default function Dashboard() {
                   </Link>
                   
                   <Link href="/reminders">
-                    <div className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
+                    <div className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
                       <div className="text-xl">⏰</div>
                       <div>
                         <div className="text-sm font-medium text-slate-200">Reminders</div>
@@ -416,7 +416,7 @@ export default function Dashboard() {
                   </Link>
 
                   <div 
-                    className="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30"
+                    className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30"
                     onClick={() => checkPremium(() => {}, "Advanced Analytics")}
                   >
                     <div className="text-xl">📊</div>
