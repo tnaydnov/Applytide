@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useState, useRef, useEffect } from "react";
 import PremiumModal from "./PremiumFeature";
 import { useAuth } from "../contexts/AuthContext";
+import Portal from './Portal';
 
 const publicLinks = [
   { label: "Pricing", href: "/pricing", icon: "pricing" },
@@ -17,9 +18,11 @@ export default function NavBar() {
   const [isPremium, setIsPremium] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const userBtnRef = useRef(null);
-  
+
   // Replace the existing user state with AuthContext
   const { user, isAuthenticated, logout: authLogout, loading } = useAuth();
+
+  useEffect(() => { document.body.style.overflow = isMenuOpen ? 'hidden' : ''; }, [isMenuOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -39,7 +42,7 @@ export default function NavBar() {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [activeDropdown, isUserMenuOpen]);
-  
+
   // Handle mobile menu close on route change
   useEffect(() => {
     setIsMenuOpen(false);
@@ -68,18 +71,18 @@ export default function NavBar() {
 
   const authenticatedLinks = [
     { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
-    { 
-      label: "Job Hunt", 
-      href: "/jobs", 
+    {
+      label: "Job Hunt",
+      href: "/jobs",
       icon: "search",
       subItems: [
         { label: "Save Jobs", href: "/jobs", icon: "work" },
         { label: "My Pipeline", href: "/pipeline", icon: "timeline" }
       ]
     },
-    { 
-      label: "Tools", 
-      href: "/documents", 
+    {
+      label: "Tools",
+      href: "/documents",
       icon: "tools",
       subItems: [
         { label: "Documents", href: "/documents", icon: "description" },
@@ -174,12 +177,12 @@ export default function NavBar() {
           {/* Logo and brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-3 group">
-              <img 
-                src="/images/logomark.svg" 
-                alt="Applytide" 
+              <img
+                src="/images/logomark.svg"
+                alt="Applytide"
                 className="h-10 w-10 group-hover:scale-105 transition-transform duration-200"
               />
-              <span className="hidden sm:block text-xl font-bold text-white group-hover:text-indigo-200 transition-colors duration-200" style={{fontFamily: 'Inter, sans-serif'}}>
+              <span className="hidden sm:block text-xl font-bold text-white group-hover:text-indigo-200 transition-colors duration-200" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Applytide
               </span>
             </Link>
@@ -191,17 +194,16 @@ export default function NavBar() {
             <div className="flex items-center space-x-1">
               {links.map((item) => {
                 const hasSubItems = item.subItems && item.subItems.length > 0;
-                
+
                 if (hasSubItems) {
                   return (
                     <div key={item.label} className="relative">
                       <button
                         onClick={() => setActiveDropdown(activeDropdown === item.label ? null : item.label)}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${
-                          isParentActive(item)
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${isParentActive(item)
                             ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
                             : "text-gray-300 hover:text-white hover:bg-white/5"
-                        }`}
+                          }`}
                       >
                         <span className="transition-transform duration-200 group-hover:scale-110">
                           {renderIcon(item.icon)}
@@ -258,11 +260,10 @@ export default function NavBar() {
                   <button
                     key={item.href}
                     onClick={() => handleLinkClick(item.href, item.isPro)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${
-                      isActive(item.href)
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${isActive(item.href)
                         ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
                         : "text-gray-300 hover:text-white hover:bg-white/5"
-                    }`}
+                      }`}
                   >
                     <span className="transition-transform duration-200 group-hover:scale-110">
                       {renderIcon(item.icon)}
@@ -279,11 +280,10 @@ export default function NavBar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${
-                      isActive(item.href)
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${isActive(item.href)
                         ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
                         : "text-gray-300 hover:text-white hover:bg-white/5"
-                    }`}
+                      }`}
                   >
                     <span className="transition-transform duration-200 group-hover:scale-110">
                       {renderIcon(item.icon)}
@@ -392,7 +392,7 @@ export default function NavBar() {
                 </div>
               </button>
             )}
-            
+
             {/* Hamburger menu button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -427,7 +427,7 @@ export default function NavBar() {
 
       {/* Mobile User Dropdown - Show outside main nav for better positioning */}
       {isUserMenuOpen && !loading && isAuthenticated && user && (
-        <div className="md:hidden fixed inset-x-4 top-16 z-50 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20" data-user-menu style={{zIndex: 60}}>
+        <div className="md:hidden fixed inset-x-4 top-16 z-50 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20" data-user-menu style={{ zIndex: 60 }}>
           <div className="px-4 py-3 text-sm text-gray-300 border-b border-white/10">
             <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
@@ -496,119 +496,117 @@ export default function NavBar() {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-16 bottom-0 z-50 bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto">
-          <div className="mobile-p-4 space-y-1">
-            {/* Navigation sections */}
-            {links.map((item) => {
-              const { label, href, icon, subItems } = item;
-              return (
-              <div key={label} className="mb-4">
-                {subItems ? (
-                  // Section with subitems
-                  <div>
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      <span className="flex items-center space-x-2">
-                        <span className="transition-transform duration-200">
-                          {renderIcon(icon)}
-                        </span>
-                        <span>{label}</span>
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {subItems.map(({ label: subLabel, href: subHref, isPro }) => (
-                        isPro ? (
-                          <button
-                            key={subHref}
-                            onClick={() => {
-                              handleLinkClick(subHref, isPro);
-                              setIsMenuOpen(false);
-                            }}
-                            className={`tap-target block w-full text-left px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 flex items-center justify-between ${
-                              isActive(subHref)
-                                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                                : "text-gray-300 hover:text-white hover:bg-white/5"
-                            }`}
-                          >
-                            <span>{subLabel}</span>
-                            <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              PRO
+        <Portal>
+          <div className="md:hidden fixed inset-x-0 top-16 bottom-0 z-[100] bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto">
+            <div className="mobile-p-4 space-y-1">
+              {/* Navigation sections */}
+              {links.map((item) => {
+                const { label, href, icon, subItems } = item;
+                return (
+                  <div key={label} className="mb-4">
+                    {subItems ? (
+                      // Section with subitems
+                      <div>
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          <span className="flex items-center space-x-2">
+                            <span className="transition-transform duration-200">
+                              {renderIcon(icon)}
                             </span>
-                          </button>
-                        ) : (
-                          <Link
-                            key={subHref}
-                            href={subHref}
-                            onClick={() => setIsMenuOpen(false)}
-                            className={`tap-target block px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
-                              isActive(subHref)
-                                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                                : "text-gray-300 hover:text-white hover:bg-white/5"
+                            <span>{label}</span>
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {subItems.map(({ label: subLabel, href: subHref, isPro }) => (
+                            isPro ? (
+                              <button
+                                key={subHref}
+                                onClick={() => {
+                                  handleLinkClick(subHref, isPro);
+                                  setIsMenuOpen(false);
+                                }}
+                                className={`tap-target block w-full text-left px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 flex items-center justify-between ${isActive(subHref)
+                                    ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                                  }`}
+                              >
+                                <span>{subLabel}</span>
+                                <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                  PRO
+                                </span>
+                              </button>
+                            ) : (
+                              <Link
+                                key={subHref}
+                                href={subHref}
+                                onClick={() => setIsMenuOpen(false)}
+                                className={`tap-target block px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 ${isActive(subHref)
+                                    ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                                  }`}
+                              >
+                                {subLabel}
+                              </Link>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      // Single navigation item
+                      item.isPro ? (
+                        <button
+                          key={href}
+                          onClick={() => {
+                            handleLinkClick(href, true);
+                            setIsMenuOpen(false);
+                          }}
+                          className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${isActive(href)
+                              ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                              : "text-gray-300 hover:text-white hover:bg-white/5"
                             }`}
-                          >
-                            {subLabel}
-                          </Link>
-                        )
-                      ))}
-                    </div>
+                        >
+                          <span className="transition-transform duration-200 hover:scale-110">
+                            {renderIcon(icon)}
+                          </span>
+                          <span>{label}</span>
+                          <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            PRO
+                          </span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={href}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${isActive(href)
+                              ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                              : "text-gray-300 hover:text-white hover:bg-white/5"
+                            }`}
+                        >
+                          <span className="transition-transform duration-200 hover:scale-110">
+                            {renderIcon(icon)}
+                          </span>
+                          <span>{label}</span>
+                        </Link>
+                      )
+                    )}
                   </div>
-                ) : (
-                  // Single navigation item
-                  item.isPro ? (
-                    <button
-                      key={href}
-                      onClick={() => {
-                        handleLinkClick(href, true);
-                        setIsMenuOpen(false);
-                      }}
-                      className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${
-                        isActive(href)
-                          ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                          : "text-gray-300 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="transition-transform duration-200 hover:scale-110">
-                        {renderIcon(icon)}
-                      </span>
-                      <span>{label}</span>
-                      <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
-                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        PRO
-                      </span>
-                    </button>
-                  ) : (
-                    <Link
-                      href={href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${
-                        isActive(href)
-                          ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                          : "text-gray-300 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="transition-transform duration-200 hover:scale-110">
-                        {renderIcon(icon)}
-                      </span>
-                      <span>{label}</span>
-                    </Link>
-                  )
-                )}
-              </div>
-              ); // Close the return statement
-            })}
+                ); // Close the return statement
+              })}
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
-      
+
       {/* Premium Modal */}
-      <PremiumModal 
-        isOpen={showPremiumModal} 
-        onClose={() => setShowPremiumModal(false)} 
-        feature="Analytics Dashboard" 
+      <PremiumModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        feature="Analytics Dashboard"
       />
     </nav>
   );

@@ -129,16 +129,16 @@ export default function PricingPage() {
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-12 items-stretch">
           {plans.map((plan, index) => (
-            <Card key={plan.name} className={`relative p-8 glass-card ${
+            <Card key={plan.name} className={`relative pt-10 pb-6 px-4 sm:p-8 glass-card ${
               plan.popular 
                 ? 'border-2 border-indigo-500 shadow-lg shadow-indigo-500/20 scale-105' 
                 : 'border border-white/10'
             }`}>
               {/* Popular Badge */}
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1">
                   <span className="inline-flex items-center px-4 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
                     Most Popular
                   </span>
@@ -147,7 +147,7 @@ export default function PricingPage() {
 
               {/* Coming Soon Badge */}
               {plan.comingSoon && (
-                <div className="absolute -top-4 right-4">
+                <div className="absolute top-0 right-2 -translate-y-1">
                   <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg animate-pulse border-2 border-yellow-400">
                     🚧 COMING SOON
                   </span>
