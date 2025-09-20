@@ -11,7 +11,7 @@ from ..db import models
 
 router = APIRouter(prefix="/io", tags=["io"])
 
-@router.get("/export/applications.csv")
+@router.get("/api/export/applications.csv")
 def export_apps(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     j = (
         select(models.Application, models.Job, models.Company)

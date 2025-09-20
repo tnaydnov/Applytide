@@ -20,7 +20,7 @@ from ..auth.deps import get_current_user
 from ..db.models import User
 from ..core.pagination import PaginationParams, PaginatedResponse, paginate_query, apply_sorting
 
-router = APIRouter(prefix="/applications", tags=["applications"])
+router = APIRouter(prefix="/api/applications", tags=["applications"])
 
 def _ensure_job_resume(db: Session, job_id: uuid.UUID, resume_id: uuid.UUID | None):
     if not db.get(models.Job, job_id):

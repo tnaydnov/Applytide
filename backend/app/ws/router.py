@@ -2,7 +2,7 @@ from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Set
 
-router = APIRouter(prefix="/ws", tags=["ws"])
+router = APIRouter(prefix="/api/ws", tags=["ws"])
 
 clients: Set[WebSocket] = set()
 

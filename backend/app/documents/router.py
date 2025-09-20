@@ -23,7 +23,7 @@ from .models import (
     TemplateListResponse, DocumentTemplate
 )
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/api/documents", tags=["documents"])
 document_service = DocumentService()
 
 

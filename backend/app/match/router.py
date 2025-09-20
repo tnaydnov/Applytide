@@ -9,7 +9,7 @@ from ..db.session import get_db
 from ..db import models
 from .engine import tfidf_score, top_keywords, present_missing
 
-router = APIRouter(prefix="/match", tags=["match"])
+router = APIRouter(prefix="/api/match", tags=["match"])
 
 @router.post("/score", response_model=Dict)
 def score(resume_id: uuid.UUID, job_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

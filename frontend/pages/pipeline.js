@@ -413,6 +413,7 @@ function ApplicationCard({
   const [isDragging, setIsDragging] = useState(false);
   const [showJobDetail, setShowJobDetail] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false); // Mobile move dialog
   const config = statusConfig[application.status] || DEFAULT_STATUS_STYLE;
 
   const availableStatuses = useMemo(
@@ -442,6 +443,11 @@ function ApplicationCard({
     setIsDragging(false);
     onDragEnd && onDragEnd();
   }, [onDragEnd]);
+
+  const handleMobileMove = (newStatus) => {
+    onMove(application.id, newStatus);
+    setShowMoveModal(false);
+  };
 
   const getDaysAgo = (dateString) => {
     if (!dateString) return "N/A";
@@ -523,11 +529,12 @@ function ApplicationCard({
             )}
           </div>
 
-          {/* drag handle */}
+          {/* drag handle and mobile move */}
           {viewMode === "board" && (
-            <div className="flex items-center justify-center mb-3">
+            <div className="flex items-center justify-center mb-3 gap-2">
+              {/* Desktop drag handle */}
               <div
-                className="text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                className="desktop-only text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
                 title="Drag to move"
                 draggable="true"
                 onDragStart={handleDragStart}
@@ -537,6 +544,20 @@ function ApplicationCard({
                   <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
                 </svg>
               </div>
+              
+              {/* Mobile move button */}
+              <button
+                className="md:hidden tap-target text-gray-400 hover:text-gray-300 p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                title="Move to different stage"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoveModal(true);
+                }}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           )}
 
@@ -607,6 +628,41 @@ function ApplicationCard({
       {/* modals */}
       {showJobDetail && <JobDetailModal application={application} onClose={() => setShowJobDetail(false)} />}
       {showNoteModal && <NoteModal application={application} onClose={() => setShowNoteModal(false)} />}
+      
+      {/* Mobile Move Modal */}
+      {showMoveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900/95 backdrop-blur-xl rounded-xl p-6 border border-white/20 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-white mb-4">Move Application</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Move "{application.job?.title || 'Unknown Position'}" to:
+            </p>
+            <div className="space-y-2 mb-6">
+              {availableStatuses.map((statusOption) => {
+                const config = statusConfig[statusOption] || DEFAULT_STATUS_STYLE;
+                return (
+                  <button
+                    key={statusOption}
+                    onClick={() => handleMobileMove(statusOption)}
+                    className={`tap-target w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${config.gradient} ${config.borderColor} hover:border-opacity-75`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{config.icon}</span>
+                      <span className="font-medium">{statusOption}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowMoveModal(false)}
+              className="tap-target w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

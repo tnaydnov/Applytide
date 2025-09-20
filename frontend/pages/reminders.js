@@ -87,7 +87,7 @@ function escapeICSText(text) {
 function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   if (typeof window !== 'undefined') return window.location.origin;
-  return 'http://localhost:3000'; // Ultimate fallback
+  return process.env.NODE_ENV === 'production' ? 'https://applytide.com' : 'http://localhost:3000';
 }
 
 function openGoogleCreateWithTemplate({ title, description, startISO, endISO, timezone = 'UTC', location, appUrl }) {
@@ -181,7 +181,7 @@ export default function RemindersPage() {
     console.error = (...args) => {
       if (args[0] && typeof args[0] === 'string' &&
         (args[0].includes('WebSocket connection to') ||
-          args[0].includes('ws://localhost/api/ws/updates'))) {
+          args[0].includes('/api/ws/updates'))) {
         return; // Suppress the WebSocket error
       }
       originalConsoleError.apply(console, args);

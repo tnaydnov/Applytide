@@ -1,43 +1,24 @@
 {
   "manifest_version": 3,
   "name": "Applytide",
-  "version": "1.0.0",
-  "description": "Save jobs to Applytide and auto-apply.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "version": "1.1.0",
+  "description": "Save jobs to Applytide.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "windows"],
   "host_permissions": [
-    "https://api.applytide.com/*",
-    "https://*.linkedin.com/jobs/*",
-    "https://*.indeed.com/viewjob*",
-    "https://*.glassdoor.com/job-listing/*"
+    "https://applytide.com/*",
+    "http://localhost/*",
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.glassdoor.com/*"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Applytide", "default_popup": "popup.html" },
+
   "content_scripts": [
     {
-      "matches": [
-        "https://*.linkedin.com/jobs/*",
-        "https://*.indeed.com/viewjob*",
-        "https://*.glassdoor.com/job-listing/*"
-      ],
-      "js": ["job-extractor.js", "panel.js"],
-      "css": ["applytide-button.css", "panel.css"],
+      "matches": ["https://applytide.com/*", "http://localhost/*"],
+      "js": ["site-bridge.js"],
       "run_at": "document_idle"
     }
-  ],
-  "web_accessible_resources": [{
-    "resources": ["panel.css"],
-    "matches": [
-      "https://*.linkedin.com/*",
-      "https://*.indeed.com/*",
-      "https://*.glassdoor.com/*"
-    ]
-  }],
-  "action": { "default_title": "Save job to Applytide" },
-  "commands": {
-    "applytide:set-token": {
-      "suggested_key": { "default": "Alt+Shift+A" },
-      "description": "Set Applytide API token"
-    }
-  }
+  ]
 }

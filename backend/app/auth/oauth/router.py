@@ -9,9 +9,9 @@ from app.auth.tokens import create_access_token, create_refresh_token
 from app.config import settings
 from app.auth.sessions import create_user_session
 
-router = APIRouter(tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.get("/auth/google/login")
+@router.get("/google/login")
 async def login_google():
     """
     Redirect to Google OAuth login page
@@ -19,7 +19,7 @@ async def login_google():
     auth_url = get_authorization_url()
     return RedirectResponse(auth_url)
 
-@router.get("/auth/google/callback")
+@router.get("/google/callback")
 async def callback_google(
     request: Request,
     response: Response,
@@ -92,7 +92,7 @@ async def callback_google(
             secure=settings.SECURE_COOKIES,
             samesite=settings.SAME_SITE_COOKIES,
             max_age=60 * 60 * 24 * 30,  # 30 days for OAuth
-            path="/auth"
+            path="/api/auth"
         )
         
         return response

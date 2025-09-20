@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from ..config import settings
 
-router = APIRouter(prefix="/auth", tags=["auth"])  # ensure prefix matches FE
+router = APIRouter(prefix="/api/auth", tags=["auth"])  # ensure prefix matches FE
 
 class RevokeRequest(BaseModel):
     session_id: str

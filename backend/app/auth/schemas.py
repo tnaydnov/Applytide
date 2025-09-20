@@ -64,6 +64,11 @@ class PasswordChangeIn(BaseModel):
 class MessageResponse(BaseModel):
     message: str
 
+class ExtensionTokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class UserInfo(BaseModel):
     id: str
     email: str

@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Applytide</title>
+    <style>
+      body { margin: 0; font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color: #e5e7eb; background:#0f172a; min-width: 320px; }
+      .wrap { padding: 14px; }
+      h1 { margin: 0 0 8px; font-size: 16px; }
+      .card { border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 12px; background:#111827; }
+      .row { display:flex; gap:8px; }
+      .btn { border:1px solid rgba(148,163,184,.3); background:#1f2937; color:#fff; padding:8px 10px; border-radius:10px; cursor:pointer; font-weight:600; }
+      .btn.primary { background:#4f46e5; border-color:#4338ca; }
+      .btn.block{ width:100%; text-align:center; }
+      .muted { color:#94a3b8; font-size:12px; }
+      label { display:block; margin:8px 0 4px; }
+      input { width:100%; padding:8px; border-radius:10px; border:1px solid rgba(148,163,184,.3); background:#0b1220; color:#e5e7eb; }
+      .hr { height:1px; background:rgba(255,255,255,.08); margin:12px 0; }
+      .right { text-align: right; }
+      .ok { color:#10b981 }
+      .err { color:#ef4444 }
+      .center { text-align:center; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Applytide</h1>
+      <div id="status" class="muted">Checking session…</div>
+
+      <div id="authCard" class="card" style="margin-top:8px;">
+        <div id="signedOut">
+          <div class="muted">Sign in to save jobs directly from any job page.</div>
+          <label>Email</label>
+          <input id="email" type="email" placeholder="you@example.com" />
+          <label>Password</label>
+          <input id="password" type="password" placeholder="********" />
+          <div style="margin-top:8px;" class="row">
+            <button id="loginBtn" class="btn primary">Sign in</button>
+            <button id="googleBtn" class="btn">Sign in with Google</button>
+          </div>
+          <div class="muted" style="margin-top:8px;">Your session persists; you won’t need to sign in every time.</div>
+        </div>
+
+        <div id="signedIn" style="display:none;">
+          <div class="muted">You’re signed in.</div>
+          <div class="hr"></div>
+          <div class="row">
+            <button id="saveJobBtn" class="btn primary">Save current job</button>
+            <div class="right" style="flex:1;">
+              <button id="logoutBtn" class="btn">Sign out</button>
+            </div>
+          </div>
+          <div id="result" class="muted" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="center" style="margin-top:10px;">
+        <small class="muted">Make sure the active tab is on a job page (LinkedIn, Indeed, Glassdoor, etc.).</small>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
+

@@ -33,10 +33,17 @@ export default function NavBar() {
     }
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside); // Add touch support
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [activeDropdown, isUserMenuOpen]);
+  
+  // Handle mobile menu close on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [router.pathname]);
 
   function handleLinkClick(href, isPro) {
     if (isPro && !isPremium) {
@@ -369,10 +376,25 @@ export default function NavBar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center space-x-2">
+            {/* Mobile user button */}
+            {isAuthenticated && user && (
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="tap-target flex items-center text-gray-300 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all duration-200"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              </button>
+            )}
+            
+            {/* Hamburger menu button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-all duration-200"
+              className="tap-target inline-flex items-center justify-center p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-all duration-200"
             >
               <svg
                 className="h-6 w-6"
@@ -401,29 +423,78 @@ export default function NavBar() {
         </div>
       </div>
 
+      {/* Mobile User Dropdown - Show outside main nav for better positioning */}
+      {isUserMenuOpen && isAuthenticated && user && (
+        <div className="md:hidden fixed inset-x-4 top-16 z-50 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20">
+          <div className="px-4 py-3 text-sm text-gray-300 border-b border-white/10">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">
+                  {user.email?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <span className="truncate">{user.email}</span>
+            </div>
+          </div>
+          <Link
+            href="/profile"
+            className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 tap-target"
+            onClick={() => setIsUserMenuOpen(false)}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span>Profile Settings</span>
+          </Link>
+          <Link
+            href="/pricing"
+            className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 tap-target"
+            onClick={() => setIsUserMenuOpen(false)}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+            <span>Pricing</span>
+            {!user?.is_premium && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-900/30 text-indigo-300 border border-indigo-500/30">
+                Upgrade
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/sessions"
+            className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 tap-target"
+            onClick={() => setIsUserMenuOpen(false)}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span>Active Sessions</span>
+          </Link>
+          <button
+            onClick={() => {
+              handleLogout();
+              setIsUserMenuOpen(false);
+            }}
+            className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200 tap-target"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      )}
+
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden glass-card animate-slideIn border-t border-white/10">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {/* User info for mobile */}
-            {user && (
-              <div className="px-3 py-4 border-b border-white/10 mb-2">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">{user.email || 'User'}</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
+        <div className="md:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto">
+          <div className="mobile-p-4 space-y-1">
             {/* Navigation sections */}
-            {authenticatedLinks.map(({ label, href, icon, subItems }) => (
-              <div key={label} className="mb-2">
+            {links.map((item) => {
+              const { label, href, icon, subItems } = item;
+              return (
+              <div key={label} className="mb-4">
                 {subItems ? (
                   // Section with subitems
                   <div>
@@ -435,76 +506,92 @@ export default function NavBar() {
                         <span>{label}</span>
                       </span>
                     </div>
-                    {subItems.map(({ label: subLabel, href: subHref, isPro }) => (
-                      isPro ? (
-                        <button
-                          key={subHref}
-                          onClick={() => handleLinkClick(subHref, isPro)}
-                          className={`block w-full text-left px-6 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between ${
-                            isActive(subHref)
-                              ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                              : "text-gray-300 hover:text-white hover:bg-white/5"
-                          }`}
-                        >
-                          <span>{subLabel}</span>
-                          <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            PRO
-                          </span>
-                        </button>
-                      ) : (
-                        <Link
-                          key={subHref}
-                          href={subHref}
-                          onClick={() => setIsMenuOpen(false)}
-                          className={`block px-6 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                            isActive(subHref)
-                              ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                              : "text-gray-300 hover:text-white hover:bg-white/5"
-                          }`}
-                        >
-                          {subLabel}
-                        </Link>
-                      )
-                    ))}
+                    <div className="space-y-1">
+                      {subItems.map(({ label: subLabel, href: subHref, isPro }) => (
+                        isPro ? (
+                          <button
+                            key={subHref}
+                            onClick={() => {
+                              handleLinkClick(subHref, isPro);
+                              setIsMenuOpen(false);
+                            }}
+                            className={`tap-target block w-full text-left px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 flex items-center justify-between ${
+                              isActive(subHref)
+                                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                                : "text-gray-300 hover:text-white hover:bg-white/5"
+                            }`}
+                          >
+                            <span>{subLabel}</span>
+                            <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              PRO
+                            </span>
+                          </button>
+                        ) : (
+                          <Link
+                            key={subHref}
+                            href={subHref}
+                            onClick={() => setIsMenuOpen(false)}
+                            className={`tap-target block px-6 py-3 rounded-xl text-base font-medium transition-all duration-200 ${
+                              isActive(subHref)
+                                ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                                : "text-gray-300 hover:text-white hover:bg-white/5"
+                            }`}
+                          >
+                            {subLabel}
+                          </Link>
+                        )
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   // Single navigation item
-                  <Link
-                    href={href}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={`block px-3 py-3 rounded-xl text-base font-medium transition-all duration-200 flex items-center space-x-3 ${
-                      isActive(href)
-                        ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                        : "text-gray-300 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <span className="transition-transform duration-200 hover:scale-110">
-                      {renderIcon(icon)}
-                    </span>
-                    <span>{label}</span>
-                  </Link>
+                  item.isPro ? (
+                    <button
+                      key={href}
+                      onClick={() => {
+                        handleLinkClick(href, true);
+                        setIsMenuOpen(false);
+                      }}
+                      className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${
+                        isActive(href)
+                          ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="transition-transform duration-200 hover:scale-110">
+                        {renderIcon(icon)}
+                      </span>
+                      <span>{label}</span>
+                      <span className="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                        PRO
+                      </span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={`tap-target block px-3 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center space-x-3 ${
+                        isActive(href)
+                          ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                          : "text-gray-300 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="transition-transform duration-200 hover:scale-110">
+                        {renderIcon(icon)}
+                      </span>
+                      <span>{label}</span>
+                    </Link>
+                  )
                 )}
               </div>
-            ))}
-
-            {/* Logout button for mobile */}
-            {user && (
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setIsMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-3 rounded-xl text-base font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center space-x-3 transition-all duration-200"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
-                </svg>
-                <span>Sign Out</span>
-              </button>
-            )}
+              ); // Close the return statement
+            })}
           </div>
         </div>
       )}

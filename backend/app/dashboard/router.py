@@ -5,7 +5,7 @@ from ..db.session import get_db
 from ..db import models
 from ..auth.deps import get_current_user
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 @router.get("/metrics", response_model=dict)
 def metrics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

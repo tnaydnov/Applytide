@@ -11,7 +11,7 @@ from ..auth.deps import get_current_user
 from ..db.models import User
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/kanban", tags=["kanban"])
+router = APIRouter(prefix="/api/kanban", tags=["kanban"])
 
 # Pydantic models for request/response
 class JobData(BaseModel):

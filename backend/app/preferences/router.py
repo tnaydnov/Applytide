@@ -10,7 +10,7 @@ from ..auth.deps import get_current_user
 from ..db.models import User
 from .schemas import PreferenceCreate, PreferenceUpdate, PreferenceOut
 
-router = APIRouter(prefix="/preferences", tags=["preferences"])
+router = APIRouter(prefix="/api/preferences", tags=["preferences"])
 
 @router.get("", response_model=List[PreferenceOut])
 def get_user_preferences(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

@@ -17,14 +17,26 @@ from .email_service import email_service
 # Import sessions endpoints
 from .sessions import router as sessions_router
 from ..auth.deps import get_current_user
+from .schemas import ExtensionTokenOut
+
 
 from typing import Optional
 from ..config import settings
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 # Include sessions endpoints
 router.include_router(sessions_router)
+
+@router.post("/extension-token", response_model=ExtensionTokenOut)
+async def get_extension_token(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate a token specifically for the browser extension"""
+    # IMPORTANT: current_user.id is a UUID; create_access_token expects str
+    access_token = create_access_token(str(current_user.id))
+    return ExtensionTokenOut(access_token=access_token)
 
 
 def get_client_info(request: Request) -> tuple[str, str]:
@@ -86,20 +98,6 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
     
     return schemas.TokenPairOut(access_token=access, refresh_token=refresh)
 
-
-@router.post("/extension-token", response_model=schemas.TokenResponse)
-async def get_extension_token(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Generate a token specifically for the browser extension"""
-    access_token = create_access_token(current_user.id)
-    
-    # Return token in JSON (not cookies) for extension use
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
 
 @router.post("/login", response_model=schemas.TokenResponse)
 async def login(
@@ -187,7 +185,7 @@ async def login(
         secure=settings.SECURE_COOKIES,
         samesite=settings.SAME_SITE_COOKIES,
         max_age=60 * 60 * 24 * refresh_days,  # 7 or 30 days
-        path="/auth"
+        path="/api/auth"
     )
     
     # Return user info
@@ -294,7 +292,7 @@ def refresh_token(
             secure=settings.SECURE_COOKIES,
             samesite=settings.SAME_SITE_COOKIES,
             # Keep the same expiry as the original refresh token family
-            path="/auth"
+            path="/api/auth"
         )
         
         # Get user info
@@ -338,7 +336,7 @@ def refresh_token(
     except Exception as e:
         # Clear cookies on error
         response.delete_cookie(key="access_token", path="/")
-        response.delete_cookie(key="refresh_token", path="/auth")
+        response.delete_cookie(key="refresh_token", path="/api/auth")
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
@@ -368,7 +366,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     
     # Clear cookies regardless
     response.delete_cookie(key="access_token", path="/")
-    response.delete_cookie(key="refresh_token", path="/auth")
+    response.delete_cookie(key="refresh_token", path="/api/auth")
     
     return schemas.MessageResponse(message="Logged out successfully")
 

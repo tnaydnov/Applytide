@@ -14,7 +14,7 @@ import tempfile
 import csv
 import json
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 def get_time_range_filter(range_param: str):
     """Convert range parameter to datetime filter"""

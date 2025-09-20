@@ -15,7 +15,7 @@ from ..models.user_profile import UserProfile
 from ..auth.deps import get_current_user
 from ..db.models import User
 
-router = APIRouter(prefix="/profile", tags=["User Profile"])
+router = APIRouter(prefix="/api/profile", tags=["User Profile"])
 
 # Pydantic models for request/response
 class LocationRequest(BaseModel):

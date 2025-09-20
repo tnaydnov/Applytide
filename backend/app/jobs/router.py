@@ -18,7 +18,7 @@ from ..db.session import get_db
 from .schemas import JobCreate, JobOut, JobSearchOut, ManualJobCreate
 from ..core.search import search_service
 
-router = APIRouter(prefix="/jobs", tags=["jobs"])
+router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 
 @router.post("", response_model=JobOut)

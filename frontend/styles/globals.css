@@ -21,10 +21,15 @@ body {
   background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
   color: #e2e8f0;
   min-height: 100vh;
+  /* Mobile viewport handling */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-#__next { min-height: 100%; }
-
+#__next { 
+  min-height: 100%; 
+}
 
 body {
   color: #e2e8f0;
@@ -33,6 +38,115 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Mobile-first responsive breakpoints and utilities */
+@media screen and (max-width: 768px) {
+  html {
+    font-size: 14px; /* Slightly smaller base font for mobile */
+  }
+  
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Better mobile padding and margins */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Mobile-friendly cards */
+  .glass-card {
+    margin: 0.5rem;
+    padding: 1rem !important;
+    border-radius: 0.75rem;
+  }
+  
+  /* Better mobile text sizes */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.125rem !important; }
+  
+  /* Mobile navigation improvements */
+  .mobile-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: rgba(15, 15, 35, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Touch-friendly buttons */
+  button, .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Mobile dropdown menus */
+  .dropdown-menu {
+    position: fixed !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    top: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 60;
+  }
+  
+  /* Mobile form improvements */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 0.75rem;
+    min-height: 44px;
+  }
+  
+  /* Mobile table responsiveness */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile card layouts */
+  .card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+  
+  .glass-card {
+    margin: 0.25rem;
+    padding: 0.75rem !important;
+    border-radius: 0.5rem;
+  }
+  
+  /* Extra small screen adjustments */
+  h1 { font-size: 1.25rem !important; }
+  h2 { font-size: 1.125rem !important; }
+  h3 { font-size: 1rem !important; }
+  
+  button, .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
 }
 
 /* Modern scrollbar */
@@ -54,6 +168,60 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+/* Mobile scrollbar - thinner on touch devices */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* Touch-friendly tap targets */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile-friendly spacing utilities */
+@media screen and (max-width: 768px) {
+  .mobile-p-2 { padding: 0.5rem !important; }
+  .mobile-p-3 { padding: 0.75rem !important; }
+  .mobile-p-4 { padding: 1rem !important; }
+  .mobile-m-2 { margin: 0.5rem !important; }
+  .mobile-m-3 { margin: 0.75rem !important; }
+  .mobile-m-4 { margin: 1rem !important; }
+  
+  .mobile-text-sm { font-size: 0.875rem !important; }
+  .mobile-text-base { font-size: 1rem !important; }
+  .mobile-text-lg { font-size: 1.125rem !important; }
+  
+  .mobile-hidden { display: none !important; }
+  .mobile-block { display: block !important; }
+  .mobile-flex { display: flex !important; }
+  .mobile-grid { display: grid !important; }
+  
+  .mobile-full-width { width: 100% !important; }
+  .mobile-max-w-none { max-width: none !important; }
+}
+
+/* Prevent mobile zoom on form inputs */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* Modern animations */

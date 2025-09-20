@@ -54,7 +54,7 @@ class ReminderResponse(BaseModel):
 
 
 
-router = APIRouter(prefix="/calendars", tags=["calendars"])
+router = APIRouter(prefix="/api/calendars", tags=["calendars"])
 
 
 @router.get("/reminders/{reminder_id}/notes", response_model=List[ReminderNoteOut])

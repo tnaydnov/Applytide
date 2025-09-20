@@ -86,38 +86,38 @@ export default function Dashboard() {
         <title>Command Center - Applytide</title>
       </Head>
       
-      <div className="space-y-8 max-w-7xl mx-auto">
+      <div className="mobile-p-4 space-y-6 max-w-7xl mx-auto">
         {/* AI-Powered Header with Personalized Insights */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 p-8 border border-indigo-500/20">
+        <div className="relative overflow-hidden rounded-xl mobile-m-2 bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 p-4 md:p-8 border border-indigo-500/20">
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10"></div>
           <div className="relative z-10">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-2">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}! 👋</h1>
-                <p className="text-indigo-200 text-lg">Your job search is gaining momentum</p>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
+              <div className="mb-4 md:mb-0">
+                <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}! 👋</h1>
+                <p className="text-indigo-200 mobile-text-base md:text-lg">Your job search is gaining momentum</p>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-white">{responseRate}%</div>
+              <div className="text-left md:text-right">
+                <div className="text-xl md:text-2xl font-bold text-white">{responseRate}%</div>
                 <div className="text-indigo-200 text-sm">Response Rate</div>
               </div>
             </div>
             
             {/* AI Insights Bar */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl mobile-p-3 md:p-4 border border-white/20">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-bold">AI</span>
                 </div>
-                <h3 className="text-white font-semibold">Today's Intelligence</h3>
+                <h3 className="text-white font-semibold mobile-text-base">Today's Intelligence</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="text-indigo-100">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4 mobile-text-sm">
+                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
                   <span className="text-indigo-300">💡 Insight:</span> Tuesday applications get 23% more responses
                 </div>
-                <div className="text-indigo-100">
+                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
                   <span className="text-indigo-300">🎯 Trend:</span> Tech companies respond faster (avg. 3.2 days)
                 </div>
-                <div className="text-indigo-100">
+                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
                   <span className="text-indigo-300">⚡ Action:</span> 2 follow-ups are overdue - send today
                 </div>
               </div>
@@ -126,17 +126,16 @@ export default function Dashboard() {
         </div>
 
         {/* Smart Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Applications This Week with Progress */}
-          <div className="glass-card glass-violet p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mobile-p-2">{/* Applications This Week with Progress */}
+          <div className="glass-card glass-violet mobile-p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-2xl">📊</div>
+              <div className="text-xl md:text-2xl">📊</div>
               <div className="text-xs text-slate-400">This Week</div>
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-3xl font-bold text-indigo-400">{thisWeekApps}</div>
-                <div className="text-slate-300 font-medium">Applications</div>
+                <div className="text-2xl md:text-3xl font-bold text-indigo-400">{thisWeekApps}</div>
+                <div className="text-slate-300 font-medium mobile-text-sm">Applications</div>
               </div>
               <div>
                 <div className="flex justify-between text-xs text-slate-400 mb-1">
@@ -169,14 +168,14 @@ export default function Dashboard() {
           </div>
 
           {/* Success Rate */}
-          <div className="glass-card glass-rose p-6">
+          <div className="glass-card glass-rose mobile-p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-2xl">🎯</div>
+              <div className="text-xl md:text-2xl">🎯</div>
               <div className="text-xs text-slate-400">Performance</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-rose-400">{responseRate}%</div>
-              <div className="text-slate-300 font-medium">Response Rate</div>
+              <div className="text-2xl md:text-3xl font-bold text-rose-400">{responseRate}%</div>
+              <div className="text-slate-300 font-medium mobile-text-sm">Response Rate</div>
               <div className="text-xs text-slate-400 mt-1">
                 {responseRate > 15 ? 'Above average!' : 'Room for improvement'}
               </div>
@@ -184,14 +183,14 @@ export default function Dashboard() {
           </div>
 
           {/* Offers & Success */}
-          <div className="glass-card glass-cyan p-6">
+          <div className="glass-card glass-cyan mobile-p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-2xl">🏆</div>
+              <div className="text-xl md:text-2xl">🏆</div>
               <div className="text-xs text-slate-400">Success</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-emerald-400">{offerCount}</div>
-              <div className="text-slate-300 font-medium">Offers Received</div>
+              <div className="text-2xl md:text-3xl font-bold text-emerald-400">{offerCount}</div>
+              <div className="text-slate-300 font-medium mobile-text-sm">Offers Received</div>
               <div className="text-xs text-slate-400 mt-1">
                 {offerCount > 0 ? 'Congratulations!' : 'Keep pushing!'}
               </div>
@@ -200,16 +199,16 @@ export default function Dashboard() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mobile-p-2">
           
           {/* Left Column - Pipeline & Activity */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* AI-Powered Quick Actions */}
             <div className="glass-card glass-violet">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-slate-200 flex items-center gap-2">
+              <div className="mobile-p-4 md:p-6">
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <h2 className="text-lg md:text-xl font-semibold text-slate-200 flex items-center gap-2">
                     <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-sm">🚀</span>
                     </div>
@@ -217,36 +216,36 @@ export default function Dashboard() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div 
-                    className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-4 cursor-pointer hover:border-indigo-500/40 transition-all group"
+                    className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-indigo-500/40 transition-all group tap-target"
                     onClick={() => checkPremium(() => {}, "AI Job Matching")}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="text-2xl">🎯</div>
+                      <div className="text-xl md:text-2xl">🎯</div>
                       <div>
-                        <h3 className="font-semibold text-indigo-300">AI Job Matching</h3>
+                        <h3 className="font-semibold text-indigo-300 mobile-text-base">AI Job Matching</h3>
                         <p className="text-xs text-slate-400">Find perfect matches</p>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-300">3 new high-match positions found based on your profile</p>
+                    <p className="mobile-text-sm text-slate-300">3 new high-match positions found based on your profile</p>
                   </div>
 
                   <Link href="/documents">
-                    <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl p-4 cursor-pointer hover:border-emerald-500/40 transition-all">
+                    <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-emerald-500/40 transition-all tap-target">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="text-2xl">✨</div>
+                        <div className="text-xl md:text-2xl">✨</div>
                         <div>
-                          <h3 className="font-semibold text-emerald-300">Generate Cover Letter</h3>
+                          <h3 className="font-semibold text-emerald-300 mobile-text-base">Generate Cover Letter</h3>
                           <p className="text-xs text-slate-400">AI-powered personalization</p>
                         </div>
                       </div>
-                      <p className="text-sm text-slate-300">Create tailored cover letters in seconds</p>
+                      <p className="mobile-text-sm text-slate-300">Create tailored cover letters in seconds</p>
                     </div>
                   </Link>
 
                   <div 
-                    className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4 cursor-pointer hover:border-amber-500/40 transition-all"
+                    className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl mobile-p-3 md:p-4 cursor-pointer hover:border-amber-500/40 transition-all tap-target"
                     onClick={() => checkPremium(() => {}, "Follow-up Automation")}
                   >
                     <div className="flex items-center gap-3 mb-2">
