@@ -484,11 +484,19 @@ function ApplicationCard({
               onDelete(application.id);
             }
           }}
-          className={`absolute p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full transition-all duration-300 z-10 backdrop-blur-sm border border-red-400/30 hover:border-red-300/50 ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"
-            }`}
+          className={`
+    absolute ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
+    inline-flex items-center justify-center
+    w-8 h-8 rounded-full
+    text-red-400 hover:text-red-300
+    hover:bg-red-500/15
+    transition-all duration-200
+    z-10 backdrop-blur-sm
+    border border-red-400/30 hover:border-red-300/50
+  `}
           title="Delete application"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="3,6 5,6 21,6"></polyline>
             <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
             <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -538,13 +546,14 @@ function ApplicationCard({
             <div className="flex items-center justify-center mb-3 gap-2">
               {/* Desktop drag handle */}
               <div
-                className="desktop-only text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                className="hidden md:block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
                 title="Drag to move"
-                draggable="true"
+                draggable
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                {/* 6 dots icon */}
+                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
                 </svg>
               </div>
@@ -1778,6 +1787,87 @@ export function ApplicationDrawerBody({ application, onClose }) {
   const [showJobDetail, setShowJobDetail] = useState(false);
   const appId = String(application?.id || application?.application_id);
 
+  const [resume, setResume] = useState(null);
+  const [showResumePicker, setShowResumePicker] = useState(false);
+
+  async function loadResume() {
+    try {
+      // Prefer dedicated API if you have it
+      const res = api.getApplicationResume
+        ? await api.getApplicationResume(appId)
+        : await api.apiFetch(`/applications/${appId}/resume`).then(r => r.json());
+      setResume(res?.resume || res || null);
+    } catch {
+      setResume(null);
+    }
+  }
+
+  async function uploadResumeFile(file) {
+    if (!file) return;
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      if (api.uploadApplicationResume) {
+        await api.uploadApplicationResume(appId, form);
+      } else {
+        await api.apiFetch(`/applications/${appId}/resume/upload`, { method: "POST", body: form });
+      }
+      await loadResume();
+      toast.success("Resume uploaded");
+    } catch (e) {
+      toast.error("Failed to upload resume");
+    }
+  }
+
+  async function openResumePicker() {
+    try {
+      setShowResumePicker(true);
+      setLoadingDocs(true);
+      const res = await (api.listDocuments ? api.listDocuments() : api.apiFetch("/documents").then(r => r.json()));
+      setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
+    } catch {
+      toast.error("Couldn’t load documents");
+      setDocs([]);
+    } finally {
+      setLoadingDocs(false);
+    }
+  }
+
+  async function setResumeFromDocument(docId) {
+    try {
+      if (api.attachExistingDocumentAsResume) {
+        await api.attachExistingDocumentAsResume(appId, docId);
+      } else {
+        await api.apiFetch(`/applications/${appId}/resume/from-document`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ document_id: docId }),
+        });
+      }
+      setShowResumePicker(false);
+      await loadResume();
+      toast.success("Resume selected");
+    } catch {
+      toast.error("Failed to select resume");
+    }
+  }
+
+  async function clearResume() {
+    try {
+      if (api.clearApplicationResume) {
+        await api.clearApplicationResume(appId);
+      } else {
+        await api.apiFetch(`/applications/${appId}/resume`, { method: "DELETE" });
+      }
+      setResume(null);
+      toast.success("Resume cleared");
+    } catch {
+      toast.error("Failed to clear resume");
+    }
+  }
+
+
+
   // ----- Attachments -----
   async function loadAttachments() {
     try {
@@ -1902,188 +1992,316 @@ export function ApplicationDrawerBody({ application, onClose }) {
     if (appId) {
       loadAttachments();
       loadReminders();
+      loadResume();
     }
   }, [appId]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-2xl font-semibold text-slate-100">{application?.job?.title || application?.title || "Application"}</div>
-          <div className="text-slate-400">{application?.job?.company_name || application?.company_name}</div>
-        </div>
-        <button onClick={onClose} className="px-3 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300 hover:bg-slate-700">
-          Close
-        </button>
-      </div>
+    <div
+      className="
+      fixed inset-0 z-[9998]
+      flex
+    "
+      aria-modal="true"
+      role="dialog"
+    >
+      {/* dim backdrop */}
+      <button
+        onClick={onClose}
+        className="flex-1 bg-black/50 backdrop-blur-[2px]"
+        aria-label="Close drawer backdrop"
+      />
 
-      {/* Details row (Applied / Last update) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-slate-800/40 border-slate-700/50">
-          <div className="text-sm text-slate-400">Applied</div>
-          <div className="text-slate-200">
-            {application?.applied_at ? new Date(application.applied_at).toLocaleDateString() :
-              application?.created_at ? new Date(application.created_at).toLocaleDateString() : "—"}
-          </div>
-        </Card>
-        <Card className="bg-slate-800/40 border-slate-700/50">
-          <div className="text-sm text-slate-400">Last update</div>
-          <div className="text-slate-200">
-            {application?.updated_at ? new Date(application.updated_at).toLocaleDateString() : "—"}
-          </div>
-        </Card>
-      </div>
+      {/* drawer panel */}
+      <div
+        className="
+        relative
+        w-full sm:w-[480px] lg:w-[560px]
+        h-full
+        bg-[#0f1422] 
+        border-l border-white/10
+        shadow-2xl
+        animate-[slideIn_.25s_ease-out]
+      "
+        style={{ willChange: "transform" }}
+      >
+        <style jsx global>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: .6; }
+          to   { transform: translateX(0);     opacity: 1; }
+        }
+      `}</style>
 
-      {/* Attachments */}
-      <Card className="bg-slate-800/40 border-slate-700/50">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-slate-200 font-semibold">Attachments</h3>
-          <div className="flex gap-2">
-            <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
-              <input type="file" className="hidden" onChange={(e) => handleUploadFile(e.target.files?.[0])} />
-              {uploading ? "Uploading…" : "Upload"}
-            </label>
-            <Button variant="outline" onClick={openDocsPicker}>Use a document</Button>
-          </div>
-        </div>
+        <div className="p-5 overflow-y-auto h-full">
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-2xl font-semibold text-slate-100">{application?.job?.title || application?.title || "Application"}</div>
+                <div className="text-slate-400">{application?.job?.company_name || application?.company_name}</div>
+              </div>
+              <button onClick={onClose} className="px-3 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300 hover:bg-slate-700">
+                Close
+              </button>
+            </div>
 
-        {attachments.length === 0 ? (
-          <div className="text-sm text-slate-400">No files attached</div>
-        ) : (
-          <div className="space-y-2">
-            {attachments.map(att => (
-              <div key={att.id} className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
-                <div className="truncate text-slate-200">{att.filename || att.name}</div>
-                <div className="flex items-center gap-2">
-                  {att.url && (
-                    <a
-                      className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
-                      href={`/api/applications/${appId}/attachments/${att.id}/download`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open
-                    </a>
+            {/* Details row (Applied / Last update) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-slate-800/40 border-slate-700/50">
+                <div className="text-sm text-slate-400">Applied</div>
+                <div className="text-slate-200">
+                  {application?.applied_at ? new Date(application.applied_at).toLocaleDateString() :
+                    application?.created_at ? new Date(application.created_at).toLocaleDateString() : "—"}
+                </div>
+              </Card>
+              <Card className="bg-slate-800/40 border-slate-700/50">
+                <div className="text-sm text-slate-400">Last update</div>
+                <div className="text-slate-200">
+                  {application?.updated_at ? new Date(application.updated_at).toLocaleDateString() : "—"}
+                </div>
+              </Card>
+            </div>
+
+            {/* Attachments */}
+            <Card className="bg-slate-800/40 border-slate-700/50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-slate-200 font-semibold">Attachments</h3>
+                <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+                  <input type="file" className="hidden" onChange={(e) => handleUploadFile(e.target.files?.[0])} />
+                  {uploading ? "Uploading…" : "Upload"}
+                </label>
+              </div>
+
+              {attachments.length === 0 ? (
+                <div className="text-sm text-slate-400">No files attached</div>
+              ) : (
+                <div className="space-y-2">
+                  {attachments.map(att => (
+                    <div key={att.id} className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
+                      <div className="truncate text-slate-200">{att.filename || att.name}</div>
+                      <div className="flex items-center gap-2">
+                        {att.url && (
+                          <a
+                            className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
+                            href={`/api/applications/${appId}/attachments/${att.id}/download`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open
+                          </a>
+                        )}
+                        <Button variant="outline" onClick={() => removeAttachment(att.id)}>Remove</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Documents picker modal (simple inline) */}
+              {showDocsPicker && (
+                <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-slate-300 font-medium">Choose from Documents</div>
+                    <Button variant="outline" onClick={() => setShowDocsPicker(false)}>Close</Button>
+                  </div>
+                  {loadingDocs ? (
+                    <div className="text-sm text-slate-400">Loading…</div>
+                  ) : docs.length === 0 ? (
+                    <div className="text-sm text-slate-400">No documents found</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {docs.map(d => (
+                        <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
+                          <div className="truncate text-slate-200">{d.name || d.filename}</div>
+                          <Button size="sm" onClick={() => useExistingDocument(d.id)}>Attach</Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <Button variant="outline" onClick={() => removeAttachment(att.id)}>Remove</Button>
+                </div>
+              )}
+            </Card>
+
+            <Card className="bg-slate-800/40 border-slate-700/50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-slate-200 font-semibold">Resume</h3>
+                <div className="flex gap-2">
+                  {/* Upload resume file */}
+                  <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+                    <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={(e) => uploadResumeFile(e.target.files?.[0])} />
+                    Upload
+                  </label>
+                  {/* Pick from Documents */}
+                  <Button variant="outline" onClick={openResumePicker}>Use a document</Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        {/* Documents picker modal (simple inline) */}
-        {showDocsPicker && (
-          <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-slate-300 font-medium">Choose from Documents</div>
-              <Button variant="outline" onClick={() => setShowDocsPicker(false)}>Close</Button>
-            </div>
-            {loadingDocs ? (
-              <div className="text-sm text-slate-400">Loading…</div>
-            ) : docs.length === 0 ? (
-              <div className="text-sm text-slate-400">No documents found</div>
-            ) : (
-              <div className="space-y-2">
-                {docs.map(d => (
-                  <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
-                    <div className="truncate text-slate-200">{d.name || d.filename}</div>
-                    <Button size="sm" onClick={() => useExistingDocument(d.id)}>Attach</Button>
+              {/* Current resume (if any) */}
+              {resume ? (
+                <div className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
+                  <div className="truncate text-slate-200">
+                    {resume.name || resume.filename}
                   </div>
-                ))}
+                  <div className="flex items-center gap-2">
+                    {resume.download_url && (
+                      <a className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
+                        href={resume.download_url}
+                        target="_blank"
+                        rel="noreferrer">
+                        Open
+                      </a>
+                    )}
+                    <Button variant="outline" onClick={clearResume}>Clear</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-400">No resume selected</div>
+              )}
+
+              {/* Resume picker modal (re-using the docs picker UI you already have) */}
+              {showResumePicker && (
+                <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-slate-300 font-medium">Choose a resume</div>
+                    <Button variant="outline" onClick={() => setShowResumePicker(false)}>Close</Button>
+                  </div>
+                  {loadingDocs ? (
+                    <div className="text-sm text-slate-400">Loading…</div>
+                  ) : docs.length === 0 ? (
+                    <div className="text-sm text-slate-400">No documents found</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {docs.map(d => (
+                        <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
+                          <div className="truncate text-slate-200">{d.name || d.filename}</div>
+                          <Button size="sm" onClick={() => setResumeFromDocument(d.id)}>Use</Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+
+
+            {/* Reminders */}
+            <Card className="bg-slate-800/40 border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-slate-200 font-semibold">Reminders</h3>
+                {!showCreateReminder && <Button size="sm" onClick={() => setShowCreateReminder(true)}>Add reminder</Button>}
               </div>
+
+              {!nextReminder && !showCreateReminder && (
+                <div className="mt-2 text-sm text-slate-400">No reminders linked to this application.</div>
+              )}
+
+              {nextReminder && !showCreateReminder && (
+                <div className="mt-3 rounded-md bg-slate-900/50 border border-slate-700/50 p-3 flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-100">{nextReminder.title || nextReminder.name}</div>
+                    <div className="text-slate-400 text-sm">
+                      {new Date(nextReminder.due_date || nextReminder.scheduled_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <a
+                    className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100"
+                    href="/events"
+                  >
+                    Open Events
+                  </a>
+                </div>
+              )}
+
+              {showCreateReminder && (
+                <form className="mt-3 space-y-3" onSubmit={createReminderInline}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Select
+                      value={newReminder.type}
+                      onChange={(e) => setNewReminder(r => ({ ...r, type: e.target.value }))}
+                    >
+                      <option value="Follow-up">Follow-up</option>
+                      <option value="Interview">Interview</option>
+                      <option value="Deadline">Application Deadline</option>
+                      <option value="Custom">Custom</option>
+                    </Select>
+                    <Input
+                      value={newReminder.title}
+                      onChange={(e) => setNewReminder(r => ({ ...r, title: e.target.value }))}
+                      placeholder="Reminder title"
+                    />
+                    <Input
+                      type="datetime-local"
+                      value={newReminder.due_date}
+                      onChange={(e) => setNewReminder(r => ({ ...r, due_date: e.target.value }))}
+                    />
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+                      <input type="checkbox" checked={!!newReminder.add_meet_link}
+                        onChange={(e) => setNewReminder(r => ({ ...r, add_meet_link: e.target.checked }))} />
+                      Create Google Meet link
+                    </label>
+                  </div>
+                  <textarea
+                    rows={3}
+                    className="w-full rounded-md bg-slate-900/50 border border-slate-700 text-slate-200"
+                    placeholder="Notes…"
+                    value={newReminder.description}
+                    onChange={(e) => setNewReminder(r => ({ ...r, description: e.target.value }))}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button">Cancel</Button>
+                    <Button disabled={creatingReminder} type="submit">{creatingReminder ? "Creating…" : "Create"}</Button>
+                  </div>
+                </form>
+              )}
+            </Card>
+
+            {/* Job details */}
+            <div className="flex justify-between items-center">
+              // inside ApplicationDrawerBody footer or the button area:
+              <Button
+                className="btn-ghost"
+                onClick={() => {
+                  const id = application?.job?.id || application?.job_id;
+                  if (!id) return toast.error("No job linked to this application");
+                  router.push(
+                    { pathname: "/jobs", query: { job: String(id), details: "1" } },
+                    undefined,
+                    { shallow: true }
+                  );
+                }}
+              >
+                🔎 Job details
+              </Button>
+
+              {/* We intentionally removed the “Open Full View” button */}
+            </div>
+
+            {showJobDetail && (
+              <JobDetailModal
+                application={application}
+                onClose={() => setShowJobDetail(false)}
+              />
             )}
           </div>
-        )}
-      </Card>
-
-      {/* Reminders */}
-      <Card className="bg-slate-800/40 border-slate-700/50">
-        <div className="flex items-center justify-between">
-          <h3 className="text-slate-200 font-semibold">Reminders</h3>
-          {!showCreateReminder && <Button size="sm" onClick={() => setShowCreateReminder(true)}>Add reminder</Button>}
         </div>
 
-        {!nextReminder && !showCreateReminder && (
-          <div className="mt-2 text-sm text-slate-400">No reminders linked to this application.</div>
-        )}
-
-        {nextReminder && !showCreateReminder && (
-          <div className="mt-3 rounded-md bg-slate-900/50 border border-slate-700/50 p-3 flex items-center justify-between">
-            <div>
-              <div className="text-slate-100">{nextReminder.title || nextReminder.name}</div>
-              <div className="text-slate-400 text-sm">
-                {new Date(nextReminder.due_date || nextReminder.scheduled_at).toLocaleString()}
-              </div>
-            </div>
-            <a
-              className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100"
-              href="/events"
-            >
-              Open Events
-            </a>
-          </div>
-        )}
-
-        {showCreateReminder && (
-          <form className="mt-3 space-y-3" onSubmit={createReminderInline}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Select
-                value={newReminder.type}
-                onChange={(e) => setNewReminder(r => ({ ...r, type: e.target.value }))}
-              >
-                <option value="Follow-up">Follow-up</option>
-                <option value="Interview">Interview</option>
-                <option value="Deadline">Application Deadline</option>
-                <option value="Custom">Custom</option>
-              </Select>
-              <Input
-                value={newReminder.title}
-                onChange={(e) => setNewReminder(r => ({ ...r, title: e.target.value }))}
-                placeholder="Reminder title"
-              />
-              <Input
-                type="datetime-local"
-                value={newReminder.due_date}
-                onChange={(e) => setNewReminder(r => ({ ...r, due_date: e.target.value }))}
-              />
-              <label className="inline-flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={!!newReminder.add_meet_link}
-                  onChange={(e) => setNewReminder(r => ({ ...r, add_meet_link: e.target.checked }))} />
-                Create Google Meet link
-              </label>
-            </div>
-            <textarea
-              rows={3}
-              className="w-full rounded-md bg-slate-900/50 border border-slate-700 text-slate-200"
-              placeholder="Notes…"
-              value={newReminder.description}
-              onChange={(e) => setNewReminder(r => ({ ...r, description: e.target.value }))}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button">Cancel</Button>
-              <Button disabled={creatingReminder} type="submit">{creatingReminder ? "Creating…" : "Create"}</Button>
-            </div>
-          </form>
-        )}
-      </Card>
-
-      {/* Job details */}
-      <div className="flex justify-between items-center">
-        <Button className="btn-ghost" onClick={() => setShowJobDetail(true)}>
-          🔎 Job details
-        </Button>
-        {/* We intentionally removed the “Open Full View” button */}
+        {/* X button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full
+                   bg-white/10 border border-white/20 text-white/80 hover:text-white hover:bg-white/15"
+          aria-label="Close"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-
-      {showJobDetail && (
-        <JobDetailModal
-          application={application}
-          onClose={() => setShowJobDetail(false)}
-        />
-      )}
     </div>
+
+
+
+
   );
 }
 

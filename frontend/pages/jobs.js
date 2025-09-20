@@ -3,6 +3,8 @@ import { api, apiFetch } from "../lib/api";
 import { Button, Card, Input, Textarea, Select, Modal } from "../components/ui";
 import { useToast } from '../lib/toast';
 import AuthGuard from "../components/AuthGuard";
+import { useRouter } from "next/router";
+
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState([]);
@@ -240,6 +242,7 @@ export default function JobsPage() {
     setSelectedJob(null);
     setEditJobData(null);
     setJobDetailsMode('view');
+    router.replace('/jobs', undefined, { shallow: true });
   }
 
   function switchToEditMode() {
@@ -285,6 +288,35 @@ export default function JobsPage() {
     }
   }
 
+  const router = useRouter();
+
+  useEffect(() => {
+    const { job, details } = router.query || {};
+    if (!details || !job) return;
+
+    let cancelled = false;
+
+    (async () => {
+      // Try to find the job locally first
+      let j = Array.isArray(jobs) ? jobs.find(x => String(x.id) === String(job)) : null;
+
+      // If not found, fetch it (fallback)
+      if (!j) {
+        try {
+          j = await api.getJobById(String(job)); // or api.apiFetch(`/jobs/${job}`).then(r => r.json())
+        } catch {
+          // ignore fetch error; you might show a toast if you want
+        }
+      }
+
+      if (!cancelled && j) {
+        openJobDetails(j);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [router.query?.job, router.query?.details, jobs]);
+
   // Initial load (jobs)
   useEffect(() => {
     // safety: ensure page is scrollable on mount
@@ -314,7 +346,7 @@ export default function JobsPage() {
   // --- Robust parsing for display-only (no DB writes) ---
   function parseJobForDisplay(job) {
     const rawDesc = (job?.description || "").replace(/\r/g, "");
-    const existingReqs   = Array.isArray(job?.requirements) ? [...job.requirements] : [];
+    const existingReqs = Array.isArray(job?.requirements) ? [...job.requirements] : [];
     const existingSkills = Array.isArray(job?.skills) ? [...job.skills] : [];
 
     const reqHeaders = [
@@ -341,18 +373,18 @@ export default function JobsPage() {
     ];
 
     const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const reqHeaderRe   = new RegExp(`^\\s*(?:${reqHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
+    const reqHeaderRe = new RegExp(`^\\s*(?:${reqHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
     const skillHeaderRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
     const skillInlineRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:\\s*(.+)$`, "i");
 
-    const isBullet        = (s) => /^\s*(?:[-–—•·*]|\d+\.)\s+/.test(s);
+    const isBullet = (s) => /^\s*(?:[-–—•·*]|\d+\.)\s+/.test(s);
     const normalizeBullet = (s) => s.replace(/^\s*(?:[-–—•·*]|\d+\.)\s+/, "").trim();
 
     const cleanToken = (s) =>
       s.replace(/^[•\-–—·*\s]+/, "")
-       .replace(/[.,;:()\s]+$/g, "")
-       .replace(/\s+/g, " ")
-       .trim();
+        .replace(/[.,;:()\s]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
 
     const tokenizeSkillList = (s) => {
       const parts = s.split(/[,\|/•·]+/).map(cleanToken).filter(Boolean);
@@ -368,9 +400,9 @@ export default function JobsPage() {
     };
 
     const lines = rawDesc.split("\n");
-    const descOut    = [];
-    const foundReqs  = [];
-    const foundSkills= [];
+    const descOut = [];
+    const foundReqs = [];
+    const foundSkills = [];
 
     let inReqBlock = false;
     let inSkillsBlock = false;
@@ -380,8 +412,8 @@ export default function JobsPage() {
       const raw = lines[i];
       const line = raw.replace(/\*\*/g, "");
 
-      if (reqHeaderRe.test(line))   { inReqBlock = true;  inSkillsBlock = false; continue; }
-      if (skillHeaderRe.test(line)) { inSkillsBlock = true; inReqBlock   = false; continue; }
+      if (reqHeaderRe.test(line)) { inReqBlock = true; inSkillsBlock = false; continue; }
+      if (skillHeaderRe.test(line)) { inSkillsBlock = true; inReqBlock = false; continue; }
 
       const mInline = line.match(skillInlineRe);
       if (mInline && mInline[1]) { foundSkills.push(...tokenizeSkillList(mInline[1])); continue; }
@@ -408,7 +440,7 @@ export default function JobsPage() {
 
     const cleanDescription = descOut.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
-    const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+    const canon = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
     const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
 
     const reqMap = new Map();
@@ -668,32 +700,32 @@ export default function JobsPage() {
                   <div className="pb-4">
                     <div className="flex justify-between items-start">
                       {/* Title */}
-                        {jobDetailsMode === 'view' ? (
-                          <h2 className="text-2xl font-bold text-slate-100">{selectedJob.title}</h2>
-                        ) : (
-                          <div className="mt-0">
-                            <Input
-                              value={editJobData?.title || ''}
-                              onChange={(e) => setEditJobData(prev => ({ ...prev, title: e.target.value }))}
-                              placeholder="Job Title"
-                              className="text-2xl font-bold border-0 p-0 focus:ring-0"
-                            />
-                          </div>
-                        )}
+                      {jobDetailsMode === 'view' ? (
+                        <h2 className="text-2xl font-bold text-slate-100">{selectedJob.title}</h2>
+                      ) : (
+                        <div className="mt-0">
+                          <Input
+                            value={editJobData?.title || ''}
+                            onChange={(e) => setEditJobData(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Job Title"
+                            className="text-2xl font-bold border-0 p-0 focus:ring-0"
+                          />
+                        </div>
+                      )}
 
-                        {/* Company name */}
-                        {jobDetailsMode === 'view' ? (
-                          <p className="text-lg text-slate-300 mt-1">{selectedJob.company_name}</p>
-                        ) : (
-                          <div className="text-lg mt-1">
-                            <Input
-                              value={editJobData?.company_name || ''}
-                              onChange={(e) => setEditJobData(prev => ({ ...prev, company_name: e.target.value }))}
-                              placeholder="Company Name"
-                              className="text-lg border-0 p-0 focus:ring-0"
-                            />
-                          </div>
-                        )}
+                      {/* Company name */}
+                      {jobDetailsMode === 'view' ? (
+                        <p className="text-lg text-slate-300 mt-1">{selectedJob.company_name}</p>
+                      ) : (
+                        <div className="text-lg mt-1">
+                          <Input
+                            value={editJobData?.company_name || ''}
+                            onChange={(e) => setEditJobData(prev => ({ ...prev, company_name: e.target.value }))}
+                            placeholder="Company Name"
+                            className="text-lg border-0 p-0 focus:ring-0"
+                          />
+                        </div>
+                      )}
 
                       <div className="flex items-center space-x-2">
                         {jobDetailsMode === 'view' ? (
@@ -857,7 +889,7 @@ export default function JobsPage() {
                     {(() => {
                       const parsed = parseJobForDisplay(selectedJob);
 
-                      const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+                      const canon = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
                       const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
                       const dedupe = (arr) => Array.from(new Map(arr.filter(Boolean).map(s => [canon(s), pretty(s)])).values());
 
@@ -879,7 +911,7 @@ export default function JobsPage() {
                     {(() => {
                       const parsed = parseJobForDisplay(selectedJob);
 
-                      const canon  = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
+                      const canon = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").toLowerCase().trim();
                       const pretty = (s) => s.replace(/\s+/g, " ").replace(/[.,;:)\]\s]+$/g, "").trim();
                       const dedupe = (arr) => Array.from(new Map(arr.filter(Boolean).map(s => [canon(s), pretty(s)])).values());
 
@@ -1083,10 +1115,9 @@ export default function JobsPage() {
                             <div className="flex items-center space-x-2 ml-4">
                               {job.remote_type && (
                                 <span
-                                  className={`chip ${
-                                    job.remote_type === 'Remote' ? 'chip-cyan' :
-                                    job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
-                                  }`}
+                                  className={`chip ${job.remote_type === 'Remote' ? 'chip-cyan' :
+                                      job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
+                                    }`}
                                 >
                                   {job.remote_type}
                                 </span>
