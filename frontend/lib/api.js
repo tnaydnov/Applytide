@@ -472,24 +472,26 @@ export const api = {
 
 async function getAccessToken() {
   try {
-    // Try to get fresh token by calling a protected endpoint
-    const response = await fetch(`${API_BASE}/auth/me`, {
-      credentials: 'include'
-    });
-    if (response.ok) {
-      // Extract token from cookie if available
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'access_token') {
-          return decodeURIComponent(value);
-        }
+    // Call the extension-token endpoint which returns a token we can use for WebSocket auth
+    const response = await fetch(`${API_BASE}/auth/extension-token`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
       }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.access_token;
+    } else {
+      console.warn('[ws] Failed to get extension token:', response.status, response.statusText);
+      return null;
     }
   } catch (error) {
     console.warn('[ws] Failed to get access token:', error);
+    return null;
   }
-  return null;
 }
 
 export function connectWS(onMsg) {
