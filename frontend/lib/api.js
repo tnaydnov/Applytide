@@ -205,15 +205,13 @@ export const api = {
     const base = "/documents/";              // <- note the slash
     return apiFetch(`${base}${qs ? `?${qs}` : ""}`).then(r => r.json());
   },
-  
+
   // Attach an existing Document to an Application
-  attachExistingDocument: (appId, documentId, document_type = "other") =>
-    apiFetch(`/applications/${appId}/attachments`, {
+  attachExistingDocument: (appId, documentId) =>
+    apiFetch(`/applications/${appId}/attachments/from-document`, {
       method: "POST",
-      body: JSON.stringify({
-        document_id: String(documentId),
-        document_type
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ document_id: String(documentId) })
     }).then(r => r.json()),
 
 
@@ -474,10 +472,7 @@ export const api = {
 export function connectWS(onMsg) {
   const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = `${wsProto}//${window.location.host}`;
-  const candidates = [
-    `${host}/api/ws/updates`,
-    `${host}/ws/updates`,
-  ];
+  const candidates = [`${host}/api/ws/updates`];
 
   let idx = 0;
   let socket;
