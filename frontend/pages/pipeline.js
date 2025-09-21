@@ -403,6 +403,31 @@ const DEFAULT_STATUS_STYLE = {
   bgColor: "bg-neutral-600",
 };
 
+// --- Doc type helpers (add once in this file) ---
+const DOC_TYPES = ["resume", "cover_letter", "portfolio", "certificate", "transcript", "reference", "other"];
+const TYPE_LABELS = {
+  resume: "Resume",
+  cover_letter: "Cover letter",
+  portfolio: "Portfolio",
+  certificate: "Certificate",
+  transcript: "Transcript",
+  reference: "Reference",
+  other: "Other"
+};
+const typeLabel = (t) => TYPE_LABELS[t] || (t?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Other");
+const typeChipClass = (t) => {
+  switch (t) {
+    case "resume": return "bg-emerald-500/20 text-emerald-300 border-emerald-400/30";
+    case "cover_letter": return "bg-indigo-500/20 text-indigo-300 border-indigo-400/30";
+    case "portfolio": return "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/30";
+    case "certificate": return "bg-amber-500/20 text-amber-200 border-amber-400/30";
+    case "transcript": return "bg-cyan-500/20 text-cyan-200 border-cyan-400/30";
+    case "reference": return "bg-teal-500/20 text-teal-300 border-teal-400/30";
+    default: return "bg-slate-600/20 text-slate-200 border-slate-500/30";
+  }
+};
+
+
 /* ------------------------------ application card -------------------------- */
 function ApplicationCard({
   application,
@@ -664,7 +689,7 @@ function ApplicationCard({
                   <button
                     key={statusOption}
                     onClick={() => handleMobileMove(statusOption)}
-                    className={`tap-target w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${config.gradient} ${config.borderColor} hover:border-opacity-75`}
+                    className={`tap-target w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${config.gradient} hover:border-opacity-75`}
                   >
                     <span className="flex items-center gap-2">
                       <span>{config.icon}</span>
@@ -1787,89 +1812,12 @@ export function ApplicationDrawerBody({ application, onClose }) {
 
   const [showJobDetail, setShowJobDetail] = useState(false);
   const appId = String(application?.id || application?.application_id);
+  const [uploadType, setUploadType] = useState("other");
+  const [attachingId, setAttachingId] = useState(null);
 
-  const [resume, setResume] = useState(null);
-  const [showResumePicker, setShowResumePicker] = useState(false);
+
 
   const router = useRouter();
-
-  async function loadResume() {
-    try {
-      // Prefer dedicated API if you have it
-      const res = api.getApplicationResume
-        ? await api.getApplicationResume(appId)
-        : await apiFetch(`/applications/${appId}/resume`).then(r => r.json());
-      setResume(res?.resume || res || null);
-    } catch {
-      setResume(null);
-    }
-  }
-
-  async function uploadResumeFile(file) {
-    if (!file) return;
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      if (api.uploadApplicationResume) {
-        await api.uploadApplicationResume(appId, form);
-      } else {
-        await apiFetch(`/applications/${appId}/resume/upload`, { method: "POST", body: form });
-      }
-      await loadResume();
-      toast.success("Resume uploaded");
-    } catch (e) {
-      toast.error("Failed to upload resume");
-    }
-  }
-
-  async function openResumePicker() {
-    try {
-      setShowResumePicker(true);
-      setLoadingDocs(true);
-      const res = await (api.listDocuments
-        ? api.listDocuments({ document_type: "resume" })
-        : apiFetch("/documents?document_type=resume&page_size=100").then(r => r.json()));
-      setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
-    } catch {
-      toast.error("Couldn’t load documents");
-      setDocs([]);
-    } finally {
-      setLoadingDocs(false);
-    }
-  }
-
-  async function setResumeFromDocument(docId) {
-    try {
-      if (api.attachExistingDocumentAsResume) {
-        await api.attachExistingDocumentAsResume(appId, docId);
-      } else {
-        await apiFetch(`/applications/${appId}/resume/from-document`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ document_id: docId }),
-        });
-      }
-      setShowResumePicker(false);
-      await loadResume();
-      toast.success("Resume selected");
-    } catch {
-      toast.error("Failed to select resume");
-    }
-  }
-
-  async function clearResume() {
-    try {
-      if (api.clearApplicationResume) {
-        await api.clearApplicationResume(appId);
-      } else {
-        await apiFetch(`/applications/${appId}/resume`, { method: "DELETE" });
-      }
-      setResume(null);
-      toast.success("Resume cleared");
-    } catch {
-      toast.error("Failed to clear resume");
-    }
-  }
 
 
 
@@ -1887,9 +1835,19 @@ export function ApplicationDrawerBody({ application, onClose }) {
     if (!file) return;
     try {
       setUploading(true);
+      // Upload into Documents with the chosen document_type…
       const form = new FormData();
       form.append("file", file);
-      await api.uploadApplicationAttachment(appId, form);  // exists (see reminders.js)
+      form.append("document_type", uploadType);
+      const up = await apiFetch(`/documents/upload`, { method: "POST", body: form }).then(r => r.json());
+      const newDocId = up?.document?.id || up?.id;
+      if (!newDocId) throw new Error("Upload succeeded but no document id returned");
+      // …then attach to the application
+      await apiFetch(`/applications/${appId}/attachments/from-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document_id: String(newDocId) })
+      });
       toast.success("Attachment uploaded");
       await loadAttachments();
     } catch (e) {
@@ -1899,15 +1857,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       setUploading(false);
     }
   }
-  async function removeAttachment(attId) {
-    if (!confirm("Remove this attachment?")) return;
-    try {
-      await apiFetch(`/applications/${appId}/attachments/${attId}`, { method: "DELETE" });
-      await loadAttachments();
-    } catch (e) {
-      toast.error("Failed to remove attachment");
-    }
-  }
+
 
   // ----- Documents picker (attach without saving a new doc) -----
   async function openDocsPicker() {
@@ -1926,6 +1876,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
   }
   async function useExistingDocument(docId) {
     try {
+      setAttachingId(docId);
       // Prefer a direct attach endpoint if you have it; this call name is a stub.
       if (api.attachExistingDocument) {
         await api.attachExistingDocument(appId, docId);
@@ -1942,6 +1893,23 @@ export function ApplicationDrawerBody({ application, onClose }) {
     } catch (e) {
       console.error(e);
       toast.error("Failed to attach document");
+    } finally {
+      setAttachingId(null);
+    }
+  }
+
+  async function removeAttachment(attachmentId) {
+    try {
+      if (api.removeAttachment) {
+        await api.removeAttachment(appId, attachmentId);
+      } else {
+        await apiFetch(`/applications/${appId}/attachments/${attachmentId}`, { method: "DELETE" });
+      }
+      setAttachments(prev => prev.filter(a => String(a.id) !== String(attachmentId)));
+      toast.success("Attachment removed");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to remove attachment");
     }
   }
 
@@ -2071,36 +2039,67 @@ export function ApplicationDrawerBody({ application, onClose }) {
             <Card className="bg-slate-800/40 border-slate-700/50">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-slate-200 font-semibold">Attachments</h3>
-                <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
-                  <input type="file" className="hidden" onChange={(e) => handleUploadFile(e.target.files?.[0])} />
-                  {uploading ? "Uploading…" : "Upload"}
-                </label>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={uploadType}
+                    onChange={(e) => setUploadType(e.target.value)}
+                    className="rounded-md bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1"
+                    title="Document type"
+                  >
+                    <option value="other">Other</option>
+                    <option value="resume">Resume</option>
+                    <option value="cover_letter">Cover letter</option>
+                    <option value="portfolio">Portfolio</option>
+                    <option value="certificate">Certificate</option>
+                    <option value="transcript">Transcript</option>
+                    <option value="reference">Reference</option>
+                  </select>
+
+                  <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+                    <input type="file" className="hidden" onChange={(e) => handleUploadFile(e.target.files?.[0])} />
+                    {uploading ? "Uploading…" : "Upload"}
+                  </label>
+
+                  <Button variant="outline" onClick={openDocsPicker}>Choose from documents</Button>
+                </div>
+
               </div>
+
 
               {attachments.length === 0 ? (
                 <div className="text-sm text-slate-400">No files attached</div>
               ) : (
                 <div className="space-y-2">
-                  {attachments.map(att => (
-                    <div key={att.id} className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
-                      <div className="truncate text-slate-200">{att.filename || att.name}</div>
-                      <div className="flex items-center gap-2">
-                        {att.url && (
-                          <a
-                            className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
-                            href={`/api/applications/${appId}/attachments/${att.id}/download`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Open
-                          </a>
-                        )}
-                        <Button variant="outline" onClick={() => removeAttachment(att.id)}>Remove</Button>
+                  {attachments.map(att => {
+                    const dtype = att.document_type || att.type || att.doc_type || "other";
+                    return (
+                      <div key={att.id} className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`px-2 py-0.5 rounded-full text-xs border ${typeChipClass(dtype)}`}>
+                            {typeLabel(dtype)}
+                          </span>
+                          <div className="truncate text-slate-200">{att.filename || att.name}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {att.url && (
+                            <a
+                              className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
+                              href={`/api/applications/${appId}/attachments/${att.id}/download`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open
+                            </a>
+                          )}
+                          <Button variant="outline" onClick={() => removeAttachment(att.id)}>Remove</Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
+
 
               {/* Documents picker modal (simple inline) */}
               {showDocsPicker && (
@@ -2118,68 +2117,14 @@ export function ApplicationDrawerBody({ application, onClose }) {
                       {docs.map(d => (
                         <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
                           <div className="truncate text-slate-200">{d.name || d.filename}</div>
-                          <Button size="sm" onClick={() => useExistingDocument(d.id)}>Attach</Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
+                          <Button
+                            size="sm"
+                            disabled={attachingId === d.id}
+                            onClick={() => useExistingDocument(d.id)}
+                          >
+                            {attachingId === d.id ? "Attaching…" : "Attach"}
+                          </Button>
 
-            <Card className="bg-slate-800/40 border-slate-700/50">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-slate-200 font-semibold">Resume</h3>
-                <div className="flex gap-2">
-                  {/* Upload resume file */}
-                  <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
-                    <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={(e) => uploadResumeFile(e.target.files?.[0])} />
-                    Upload
-                  </label>
-                  {/* Pick from Documents */}
-                  <Button variant="outline" onClick={openResumePicker}>Use a document</Button>
-                </div>
-              </div>
-
-              {/* Current resume (if any) */}
-              {resume ? (
-                <div className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50">
-                  <div className="truncate text-slate-200">
-                    {resume.name || resume.filename}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {resume.download_url && (
-                      <a className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
-                        href={resume.download_url}
-                        target="_blank"
-                        rel="noreferrer">
-                        Open
-                      </a>
-                    )}
-                    <Button variant="outline" onClick={clearResume}>Clear</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-400">No resume selected</div>
-              )}
-
-              {/* Resume picker modal (re-using the docs picker UI you already have) */}
-              {showResumePicker && (
-                <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-slate-300 font-medium">Choose a resume</div>
-                    <Button variant="outline" onClick={() => setShowResumePicker(false)}>Close</Button>
-                  </div>
-                  {loadingDocs ? (
-                    <div className="text-sm text-slate-400">Loading…</div>
-                  ) : docs.length === 0 ? (
-                    <div className="text-sm text-slate-400">No documents found</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {docs.map(d => (
-                        <div key={d.id} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
-                          <div className="truncate text-slate-200">{d.name || d.filename}</div>
-                          <Button size="sm" onClick={() => setResumeFromDocument(d.id)}>Use</Button>
                         </div>
                       ))}
                     </div>
