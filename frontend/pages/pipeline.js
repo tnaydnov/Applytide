@@ -1965,7 +1965,6 @@ export function ApplicationDrawerBody({ application, onClose }) {
     if (appId) {
       loadAttachments();
       loadReminders();
-      loadResume();
     }
   }, [appId]);
 

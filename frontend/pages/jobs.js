@@ -80,9 +80,24 @@ export default function JobsPage() {
   async function loadApplyDocs() {
     try {
       setApplyDocsLoading(true);
-      // Grab everything and show types. (If your API supports it, keep status=Active casing)
-      const resp = await api.getDocuments("page=1&page_size=200&status=Active");
-      setApplyAllDocs(resp?.documents || resp?.items || []);
+
+      // Ask for everything; let the server default status if needed.
+      const res = await apiFetch(`/documents?page=1&page_size=200`).then(r => r.json());
+
+      // Normalize different payload shapes and field names
+      const raw = res?.documents || res?.items || res?.results || res?.data || [];
+      const docs = raw.map(d => ({
+        ...d,
+        id: d.id ?? d._id ?? d.document_id,
+        // normalize type key + casing so your filters work
+        document_type: (d.document_type || d.type || d.category || 'other').toLowerCase(),
+        // normalize name so your UI doesn’t show “Untitled”
+        name: d.name || d.title || d.file_name || d.filename || d.original_filename || 'Untitled',
+        // normalize format for the little meta line
+        format: (d.format || d.mime || d.content_type || '').split('/').pop()
+      })).filter(d => !d.is_deleted && !d.deleted);
+
+      setApplyAllDocs(docs);
     } catch (e) {
       console.error("Failed to load document options:", e);
       toast.error("Couldn't load your documents.");
@@ -91,6 +106,7 @@ export default function JobsPage() {
       setApplyDocsLoading(false);
     }
   }
+
 
   function openApply(job) {
     setApplyTargetJob(job);
@@ -1557,16 +1573,19 @@ export default function JobsPage() {
                               value={u.type}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                setPendingUploads((prev) => {
+                                setPendingUploads(prev => {
                                   const next = [...prev];
                                   next[i] = { ...next[i], type: val };
                                   return next;
                                 });
                               }}
-                              className="bg-transparent border border-white/20 rounded px-2 py-1 text-sm"
+                              className="bg-slate-900/40 text-slate-100 border border-white/20 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                             >
-                              {DOC_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                              {DOC_TYPES.map(t => (
+                                <option key={t} value={t}>{typeLabel(t)}</option>
+                              ))}
                             </select>
+
                             <button
                               type="button"
                               onClick={() => setPendingUploads((prev) => prev.filter((_, idx) => idx !== i))}
@@ -1597,7 +1616,7 @@ export default function JobsPage() {
                 {/* Actions */}
                 <div className="flex justify-between items-center pt-2">
                   <div className="text-xs text-slate-400">
-                    {applyTab === 'select' && "Tip: You can keep one or both selections empty if you switch to 'No files'."}
+                    {applyTab === 'select' && "Tip: You can keep one or both selections empty if you switch to 'Apply without files'."}
                     {applyTab === 'upload' && "Only the files you pick will be uploaded and attached."}
                   </div>
                   <div className="flex gap-2">
