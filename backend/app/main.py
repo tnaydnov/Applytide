@@ -104,7 +104,7 @@ app.include_router(auth_router)
 app.include_router(sessions_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
-app.include_router(ws_router)              # /api/ws/updates
+app.include_router(ws_router)
 app.include_router(dashboard_router)
 app.include_router(match_router)
 app.include_router(io_router)
