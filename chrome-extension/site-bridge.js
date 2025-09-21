@@ -7,6 +7,12 @@ const API_BASE = location.hostname === "applytide.com"
 
 let sent = false;
 
+// Check if we're on an authentication page where the user wouldn't be logged in yet
+function isAuthPage() {
+  const authPaths = ['/login', '/register', '/auth/', '/reset-password'];
+  return authPaths.some(path => location.pathname.startsWith(path));
+}
+
 async function tryExchangeOnce() {
   try {
     // Helpful console signal so we can see this in the OAuth window
@@ -46,7 +52,13 @@ async function tryExchangeOnce() {
 }
 
 // Run immediately + retry for ~30s (handles SPA load/cookie timing)
+// But only if we're not on an authentication page
 (async () => {
+  if (isAuthPage()) {
+    console.log("[Applytide bridge] skipping auth token exchange on auth page:", location.pathname);
+    return;
+  }
+
   const started = Date.now();
   while (Date.now() - started < 30000 && !sent) {
     const ok = await tryExchangeOnce();

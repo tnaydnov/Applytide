@@ -1072,14 +1072,25 @@ export default function PipelinePage() {
 
   useEffect(() => {
     load();
-    // WebSocket connection for real-time updates
-    wsRef.current = connectWS((evt) => {
-      if (["stage_changed", "stage_added"].includes(evt.type)) {
-        load();
-        toast.success("Pipeline updated!");
+    
+    // Try to establish WebSocket connection for real-time updates
+    // If it fails, the page will still work without real-time updates
+    try {
+      wsRef.current = connectWS((evt) => {
+        if (["stage_changed", "stage_added"].includes(evt.type)) {
+          load();
+          toast.success("Pipeline updated!");
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to establish WebSocket connection. Real-time updates disabled.', error);
+    }
+    
+    return () => {
+      if (wsRef.current && wsRef.current.close) {
+        wsRef.current.close();
       }
-    });
-    return () => wsRef.current && wsRef.current.close();
+    };
   }, [load]);
 
   /* ------------------------------ keyboard help ---------------------------- */
