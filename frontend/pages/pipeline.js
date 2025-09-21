@@ -1072,12 +1072,16 @@ export default function PipelinePage() {
 
   useEffect(() => {
     load();
-    
+  }, [load]);
+
+  // Separate effect for WebSocket to avoid recreating it when load function changes
+  useEffect(() => {
     // Try to establish WebSocket connection for real-time updates
     // If it fails, the page will still work without real-time updates
     try {
       wsRef.current = connectWS((evt) => {
         if (["stage_changed", "stage_added"].includes(evt.type)) {
+          // Call load directly to reload the pipeline data
           load();
           toast.success("Pipeline updated!");
         }
@@ -1091,7 +1095,7 @@ export default function PipelinePage() {
         wsRef.current.close();
       }
     };
-  }, [load]);
+  }, []); // Empty dependency array to only run once on mount
 
   /* ------------------------------ keyboard help ---------------------------- */
   useEffect(() => {

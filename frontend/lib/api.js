@@ -502,15 +502,16 @@ export function connectWS(onMsg) {
   let retryCount = 0;
   let maxRetries = 3;
   let isIntentionallyClosed = false;
+  let connectionTimeout;
 
   const getRetryDelay = (attempt) => {
-    // Exponential backoff: 1s, 2s, 4s, 8s, then stop
-    return Math.min(1000 * Math.pow(2, attempt), 8000);
+    // Exponential backoff: 2s, 4s, 8s, then stop
+    return Math.min(2000 * Math.pow(2, attempt), 8000);
   };
 
   const tryConnect = async () => {
-    if (retryCount >= maxRetries) {
-      console.warn('[ws] Max retries reached. Giving up WebSocket connection.');
+    if (retryCount >= maxRetries || isIntentionallyClosed) {
+      console.warn('[ws] Max retries reached or connection closed. Giving up WebSocket connection.');
       return null;
     }
 
@@ -525,7 +526,16 @@ export function connectWS(onMsg) {
     
     const ws = new WebSocket(url);
     
+    // Set a connection timeout
+    connectionTimeout = setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.warn('[ws] Connection timeout, closing WebSocket');
+        ws.close();
+      }
+    }, 10000); // 10 second timeout
+    
     ws.onopen = () => {
+      clearTimeout(connectionTimeout);
       console.info('[ws] WebSocket connected successfully');
       retryCount = 0; // Reset retry count on successful connection
     };
@@ -539,10 +549,13 @@ export function connectWS(onMsg) {
     };
     
     ws.onerror = (e) => {
+      clearTimeout(connectionTimeout);
       console.warn('[ws] WebSocket error:', e);
     };
     
     ws.onclose = (evt) => {
+      clearTimeout(connectionTimeout);
+      
       if (isIntentionallyClosed) {
         console.info('[ws] WebSocket closed intentionally');
         return;
@@ -587,8 +600,10 @@ export function connectWS(onMsg) {
   return {
     close: () => {
       isIntentionallyClosed = true;
+      clearTimeout(connectionTimeout);
       if (socket) {
-        socket.close();
+        console.info('[ws] Closing WebSocket connection intentionally');
+        socket.close(1000, 'Client initiated close');
       }
     },
     // Expose the underlying socket for compatibility
