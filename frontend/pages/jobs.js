@@ -46,6 +46,87 @@ export default function JobsPage() {
   const [editJobData, setEditJobData] = useState(null);
   const [expandedJobs, setExpandedJobs] = useState(new Set());
 
+  // ── Apply modal state
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applyTargetJob, setApplyTargetJob] = useState(null);
+
+  // Doc options for the modal
+  const [applyDocsLoading, setApplyDocsLoading] = useState(false);
+  const [applyResumes, setApplyResumes] = useState([]);
+  const [applyCoverLetters, setApplyCoverLetters] = useState([]);
+
+  // User choices in the modal
+  const [applyTab, setApplyTab] = useState('select'); // 'select' | 'upload' | 'none'
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+  const [selectedCoverLetterId, setSelectedCoverLetterId] = useState(null);
+  const [uploadResumeFile, setUploadResumeFile] = useState(null);
+  const [uploadCoverFile, setUploadCoverFile] = useState(null);
+
+  const [applying, setApplying] = useState(false);
+
+  async function loadApplyDocs() {
+    try {
+      setApplyDocsLoading(true);
+      // We’ll fetch separately for resumes and cover letters (API supports single-type filter)
+      const resumesResp = await api.getDocuments("page=1&page_size=100&document_type=resume&status=active");
+      const clsResp = await api.getDocuments("page=1&page_size=100&document_type=cover_letter&status=active");
+      setApplyResumes(resumesResp?.documents || []);
+      setApplyCoverLetters(clsResp?.documents || []);
+    } catch (e) {
+      console.error("Failed to load document options:", e);
+      toast.error("Couldn't load your documents.");
+      setApplyResumes([]);
+      setApplyCoverLetters([]);
+    } finally {
+      setApplyDocsLoading(false);
+    }
+  }
+
+  function openApply(job) {
+    setApplyTargetJob(job);
+    setApplyTab('select');
+    setSelectedResumeId(null);
+    setSelectedCoverLetterId(null);
+    setUploadResumeFile(null);
+    setUploadCoverFile(null);
+    setShowApplyModal(true);
+    loadApplyDocs();
+  }
+
+  async function uploadOneDocument(type, file) {
+    if (!file) return null;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', type);
+
+    const resp = await fetch(`${API_BASE_URL}/documents/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+
+    if (!resp.ok) throw new Error(`Upload ${type} failed (${resp.status})`);
+
+    // Try to read ID from response; fall back to re-query if needed
+    const body = await resp.json().catch(() => ({}));
+    const idGuess = body?.document?.id ?? body?.id ?? body?.doc?.id ?? null;
+
+    if (idGuess) return idGuess;
+
+    // Fallback: fetch latest of that type and assume newest belongs to us
+    const latest = await api.getDocuments(`page=1&page_size=1&document_type=${type}&status=active&order=desc&sort=created_at`);
+    const doc = latest?.documents?.[0];
+    if (doc?.id) return doc.id;
+
+    throw new Error(`Upload ${type} succeeded but couldn't locate new file id`);
+  }
+
+
+
+  const API_BASE_URL = "/api"; // used for direct uploads like in documents.js
+  const docDisplayName = (d) => d?.name || d?.file_name || d?.filename || 'Untitled';
+
+
   const toast = useToast();
 
   async function loadJobs(page = 1) {
@@ -136,6 +217,20 @@ export default function JobsPage() {
     }
   }
 
+  async function attachDocToApp(appId, documentId) {
+    const res = await apiFetch(`/applications/${appId}/attachments/from-document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document_id: String(documentId) })
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => '');
+      throw new Error(`Attach failed (${res.status}) ${msg}`);
+    }
+    return res.json();
+  }
+
+
   function resetJobForm() {
     setManualJobData({
       title: '',
@@ -150,14 +245,66 @@ export default function JobsPage() {
     });
   }
 
-  async function createApplication(jobId) {
-    try {
-      const payload = { job_id: jobId };
-      await api.createApp(payload);
-      toast.success("Application created! Check your pipeline.");
-    } catch (err) {
-      toast.error(`Failed to create application: ${err.message || err}`);
+  async function submitApplyChoice() {
+    if (!applyTargetJob?.id) {
+      toast.error("No job selected.");
+      return;
     }
+
+    if (applyTab === 'select' && !selectedResumeId && !selectedCoverLetterId) {
+      toast.error("Pick at least one document or switch to 'Apply without files'.");
+      return;
+    }
+    if (applyTab === 'upload' && !uploadResumeFile && !uploadCoverFile) {
+      toast.error("Choose a file to upload or switch tabs.");
+      return;
+    }
+
+    try {
+      setApplying(true);
+
+      // 1) Create (or upsert) application.
+      //    IMPORTANT: do NOT send any document ids here; backend only accepts models.Resume id.
+      const app = await api.createApp({ job_id: applyTargetJob.id, status: "Applied" });
+      const appId = app?.id;
+      if (!appId) throw new Error("Application create did not return an id");
+
+      // 2) Work out which document ids we should attach
+      let resumeDocId = null;
+      let coverDocId = null;
+
+      if (applyTab === 'select') {
+        resumeDocId = selectedResumeId || null;
+        coverDocId = selectedCoverLetterId || null;
+      } else if (applyTab === 'upload') {
+        if (uploadResumeFile) resumeDocId = await uploadOneDocument('resume', uploadResumeFile);
+        if (uploadCoverFile) coverDocId = await uploadOneDocument('cover_letter', uploadCoverFile);
+      }
+      // 'none' => both stay null
+
+      // 3) Attach chosen docs (by copying from the Documents store)
+      const tasks = [];
+      if (resumeDocId) tasks.push(attachDocToApp(appId, resumeDocId));
+      if (coverDocId) tasks.push(attachDocToApp(appId, coverDocId));
+      if (tasks.length) await Promise.all(tasks);
+
+      toast.success(tasks.length ? "Application created and files attached!" : "Application created!");
+      setShowApplyModal(false);
+      setApplyTargetJob(null);
+    } catch (e) {
+      console.error(e);
+      toast.error(`Failed to apply: ${e.message || e}`);
+    } finally {
+      setApplying(false);
+    }
+  }
+
+
+
+  async function createApplication(jobId) {
+    // Open the apply modal instead of creating immediately
+    const job = jobs.find(j => String(j.id) === String(jobId));
+    openApply(job || { id: jobId });
   }
 
   async function deleteJob(jobId) {
@@ -1116,7 +1263,7 @@ export default function JobsPage() {
                               {job.remote_type && (
                                 <span
                                   className={`chip ${job.remote_type === 'Remote' ? 'chip-cyan' :
-                                      job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
+                                    job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
                                     }`}
                                 >
                                   {job.remote_type}
@@ -1258,7 +1405,7 @@ export default function JobsPage() {
                             <span className="mr-1">👁️</span> View Details
                           </Button>
                           <Button
-                            onClick={() => createApplication(job.id)}
+                            onClick={() => openApply(job)}
                             size="sm"
                             className="btn-orchid"
                             type="button"
@@ -1281,6 +1428,223 @@ export default function JobsPage() {
                 })}
               </div>
             )}
+            {/* ================= Apply Modal ================= */}
+            <Modal
+              isOpen={showApplyModal}
+              onClose={() => { setShowApplyModal(false); setApplyTargetJob(null); }}
+              title={applyTargetJob ? `Apply to ${applyTargetJob.title || 'Job'}` : "Apply"}
+              size="xl"
+            >
+              <div className="space-y-5">
+                {/* Job summary */}
+                {applyTargetJob && (
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      <span className="font-semibold text-slate-100">{applyTargetJob.title}</span>
+                      {applyTargetJob.company_name && <span className="text-slate-400">• {applyTargetJob.company_name}</span>}
+                      {applyTargetJob.location && <span className="text-slate-400">• {applyTargetJob.location}</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tabs */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={applyTab === 'select' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setApplyTab('select')}
+                  >
+                    📂 Choose from My Documents
+                  </Button>
+                  <Button
+                    variant={applyTab === 'upload' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setApplyTab('upload')}
+                  >
+                    ⬆️ Upload Now
+                  </Button>
+                  <Button
+                    variant={applyTab === 'none' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setApplyTab('none')}
+                  >
+                    🚫 Apply without files
+                  </Button>
+                </div>
+
+                {/* SELECT EXISTING */}
+                {applyTab === 'select' && (
+                  <div className="space-y-6">
+                    {applyDocsLoading ? (
+                      <div className="text-slate-400">Loading your documents…</div>
+                    ) : (
+                      <>
+                        {/* Resumes */}
+                        <div className="section">
+                          <h3 className="modal-title text-base mb-3">Resume (optional)</h3>
+                          {applyResumes.length ? (
+                            <div className="max-h-56 overflow-y-auto rounded-lg border border-white/10">
+                              {applyResumes.map((d) => {
+                                const isSelected = String(selectedResumeId) === String(d.id);
+                                return (
+                                  <label
+                                    key={d.id}
+                                    className={`flex items-center justify-between p-3 border-b border-white/10 cursor-pointer ${isSelected ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : 'hover:bg-white/5'}`}
+                                  >
+                                    <div className="min-w-0 pr-3">
+                                      <div className="text-slate-100 font-medium truncate">{docDisplayName(d)}</div>
+                                      <div className="text-xs text-slate-400">
+                                        {String(d.format || '').toUpperCase()} • {d.created_at ? new Date(d.created_at).toLocaleDateString() : '-'}
+                                      </div>
+                                    </div>
+                                    <input
+                                      type="radio"
+                                      name="resumeDoc"
+                                      checked={isSelected}
+                                      onChange={() => setSelectedResumeId(d.id)}
+                                      className="w-4 h-4"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-slate-400 text-sm">No resumes found. You can upload one in the “Upload now” tab.</p>
+                          )}
+                          {selectedResumeId && (
+                            <div className="mt-2 text-xs">
+                              <button
+                                type="button"
+                                className="text-slate-400 hover:text-slate-200 underline"
+                                onClick={() => setSelectedResumeId(null)}
+                              >
+                                Clear selection
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cover Letters */}
+                        <div className="section">
+                          <h3 className="modal-title text-base mb-3">Cover Letter (optional)</h3>
+                          {applyCoverLetters.length ? (
+                            <div className="max-h-56 overflow-y-auto rounded-lg border border-white/10">
+                              {applyCoverLetters.map((d) => {
+                                const isSelected = String(selectedCoverLetterId) === String(d.id);
+                                return (
+                                  <label
+                                    key={d.id}
+                                    className={`flex items-center justify-between p-3 border-b border-white/10 cursor-pointer ${isSelected ? 'bg-indigo-500/10 ring-1 ring-indigo-500/30' : 'hover:bg-white/5'}`}
+                                  >
+                                    <div className="min-w-0 pr-3">
+                                      <div className="text-slate-100 font-medium truncate">{docDisplayName(d)}</div>
+                                      <div className="text-xs text-slate-400">
+                                        {String(d.format || '').toUpperCase()} • {d.created_at ? new Date(d.created_at).toLocaleDateString() : '-'}
+                                      </div>
+                                    </div>
+                                    <input
+                                      type="radio"
+                                      name="coverDoc"
+                                      checked={isSelected}
+                                      onChange={() => setSelectedCoverLetterId(d.id)}
+                                      className="w-4 h-4"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-slate-400 text-sm">No cover letters found. You can upload one in the “Upload now” tab.</p>
+                          )}
+                          {selectedCoverLetterId && (
+                            <div className="mt-2 text-xs">
+                              <button
+                                type="button"
+                                className="text-slate-400 hover:text-slate-200 underline"
+                                onClick={() => setSelectedCoverLetterId(null)}
+                              >
+                                Clear selection
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* UPLOAD NOW */}
+                {applyTab === 'upload' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="section">
+                      <h3 className="modal-title text-base mb-2">Upload Resume (optional)</h3>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="w-full input-glass"
+                        onChange={(e) => setUploadResumeFile(e.target.files?.[0] || null)}
+                      />
+                      <p className="text-xs text-slate-400 mt-1">PDF / DOCX / DOC / TXT</p>
+                      {uploadResumeFile && (
+                        <div className="text-xs text-slate-300 mt-1">Selected: {uploadResumeFile.name}</div>
+                      )}
+                    </div>
+
+                    <div className="section">
+                      <h3 className="modal-title text-base mb-2">Upload Cover Letter (optional)</h3>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        className="w-full input-glass"
+                        onChange={(e) => setUploadCoverFile(e.target.files?.[0] || null)}
+                      />
+                      <p className="text-xs text-slate-400 mt-1">PDF / DOCX / DOC / TXT</p>
+                      {uploadCoverFile && (
+                        <div className="text-xs text-slate-300 mt-1">Selected: {uploadCoverFile.name}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* NONE */}
+                {applyTab === 'none' && (
+                  <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-500/30 text-amber-100">
+                    You’re about to create an application without attaching any files. You can attach or upload files later from the
+                    pipeline.
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-between items-center pt-2">
+                  <div className="text-xs text-slate-400">
+                    {applyTab === 'select' && "Tip: You can keep one or both selections empty if you switch to 'No files'."}
+                    {applyTab === 'upload' && "Only the files you pick will be uploaded and attached."}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setShowApplyModal(false); setApplyTargetJob(null); }}
+                      disabled={applying}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={submitApplyChoice}
+                      loading={applying}
+                      disabled={
+                        applying ||
+                        (applyTab === 'select' && !selectedResumeId && !selectedCoverLetterId) ||
+                        (applyTab === 'upload' && !uploadResumeFile && !uploadCoverFile)
+                      }
+                      className="bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      {applyTab === 'none' ? 'Apply without files' : 'Create Application'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+
 
             {/* Pagination Controls */}
             {pagination.pages > 1 && (
