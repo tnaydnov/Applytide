@@ -24,7 +24,7 @@ export async function logout() {
       method: 'POST',
       credentials: 'include'
     });
-    
+
     // Clear any client-side state if needed
     return response.ok;
   } catch (error) {
@@ -42,7 +42,7 @@ async function refreshToken() {
       method: 'POST',
       credentials: 'include'
     });
-    
+
     return response.ok;
   } catch (error) {
     console.error('Token refresh error:', error);
@@ -64,12 +64,12 @@ export async function apiFetch(endpoint, options = {}) {
       credentials: 'include',
       headers,
     };
-    
+
     const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
-    
+
     if (response.status === 401 &&
-        !endpoint.includes('/auth/refresh') &&
-        !endpoint.includes('/auth/login')) {
+      !endpoint.includes('/auth/refresh') &&
+      !endpoint.includes('/auth/login')) {
       try {
         const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
@@ -101,15 +101,15 @@ export async function login(email, password, remember = false) {
       body: JSON.stringify({
         email: email,
         password: password,
-        remember_me: remember 
+        remember_me: remember
       })
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Login failed');
     }
-    
+
     // Return the actual response data
     const data = await response.json();
     return data;
@@ -161,11 +161,14 @@ export const api = {
   },
 
   listResumes: async () => {
-    const res = await api.getResumes(); // may be {items: [...]}
-    const items = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
-    return items.map(d => ({
+    const res = await api.getResumes(); // now returns the full DocumentListResponse
+    const docs = Array.isArray(res?.documents) ? res.documents
+      : Array.isArray(res) ? res
+        : Array.isArray(res?.items) ? res.items // legacy fallback
+          : [];
+    return docs.map(d => ({
       id: d.id,
-      label: d.label || d.name || d.filename || 'Resume'
+      label: d.name || d.label || d.filename || 'Resume'
     }));
   },
 
@@ -311,15 +314,18 @@ export const api = {
   },
 
   /* ---------- NEW (helper): list resumes via documents ---------- */
-  getResumes: () =>
-    apiFetch(`/documents/?document_type=resume&page=1&page_size=200`).then((r) => r.json()),
+  getResumes: async () => {
+    const r = await apiFetch(`/documents/?document_type=resume&page=1&page_size=200`);
+    const data = await r.json();
+    return Array.isArray(data?.documents) ? data.documents : [];
+  },
 
   /* ---------- CHANGED: analyzeDocument now supports use_ai + jobId ---------- */
-  analyzeDocument: (documentId, { jobId} = {}) =>
+  analyzeDocument: (documentId, { jobId } = {}) =>
     apiFetch(
       `/documents/${documentId}/analyze` +
-        (jobId ? `?job_id=${encodeURIComponent(jobId)}` : "") +
-        (jobId ? "&" : "?") + "use_ai=true",
+      (jobId ? `?job_id=${encodeURIComponent(jobId)}` : "") +
+      (jobId ? "&" : "?") + "use_ai=true",
       { method: "POST" }
     ).then((r) => r.json()),
 
@@ -436,11 +442,11 @@ export const api = {
   uploadAvatar: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return apiFetch("/auth/upload-avatar", { 
-      method: "POST", 
+    return apiFetch("/auth/upload-avatar", {
+      method: "POST",
       body: formData,
       // Don't set Content-Type, let browser set it with boundary for FormData
-      headers: {} 
+      headers: {}
     }).then((r) => r.json());
   },
   getUserCareerGoals: () => apiFetch("/profile/career-goals").then((r) => r.json()),
@@ -454,15 +460,36 @@ export const api = {
 ----------------------------------- */
 
 export function connectWS(onMsg) {
-  const wsBase = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const base = `${wsBase}//${window.location.host}/api`;
-  const ws = new WebSocket(`${base}/ws/updates`);
-  ws.onmessage = (e) => {
-    try {
-      onMsg(JSON.parse(e.data));
-    } catch {}
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = `${wsProto}//${window.location.host}`;
+  const candidates = [
+    `${host}/api/ws/updates`,
+    `${host}/ws/updates`,
+  ];
+
+  let idx = 0;
+  let socket;
+
+  const tryConnect = () => {
+    if (idx >= candidates.length) return null;
+    const url = candidates[idx++];
+    const ws = new WebSocket(url);
+    ws.onopen = () => console.info('[ws] connected:', url);
+    ws.onmessage = (e) => {
+      try { onMsg(JSON.parse(e.data)); } catch { }
+    };
+    ws.onerror = (e) => console.warn('[ws] error:', url, e);
+    ws.onclose = (evt) => {
+      console.warn('[ws] closed:', url, evt.code, evt.reason);
+      // Fallback if it looks like a path/proxy issue (no normal close)
+      if (idx < candidates.length && (evt.code === 1006 || evt.code === 1005 || evt.code === 0)) {
+        socket = tryConnect();
+      }
+    };
+    return ws;
   };
-  return ws;
+  socket = tryConnect();
+  return socket;
 }
 
 /* -----------------------------------
