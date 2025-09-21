@@ -205,6 +205,16 @@ export const api = {
     const base = "/documents/";              // <- note the slash
     return apiFetch(`${base}${qs ? `?${qs}` : ""}`).then(r => r.json());
   },
+  
+  // Attach an existing Document to an Application
+  attachExistingDocument: (appId, documentId, document_type = "other") =>
+    apiFetch(`/applications/${appId}/attachments`, {
+      method: "POST",
+      body: JSON.stringify({
+        document_id: String(documentId),
+        document_type
+      })
+    }).then(r => r.json()),
 
 
   // Get one document

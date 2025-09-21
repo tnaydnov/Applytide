@@ -1843,11 +1843,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
       const newDocId = up?.document?.id || up?.id;
       if (!newDocId) throw new Error("Upload succeeded but no document id returned");
       // …then attach to the application
-      await apiFetch(`/applications/${appId}/attachments/from-document`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_id: String(newDocId) })
-      });
+      await api.attachExistingDocument(appId, String(newDocId), uploadType);
       toast.success("Attachment uploaded");
       await loadAttachments();
     } catch (e) {
@@ -1877,16 +1873,7 @@ export function ApplicationDrawerBody({ application, onClose }) {
   async function useExistingDocument(docId) {
     try {
       setAttachingId(docId);
-      // Prefer a direct attach endpoint if you have it; this call name is a stub.
-      if (api.attachExistingDocument) {
-        await api.attachExistingDocument(appId, docId);
-      } else {
-        await apiFetch(`/applications/${appId}/attachments/from-document`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ document_id: docId })
-        });
-      }
+      await api.attachExistingDocument(appId, docId);
       toast.success("Attached from Documents");
       setShowDocsPicker(false);
       await loadAttachments();
