@@ -16,7 +16,6 @@ import {
   updateReminderNote,            // <-- inline edit a note
   deleteReminderNote,
 } from "../services/googleCalendar";
-import { JobDetailModal } from "./pipeline";
 
 // Helper functions (moved outside of component)
 function formatTime(dateString) {
@@ -151,8 +150,6 @@ export default function RemindersPage() {
   const [newReminderNote, setNewReminderNote] = useState(""); // input
   const [newNote, setNewNote] = useState("");
   const [loadingApplicationDetail, setLoadingApplicationDetail] = useState(false);
-  const [activeApplication, setActiveApplication] = useState(null);
-  const [showJobDetail, setShowJobDetail] = useState(false);
 
 
 
@@ -241,6 +238,7 @@ export default function RemindersPage() {
         name: x.title,
         scheduled_at: x.due_date,
         notes: x.description || "",
+        description: x.description || "",
         application_id: String(x.application_id || ""),
       })) : []);
 
@@ -499,28 +497,13 @@ export default function RemindersPage() {
       return;
     }
 
-    try {
-      setLoadingApplicationDetail(true);
-      // Changed endpoint to fetch complete application details
-      const response = await fetch(`/api/applications/${appId}/detail`);
-      if (!response.ok) throw new Error('Failed to load application details');
-      const appData = await response.json();
-
-      // Set the application data and show the modal
-      setActiveApplication(appData);
-      setShowJobDetail(true);
-    } catch (error) {
-      console.error('Error fetching application:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load application details",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    } finally {
-      setLoadingApplicationDetail(false);
-    }
+    // Close the reminder modal and open the Pipeline drawer for this app
+    setIsDetailsOpen(false);
+    router.push(
+      { pathname: "/pipeline", query: { app: appId } },
+      undefined,
+      { shallow: true }
+    );
   }
 
   // Export only upcoming reminders to calendar file
@@ -1519,10 +1502,15 @@ export default function RemindersPage() {
                       setActiveItem((r) => ({ ...r, data: { ...r.data, description: e.target.value } }))
                     }
                     onBlur={async (e) => {
+                      const desc = e.target.value || "";
                       try {
-                        await updateReminder(activeItem.data.id, { description: e.target.value || "" });
+                        await updateReminder(activeItem.data.id, { description: desc });
+                        // keep UI in sync without a reload
+                        setReminders(prev =>
+                          prev.map(r => r.id === activeItem.data.id ? { ...r, description: desc, notes: desc } : r)
+                        );
+                        setActiveItem(cur => ({ ...cur, data: { ...cur.data, description: desc } }));
                         toast.success("Description saved");
-                        // optional: await loadReminders();
                       } catch (err) {
                         console.error(err);
                         toast.error("Failed to save description");
@@ -1841,12 +1829,6 @@ export default function RemindersPage() {
           </div>
         </form>
       </Modal>
-      {showJobDetail && activeApplication && (
-        <JobDetailModal
-          application={activeApplication}
-          onClose={() => setShowJobDetail(false)}
-        />
-      )}
     </div>
   );
 }
