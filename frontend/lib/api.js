@@ -190,6 +190,7 @@ export const api = {
   updateJob: (jobId, payload) =>
     apiFetch(`/jobs/${jobId}`, { method: "PUT", body: JSON.stringify(payload) }).then((r) => r.json()),
   deleteJob: (jobId) => apiFetch(`/jobs/${jobId}`, { method: "DELETE" }),
+  getJobById: (id) => apiFetch(`/jobs/${id}`).then(r => r.json()),
 
   // current user
   getCurrentUser: () => apiFetch("/auth/me").then((r) => r.json()),

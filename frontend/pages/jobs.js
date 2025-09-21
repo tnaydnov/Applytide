@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, apiFetch } from "../lib/api";
+import { api, apiFetch, API_BASE } from "../lib/api";
 import { Button, Card, Input, Textarea, Select, Modal } from "../components/ui";
 import { useToast } from '../lib/toast';
 import AuthGuard from "../components/AuthGuard";
 import { useRouter } from "next/router";
+
 
 
 export default function JobsPage() {
@@ -82,22 +83,9 @@ export default function JobsPage() {
       setApplyDocsLoading(true);
 
       // Ask for everything; let the server default status if needed.
-      const res = await apiFetch(`/documents?page=1&page_size=200`).then(r => r.json());
+      const res = await api.getDocuments({ page: 1, page_size: 200 }); // returns { documents: [...] }
 
-      // Normalize different payload shapes and field names
-      const raw = res?.documents || res?.items || res?.results || res?.data || [];
-      const docs = raw.map(d => ({
-        ...d,
-        id: d.id ?? d._id ?? d.document_id,
-        // normalize type key + casing so your filters work
-        document_type: (d.document_type || d.type || d.category || 'other').toLowerCase(),
-        // normalize name so your UI doesn’t show “Untitled”
-        name: d.name || d.title || d.file_name || d.filename || d.original_filename || 'Untitled',
-        // normalize format for the little meta line
-        format: (d.format || d.mime || d.content_type || '').split('/').pop()
-      })).filter(d => !d.is_deleted && !d.deleted);
-
-      setApplyAllDocs(docs);
+      setApplyAllDocs(Array.isArray(res?.documents) ? res.documents : []);
     } catch (e) {
       console.error("Failed to load document options:", e);
       toast.error("Couldn't load your documents.");
@@ -125,7 +113,7 @@ export default function JobsPage() {
     formData.append('file', file);
     formData.append('document_type', type);
 
-    const resp = await fetch(`${API_BASE_URL}/documents/upload`, {
+    const resp = await fetch(`${API_BASE}/documents/upload`, {
       method: 'POST',
       credentials: 'include',
       body: formData
@@ -140,16 +128,16 @@ export default function JobsPage() {
     if (idGuess) return idGuess;
 
     // Fallback: fetch latest of that type and assume newest belongs to us
-    const latest = await api.getDocuments(`page=1&page_size=1&document_type=${type}&status=active&order=desc&sort=created_at`);
+    const latest = await api.getDocuments({
+      page: 1, page_size: 1, document_type: type,
+      status: "active", order: "desc", sort: "created_at"
+    });
     const doc = latest?.documents?.[0];
     if (doc?.id) return doc.id;
 
     throw new Error(`Upload ${type} succeeded but couldn't locate new file id`);
   }
 
-
-
-  const API_BASE_URL = "/api"; // used for direct uploads like in documents.js
   const docDisplayName = (d) => d?.name || d?.file_name || d?.filename || 'Untitled';
 
 
@@ -299,11 +287,7 @@ export default function JobsPage() {
       if (toAttach.length) {
         await Promise.all(
           toAttach.map(id =>
-            apiFetch(`/applications/${appId}/attachments/from-document`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ document_id: id })
-            })
+            api.attachExistingDocument(appId, id)
           )
         );
       }
