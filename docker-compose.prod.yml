@@ -37,7 +37,7 @@ services:
     build: ./frontend
     container_name: applytide_web
     environment:
-      - NEXT_PUBLIC_API_BASE=https://applytide.com/api
+      - NEXT_PUBLIC_API_BASE=/api
     restart: always
     networks:
       - applytide_network
@@ -58,23 +58,23 @@ services:
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
     
-  nginx:
-    image: nginx:alpine
-    container_name: applytide_nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/main.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-      - ./nginx/www:/var/www/html
-    restart: always
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - applytide_network
+    nginx:
+      image: nginx:alpine
+      container_name: applytide_nginx
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+        - ./nginx/main.conf:/etc/nginx/nginx.conf
+        - ./nginx/ssl:/etc/nginx/ssl
+      restart: always
+      depends_on:
+        - frontend
+        - backend
+      networks:
+        - applytide_network
+
 
 networks:
   applytide_network:
