@@ -2,11 +2,22 @@ import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+
+# Try ProxyHeadersMiddleware from Starlette, then Uvicorn, else disable
+ProxyHeadersMiddleware = None
+try:
+    from starlette.middleware.proxy_headers import ProxyHeadersMiddleware as _PHM
+    ProxyHeadersMiddleware = _PHM
+except Exception:
+    try:
+        from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware as _UPHM
+        ProxyHeadersMiddleware = _UPHM
+    except Exception:
+        ProxyHeadersMiddleware = None
 
 from .middleware.security import SecurityHeadersMiddleware
 from .middleware.rate_limiting import GlobalRateLimitMiddleware
@@ -36,15 +47,15 @@ app = FastAPI(title="Applytide API")
 def _split_env_list(value: str, default: list[str]) -> list[str]:
     if not value:
         return default
-    # split on comma and trim whitespace; drop empties
     return [x.strip() for x in value.split(",") if x.strip()]
 
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 
-# ---- Proxy headers first (trust X-Forwarded-Proto/For from nginx)
-app.add_middleware(ProxyHeadersMiddleware)
+# --- Trust proxy headers if middleware available (nice-to-have, not required)
+if ProxyHeadersMiddleware is not None and os.getenv("TRUST_PROXY_HEADERS", "1") == "1":
+    app.add_middleware(ProxyHeadersMiddleware)
 
-# ---- CORS
+# --- CORS
 if ENV == "production":
     origins = _split_env_list(
         os.getenv("ALLOWED_ORIGINS", "https://applytide.com,https://www.applytide.com"),
@@ -76,25 +87,24 @@ else:
         allow_headers=["*"],
     )
 
-# ---- Trusted hosts (prevents host header spoofing)
+# --- Trusted hosts
 allowed_hosts = _split_env_list(
     os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1"),
     ["localhost", "127.0.0.1"],
 )
-# Always allow docker internal names if needed
 allowed_hosts += ["backend", "frontend"]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
-# (Optional) Your other security/rate limiting middlewares
+# (Optional) security/rate limiting middlewares
 # app.add_middleware(SecurityHeadersMiddleware)
 # app.add_middleware(GlobalRateLimitMiddleware)
 
-# ---- Routers (these mount under /api inside each router file)
+# --- Routers
 app.include_router(auth_router)
 app.include_router(sessions_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
-app.include_router(ws_router)              # expects /api/ws/updates
+app.include_router(ws_router)              # /api/ws/updates
 app.include_router(dashboard_router)
 app.include_router(match_router)
 app.include_router(io_router)
