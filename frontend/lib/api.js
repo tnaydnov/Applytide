@@ -202,8 +202,10 @@ export const api = {
   // params: { document_type?, page?, page_size? }
   getDocuments: (params) => {
     const qs = toQuery(params);
-    return apiFetch(`/documents/${qs ? `?${qs}` : ""}`).then((r) => r.json());
+    const base = "/documents/";              // <- note the slash
+    return apiFetch(`${base}${qs ? `?${qs}` : ""}`).then(r => r.json());
   },
+
 
   // Get one document
   getDocument: (id) => apiFetch(`/documents/${id}`).then((r) => r.json()),

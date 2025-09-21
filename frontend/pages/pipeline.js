@@ -1864,8 +1864,8 @@ export function ApplicationDrawerBody({ application, onClose }) {
     try {
       setShowDocsPicker(true);
       setLoadingDocs(true);
-      const res = await (api.listDocuments ? api.listDocuments() : apiFetch("/documents").then(r => r.json()));
-      setDocs(Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []));
+      const res = await api.getDocuments({ page: 1, page_size: 50 });
+      setDocs(Array.isArray(res?.documents) ? res.documents : []);
     } catch (e) {
       console.error(e);
       toast.error("Couldn’t load documents");
