@@ -1,30 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AuthCallback() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { refreshUser } = useAuth();
+  const { checkAuthStatus } = useAuth();
 
   useEffect(() => {
     async function completeAuth() {
       try {
-        // Get current user info using the cookies that were set
-        const response = await axios.get('/api/auth/me');
+        console.log('OAuth callback: checking authentication...');
         
-        // Update auth context
-        await refreshUser();
+        // Simply refresh the auth context to pick up the cookies
+        const success = await checkAuthStatus();
         
-        // Redirect to dashboard
-        router.push('/dashboard');
+        if (success) {
+          console.log('OAuth callback: authentication successful, redirecting to dashboard');
+          router.push('/dashboard');
+        } else {
+          console.log('OAuth callback: authentication failed');
+          setError("Failed to complete authentication");
+          setTimeout(() => {
+            router.push('/login?error=auth_failed');
+          }, 3000);
+        }
       } catch (err) {
-        console.error("Authentication error:", err);
+        console.error("OAuth callback error:", err);
         setError("Failed to complete authentication");
-        
-        // Redirect to login after delay
         setTimeout(() => {
           router.push('/login?error=auth_failed');
         }, 3000);

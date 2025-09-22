@@ -166,8 +166,8 @@ export function AuthProvider({ children }) {
   }
   
     async function checkAuthStatus() {
-        // Don't check if already refreshing
-        if (isRefreshing) {
+        // Don't check if already refreshing or loading
+        if (isRefreshing || loading) {
             return false;
         }
         
@@ -187,11 +187,28 @@ export function AuthProvider({ children }) {
             setTokenExpiry(Date.now() + (15 * 60 * 1000));
             setError(null);
             return true;
-        } else if (response.status === 401) {
+        } else if (response.status === 401 && !isRefreshing) {
+            console.log('Auth check got 401, attempting refresh...');
             // Try to refresh token before giving up
             const refreshSuccess = await silentRefresh();
             if (refreshSuccess) {
-                return true;
+                // After successful refresh, try /auth/me one more time
+                const retryResponse = await fetch(`/api/auth/me`, {
+                    credentials: 'include'
+                });
+                if (retryResponse.ok) {
+                    const userData = await retryResponse.json();
+                    userData.isOAuthUser = userData.google_id ? true : false;
+                    userData.googleConnected = userData.google_id ? true : false;
+                    setUser(userData);
+                    setTokenExpiry(Date.now() + (15 * 60 * 1000));
+                    setError(null);
+                    return true;
+                } else {
+                    setUser(null);
+                    setError('Authentication failed');
+                    return false;
+                }
             } else {
                 // Refresh failed, user needs to login
                 setUser(null);
@@ -266,6 +283,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     checkAuthStatus,
+    refreshUser: checkAuthStatus, // Add alias for compatibility
     silentRefresh,
     isAuthenticated: !!user
   };
