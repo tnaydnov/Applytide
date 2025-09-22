@@ -1,5 +1,5 @@
 // /frontend/pages/auth/callback.js
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -8,42 +8,51 @@ export default function OAuthCallback() {
   const { checkAuthStatus } = useAuth();
   const [error, setError] = useState(null);
 
+  // keep track of retries and unmount
+  const attempts = useRef(0);
+  const cancelled = useRef(false);
+
   useEffect(() => {
-    const run = async () => {
+    const verify = async () => {
+      attempts.current += 1;
+
       try {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const state = params.get('state');
-
-        if (!code) {
-          setError('Missing authorization code');
-          return;
-        }
-
-        // Exchange code -> server sets cookies/session
-        const res = await fetch(`/api/auth/google/callback?${params.toString()}`, {
-          method: 'GET',
+        // Ask the backend if we are signed in (cookie-based)
+        const res = await fetch('/api/auth/me', {
           credentials: 'include',
-          // Do NOT add client id here; server should link this new session to cookies
+          cache: 'no-store',
         });
 
-        if (!res.ok) {
-          const txt = await res.text().catch(() => '');
-          throw new Error(`Callback failed (${res.status}): ${txt || res.statusText}`);
+        if (res.ok) {
+          // Sync client auth state (if your context uses it)
+          try {
+            await checkAuthStatus?.();
+          } catch { /* ignore */ }
+
+          // Go to your app (adjust if you prefer '/')
+          router.replace('/jobs');
+          return;
         }
-
-        // Now the cookies are set; verify client-side state
-        await checkAuthStatus();
-
-        // Optional: if your backend gives a redirect, use it; else pick default
-        router.replace('/jobs');
       } catch (e) {
-        console.error(e);
-        setError(e.message || 'Authentication failed');
+        // Network hiccup; we'll retry below
+      }
+
+      // Gentle backoff retries, then restart login
+      if (!cancelled.current && attempts.current < 8) {
+        const delay = Math.min(500 * attempts.current, 2000); // 0.5s -> 2s
+        setTimeout(verify, delay);
+      } else if (!cancelled.current) {
+        setError('Could not confirm sign-in. Redirecting to Google…');
+        // Kick off login again; server will redirect back here and set cookies
+        window.location.href = '/api/auth/google/login';
       }
     };
-    run();
-  }, [checkAuthStatus, router]);
+
+    verify();
+    return () => {
+      cancelled.current = true;
+    };
+  }, [router, checkAuthStatus]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -55,4 +64,24 @@ export default function OAuthCallback() {
       </div>
     </div>
   );
+}
+
+/**
+ * Optional: server-side short-circuit.
+ * If the request already has a valid session cookie, redirect immediately to avoid flicker.
+ */
+export async function getServerSideProps(ctx) {
+  try {
+    const host = ctx.req?.headers?.host;
+    const base = process.env.NEXT_PUBLIC_APP_URL || `https://${host}`;
+    const r = await fetch(`${base}/api/auth/me`, {
+      headers: { cookie: ctx.req?.headers?.cookie || '' },
+    });
+    if (r.ok) {
+      return { redirect: { destination: '/jobs', permanent: false } };
+    }
+  } catch {
+    // ignore; we'll handle on the client
+  }
+  return { props: {} };
 }
