@@ -17,9 +17,7 @@ export default function JobList({ user, userProfile, filters = {} }) {
       let jobsData;
       try {
         jobsData = await api.listJobs();
-        console.log('Loaded jobs:', jobsData);
       } catch (jobsError) {
-        console.log('Failed to load jobs:', jobsError);
         setError('Failed to load jobs. Please check your connection and try again.');
         return;
       }

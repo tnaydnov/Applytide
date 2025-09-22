@@ -35,16 +35,28 @@ async def get_extension_token(
     db: Session = Depends(get_db)
 ):
     """Generate a token specifically for the browser extension"""
-    # Try to get the current session's JTI from the refresh token cookie
+    # Try to get the current session's JTI from the access token cookie first
     session_jti = None
-    refresh_token = request.cookies.get("refresh_token")
-    if refresh_token:
+    access_token = request.cookies.get("access_token")
+    if access_token:
         try:
-            from .tokens import decode_refresh
-            data = decode_refresh(refresh_token)
+            from .tokens import decode_access
+            data = decode_access(access_token)
             session_jti = data.get("jti")
         except:
+            # If access token is invalid/expired, try refresh token
             pass
+    
+    # Fallback to refresh token if access token didn't work
+    if not session_jti:
+        refresh_token = request.cookies.get("refresh_token")
+        if refresh_token:
+            try:
+                from .tokens import decode_refresh
+                data = decode_refresh(refresh_token)
+                session_jti = data.get("jti")
+            except:
+                pass
     
     # Create access token with same JTI as current session if available
     access_token = create_access_token(str(current_user.id), token_id=session_jti)
@@ -307,8 +319,25 @@ def refresh_token(
         # Create access token with same JTI as new refresh token
         new_access = create_access_token(user_id, token_id=new_refresh_jti)
         
-        # Get client_id from header
-        client_id = request.headers.get("X-Client-Id") or str(uuid.uuid4())
+        # Get client_id from header, or find existing session's client_id
+        client_id = request.headers.get("X-Client-Id")
+        
+        # If no client_id in header, try to find it from the old session
+        if not client_id:
+            try:
+                old_session = db.query(models.UserSession).filter(
+                    models.UserSession.user_id == uuid.UUID(user_id),
+                    models.UserSession.refresh_token_jti == jti,
+                    models.UserSession.is_active == True
+                ).first()
+                if old_session:
+                    client_id = old_session.client_id
+            except Exception:
+                pass
+        
+        # Fallback to new UUID only if we can't find existing session
+        if not client_id:
+            client_id = str(uuid.uuid4())
         
         # Update the user session with new refresh token JTI
         try:

@@ -227,7 +227,6 @@ export default function RemindersPage() {
       setIsGoogleConnected(connected);
       // Get applications
       const apps = await api.getApplicationCards();
-      console.log("Application cards:", apps.length, apps);
       setApplications(Array.isArray(apps) ? apps : []);
 
       // Fetch real reminders from your reminders API

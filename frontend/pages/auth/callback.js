@@ -14,7 +14,6 @@ export default function AuthCallback() {
       try {
         // Get current user info using the cookies that were set
         const response = await axios.get('/api/auth/me');
-        console.log("Auth successful:", response.data);
         
         // Update auth context
         await refreshUser();

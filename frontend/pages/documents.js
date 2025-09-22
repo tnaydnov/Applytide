@@ -389,8 +389,6 @@ export default function DocumentsPage() {
   function ExpandableScoreCategory({ title, score, description, details, categoryKey }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    console.log("Complete analysis object:", analysis);
-
     // Get the appropriate data from the AI analysis
     const aiData = analysis?.ai_detailed_analysis?.[categoryKey];
 
@@ -403,9 +401,6 @@ export default function DocumentsPage() {
     const improvements = aiData?.improvements || [];
     const strengths = aiData?.strengths || [];
     const weaknesses = aiData?.weaknesses || [];
-
-    console.log("AI Data for", categoryKey, ":", aiData);
-    console.log("Improvements array:", improvements);
 
     return (
       <div className="rounded-lg border border-white/10 overflow-hidden">

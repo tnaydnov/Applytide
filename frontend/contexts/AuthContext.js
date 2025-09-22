@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tokenExpiry, setTokenExpiry] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Prevent concurrent refreshes
   const router = useRouter();
 
   // Add this code in AuthProvider function after defining the states
@@ -29,18 +30,24 @@ export function AuthProvider({ children }) {
         
         // If response is 401 and it's not a public resource
         if (response.status === 401 && !isPublicResource(resource)) {
-
-            console.log('401 detected, attempting token refresh');
+            // Don't trigger refresh if already refreshing
+            if (isRefreshing) {
+                console.log('Already refreshing token, skipping 401 handler');
+                return response;
+            }
             
             try {
             // Call our own silentRefresh function
             const refreshResponse = await fetch(`/api/auth/refresh`, {
                 method: 'POST',
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                  'X-Client-Id': typeof window !== 'undefined' ? 
+                    (await import('../lib/clientId')).getClientId() : undefined
+                }
             });
             
             if (refreshResponse.ok) {
-                console.log('Token refresh successful, retrying request');
                 const userData = await refreshResponse.json();
                 setUser(userData.user);
                 setTokenExpiry(Date.now() + (userData.expires_in * 1000 || 15 * 60 * 1000));
@@ -48,7 +55,6 @@ export function AuthProvider({ children }) {
                 // Retry the original request with the new token
                 return originalFetch(resource, init);
             } else {
-                console.log('Token refresh failed, redirecting to login');
                 setUser(null);
                 if (!isPublicRoute(window.location.pathname)) {
                 window.location.href = '/login';
@@ -83,34 +89,47 @@ export function AuthProvider({ children }) {
   }, [router.pathname]);
 
   useEffect(() => {
-    if (!tokenExpiry || !user) return;
+    if (!tokenExpiry || !user || isRefreshing) return;
     
     // Calculate when to refresh (2 minutes before expiry)
     const refreshTime = tokenExpiry - (2 * 60 * 1000);
     const now = Date.now();
     const timeUntilRefresh = Math.max(0, refreshTime - now);
     
-    console.log(`Token will refresh in ${Math.round(timeUntilRefresh/1000)} seconds`);
+    // Don't set timer if token expires very soon (less than 30 seconds)
+    if (timeUntilRefresh < 30000) {
+      console.log('Token expires too soon, triggering immediate refresh');
+      silentRefresh();
+      return;
+    }
     
     const refreshTimer = setTimeout(() => {
-      console.log('Refreshing token proactively...');
       silentRefresh();
     }, timeUntilRefresh);
     
     return () => clearTimeout(refreshTimer);
-  }, [tokenExpiry, user]);
+  }, [tokenExpiry, user, isRefreshing]);
 
   async function silentRefresh() {
+    // Prevent concurrent refresh attempts
+    if (isRefreshing) {
+      console.log('Refresh already in progress, skipping');
+      return false;
+    }
+    
+    setIsRefreshing(true);
     try {
-        console.log('Performing silent refresh...');
         const response = await fetch(`/api/auth/refresh`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'X-Client-Id': typeof window !== 'undefined' ? 
+            (await import('../lib/clientId')).getClientId() : undefined
+        }
         });
         
         if (response.ok) {
         const data = await response.json();
-        console.log('Silent refresh successful:', data);
         setUser(data.user);
         // Set new expiry time (15 minutes from now or from server)
         setTokenExpiry(Date.now() + (data.expires_in * 1000 || 15 * 60 * 1000));
@@ -122,10 +141,17 @@ export function AuthProvider({ children }) {
     } catch (err) {
         console.error('Token refresh error:', err);
         return false;
+    } finally {
+        setIsRefreshing(false);
     }
-    }
+  }
   
     async function checkAuthStatus() {
+        // Don't check if already refreshing
+        if (isRefreshing) {
+            return false;
+        }
+        
         try {
         setLoading(true);
 
