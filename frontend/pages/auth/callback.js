@@ -1,68 +1,56 @@
+// /frontend/pages/auth/callback.js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 
-export default function AuthCallback() {
+export default function OAuthCallback() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { checkAuthStatus } = useAuth();
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function completeAuth() {
+    const run = async () => {
       try {
-        console.log('OAuth callback: checking authentication...');
-        
-        // Simply refresh the auth context to pick up the cookies
-        const success = await checkAuthStatus();
-        
-        if (success) {
-          console.log('OAuth callback: authentication successful, redirecting to dashboard');
-          router.push('/dashboard');
-        } else {
-          console.log('OAuth callback: authentication failed');
-          setError("Failed to complete authentication");
-          setTimeout(() => {
-            router.push('/login?error=auth_failed');
-          }, 3000);
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+
+        if (!code) {
+          setError('Missing authorization code');
+          return;
         }
-      } catch (err) {
-        console.error("OAuth callback error:", err);
-        setError("Failed to complete authentication");
-        setTimeout(() => {
-          router.push('/login?error=auth_failed');
-        }, 3000);
-      } finally {
-        setLoading(false);
+
+        // Exchange code -> server sets cookies/session
+        const res = await fetch(`/api/auth/google/callback?${params.toString()}`, {
+          method: 'GET',
+          credentials: 'include',
+          // Do NOT add client id here; server should link this new session to cookies
+        });
+
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error(`Callback failed (${res.status}): ${txt || res.statusText}`);
+        }
+
+        // Now the cookies are set; verify client-side state
+        await checkAuthStatus();
+
+        // Optional: if your backend gives a redirect, use it; else pick default
+        router.replace('/jobs');
+      } catch (e) {
+        console.error(e);
+        setError(e.message || 'Authentication failed');
       }
-    }
-    
-    if (router.isReady) {
-      completeAuth();
-    }
-  }, [router.isReady]);
+    };
+    run();
+  }, [checkAuthStatus, router]);
 
   return (
-    <div className="min-h-[70vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
-      <div className="glass-card glass-cyan w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-center text-slate-200">
-          {loading ? "Completing Login..." : error ? "Login Error" : "Login Successful"}
-        </h2>
-        
-        {loading && (
-          <div className="flex justify-center my-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-400"></div>
-          </div>
-        )}
-        
-        {error && (
-          <p className="text-red-400 text-center">{error}</p>
-        )}
-        
-        <p className="text-center text-slate-400 mt-2">
-          {loading ? "Please wait while we log you in..." : 
-           error ? "Redirecting to login page..." : 
-           "Redirecting to dashboard..."}
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p className="text-gray-600">
+          {error ? `Error: ${error}` : 'Finalizing sign-in…'}
         </p>
       </div>
     </div>

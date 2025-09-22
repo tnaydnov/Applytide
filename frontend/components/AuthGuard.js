@@ -3,8 +3,15 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthGuard({ children }) {
-  const { user, loading, isAuthenticated, checkAuthStatus } = useAuth();
+  const { loading, isAuthenticated, checkAuthStatus } = useAuth();
   const router = useRouter();
+
+  // If we ever mount while unauthenticated, double-check once
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      checkAuthStatus();
+    }
+  }, [loading, isAuthenticated, checkAuthStatus]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -12,7 +19,6 @@ export default function AuthGuard({ children }) {
     }
   }, [loading, isAuthenticated, router]);
 
-  // Show loading spinner while checking auth
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -24,6 +30,5 @@ export default function AuthGuard({ children }) {
     );
   }
 
-  // Only render children when authenticated
   return isAuthenticated ? children : null;
 }

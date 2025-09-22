@@ -1,294 +1,267 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { useRouter } from 'next/router';
 import { isPublicRoute, isPublicResource } from '../lib/routes';
-
+import { getClientId } from '../lib/clientId';
 
 const AuthContext = createContext();
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export function useAuth() { return useContext(AuthContext); }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]   = useState(null);
   const [tokenExpiry, setTokenExpiry] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false); // Prevent concurrent refreshes
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshPromiseRef = useRef(null);
+  const clientIdRef = useRef(null);
   const router = useRouter();
 
-  // Add this code in AuthProvider function after defining the states
-    useEffect(() => {
-    if (typeof window !== 'undefined') {
-        // Store the original fetch to restore it later
-        const originalFetch = window.fetch;
-        
-        // Replace with our intercepting version
-        window.fetch = async function(resource, init = {}) {
-        const response = await originalFetch(resource, init);
-        
-        // If response is 401 and it's not a public resource
-        if (response.status === 401 && !isPublicResource(resource)) {
-            // Don't trigger refresh if already refreshing
-            if (isRefreshing) {
-                console.log('Already refreshing token, skipping 401 handler');
-                return response;
-            }
-            
-            try {
-            // Call our own silentRefresh function
-            const refreshResponse = await fetch(`/api/auth/refresh`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                  'X-Client-Id': typeof window !== 'undefined' ? 
-                    (await import('../lib/clientId')).getClientId() : undefined
-                }
-            });
-            
-            if (refreshResponse.ok) {
-                const userData = await refreshResponse.json();
-                setUser(userData.user);
-                setTokenExpiry(Date.now() + (userData.expires_in * 1000 || 15 * 60 * 1000));
-                
-                // Retry the original request with the new token
-                return originalFetch(resource, init);
-            } else {
-                setUser(null);
-                if (!isPublicRoute(window.location.pathname)) {
-                window.location.href = '/login';
-                }
-            }
-            } catch (refreshError) {
-            console.error('Token refresh error:', refreshError);
-            }
-        }
-        
-        return response;
-        };
-        
-        // Cleanup function
-        return () => {
-        window.fetch = originalFetch;
-        };
-    }
-    }, []);
-  
-  // Check auth status on mount and visibility changes
+  // Compute a stable client id once in the browser
   useEffect(() => {
-    // Always check auth status, but handle redirects differently for public vs private pages
+    if (typeof window !== 'undefined') {
+      clientIdRef.current = getClientId(); // persists in localStorage
+    }
+  }, []);
+
+  // ---- Global fetch interceptor (browser-only) ----
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const originalFetch = window.fetch;
+
+    window.fetch = async function(resource, init = {}) {
+      const urlStr = typeof resource === 'string' ? resource : resource?.url || '';
+      const urlObj = (() => {
+        try { return new URL(urlStr, window.location.origin); } catch { return null; }
+      })();
+      const path = urlObj?.pathname || '';
+
+      // 1) Never intercept public auth endpoints (avoid loops during login/refresh)
+      if (isPublicResource(resource)) {
+        return originalFetch(resource, init);
+      }
+
+      // 2) Perform the request
+      let response = await originalFetch(resource, init);
+
+      // 3) If 401 on a private endpoint, try to refresh (queue if already refreshing)
+      if (response.status === 401) {
+        // Prevent recursive retry loops
+        const alreadyRetried = init?.headers?.['x-no-retry'] || init?.headers?.['X-No-Retry'];
+        if (alreadyRetried) return response;
+
+        // Wait for any in-flight refresh, or start one
+        await ensureFresh();
+
+        // Retry original request with cookies included
+        const retryInit = {
+          ...init,
+          credentials: 'include',
+          headers: {
+            ...(init?.headers || {}),
+            'X-No-Retry': '1',         // guard: retry only once
+          }
+        };
+        response = await originalFetch(resource, retryInit);
+      }
+
+      return response;
+    };
+
+    async function ensureFresh() {
+      if (refreshPromiseRef.current) {
+        return refreshPromiseRef.current;
+      }
+      refreshPromiseRef.current = (async () => {
+        try {
+          await silentRefresh();
+        } finally {
+          refreshPromiseRef.current = null;
+        }
+      })();
+      return refreshPromiseRef.current;
+    }
+
+    return () => { window.fetch = originalFetch; };
+  }, [/* no deps */]);
+
+  // ---- Initial + periodic auth checks ----
+  useEffect(() => {
     checkAuthStatus();
-    
-    // Add visibility change listener to handle tab becoming active
+
     const handleVisibilityChange = () => {
       if (!document.hidden && !isPublicRoute(router.pathname)) {
-        // Tab became visible, check if we need to refresh tokens
         const now = Date.now();
         if (tokenExpiry && now > tokenExpiry - (2 * 60 * 1000)) {
-          // Token expires soon or already expired, check auth status
           checkAuthStatus();
         }
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Only set up polling if we're not on pure public pages (login, register, etc.)
-    // But always check on home page to show correct state
+
     let interval;
     if (!isPublicRoute(router.pathname) || router.pathname === '/') {
       interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
     }
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (interval) clearInterval(interval);
     };
   }, [router.pathname, tokenExpiry]);
 
+  // Proactive timer-based refresh (2 min before expiry)
   useEffect(() => {
-    if (!tokenExpiry || !user || isRefreshing) return;
-    
-    // Calculate when to refresh (2 minutes before expiry)
+    if (!tokenExpiry || !user) return;
     const refreshTime = tokenExpiry - (2 * 60 * 1000);
     const now = Date.now();
-    const timeUntilRefresh = Math.max(0, refreshTime - now);
-    
-    // Don't set timer if token expires very soon (less than 30 seconds)
-    if (timeUntilRefresh < 30000) {
-      console.log('Token expires too soon, triggering immediate refresh');
-      silentRefresh();
+    const delay = Math.max(0, refreshTime - now);
+
+    if (delay < 30_000) {
+      silentRefresh(); // soon expiring — refresh now
       return;
     }
-    
-    const refreshTimer = setTimeout(() => {
-      silentRefresh();
-    }, timeUntilRefresh);
-    
-    return () => clearTimeout(refreshTimer);
-  }, [tokenExpiry, user, isRefreshing]);
+
+    const t = setTimeout(() => { silentRefresh(); }, delay);
+    return () => clearTimeout(t);
+  }, [tokenExpiry, user]);
 
   async function silentRefresh() {
-    // Prevent concurrent refresh attempts
-    if (isRefreshing) {
-      console.log('Refresh already in progress, skipping');
-      return false;
-    }
-    
+    if (isRefreshing) return true;
     setIsRefreshing(true);
     try {
-        const response = await fetch(`/api/auth/refresh`, {
+      const res = await fetch(`/api/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'X-Client-Id': typeof window !== 'undefined' ? 
-            (await import('../lib/clientId')).getClientId() : undefined
-        }
-        });
-        
-        if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        // Set new expiry time (15 minutes from now or from server)
-        setTokenExpiry(Date.now() + (data.expires_in * 1000 || 15 * 60 * 1000));
-        return true;
-        } else {
-        console.error('Failed to refresh token');
-        return false;
-        }
-    } catch (err) {
-        console.error('Token refresh error:', err);
-        return false;
-    } finally {
-        setIsRefreshing(false);
-    }
-  }
-  
-    async function checkAuthStatus() {
-        // Don't check if already refreshing or loading
-        if (isRefreshing || loading) {
-            console.log('checkAuthStatus: skipping, already refreshing or loading');
-            return false;
-        }
-        
-        console.log('checkAuthStatus: starting auth check');
-        
-        try {
-        setLoading(true);
+        headers: clientIdRef.current ? { 'X-Client-Id': clientIdRef.current } : {}
+      });
 
-        const response = await fetch(`/api/auth/me`, {
-            credentials: 'include'
-        });
-        
-        console.log('checkAuthStatus: /auth/me response status:', response.status);
-        
-        if (response.ok) {
-            const userData = await response.json();
-            console.log('checkAuthStatus: got user data:', userData.email);
-            userData.isOAuthUser = userData.google_id ? true : false;
-            userData.googleConnected = userData.google_id ? true : false;
-            setUser(userData);
-            // Set token expiry time (15 minutes from now as a safe default)
-            setTokenExpiry(Date.now() + (15 * 60 * 1000));
-            setError(null);
-            return true;
-        } else if (response.status === 401 && !isRefreshing) {
-            console.log('Auth check got 401, attempting refresh...');
-            // Try to refresh token before giving up
-            const refreshSuccess = await silentRefresh();
-            if (refreshSuccess) {
-                // After successful refresh, try /auth/me one more time
-                console.log('checkAuthStatus: refresh successful, retrying /auth/me');
-                const retryResponse = await fetch(`/api/auth/me`, {
-                    credentials: 'include'
-                });
-                console.log('checkAuthStatus: retry response status:', retryResponse.status);
-                if (retryResponse.ok) {
-                    const userData = await retryResponse.json();
-                    console.log('checkAuthStatus: retry got user data:', userData.email);
-                    userData.isOAuthUser = userData.google_id ? true : false;
-                    userData.googleConnected = userData.google_id ? true : false;
-                    setUser(userData);
-                    setTokenExpiry(Date.now() + (15 * 60 * 1000));
-                    setError(null);
-                    return true;
-                } else {
-                    console.log('checkAuthStatus: retry failed');
-                    setUser(null);
-                    setError('Authentication failed');
-                    return false;
-                }
-            } else {
-                // Refresh failed, user needs to login
-                console.log('checkAuthStatus: refresh failed');
-                setUser(null);
-                setError('Not authenticated');
-                return false;
-            }
-        } else {
-            console.log('checkAuthStatus: non-401 error, status:', response.status);
-            setUser(null);
-            setError('Not authenticated');
-            return false;
-        }
-        } catch (err) {
-        console.error('Auth check error:', err);
+      if (!res.ok) {
         setUser(null);
-        setError(err.message);
-        return false;
-        } finally {
-        console.log('checkAuthStatus: setting loading to false');
-        setLoading(false);
-        }
-    }
-  
-  async function login(email, password, remember = false) {
-    try {
-      setLoading(true);
-      const response = await api.login(email, password, remember);
-      
-      if (response && response.user) {
-        response.user.isOAuthUser = response.user.google_id ? true : false;
-        response.user.googleConnected = response.user.google_id ? true : false;
-        setUser(response.user);
-        setTokenExpiry(Date.now() + (response.expires_in * 1000 || 15 * 60 * 1000));
-        setError(null);
-        return true;
-      } else {
-        setError("Login failed");
         return false;
       }
+
+      const data = await res.json();
+      if (data?.user) {
+        const u = { ...data.user };
+        u.isOAuthUser = !!u.google_id;
+        u.googleConnected = !!u.google_id;
+        setUser(u);
+      }
+      setTokenExpiry(Date.now() + ((data?.expires_in || 15 * 60) * 1000));
+      setError(null);
+      return true;
+    } catch (e) {
+      console.error('Token refresh error:', e);
+      setUser(null);
+      return false;
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  async function checkAuthStatus() {
+    try {
+      setLoading(true);
+
+      // If a refresh is already happening, wait for it
+      if (refreshPromiseRef.current) {
+        await refreshPromiseRef.current;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(`/api/auth/me`, { credentials: 'include', signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const u = await res.json();
+        u.isOAuthUser = !!u.google_id;
+        u.googleConnected = !!u.google_id;
+        setUser(u);
+        setTokenExpiry(Date.now() + (15 * 60 * 1000)); // safe default unless server provides
+        setError(null);
+        return true;
+      }
+
+      if (res.status === 401) {
+        const ok = await silentRefresh();
+        if (!ok) {
+          setUser(null);
+          setError('Not authenticated');
+          return false;
+        }
+        // Try once more
+        const res2 = await fetch(`/api/auth/me`, { credentials: 'include' });
+        if (res2.ok) {
+          const u2 = await res2.json();
+          u2.isOAuthUser = !!u2.google_id;
+          u2.googleConnected = !!u2.google_id;
+          setUser(u2);
+          setTokenExpiry(Date.now() + (15 * 60 * 1000));
+          setError(null);
+          return true;
+        }
+        setUser(null);
+        setError('Authentication failed');
+        return false;
+      }
+
+      setUser(null);
+      setError('Not authenticated');
+      return false;
     } catch (err) {
-      setError(err.message || "Login failed");
+      if (err.name === 'AbortError') {
+        setError('Authentication timeout');
+      } else {
+        console.error('Auth check error:', err);
+        setError(err.message || 'Auth error');
+      }
+      setUser(null);
       return false;
     } finally {
       setLoading(false);
     }
   }
-  
+
+  async function login(email, password, remember = false) {
+    try {
+      setLoading(true);
+      const response = await api.login(email, password, remember);
+      if (response?.user) {
+        const u = { ...response.user };
+        u.isOAuthUser = !!u.google_id;
+        u.googleConnected = !!u.google_id;
+        setUser(u);
+        setTokenExpiry(Date.now() + ((response.expires_in || 15 * 60) * 1000));
+        setError(null);
+        return true;
+      }
+      setError('Login failed');
+      return false;
+    } catch (err) {
+      setError(err.message || 'Login failed');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function logout() {
     try {
-        // Call backend to invalidate the current session
-        await fetch(`/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-        });
-        
-        // Then clear user data locally
-        setUser(null);
-        setTokenExpiry(null);
-        
-        // Redirect to login
-        window.location.href = '/login';
-    } catch (err) {
-        console.error("Logout error:", err);
-        // Even if server logout fails, clear local data
-        setUser(null);
-        window.location.href = '/login';
+      await fetch(`/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.warn('Logout error (continuing):', e);
+    } finally {
+      setUser(null);
+      setTokenExpiry(null);
+      window.location.href = '/login';
     }
-    }
-  
+  }
+
   const value = {
     user,
     loading,
@@ -296,14 +269,10 @@ export function AuthProvider({ children }) {
     login,
     logout,
     checkAuthStatus,
-    refreshUser: checkAuthStatus, // Add alias for compatibility
+    refreshUser: checkAuthStatus,
     silentRefresh,
     isAuthenticated: !!user
   };
-  
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
