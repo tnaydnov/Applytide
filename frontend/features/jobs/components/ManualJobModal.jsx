@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button, Input, Textarea, Select, Modal } from "./ui";
-import { api } from "../lib/api";
-import { useToast } from "../lib/toast";
+import { Button, Input, Textarea, Select, Modal } from "../../../components/ui";
+import { api } from "../../../lib/api";
+import { useToast } from "../../../lib/toast";
 
 const DEFAULT = {
   title: "",
