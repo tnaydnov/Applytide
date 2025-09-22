@@ -62,11 +62,12 @@ async def callback_google(
         # Create access token with same JTI as refresh token
         access_token = create_access_token(user_id, token_id=refresh_jti)
         
-        # Generate deterministic client_id for OAuth since we don't have access to localStorage
-        # This ensures the same browser will get the same client_id for OAuth
+        # Generate more stable client_id for OAuth that doesn't depend on IP
+        # This ensures the same browser+user will get the same client_id even if IP changes
         import hashlib
-        browser_fingerprint = f"{user_agent}-{ip}-{user_id}"
-        client_id = f"oauth-{hashlib.md5(browser_fingerprint.encode()).hexdigest()[:16]}"
+        # Use user_id and a hash of user_agent for more stability
+        browser_fingerprint = f"oauth-{user_id}-{hashlib.md5(user_agent.encode()).hexdigest()[:8]}"
+        client_id = browser_fingerprint
         
         # Calculate session expiration for extended OAuth session
         from datetime import datetime, timezone, timedelta

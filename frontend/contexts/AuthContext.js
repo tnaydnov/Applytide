@@ -75,18 +75,37 @@ export function AuthProvider({ children }) {
     }
     }, []);
   
-  // Check auth status on mount
+  // Check auth status on mount and visibility changes
   useEffect(() => {
     // Always check auth status, but handle redirects differently for public vs private pages
     checkAuthStatus();
     
+    // Add visibility change listener to handle tab becoming active
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !isPublicRoute(router.pathname)) {
+        // Tab became visible, check if we need to refresh tokens
+        const now = Date.now();
+        if (tokenExpiry && now > tokenExpiry - (2 * 60 * 1000)) {
+          // Token expires soon or already expired, check auth status
+          checkAuthStatus();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     // Only set up polling if we're not on pure public pages (login, register, etc.)
     // But always check on home page to show correct state
+    let interval;
     if (!isPublicRoute(router.pathname) || router.pathname === '/') {
-      const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
-      return () => clearInterval(interval);
+      interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
     }
-  }, [router.pathname]);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (interval) clearInterval(interval);
+    };
+  }, [router.pathname, tokenExpiry]);
 
   useEffect(() => {
     if (!tokenExpiry || !user || isRefreshing) return;
@@ -168,6 +187,17 @@ export function AuthProvider({ children }) {
             setTokenExpiry(Date.now() + (15 * 60 * 1000));
             setError(null);
             return true;
+        } else if (response.status === 401) {
+            // Try to refresh token before giving up
+            const refreshSuccess = await silentRefresh();
+            if (refreshSuccess) {
+                return true;
+            } else {
+                // Refresh failed, user needs to login
+                setUser(null);
+                setError('Not authenticated');
+                return false;
+            }
         } else {
             setUser(null);
             setError('Not authenticated');
