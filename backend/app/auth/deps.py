@@ -39,8 +39,9 @@ async def get_current_user(
     try:
         payload = decode_access(token)
         user_id = payload.get("sub")
+        jti = payload.get("jti")
         
-        if user_id is None:
+        if user_id is None or jti is None:
             raise credentials_exception
             
         # Convert string to UUID if needed
@@ -50,49 +51,40 @@ async def get_current_user(
             except ValueError:
                 raise credentials_exception
 
-        # Optional enhanced session checking (only for new tokens with JTI)
-        jti = payload.get("jti")
-        if jti:  
-            try:
-                # Check if refresh token exists and is valid
-                from datetime import datetime, timezone
-                now = datetime.now(timezone.utc)
-                
-                rt = db.query(models.RefreshToken).filter(
-                    models.RefreshToken.jti == jti,
-                    models.RefreshToken.revoked_at.is_(None),
-                    models.RefreshToken.expires_at > now,
-                ).first()
-                
-                # If refresh token exists, check user session and touch last_seen
-                if rt:
-                    us = db.query(models.UserSession).filter(
-                        models.UserSession.refresh_token_jti == jti,
-                        models.UserSession.is_active == True,
-                    ).first()
-                    
-                    if us:
-                        # Touch last_seen_at for active sessions
-                        us.last_seen_at = now
-                        db.commit()
-                    # If user session doesn't exist, that's ok - might be old session
-                elif rt is None:
-                    # Only fail if refresh token was explicitly revoked
-                    revoked_rt = db.query(models.RefreshToken).filter(
-                        models.RefreshToken.jti == jti,
-                        models.RefreshToken.revoked_at.is_not(None),
-                    ).first()
-                    if revoked_rt:
-                        raise HTTPException(
-                            status_code=401, 
-                            detail="Session revoked",
-                            headers={"WWW-Authenticate": "Bearer"},
-                        )
-            except HTTPException:
-                raise
-            except Exception as e:
-                # Don't fail on session check errors - just log them
-                print(f"Session check error (non-fatal): {e}")
+        # Strict session validation for new system
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        
+        # Must have a valid refresh token
+        rt = db.query(models.RefreshToken).filter(
+            models.RefreshToken.jti == jti,
+            models.RefreshToken.revoked_at.is_(None),
+            models.RefreshToken.expires_at > now,
+        ).first()
+        
+        if not rt:
+            raise HTTPException(
+                status_code=401, 
+                detail="Session expired or revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Must have an active user session
+        us = db.query(models.UserSession).filter(
+            models.UserSession.refresh_token_jti == jti,
+            models.UserSession.is_active == True,
+        ).first()
+        
+        if not us:
+            raise HTTPException(
+                status_code=401, 
+                detail="Session revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Touch last_seen_at on every authenticated request
+        us.last_seen_at = now
+        db.commit()
 
     except HTTPException:
         raise
