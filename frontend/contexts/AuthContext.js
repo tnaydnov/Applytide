@@ -168,8 +168,11 @@ export function AuthProvider({ children }) {
     async function checkAuthStatus() {
         // Don't check if already refreshing or loading
         if (isRefreshing || loading) {
+            console.log('checkAuthStatus: skipping, already refreshing or loading');
             return false;
         }
+        
+        console.log('checkAuthStatus: starting auth check');
         
         try {
         setLoading(true);
@@ -178,8 +181,11 @@ export function AuthProvider({ children }) {
             credentials: 'include'
         });
         
+        console.log('checkAuthStatus: /auth/me response status:', response.status);
+        
         if (response.ok) {
             const userData = await response.json();
+            console.log('checkAuthStatus: got user data:', userData.email);
             userData.isOAuthUser = userData.google_id ? true : false;
             userData.googleConnected = userData.google_id ? true : false;
             setUser(userData);
@@ -193,11 +199,14 @@ export function AuthProvider({ children }) {
             const refreshSuccess = await silentRefresh();
             if (refreshSuccess) {
                 // After successful refresh, try /auth/me one more time
+                console.log('checkAuthStatus: refresh successful, retrying /auth/me');
                 const retryResponse = await fetch(`/api/auth/me`, {
                     credentials: 'include'
                 });
+                console.log('checkAuthStatus: retry response status:', retryResponse.status);
                 if (retryResponse.ok) {
                     const userData = await retryResponse.json();
+                    console.log('checkAuthStatus: retry got user data:', userData.email);
                     userData.isOAuthUser = userData.google_id ? true : false;
                     userData.googleConnected = userData.google_id ? true : false;
                     setUser(userData);
@@ -205,17 +214,20 @@ export function AuthProvider({ children }) {
                     setError(null);
                     return true;
                 } else {
+                    console.log('checkAuthStatus: retry failed');
                     setUser(null);
                     setError('Authentication failed');
                     return false;
                 }
             } else {
                 // Refresh failed, user needs to login
+                console.log('checkAuthStatus: refresh failed');
                 setUser(null);
                 setError('Not authenticated');
                 return false;
             }
         } else {
+            console.log('checkAuthStatus: non-401 error, status:', response.status);
             setUser(null);
             setError('Not authenticated');
             return false;
@@ -226,6 +238,7 @@ export function AuthProvider({ children }) {
         setError(err.message);
         return false;
         } finally {
+        console.log('checkAuthStatus: setting loading to false');
         setLoading(false);
         }
     }

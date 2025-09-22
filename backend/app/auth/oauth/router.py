@@ -85,10 +85,10 @@ async def callback_google(
         )
         
         frontend_url = settings.FRONTEND_URL
-        print(f"Redirecting to: {frontend_url}/dashboard")
+        print(f"Redirecting to: {frontend_url}/auth/callback")
         
         # Set cookies consistent with your auth system
-        response = RedirectResponse(f"{frontend_url}/dashboard")
+        response = RedirectResponse(f"{frontend_url}/auth/callback")
         response.set_cookie(
             key="access_token",
             value=access_token,
