@@ -109,9 +109,36 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
     db.add(user)
     db.commit()
 
-    # Create tokens
-    access = create_access_token(str(user.id))
+    # Create tokens with session management
     refresh, _fam = create_refresh_token(str(user.id), user_agent=user_agent, ip_address=ip_address)
+    
+    try:
+        token_data = decode_refresh(refresh)
+        refresh_jti = token_data.get("jti")
+        
+        # Create access token with same JTI as refresh token
+        access = create_access_token(str(user.id), token_id=refresh_jti)
+        
+        # Get client_id from request body
+        client_id = getattr(payload, 'client_id', str(uuid.uuid4()))
+        
+        # Calculate session expiration (7 days default for registration)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TTL_DAYS)
+        
+        # Create user session (prevents duplicates per device)
+        from .tokens import upsert_user_session
+        upsert_user_session(
+            user_id=str(user.id),
+            refresh_token_jti=refresh_jti,
+            client_id=client_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            expires_at=expires_at
+        )
+    except Exception as e:
+        print(f"Failed to create user session on registration: {e}")
+        # Still continue with registration if session creation fails
+        access = create_access_token(str(user.id))
     
     # Send verification email
     try:

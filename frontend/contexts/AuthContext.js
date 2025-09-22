@@ -186,7 +186,7 @@ export function AuthProvider({ children }) {
   async function login(email, password, remember = false) {
     try {
       setLoading(true);
-      const response = await api.login({ email, password, remember_me: remember });
+      const response = await api.login(email, password, remember);
       
       if (response && response.user) {
         response.user.isOAuthUser = response.user.google_id ? true : false;

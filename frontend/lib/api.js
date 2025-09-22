@@ -158,22 +158,24 @@ function toQuery(params) {
 export const api = {
   // Authentication
   register: async (data) => {
+    const { getClientId } = await import('./clientId');
+    const client_id = getClientId();
+    
+    // Add client_id to registration data
+    const registrationData = {
+      ...data,
+      client_id: client_id
+    };
+    
     const r = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(registrationData),
       credentials: "include",
     });
     if (!r.ok) throw new Error(await r.text());
 
-    // If your server doesn't set cookies during register, auto-login:
-    // (Safe no-op if cookies already set)
-    try {
-      await login(data.email, data.password, true);
-    } catch (_) {
-      // ignore; caller can handle redirect/UI
-    }
-
+    // Registration already creates tokens and sessions, no need to login again
     return r.json();
   },
 

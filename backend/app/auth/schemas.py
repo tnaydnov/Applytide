@@ -10,6 +10,7 @@ class RegisterIn(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     timezone: Optional[str] = Field(None, max_length=50)
     language: Optional[str] = Field("en", max_length=10)
+    client_id: str | None = None
 
 # Use this consolidated version with remember_me field
 class LoginRequest(BaseModel):
