@@ -22,8 +22,8 @@ def _exp_days(days: int) -> datetime:
     return _now() + timedelta(days=days)
 
 
-def create_access_token(user_id: str) -> str:
-    jti = str(uuid.uuid4())
+def create_access_token(user_id: str, token_id: str | None = None) -> str:
+    jti = token_id or str(uuid.uuid4())
     payload = {
         "sub": user_id,
         "typ": "access",
@@ -202,3 +202,44 @@ def verify_email_token(token: str, token_type: str) -> str | None:
             return str(email_action.user_id)
     
     return None
+
+
+def upsert_user_session(
+    user_id: str,
+    refresh_token_jti: str,
+    client_id: str,
+    user_agent: str | None,
+    ip_address: str | None,
+    expires_at: datetime,
+):
+    with get_db_session() as db:
+        session = db.query(models.UserSession).filter(
+            models.UserSession.user_id == uuid.UUID(user_id),
+            models.UserSession.client_id == client_id,
+            models.UserSession.is_active == True,
+        ).first()
+
+        now = _now()
+        if session:
+            # Reuse single row per device
+            session.refresh_token_jti = refresh_token_jti
+            session.user_agent = user_agent
+            session.ip_address = ip_address
+            session.expires_at = expires_at
+            session.last_seen_at = now
+        else:
+            session = models.UserSession(
+                user_id=uuid.UUID(user_id),
+                refresh_token_jti=refresh_token_jti,
+                client_id=client_id,
+                device_type="browser",
+                user_agent=user_agent,
+                ip_address=ip_address,
+                is_active=True,
+                created_at=now,
+                last_seen_at=now,
+                expires_at=expires_at,
+            )
+            db.add(session)
+        db.commit()
+

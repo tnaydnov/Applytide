@@ -16,6 +16,7 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     remember_me: bool = False
+    client_id: str | None = None
 
 # Remove LoginIn - use LoginRequest instead
 

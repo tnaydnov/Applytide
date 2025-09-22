@@ -52,12 +52,22 @@ async function refreshToken() {
 
 export async function apiFetch(endpoint, options = {}) {
   try {
+    const { getClientId } = await import('./clientId');
+    
     // Set credentials to include for all requests
     const isFormData = options?.body instanceof FormData;
     const headers = {
       ...(options.headers || {}),
       ...(isFormData ? {} : { 'Content-Type': options.headers?.['Content-Type'] || 'application/json' }),
     };
+    
+    // Add client ID header if we're in browser
+    if (typeof window !== 'undefined') {
+      const client_id = getClientId();
+      if (client_id) {
+        headers['X-Client-Id'] = client_id;
+      }
+    }
 
     const fetchOptions = {
       ...options,
@@ -73,7 +83,10 @@ export async function apiFetch(endpoint, options = {}) {
       try {
         const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'X-Client-Id': headers['X-Client-Id'] || ''
+          }
         });
         if (refreshResponse.ok) {
           return await fetch(`${API_BASE}${endpoint}`, fetchOptions);
@@ -92,6 +105,9 @@ export async function apiFetch(endpoint, options = {}) {
 
 export async function login(email, password, remember = false) {
   try {
+    const { getClientId } = await import('./clientId');
+    const client_id = getClientId();
+    
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       credentials: 'include',
@@ -101,7 +117,8 @@ export async function login(email, password, remember = false) {
       body: JSON.stringify({
         email: email,
         password: password,
-        remember_me: remember
+        remember_me: remember,
+        client_id: client_id
       })
     });
 
