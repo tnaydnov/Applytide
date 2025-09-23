@@ -30,8 +30,8 @@ export default function JobsPage() {
     openApply, openJobDetails,
     applyState, // { isOpen, targetJob, ... }
     detailsState, // { isOpen, job, mode, ... }
-    submitApplyChoice, closeApply,
-    closeJobDetails, switchToEditMode, saveJobChanges, deleteJob,
+    closeApply,
+    closeJobDetails, deleteJob,
 
     // list expansion
     expandedJobs, toggleJobExpanded,
@@ -137,16 +137,9 @@ export default function JobsPage() {
             {/* Pagination */}
             {pagination.pages > 1 && (
               <Pagination
-                page={pagination.page}
-                pages={pagination.pages}
-                pageSize={pagination.page_size}
-                total={pagination.total}
-                hasNext={pagination.has_next}
-                hasPrev={pagination.has_prev}
-                onPrev={() => reloadJobs(pagination.page - 1)}
-                onNext={() => reloadJobs(pagination.page + 1)}
-                onJump={p => reloadJobs(p)}
+                pagination={pagination}
                 loading={loading}
+                onGo={setPage}
               />
             )}
           </div>
@@ -164,8 +157,7 @@ export default function JobsPage() {
         isOpen={applyState.isOpen}
         job={applyState.targetJob}
         onClose={closeApply}
-        onSubmit={submitApplyChoice}
-        state={applyState} /* keep whatever shape you designed */
+        onApplied={() => reloadJobs(pagination.page)}
       />
 
       <JobDetailsModal
@@ -173,8 +165,7 @@ export default function JobsPage() {
         job={detailsState.job}
         mode={detailsState.mode}
         onClose={closeJobDetails}
-        onSwitchToEdit={switchToEditMode}
-        onSave={saveJobChanges}
+        onSaved={() => reloadJobs(pagination.page)}
       />
     </AuthGuard>
   );

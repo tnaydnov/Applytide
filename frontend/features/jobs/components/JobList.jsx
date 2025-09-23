@@ -61,9 +61,9 @@ export default function JobList({
           job={job}
           index={index}
           isExpanded={expandedJobs?.has(job.id)}
-          onToggleExpanded={() => toggleJobExpanded(job.id)}
-          onOpenDetails={() => onOpenDetails(job)}
-          onOpenApply={() => onOpenApply(job)}
+          onToggle={() => toggleJobExpanded(job.id)}
+          onView={() => onOpenDetails(job)}
+          onApply={() => onOpenApply(job)}
           onDelete={() => onDelete(job.id)}
         />
       ))}
