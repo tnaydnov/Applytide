@@ -64,6 +64,7 @@ export default function ApplicationDrawer({ application, onClose }) {
             const directForm = new FormData();
             directForm.append('file', file);
             directForm.append('document_type', uploadType || 'other');
+            directForm.append('type', uploadType || 'other');
 
             let ok = false;
             try {
@@ -86,7 +87,12 @@ export default function ApplicationDrawer({ application, onClose }) {
                 const docForm = new FormData();
                 docForm.append('file', file);
                 docForm.append('document_type', uploadType || 'other');
+                docForm.append('type', uploadType || 'other');
 
+                docForm.append('origin', 'application');
+                docForm.append('application_id', appId);
+                docForm.append('application_context', `${companyName || ''}${companyName && jobTitle ? ' — ' : ''}${jobTitle || ''}`);
+                docForm.append('no_index', '1'); // backend may ignore; safe hint
                 const upRes = await apiFetch(`/documents/upload`, { method: 'POST', body: docForm });
                 const up = await upRes.json().catch(() => null);
                 const newDocId = up?.document?.id || up?.id;
@@ -98,7 +104,11 @@ export default function ApplicationDrawer({ application, onClose }) {
                     await apiFetch(`/applications/${appId}/attachments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ document_id: String(newDocId), document_type: uploadType || 'other' }),
+                        body: JSON.stringify({
+                            document_id: String(newDocId),
+                            document_type: uploadType || 'other',
+                            type: uploadType || 'other', // compat
+                        }),
                     });
                 }
             }
@@ -150,15 +160,21 @@ export default function ApplicationDrawer({ application, onClose }) {
         try {
             setAttachingId(docId);
 
+            const picked = docs.find(d => String(d?.id) === String(docId));
+            const chosenType = picked?.document_type || picked?.type || uploadType || 'other';
+
             if (api?.attachExistingDocument) {
-                // allow api helper to accept type if it supports it
-                await api.attachExistingDocument(appId, String(docId), uploadType);
+                await api.attachExistingDocument(appId, String(docId), chosenType);
             } else {
                 // fallback to REST
                 await apiFetch(`/applications/${appId}/attachments`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ document_id: String(docId), document_type: uploadType || 'other' }),
+                    body: JSON.stringify({
+                        document_id: String(docId),
+                        document_type: chosenType,
+                        type: chosenType,
+                    }),
                 });
             }
 

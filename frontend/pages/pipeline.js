@@ -48,7 +48,7 @@ export default function PipelinePage() {
 
   // ---------------- UI state ----------------
   const [view, setView] = useState("board"); // "board" | "cards"
-  const [showAnalytics, setShowAnalytics] = useState(true);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
@@ -332,43 +332,7 @@ export default function PipelinePage() {
               </Select>
             </div>
             <div className="flex items-center justify-start md:justify-end gap-2">
-              <Button
-                size="sm"
-                variant={view === "board" ? "default" : "outline"}
-                onClick={() => setView("board")}
-              >
-                Board
-              </Button>
-              <Button
-                size="sm"
-                variant={view === "cards" ? "default" : "outline"}
-                onClick={() => setView("cards")}
-              >
-                Cards
-              </Button>
-              <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">
-                Reset
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick status filter chips */}
-          <div className="mt-3 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-2 min-w-max">
-              <Chip
-                active={!quickStatusFilter}
-                onClick={() => setQuickStatusFilter(null)}
-                label="All"
-              />
-              {KNOWN_STATUSES.map((s) => (
-                <Chip
-                  key={s}
-                  active={quickStatusFilter === s}
-                  onClick={() => setQuickStatusFilter(s)}
-                  label={s}
-                  icon={getStatusConfig(s).icon}
-                />
-              ))}
+              <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">Reset</Button>
             </div>
           </div>
         </div>

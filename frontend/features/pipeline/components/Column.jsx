@@ -112,13 +112,13 @@ export default function Column({
     return (
         <div className="w-full h-full">
             <div
-                className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden h-full flex flex-col backdrop-blur-md ring-1 ring-white/10 ${isDragOver
+                className={`relative glass-card rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col backdrop-blur-md ring-1 ring-white/10 ${isDragOver
                     ? isDropAllowed
                         ? 'border-green-400/60 shadow-lg shadow-green-500/20 scale-[1.02] bg-green-500/10'
                         : 'border-red-400/60 shadow-lg shadow-red-500/20 bg-red-500/10'
                     : 'border-white/20 hover:border-indigo-400/30 shadow-xl'
                     }`}
-                style={{ minHeight: '560px', maxHeight: '76vh' }}
+                style={{ height: '68vh', minHeight: 560 }}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -184,18 +184,26 @@ export default function Column({
                     </div>
                 </div>
 
-                {/* Dropzone hint */}
+                {/* Dropzone hint (overlay so height doesn't change) */}
                 {isDragOver && (
                     <div
-                        className={`p-2 text-center border-2 border-dashed ${isDropAllowed
-                            ? 'border-emerald-400 bg-emerald-400/20 text-emerald-100'
-                            : 'border-red-400 bg-red-400/20 text-red-100'
-                            }`}
+                        className={`absolute inset-0 z-10 pointer-events-none flex items-center justify-center px-3`}
                         role="status"
                         aria-live="polite"
                     >
-                        <div className="text-xl mb-1">{isDropAllowed ? '⬇️' : '❌'}</div>
-                        <p className="text-xs font-medium">{isDropAllowed ? `Move to ${status}` : 'Cannot drop'}</p>
+                        <div
+                            className={`w-full h-full rounded-2xl border-2 border-dashed flex items-center justify-center text-center ${isDropAllowed
+                                    ? 'border-emerald-400/70 bg-emerald-400/10 text-emerald-100'
+                                    : 'border-red-400/70 bg-red-400/10 text-red-100'
+                                }`}
+                        >
+                            <div>
+                                <div className="text-xl mb-1">{isDropAllowed ? '⬇️' : '❌'}</div>
+                                <p className="text-xs font-medium">
+                                    {isDropAllowed ? `Move to ${status}` : 'Cannot drop'}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 )}
 
