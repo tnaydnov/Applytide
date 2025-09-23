@@ -202,7 +202,7 @@ export default function PipelinePage() {
 
       <div 
         className="min-h-screen"
-        style={{ background: "linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)" }}
+        style={{ background: "linear-gradient(180deg, #111827 0%, #0b101e 100%)" }}
       >
         <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}

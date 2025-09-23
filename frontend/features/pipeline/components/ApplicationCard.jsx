@@ -107,7 +107,7 @@ export default function ApplicationCard({
   return (
     <>
       <Card
-        className={`glass-card group hover:border-white/20 transition-all duration-300 animate-slideIn overflow-hidden relative ${
+        className={`glass-card group hover:border-white/30 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 animate-slideIn overflow-hidden relative backdrop-blur-lg bg-gradient-to-b from-white/10 to-indigo-500/5 ${
           viewMode === "board" ? "text-sm" : ""
         }`}
         style={{

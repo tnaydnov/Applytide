@@ -194,7 +194,7 @@ export default function Column({
         )}
 
         {/* Content */}
-        <div className="glass-card rounded-xl border border-white/10 p-4 md:p-5 space-y-4 flex-1 overflow-y-auto backdrop-blur-md">
+        <div className="glass-card rounded-xl border border-white/20 p-4 md:p-5 space-y-4 flex-1 overflow-y-auto backdrop-blur-xl bg-gradient-to-b from-white/5 to-white/10 shadow-lg">
           {safeItems.length === 0 ? (
             <div className="text-center py-8 text-white/60">
               <div className="text-3xl mb-3">{config.icon}</div>
