@@ -330,6 +330,9 @@ export const DEFAULT_STATUS_STYLE = {
   bgColor: "bg-neutral-600",
 };
 
+// For backward compatibility with original_pipeline.js
+export const statusConfig = STATUS_CONFIG;
+
 /** Safe accessor that always returns a config object (never undefined). */
 export function getStatusConfig(statusName) {
   return STATUS_CONFIG[statusName] || DEFAULT_STATUS_STYLE;

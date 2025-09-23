@@ -9,7 +9,7 @@ import Column from "../features/pipeline/components/Column";
 import ApplicationCard from "../features/pipeline/components/ApplicationCard";
 import PipelineCustomizer from "../features/pipeline/components/PipelineCustomizer";
 import usePipelineData from "../features/pipeline/hooks/usePipelineData";
-import { KNOWN_STATUSES, getStatusConfig } from "../features/pipeline/utils/status";
+import { KNOWN_STATUSES, getStatusConfig, statusConfig } from "../features/pipeline/utils/status";
 
 // Lazy-load large overlays to keep SSR happy
 const ApplicationDrawer = dynamic(
@@ -202,7 +202,7 @@ export default function PipelinePage() {
 
       <div 
         className="min-h-screen"
-        style={{ background: "linear-gradient(180deg, #111827 0%, #0b101e 100%)" }}
+        style={{ background: "linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)" }}
       >
         <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
@@ -265,6 +265,25 @@ export default function PipelinePage() {
           </div>
         </div>
 
+        {/* Pipeline Settings */}
+        <div className="glass-card rounded-2xl p-6 border border-white/10 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Pipeline Settings</h3>
+            <Button variant="outline" onClick={() => setShowSettings(!showSettings)} className="text-sm">
+              {showSettings ? "Hide Settings" : "Customize Pipeline"}
+            </Button>
+          </div>
+
+          {showSettings && (
+            <PipelineCustomizer
+              stages={currentStages}
+              onStagesChange={setCurrentStages}
+              availableStages={Object.keys(statusConfig)}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
+        </div>
+
         {/* Analytics */}
         {showAnalytics && renderAnalytics()}
 
@@ -322,9 +341,9 @@ export default function PipelinePage() {
         {/* Content */}
         {loading ? (
           <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
+            <div className="text-center space-y-4">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-400 mx-auto"></div>
-              <p className="text-white/70 mt-4">Loading pipeline...</p>
+              <p className="text-gray-300 text-lg">Loading your pipeline...</p>
             </div>
           </div>
         ) : !hasAnyApplications ? (
