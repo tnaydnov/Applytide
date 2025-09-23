@@ -109,12 +109,12 @@ export default function ManualJobModal({ isOpen, onClose, onSaved }) {
 
         <div className="section">
           <h3 className="modal-title text-base mb-3">Requirements</h3>
-          <Textarea rows={4} value={data.requirements.join("\n")} onChange={e => handleArray("requirements", e.target.value)} placeholder={"5+ years of experience...\nStrong knowledge of React and Node.js\nExperience with cloud platforms"} />
+          <Textarea rows={4} value={data.requirements.join("\n")} onChange={e => handleArray("requirements", e.target.value)} placeholder={"One requirement per line…\n5+ years of experience..."} />
         </div>
 
         <div className="section">
           <h3 className="modal-title text-base mb-3">Required Skills</h3>
-          <Textarea rows={3} value={data.skills.join("\n")} onChange={e => handleArray("skills", e.target.value)} placeholder={"JavaScript\nReact\nNode.js\nPostgreSQL\nDocker"} />
+          <Textarea rows={3} value={data.skills.join("\n")} onChange={e => handleArray("skills", e.target.value)} placeholder={"One per line or comma-separated (e.g., JavaScript, React)…"} />
         </div>
 
         <div className="flex justify-end space-x-3 pt-2">
