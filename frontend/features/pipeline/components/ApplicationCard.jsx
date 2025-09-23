@@ -139,7 +139,7 @@ export default function ApplicationCard({
 
         <div className={viewMode === "board" ? "p-3 pt-8" : "p-6"}>
           {/* Header */}
-          <div className="mb-4">
+          <div className={viewMode === "board" ? "mb-4" : "mb-4"}>
             <div className={`${viewMode === "board" ? "mb-3 text-center" : "mb-3"}`}>
               <h3
                 className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${
@@ -253,8 +253,7 @@ export default function ApplicationCard({
                     className="text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300 flex-shrink-0"
                     onClick={handleView}
                   >
-                    <span className="mr-1">👁️</span>
-                    View
+                    👁️ View
                   </Button>
                   <Button
                     size="sm"
@@ -264,8 +263,7 @@ export default function ApplicationCard({
                       setShowNoteModal(true);
                     }}
                   >
-                    <span className="mr-1">📝</span>
-                    Note
+                    📝 Note
                   </Button>
                 </div>
               </div>

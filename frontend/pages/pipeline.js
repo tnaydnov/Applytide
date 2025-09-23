@@ -47,8 +47,8 @@ export default function PipelinePage() {
   } = usePipelineData();
 
   // ---------------- UI state ----------------
-  const [view, setView] = useState("board"); // "board" | "cards"
-  const [showAnalytics, setShowAnalytics] = useState(true);
+  const [view, setView] = useState("cards"); // "board" | "cards"
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
@@ -142,13 +142,57 @@ export default function PipelinePage() {
 
   // ----------------- Render helpers -----------------
   const renderAnalytics = () => (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-      <StatCard label="Total" value={stats.totalApps} />
-      <StatCard label="Active" value={stats.activeApps} />
-      <StatCard label="Offers" value={stats.offers} />
-      <StatCard label="Rejected" value={stats.rejections} />
-      <StatCard label="Success %" value={`${stats.successRate}%`} />
-      <StatCard label="7d New" value={stats.recentApps} />
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-gray-300 mb-6">Application Overview</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="glass-card rounded-2xl p-8 border border-white/20 hover:border-blue-400/50 transition-all duration-300 group">
+          <div className="text-center">
+            <div className="inline-flex p-4 bg-gradient-to-br from-blue-500/30 to-blue-600/20 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-blue-300 mb-2">Total Applications</p>
+            <p className="text-4xl font-bold text-white group-hover:text-blue-300 transition-colors">{stats.totalApps || 0}</p>
+          </div>
+        </div>
+        
+        <div className="glass-card rounded-2xl p-8 border border-white/20 hover:border-yellow-400/50 transition-all duration-300 group">
+          <div className="text-center">
+            <div className="inline-flex p-4 bg-gradient-to-br from-yellow-500/30 to-yellow-600/20 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-yellow-300 mb-2">Active</p>
+            <p className="text-4xl font-bold text-white group-hover:text-yellow-300 transition-colors">{stats.activeApps || 0}</p>
+          </div>
+        </div>
+        
+        <div className="glass-card rounded-2xl p-8 border border-white/20 hover:border-green-400/50 transition-all duration-300 group">
+          <div className="text-center">
+            <div className="inline-flex p-4 bg-gradient-to-br from-green-500/30 to-green-600/20 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-green-300 mb-2">Offers</p>
+            <p className="text-4xl font-bold text-white group-hover:text-green-300 transition-colors">{stats.offers || 0}</p>
+          </div>
+        </div>
+        
+        <div className="glass-card rounded-2xl p-8 border border-white/20 hover:border-purple-400/50 transition-all duration-300 group">
+          <div className="text-center">
+            <div className="inline-flex p-4 bg-gradient-to-br from-purple-500/30 to-purple-600/20 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold text-purple-300 mb-2">Success Rate</p>
+            <p className="text-4xl font-bold text-white group-hover:text-purple-300 transition-colors">{stats.successRate || 0}%</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -156,12 +200,64 @@ export default function PipelinePage() {
     <>
       <Head><title>Pipeline</title></Head>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div 
+        className="min-h-screen"
+        style={{ background: "linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)" }}
+      >
+        <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <h1 className="text-2xl font-bold text-white">Pipeline</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowAnalytics((v) => !v)}>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-200">Application Pipeline</h1>
+            <p className="text-slate-400 mt-1">Track your journey to success</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="flex bg-white/10 border border-white/20 rounded-lg p-1 backdrop-blur-sm">
+              <button
+                onClick={() => setView("cards")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  view === "cards"
+                    ? "bg-indigo-500 text-white shadow-sm"
+                    : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
+                }`}
+              >
+                <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Cards
+              </button>
+              <button
+                onClick={() => setView("board")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  view === "board"
+                    ? "bg-indigo-500 text-white shadow-sm"
+                    : "text-gray-300 hover:text-white border border-gray-300 hover:border-white"
+                }`}
+              >
+                <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Board
+              </button>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAnalytics((v) => !v)}
+              className="text-purple-400 border-purple-400 hover:bg-purple-500/20"
+            >
+              <svg className="w-4 h-4 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
               {showAnalytics ? "Hide Analytics" : "Show Analytics"}
             </Button>
             <Button variant="outline" onClick={() => setShowSettings(true)}>Customize Pipeline</Button>
@@ -196,18 +292,6 @@ export default function PipelinePage() {
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant={view === "board" ? "default" : "outline"}
-                onClick={() => setView("board")}
-              >
-                Board
-              </Button>
-              <Button
-                variant={view === "cards" ? "default" : "outline"}
-                onClick={() => setView("cards")}
-              >
-                Cards
-              </Button>
               <Button variant="ghost" onClick={clearFilters} title="Clear filters">
                 Reset
               </Button>
@@ -237,7 +321,12 @@ export default function PipelinePage() {
 
         {/* Content */}
         {loading ? (
-          <div className="text-center text-white/70 py-16">Loading pipeline…</div>
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-400 mx-auto"></div>
+              <p className="text-white/70 mt-4">Loading pipeline...</p>
+            </div>
+          </div>
         ) : !hasAnyApplications ? (
           <EmptyState />
         ) : view === "cards" ? (
@@ -299,6 +388,7 @@ export default function PipelinePage() {
           />
         </ModalShell>
       )}
+      </div>
     </>
   );
 }
