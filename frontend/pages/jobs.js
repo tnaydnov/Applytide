@@ -9,7 +9,7 @@ import Pagination from "../features/jobs/components/Pagination";
 import ManualJobModal from "../features/jobs/components/ManualJobModal";
 
 import { useJobs } from "../features/jobs/hooks/useJobs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { api } from "../lib/api";
 
