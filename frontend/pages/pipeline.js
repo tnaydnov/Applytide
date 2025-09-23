@@ -248,7 +248,6 @@ export default function PipelinePage() {
             <Button variant="outline" onClick={() => setShowSettings(true)}>
               Customize Pipeline
             </Button>
-            <Button onClick={reload}>Reload</Button>
           </div>
 
         </div>
@@ -461,7 +460,8 @@ function ModalShell({ title, onClose, children }) {
     <div className="fixed inset-0 z-[9998]">
       <button className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-3xl rounded-xl border border-white/15 bg-[#0f1422] shadow-2xl">
+        <div className="w-full max-w-4xl rounded-xl border border-white/15 bg-[#0f1422] shadow-2xl
+                    max-h-[86vh] overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <h3 className="text-white font-semibold">{title}</h3>
             <button onClick={onClose} className="text-white/70 hover:text-white" aria-label="Close">
@@ -470,7 +470,8 @@ function ModalShell({ title, onClose, children }) {
               </svg>
             </button>
           </div>
-          <div className="p-4">{children}</div>
+          {/* Scrollable body */}
+          <div className="p-4 overflow-y-auto max-h-[74vh]">{children}</div>
         </div>
       </div>
     </div>
