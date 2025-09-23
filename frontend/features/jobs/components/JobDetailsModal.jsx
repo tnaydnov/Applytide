@@ -26,8 +26,8 @@ export default function JobDetailsModal({
       company_name: job.company_name || '',
       location: job.location || '',
       description: job.description || '',
-      requirements: Array.isArray(job.requirements) ? job.requirements : [],
-      skills: Array.isArray(job.skills) ? job.skills : [],
+      requirements: Array.isArray(job?.requirements) ? job.requirements : [],
+      skills: Array.isArray(job?.skills) ? job.skills : [],
       remote_type: job.remote_type || 'On-site',
       job_type: job.job_type || 'Full-time',
       source_url: job.source_url || '',
@@ -212,15 +212,29 @@ export default function JobDetailsModal({
           )}
         </div>
 
-        {/* Requirements (display only) */}
+        {/* Requirements */}
         <div className="section">
           <label className="field-label">Requirements</label>
-          {parsed.requirements?.length ? (
+
+          {jobDetailsMode === 'edit' ? (
+            <Textarea
+              rows={4}
+              value={(editJobData?.requirements || []).join('\n')}
+              onChange={(e) =>
+                setEditJobData((p) => ({
+                  ...p,
+                  requirements: e.target.value
+                    .split(/\r?\n/)
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                }))
+              }
+              placeholder="One requirement per line…"
+            />
+          ) : parsed.requirements?.length ? (
             <ul className="list-disc list-inside space-y-1">
               {parsed.requirements.map((r, i) => (
-                <li key={i} className="text-sm text-slate-100">
-                  {r}
-                </li>
+                <li key={i} className="text-sm text-slate-100">{r}</li>
               ))}
             </ul>
           ) : (
@@ -228,9 +242,51 @@ export default function JobDetailsModal({
           )}
         </div>
 
+        {/* Skills */}
+        <div className="section">
+          <label className="field-label">Required Skills</label>
+
+          {jobDetailsMode === 'edit' ? (
+            <Textarea
+              rows={3}
+              value={(editJobData?.skills || []).join('\n')}
+              onChange={(e) =>
+                setEditJobData((p) => ({
+                  ...p,
+                  skills: Array.from(
+                    new Set(
+                      e.target.value
+                        .split(/[,\r\n]+/) 
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    )
+                  ),
+                }))
+              }
+              placeholder="One per line or comma-separated (e.g., JavaScript, React)…"
+            />
+          ) : job?.skills?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {job.skills.map((s, i) => (
+                <span
+                  key={`${s}-${i}`}
+                  className="px-2 py-0.5 rounded bg-white/10 text-slate-200 text-xs"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 italic">No skills specified</p>
+          )}
+        </div>
+
+
+
+
         {/* Footer meta */}
         <div className="text-sm text-gray-500 pt-2">
-          <p>Created: {new Date(job.created_at).toLocaleDateString()}</p>
+          <p>Created: {job.created_at ? new Date(job.created_at).toLocaleDateString() : '—'}</p>
           {job.source_url && <p className="mt-1">Source: Job posting URL</p>}
         </div>
       </div>
