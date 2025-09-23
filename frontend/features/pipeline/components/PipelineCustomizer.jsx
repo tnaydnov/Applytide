@@ -77,7 +77,7 @@ export default function PipelineCustomizer({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-28">
             {/* Current order */}
             <div>
                 <h4 className="text-xl font-bold text-white mb-2">Current Pipeline Order</h4>
@@ -172,8 +172,9 @@ export default function PipelineCustomizer({
 
             {/* Actions */}
             <div className="sticky bottom-0 left-0 right-0 z-10 pt-4 mt-2
-                      bg-[#0f1422]/90 backdrop-blur border-t border-indigo-400/20
-                      flex flex-col sm:flex-row justify-between items-center gap-4">
+                            bg-gradient-to-t from-[#0f1422]/70 to-transparent
+                            border-t border-white/10
+                            flex flex-col sm:flex-row justify-between items-center gap-4">
                 <Button
                     variant="outline"
                     onClick={resetToDefaults}

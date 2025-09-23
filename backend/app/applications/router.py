@@ -529,6 +529,48 @@ async def upload_attachment(
     return attachment
 
 
+@router.patch("/{app_id}/stages/{stage_id}", response_model=StageOut)
+def update_stage_partial(
+    app_id: uuid.UUID,
+    stage_id: uuid.UUID,
+    payload: StageUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify application ownership
+    if not _get_owned_app(db, app_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    # Load the stage and verify it belongs to this app
+    stmt = select(models.Stage).where(
+        models.Stage.id == stage_id,
+        models.Stage.application_id == app_id
+    )
+    stage = db.execute(stmt).scalar_one_or_none()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    # Apply partial updates
+    if payload.name is not None:
+        stage.name = payload.name
+    if payload.scheduled_at is not None:
+        stage.scheduled_at = payload.scheduled_at
+    if payload.outcome is not None:
+        stage.outcome = payload.outcome
+    if payload.notes is not None:
+        stage.notes = payload.notes
+
+    db.add(stage)
+    db.commit()
+    db.refresh(stage)
+    try:
+        import anyio
+        anyio.from_thread.run(broadcast, {"type": "stage_updated", "application_id": str(app_id)})
+    except Exception:
+        pass
+    return stage
+
+
 
 @router.get("/{app_id}/attachments", response_model=List[AttachmentOut])
 def list_attachments(

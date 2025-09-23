@@ -96,3 +96,9 @@ class ApplicationDetail(BaseModel):
 class AttachmentUpload(BaseModel):
     filename: str
     content_type: str
+
+class StageUpdate(BaseModel):
+    name: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    outcome: Optional[str] = None
+    notes: Optional[str] = None
