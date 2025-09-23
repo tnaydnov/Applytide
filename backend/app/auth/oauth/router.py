@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.auth.oauth.google import get_authorization_url, process_google_login
 from app.auth.tokens import create_access_token, create_refresh_token
 from app.config import settings
+from app.auth.sessions import create_user_session
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -47,6 +48,7 @@ async def callback_google(
         user_id = str(user.id)
         
         # Create tokens using your existing token system
+        access_token = create_access_token(user_id)
         refresh_token, family = create_refresh_token(
             user_id, 
             user_agent=user_agent, 
@@ -57,38 +59,22 @@ async def callback_google(
         # Extract token data and create user session
         from jose import jwt
         token_data = jwt.decode(refresh_token, settings.REFRESH_SECRET, algorithms=["HS256"])
-        refresh_jti = token_data.get("jti")
+        jti = token_data.get("jti")
         
-        # Create access token with same JTI as refresh token
-        access_token = create_access_token(user_id, token_id=refresh_jti)
-        
-        # Generate more stable client_id for OAuth that doesn't depend on IP
-        # This ensures the same browser+user will get the same client_id even if IP changes
-        import hashlib
-        # Use user_id and a hash of user_agent for more stability
-        browser_fingerprint = f"oauth-{user_id}-{hashlib.md5(user_agent.encode()).hexdigest()[:8]}"
-        client_id = browser_fingerprint
-        
-        # Calculate session expiration for extended OAuth session
-        from datetime import datetime, timezone, timedelta
-        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TTL_DAYS * 4)
-        
-        # Upsert user session (prevents duplicates per device)
-        from app.auth.tokens import upsert_user_session
-        upsert_user_session(
-            user_id=user_id,
-            refresh_token_jti=refresh_jti,
-            client_id=client_id,
-            user_agent=user_agent,
-            ip_address=ip,
-            expires_at=expires_at
-        )
+        # Create user session
+        device_info = {
+            "client_id": request.cookies.get("client_id", str(uuid.uuid4())),
+            "device_type": "browser",
+            "ip_address": ip,
+            "user_agent": user_agent
+        }
+        create_user_session(db, user_id, jti, device_info)
         
         frontend_url = settings.FRONTEND_URL
-        print(f"Redirecting to: {frontend_url}/auth/callback")
+        print(f"Redirecting to: {frontend_url}/dashboard")
         
         # Set cookies consistent with your auth system
-        response = RedirectResponse(f"{frontend_url}/auth/callback")
+        response = RedirectResponse(f"{frontend_url}/dashboard")
         response.set_cookie(
             key="access_token",
             value=access_token,

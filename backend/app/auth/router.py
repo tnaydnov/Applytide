@@ -10,7 +10,7 @@ from ..core.security import hash_password, verify_password
 from .tokens import (
     create_access_token, create_refresh_token,
     decode_refresh, revoke_refresh_token, revoke_all_user_tokens,
-    create_email_token, verify_email_token, revoke_jti
+    create_email_token, verify_email_token
 )
 from .rate_limiting import login_limiter, refresh_limiter, email_limiter
 from .email_service import email_service
@@ -30,36 +30,12 @@ router.include_router(sessions_router)
 
 @router.post("/extension-token", response_model=ExtensionTokenOut)
 async def get_extension_token(
-    request: Request,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate a token specifically for the browser extension"""
-    # Try to get the current session's JTI from the access token cookie first
-    session_jti = None
-    access_token = request.cookies.get("access_token")
-    if access_token:
-        try:
-            from .tokens import decode_access
-            data = decode_access(access_token)
-            session_jti = data.get("jti")
-        except:
-            # If access token is invalid/expired, try refresh token
-            pass
-    
-    # Fallback to refresh token if access token didn't work
-    if not session_jti:
-        refresh_token = request.cookies.get("refresh_token")
-        if refresh_token:
-            try:
-                from .tokens import decode_refresh
-                data = decode_refresh(refresh_token)
-                session_jti = data.get("jti")
-            except:
-                pass
-    
-    # Create access token with same JTI as current session if available
-    access_token = create_access_token(str(current_user.id), token_id=session_jti)
+    # IMPORTANT: current_user.id is a UUID; create_access_token expects str
+    access_token = create_access_token(str(current_user.id))
     return ExtensionTokenOut(access_token=access_token)
 
 
@@ -109,36 +85,9 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
     db.add(user)
     db.commit()
 
-    # Create tokens with session management
+    # Create tokens
+    access = create_access_token(str(user.id))
     refresh, _fam = create_refresh_token(str(user.id), user_agent=user_agent, ip_address=ip_address)
-    
-    try:
-        token_data = decode_refresh(refresh)
-        refresh_jti = token_data.get("jti")
-        
-        # Create access token with same JTI as refresh token
-        access = create_access_token(str(user.id), token_id=refresh_jti)
-        
-        # Get client_id from request body
-        client_id = getattr(payload, 'client_id', str(uuid.uuid4()))
-        
-        # Calculate session expiration (7 days default for registration)
-        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TTL_DAYS)
-        
-        # Create user session (prevents duplicates per device)
-        from .tokens import upsert_user_session
-        upsert_user_session(
-            user_id=str(user.id),
-            refresh_token_jti=refresh_jti,
-            client_id=client_id,
-            user_agent=user_agent,
-            ip_address=ip_address,
-            expires_at=expires_at
-        )
-    except Exception as e:
-        print(f"Failed to create user session on registration: {e}")
-        # Still continue with registration if session creation fails
-        access = create_access_token(str(user.id))
     
     # Send verification email
     try:
@@ -184,6 +133,7 @@ async def login(
     db.commit()
 
     # Create tokens
+    access_token = create_access_token(str(user.id))
     refresh_token, _fam = create_refresh_token(
         str(user.id), 
         user_agent=user_agent, 
@@ -193,38 +143,20 @@ async def login(
 
     try:
         token_data = decode_refresh(refresh_token)
-        refresh_jti = token_data.get("jti")
+        jti = token_data.get("jti")
         
-        # Create access token with same JTI as refresh token
-        access_token = create_access_token(str(user.id), token_id=refresh_jti)
+        # Create user session
+        device_info = {
+            "client_id": request.cookies.get("client_id", str(uuid.uuid4())),
+            "device_type": "browser",
+            "ip_address": ip_address,
+            "user_agent": user_agent
+        }
         
-        # Get client_id from request body or generate one
-        client_id = getattr(form_data, 'client_id', None) or str(uuid.uuid4())
-        
-        # Calculate session expiration
-        if form_data.remember_me:
-            refresh_days = getattr(settings, 'REFRESH_EXTENDED_TTL_DAYS', 
-                                getattr(settings, 'REFRESH_TTL_EXTENDED_DAYS',
-                                        settings.REFRESH_TTL_DAYS * 4))
-        else:
-            refresh_days = settings.REFRESH_TTL_DAYS
-        
-        expires_at = datetime.now(timezone.utc) + timedelta(days=refresh_days)
-        
-        # Upsert user session (prevents duplicates per device)
-        from .tokens import upsert_user_session
-        upsert_user_session(
-            user_id=str(user.id),
-            refresh_token_jti=refresh_jti,
-            client_id=client_id,
-            user_agent=user_agent,
-            ip_address=ip_address,
-            expires_at=expires_at
-        )
+        from .sessions import create_user_session
+        create_user_session(db, str(user.id), jti, device_info)
     except Exception as e:
         print(f"Failed to create user session: {e}")
-        # Still continue with login if session creation fails
-        access_token = create_access_token(str(user.id))
     
     # Calculate cookie expiration
     if form_data.remember_me:
@@ -332,55 +264,13 @@ def refresh_token(
         revoke_refresh_token(jti)
         
         # Create new tokens
+        new_access = create_access_token(user_id)
         new_refresh, _ = create_refresh_token(
             user_id, 
             family=family, 
             user_agent=user_agent, 
             ip_address=ip_address
         )
-        
-        # Get new refresh token JTI
-        new_token_data = decode_refresh(new_refresh)
-        new_refresh_jti = new_token_data.get("jti")
-        
-        # Create access token with same JTI as new refresh token
-        new_access = create_access_token(user_id, token_id=new_refresh_jti)
-        
-        # Get client_id from header, or find existing session's client_id
-        client_id = request.headers.get("X-Client-Id")
-        
-        # If no client_id in header, try to find it from the old session
-        if not client_id:
-            try:
-                old_session = db.query(models.UserSession).filter(
-                    models.UserSession.user_id == uuid.UUID(user_id),
-                    models.UserSession.refresh_token_jti == jti,
-                    models.UserSession.is_active == True
-                ).first()
-                if old_session:
-                    client_id = old_session.client_id
-            except Exception:
-                pass
-        
-        # Fallback to new UUID only if we can't find existing session
-        if not client_id:
-            client_id = str(uuid.uuid4())
-        
-        # Update the user session with new refresh token JTI
-        try:
-            from .tokens import upsert_user_session
-            # Calculate session expiration - keep same as refresh token
-            expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TTL_DAYS)
-            upsert_user_session(
-                user_id=user_id,
-                refresh_token_jti=new_refresh_jti,
-                client_id=client_id,
-                user_agent=user_agent,
-                ip_address=ip_address,
-                expires_at=expires_at
-            )
-        except Exception as e:
-            print(f"Failed to update user session on refresh: {e}")
         
         # Set new cookies
         response.set_cookie(
@@ -462,17 +352,13 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             jti = data.get("jti")
             revoke_refresh_token(jti)
             
-            # Blacklist the access token immediately
+            # Add this block to delete the session record
             if jti:
-                revoke_jti(jti, seconds=settings.ACCESS_TTL_MIN * 60)
-            
-            # Mark the session as inactive
-            if jti:
-                session = db.query(models.UserSession).filter(
-                    models.UserSession.refresh_token_jti == jti
+                db_session = db.query(models.UserSession).filter(
+                    models.UserSession.token_id == jti
                 ).first()
-                if session:
-                    session.is_active = False
+                if db_session:
+                    db.delete(db_session)
                     db.commit()
         except Exception as e:
             # Already invalid, that's fine

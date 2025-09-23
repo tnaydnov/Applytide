@@ -1,5 +1,5 @@
 # backend/auth/sessions.py
-from .tokens import decode_refresh, revoke_jti
+from .tokens import decode_refresh
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -113,7 +113,6 @@ def revoke_session(
             data = decode_refresh(refresh_token)
             current_jti = data.get("jti")
             is_current_session = (current_jti == session.refresh_token_jti)
-            revoke_jti(session.refresh_token_jti, seconds=settings.ACCESS_TTL_MIN * 60)
         except:
             pass
     
