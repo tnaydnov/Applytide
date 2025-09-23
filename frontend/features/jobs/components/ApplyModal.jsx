@@ -121,7 +121,7 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
       isOpen={isOpen}
       onClose={onClose}
       title={job ? `Apply to ${job.title || 'Job'}` : 'Apply'}
-      size="2xl"
+      size='w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl'
     >
       <div className="space-y-6 sm:space-y-7">
         {/* Job summary */}
