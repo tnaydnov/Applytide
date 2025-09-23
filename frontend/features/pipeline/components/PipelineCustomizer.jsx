@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui";
-import { statusConfig, DEFAULT_STAGES } from "@/utils/status";
+import { Button } from "../../../components/ui";
+import { statusConfig, DEFAULT_STAGES } from "../utils/status";
 
 /**
  * PipelineCustomizer

@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/router";
-import { Button} from "@/components/ui";
-import { apiFetch } from "@/lib/api";
-import { STATUS_CONFIG as statusConfig, DEFAULT_STATUS_STYLE } from "@/utils/status";
+import { Button} from "../../../components/ui";
+import { apiFetch } from "../../../lib/api";
+import { STATUS_CONFIG as statusConfig, DEFAULT_STATUS_STYLE } from "../utils/status";
 
 /**
  * JobDetailModal

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/ui";
-import { api, apiFetch } from "@/lib/api";
+import { Button } from "../../../components/ui";
+import { api, apiFetch } from "../../../lib/api";
 
 /**
  * NoteModal

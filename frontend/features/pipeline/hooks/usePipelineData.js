@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useToast } from '@/lib/toast';
-import { api, connectWS } from '@/lib/api';
-import { DEFAULT_STAGES } from '@/utils/status';
+import { useToast } from '../../../lib/toast';
+import { api, connectWS } from '../../../lib/api';
+import { DEFAULT_STAGES } from '../utils/status';
 
 /**
  * Centralized data layer for the Pipeline page:

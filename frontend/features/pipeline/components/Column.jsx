@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Badge } from '@/components/ui';
+import { Badge } from '../../../components/ui';
 import ApplicationCard from './ApplicationCard';
-import { getStatusConfig } from '@/utils/status';
+import { getStatusConfig } from '../utils/status';
 
 /**
  * A single kanban column that supports drag & drop and expansion.

@@ -4,23 +4,21 @@ import Head from "next/head";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 
-import { Input, Select, Button, Card, Badge } from "@/components/ui";
-import Column from "@/features/pipeline/components/Column";
-import ApplicationCard from "@/features/pipeline/components/ApplicationCard";
-import PipelineCustomizer from "@/features/pipeline/components/PipelineCustomizer";
-import usePipelineData from "@/features/pipeline/hooks/usePipelineData";
-import { KNOWN_STATUSES, getStatusConfig } from "@/features/pipeline/utils/status";
-import { useToast } from "@/lib/toast";
+import { Input, Select, Button, Card} from "../components/ui";
+import Column from "../features/pipeline/components/Column";
+import ApplicationCard from "../features/pipeline/components/ApplicationCard";
+import PipelineCustomizer from "../features/pipeline/components/PipelineCustomizer";
+import usePipelineData from "../features/pipeline/hooks/usePipelineData";
+import { KNOWN_STATUSES, getStatusConfig } from "../features/pipeline/utils/status";
 
 // Lazy-load large overlays to keep SSR happy
 const ApplicationDrawer = dynamic(
-  () => import("@/features/pipeline/components/ApplicationDrawer").then(m => m.default || m),
+  () => import("../features/pipeline/components/ApplicationDrawer").then(m => m.default || m),
   { ssr: false }
 );
 
 export default function PipelinePage() {
   const router = useRouter();
-  const toast = useToast();
 
   // ---------------- Data layer ----------------
   const {

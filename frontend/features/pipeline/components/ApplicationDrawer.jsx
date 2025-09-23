@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { Button, Card, Select, Input } from '@/components/ui';
-import { useToast } from '@/lib/toast';
-import { api, apiFetch } from '@/lib/api';
-import { getReminders as getGoogleReminders, createReminder as createGoogleReminder } from '@/services/googleCalendar';
-import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "@/features/pipeline/utils/docTypes";
+import { Button, Card, Select, Input } from '../../../components/ui';
+import { useToast } from '../../../lib/toast';
+import { api, apiFetch } from '../../../lib/api';
+import { getReminders as getGoogleReminders, createReminder as createGoogleReminder } from '../../../services/googleCalendar';
+import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "../utils/docTypes";
 
 /** --- Doc type helpers (kept local to the drawer) --- */
 

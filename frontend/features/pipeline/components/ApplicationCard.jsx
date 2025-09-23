@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
-import { Button, Card } from "@/components/ui";
-import { getStatusConfig } from "@/features/pipeline/utils/status";
+import { Button, Card } from "../../../components/ui";
+import { getStatusConfig } from "../utils/status";
 
 // Lazy-load to avoid SSR issues; we’ll add this file next.
 const NoteModal = dynamic(() => import("./NoteModal").then(m => m.default || m), { ssr: false });
