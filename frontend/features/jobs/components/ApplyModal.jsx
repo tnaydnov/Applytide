@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Button, Input, Select } from '../../../components/ui';
-import { api, API_BASE } from '../../../lib/api';
+import { Modal, Button, Select } from '../../../components/ui';
+import { api } from '../../../lib/api';
 import { useToast } from '../../../lib/toast';
 
 const DOC_TYPES = [
@@ -37,6 +37,9 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
   const [uploads, setUploads] = useState([]); // [{ file, type }]
   const [applying, setApplying] = useState(false);
 
+  const getDocType = (d) =>
+    String(d?.type ?? d?.document_type ?? '').toLowerCase() || 'other';
+
   // Load user's documents when opening
   useEffect(() => {
     if (!isOpen) return;
@@ -62,35 +65,9 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
 
   async function uploadOneDocument(type, file) {
     if (!file) return null;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('document_type', type);
-
-    const resp = await fetch(`${API_BASE}/documents/upload`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    });
-
-    if (!resp.ok) throw new Error(`Upload ${type} failed (${resp.status})`);
-
-    const body = await resp.json().catch(() => ({}));
-    const idGuess = body?.document?.id ?? body?.id ?? body?.doc?.id ?? null;
-    if (idGuess) return idGuess;
-
-    // Fallback: fetch latest of that type
-    const latest = await api.getDocuments({
-      page: 1,
-      page_size: 1,
-      document_type: type,
-      status: 'active',
-      order: 'desc',
-      sort: 'created_at',
-    });
-    const doc = latest?.documents?.[0];
-    if (doc?.id) return doc.id;
-
-    throw new Error("Upload succeeded but couldn't locate new file id");
+    const body = await api.uploadDocument({ file, document_type: type });
+    if (body?.id) return body.id;
+    throw new Error("Upload succeeded but didn't return an id");
   }
 
   async function handleSubmit() {
@@ -144,9 +121,9 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
       isOpen={isOpen}
       onClose={onClose}
       title={job ? `Apply to ${job.title || 'Job'}` : 'Apply'}
-      size="xl"
+      size="2xl"
     >
-      <div className="space-y-5">
+      <div className="space-y-6 sm:space-y-7">
         {/* Job summary */}
         {job && (
           <div className="p-3 rounded-lg bg-white/5 border border-white/10">
@@ -159,7 +136,7 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3">
           <Button variant={tab === 'select' ? 'default' : 'outline'} size="sm" onClick={() => setTab('select')}>
             📂 Choose from My Documents
           </Button>
@@ -173,14 +150,14 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
 
         {/* SELECT EXISTING */}
         {tab === 'select' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {applyDocsLoading ? (
               <div className="text-slate-400">Loading your documents…</div>
             ) : (
               <>
                 <div className="flex items-center gap-3">
                   <label className="text-sm text-slate-300">Filter by type</label>
-                  <Select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="max-w-xs">
+                  <Select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-44">
                     <option value="">All</option>
                     {DOC_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -189,23 +166,31 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
                     ))}
                   </Select>
                 </div>
-
-                <div className="max-h-64 overflow-y-auto rounded-lg border border-white/10">
-                  {docs
-                    .filter((d) => !filterType || d.document_type === filterType)
-                    .map((d) => {
+                <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/10">
+                  {(() => {
+                    const filtered = docs.filter((d) => !filterType || getDocType(d) === filterType);
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="p-3 text-slate-400 text-sm">
+                          {docs.length
+                            ? 'No documents match this type.'
+                            : 'No documents found. Try the “Upload now” tab.'}
+                        </div>
+                      );
+                    }
+                    return filtered.map((d) => {
                       const checked = selectedDocIds.has(String(d.id));
+                      const dtype = getDocType(d);
                       return (
                         <label
                           key={d.id}
-                          className={`flex items-center justify-between p-3 border-b border-white/10 cursor-pointer ${
-                            checked ? 'bg-white/10' : 'hover:bg-white/5'
-                          }`}
+                          className={`flex items-center justify-between p-3 cursor-pointer ${checked ? 'bg-white/10' : 'hover:bg-white/5'
+                            }`}
                         >
                           <div className="min-w-0 pr-3">
                             <div className="text-slate-100 font-medium truncate">{docDisplayName(d)}</div>
                             <div className="text-xs text-slate-400">
-                              {typeLabel(d.document_type)} • {String(d.format || '').toUpperCase()} •{' '}
+                              {typeLabel(dtype)} • {String(d.format || '').toUpperCase()} •{' '}
                               {d.created_at ? new Date(d.created_at).toLocaleDateString() : '-'}
                             </div>
                           </div>
@@ -224,11 +209,8 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
                           />
                         </label>
                       );
-                    })}
-
-                  {!docs.length && (
-                    <div className="p-3 text-slate-400 text-sm">No documents found. Try the “Upload now” tab.</div>
-                  )}
+                    });
+                  })()}
                 </div>
               </>
             )}
@@ -304,12 +286,12 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
         )}
 
         {/* Actions */}
-        <div className="flex justify-between items-center pt-2">
-          <div className="text-xs text-slate-400">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 border-t border-white/10">
+          <div className="text-xs text-slate-400 sm:order-1">
             {tab === 'select' && "Tip: You can keep one or both selections empty if you switch to 'Apply without files'."}
             {tab === 'upload' && 'Only the files you pick will be uploaded and attached.'}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:order-2 sm:justify-end">
             <Button variant="outline" onClick={onClose} disabled={applying}>
               Cancel
             </Button>
