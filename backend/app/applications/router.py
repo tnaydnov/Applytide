@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, join, func, or_
@@ -417,6 +417,7 @@ document_service = DocumentService()
 
 class AttachFromDocumentPayload(BaseModel):
     document_id: str
+    document_type: Optional[str] = "other"
 
 @router.post("/{app_id}/attachments/from-document", response_model=AttachmentOut)
 def attach_from_document(
@@ -455,6 +456,7 @@ def attach_from_document(
         file_size=size,
         content_type=media_type or "application/octet-stream",
         file_path=str(dst_path),
+        document_type=payload.document_type or "other",   # <-- new
     )
     db.add(attachment)
     db.commit()
@@ -474,6 +476,7 @@ def attach_from_document(
 async def upload_attachment(
     app_id: uuid.UUID,
     file: UploadFile = File(...),
+    document_type: Optional[str] = Form("other"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -511,6 +514,7 @@ async def upload_attachment(
         file_size=total,
         content_type=file.content_type or "application/octet-stream",
         file_path=file_path,
+        document_type=document_type or "other",      # <-- new
     )
     db.add(attachment)
     db.commit()

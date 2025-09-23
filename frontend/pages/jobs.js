@@ -10,9 +10,12 @@ import ManualJobModal from "../features/jobs/components/ManualJobModal";
 
 import { useJobs } from "../features/jobs/hooks/useJobs";
 import { useState } from "react";
+import { useRouter } from "next/router";
+import { api } from "../lib/api";
 
 
 export default function JobsPage() {
+  const router = useRouter();
   const {
     jobs,
     pagination,
@@ -39,6 +42,37 @@ export default function JobsPage() {
     // reloader
     reloadJobs
   } = useJobs();
+
+  useEffect(() => {
+    const id = router.query?.job ? String(router.query.job) : null;
+    if (!id) return;
+
+    const local = jobs.find(j => String(j.id) === id);
+    if (local) { openJobDetails(local); return; }
+
+    (async () => {
+      try {
+        const fetched = await api.getJob(id);
+        if (fetched) openJobDetails(fetched);
+      } catch { }
+    })();
+  }, [router.query?.job, jobs, openJobDetails]);
+
+  const closeDetailsAndClearQuery = () => {
+    closeJobDetails();
+    const q = { ...router.query }; delete q.job;
+    router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true });
+  };
+
+  // later
+  <JobDetailsModal
+    isOpen={detailsState.isOpen}
+    job={detailsState.job}
+    mode={detailsState.mode}
+    onClose={closeDetailsAndClearQuery}
+    onSaved={() => reloadJobs(pagination.page)}
+  />
+
 
   // local: manual job modal
   const [showManualModal, setShowManualModal] = useState(false);

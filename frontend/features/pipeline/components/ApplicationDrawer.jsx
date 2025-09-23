@@ -7,6 +7,24 @@ import { getReminders as getGoogleReminders, createReminder as createGoogleRemin
 import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "../utils/docTypes";
 
 /** --- Doc type helpers (kept local to the drawer) --- */
+async function postAppAttachmentMultipart(file, documentType) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('document_type', documentType || 'other');
+    return apiFetch(`/applications/${appId}/attachments`, { method: 'POST', body: fd });
+}
+
+async function postAppAttachmentFromDocument(documentId, documentType) {
+    return apiFetch(`/applications/${appId}/attachments/from-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            document_id: String(documentId),
+            document_type: documentType || 'other',
+        }),
+    });
+}
+
 
 export default function ApplicationDrawer({ application, onClose }) {
     const toast = useToast();
@@ -20,6 +38,10 @@ export default function ApplicationDrawer({ application, onClose }) {
     const [uploading, setUploading] = useState(false);
     const [uploadType, setUploadType] = useState('other');
     const [attachingId, setAttachingId] = useState(null);
+    const [pendingFile, setPendingFile] = useState(null);
+    const [pendingType, setPendingType] = useState('resume');
+    const [showTypeChooser, setShowTypeChooser] = useState(false);
+
 
     // Docs picker
     const [showDocsPicker, setShowDocsPicker] = useState(false);
@@ -55,64 +77,12 @@ export default function ApplicationDrawer({ application, onClose }) {
         }
     }, [appId]);
 
-    const handleUploadFile = async (file) => {
+    const handleUploadFile = async (file, chosenType) => {
         if (!appId || !file) return;
         try {
             setUploading(true);
-
-            // 1) Preferred: upload directly to the application (does NOT create a global Document)
-            const directForm = new FormData();
-            directForm.append('file', file);
-            directForm.append('document_type', uploadType || 'other');
-            directForm.append('type', uploadType || 'other');
-
-            let ok = false;
-            try {
-                const directRes = await apiFetch(`/applications/${appId}/attachments/upload`, {
-                    method: 'POST',
-                    body: directForm,
-                });
-                ok = directRes.ok;
-                if (!ok) {
-                    // try to read body for better logs
-                    console.warn('Direct app upload failed', await directRes.text().catch(() => ''));
-                }
-            } catch (err) {
-                // network/404/etc -> fall back below
-                console.warn('Direct app upload endpoint not available, falling back', err);
-            }
-
-            if (!ok) {
-                // 2) Fallback: upload via /documents, then attach to app (still preserves the selected type)
-                const docForm = new FormData();
-                docForm.append('file', file);
-                docForm.append('document_type', uploadType || 'other');
-                docForm.append('type', uploadType || 'other');
-
-                docForm.append('origin', 'application');
-                docForm.append('application_id', appId);
-                docForm.append('application_context', `${companyName || ''}${companyName && jobTitle ? ' — ' : ''}${jobTitle || ''}`);
-                docForm.append('no_index', '1'); // backend may ignore; safe hint
-                const upRes = await apiFetch(`/documents/upload`, { method: 'POST', body: docForm });
-                const up = await upRes.json().catch(() => null);
-                const newDocId = up?.document?.id || up?.id;
-                if (!newDocId) throw new Error('Upload succeeded but no document id returned');
-
-                if (api?.attachExistingDocument) {
-                    await api.attachExistingDocument(appId, String(newDocId), uploadType);
-                } else {
-                    await apiFetch(`/applications/${appId}/attachments`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            document_id: String(newDocId),
-                            document_type: uploadType || 'other',
-                            type: uploadType || 'other', // compat
-                        }),
-                    });
-                }
-            }
-
+            const res = await postAppAttachmentMultipart(file, chosenType);
+            if (!res.ok) throw new Error(await res.text());
             toast.success('Attachment uploaded');
             await loadAttachments();
         } catch (e) {
@@ -120,8 +90,12 @@ export default function ApplicationDrawer({ application, onClose }) {
             toast.error('Upload failed');
         } finally {
             setUploading(false);
+            setPendingFile(null);
+            setShowTypeChooser(false);
+            setPendingType('resume');
         }
     };
+
 
     const removeAttachment = async (attachmentId) => {
         if (!appId || !attachmentId) return;
@@ -159,25 +133,10 @@ export default function ApplicationDrawer({ application, onClose }) {
         if (!docId || !appId) return;
         try {
             setAttachingId(docId);
-
             const picked = docs.find(d => String(d?.id) === String(docId));
-            const chosenType = picked?.document_type || picked?.type || uploadType || 'other';
-
-            if (api?.attachExistingDocument) {
-                await api.attachExistingDocument(appId, String(docId), chosenType);
-            } else {
-                // fallback to REST
-                await apiFetch(`/applications/${appId}/attachments`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        document_id: String(docId),
-                        document_type: chosenType,
-                        type: chosenType,
-                    }),
-                });
-            }
-
+            const chosenType = picked?.document_type || picked?.type || 'other';
+            const res = await postAppAttachmentFromDocument(docId, chosenType);
+            if (!res.ok) throw new Error(await res.text());
             toast.success('Attached from Documents');
             setShowDocsPicker(false);
             await loadAttachments();
@@ -188,6 +147,7 @@ export default function ApplicationDrawer({ application, onClose }) {
             setAttachingId(null);
         }
     };
+
 
     /* -------------------------------- Reminders ------------------------------ */
     const loadReminders = useCallback(async () => {
@@ -349,26 +309,18 @@ export default function ApplicationDrawer({ application, onClose }) {
                                 <h3 className="text-slate-200 font-semibold">Attachments</h3>
 
                                 <div className="flex items-center gap-2">
-                                    <select
-                                        value={uploadType}
-                                        onChange={(e) => setUploadType(e.target.value)}
-                                        className="rounded-md bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1"
-                                        title="Document type"
-                                    >
-                                        {DOC_TYPES.map((t) => (
-                                            <option key={t} value={t}>
-                                                {typeLabel(t)}
-                                            </option>
-                                        ))}
-                                    </select>
-
                                     <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
-                                        {/* Accept includes audio types per your requirement */}
                                         <input
                                             type="file"
                                             className="hidden"
                                             accept={ACCEPT_ATTR}
-                                            onChange={(e) => handleUploadFile(e.target.files?.[0] || null)}
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (!f) return;
+                                                setPendingFile(f);
+                                                setPendingType('resume');
+                                                setShowTypeChooser(true);
+                                            }}
                                         />
                                         {uploading ? 'Uploading…' : 'Upload'}
                                     </label>
@@ -378,13 +330,37 @@ export default function ApplicationDrawer({ application, onClose }) {
                                     </Button>
                                 </div>
                             </div>
+                            {showTypeChooser && pendingFile && (
+                                <div className="mt-3 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="text-slate-300 font-medium">Choose file type</div>
+                                        <Button variant="outline" onClick={() => { setShowTypeChooser(false); setPendingFile(null); }}>
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={pendingType}
+                                            onChange={(e) => setPendingType(e.target.value)}
+                                            className="rounded-md bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1"
+                                        >
+                                            {DOC_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                                        </select>
+                                        <Button onClick={() => handleUploadFile(pendingFile, pendingType)} disabled={uploading}>
+                                            {uploading ? 'Uploading…' : 'Upload file'}
+                                        </Button>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-2 truncate">{pendingFile.name}</div>
+                                </div>
+                            )}
+
 
                             {attachments.length === 0 ? (
                                 <div className="text-sm text-slate-400">No files attached</div>
                             ) : (
                                 <div className="space-y-2">
                                     {attachments.map((att) => {
-                                        const dtype = att?.document_type || att?.type || att?.doc_type || 'other';
+                                        const dtype = att?.document_type || 'other';
                                         const filename = att?.filename || att?.name || 'Untitled';
                                         const id = att?.id;
                                         return (

@@ -81,6 +81,7 @@ class AttachmentOut(BaseModel):
     file_size: int
     content_type: str
     created_at: datetime
+    document_type: str | None = "other"
     class Config:
         from_attributes = True
 
@@ -91,3 +92,7 @@ class ApplicationDetail(BaseModel):
     stages: List[StageOut]
     notes: List[NoteOut]
     attachments: List[AttachmentOut] = []
+
+class AttachmentUpload(BaseModel):
+    filename: str
+    content_type: str

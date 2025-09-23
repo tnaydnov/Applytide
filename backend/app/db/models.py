@@ -176,15 +176,20 @@ class MatchResult(Base):
 
 
 # ---------- Application Attachments ----------
+# models.py
+
 class ApplicationAttachment(Base):
     __tablename__ = "application_attachments"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     application_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String(300), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    document_type: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True, default="other")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
 
 
 # ---------- Auth Enhancement Tables ----------
