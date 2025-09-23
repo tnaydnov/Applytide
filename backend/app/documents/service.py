@@ -388,7 +388,13 @@ class DocumentService:
         resolved_status = DocumentStatus(side.get("status", DocumentStatus.ACTIVE.value))
         raw_ext = (p.suffix[1:] if p.suffix else "txt").lower()
         ext = {"doc": "docx"}.get(raw_ext, raw_ext)  # normalize legacy .doc to docx
-        fmt = DocumentFormat(ext if ext in {"pdf", "docx", "txt", "html"} else "txt")
+        audio_exts = {"mp3", "m4a", "aac", "wav", "flac", "ogg", "opus"}
+        if ext in {"pdf", "docx", "txt", "html"}:
+            fmt = DocumentFormat(ext)
+        elif ext in audio_exts:
+            fmt = DocumentFormat.AUDIO
+        else:
+            fmt = DocumentFormat.TXT
         size = 0
         try:
             size = p.stat().st_size
@@ -547,6 +553,10 @@ class DocumentService:
         if ext == ".pdf" and p.exists():
             media, _ = mimetypes.guess_type(str(p))
             return "inline_file", {"path": str(p), "media": media or "application/pdf"}
+
+        if ext in {".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"} and p.exists():
+            media, _ = mimetypes.guess_type(str(p))
+            return "inline_file", {"path": str(p), "media": media or "audio/mpeg"}
 
         # For DOCX files, try to find or generate a preview
         if ext == ".docx":

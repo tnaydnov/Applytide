@@ -47,7 +47,10 @@ async def upload_document(
     Upload a new document. Stores original file, extracts text if possible,
     and writes a sidecar .meta.json (type/name/status/extra metadata).
     """
-    allowed = {".pdf", ".docx", ".doc", ".txt"}
+    allowed = {
+        ".pdf", ".docx", ".doc", ".txt",
+        ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"
+    }
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
     ext = "." + file.filename.split(".")[-1].lower()

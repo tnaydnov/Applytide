@@ -45,7 +45,9 @@ export default function JobDetailsModal({
       if (editJobData.remote_type && editJobData.remote_type !== 'On-site') clean.remote_type = editJobData.remote_type;
       if (editJobData.job_type && editJobData.job_type !== 'Full-time') clean.job_type = editJobData.job_type;
       if (editJobData.description?.trim()) clean.description = editJobData.description.trim();
-      if (editJobData.source_url?.trim()) clean.source_url = editJobData.source_url.trim();
+      if (editJobData.source_url?.trim()) {
+        try { new URL(editJobData.source_url.trim()); clean.source_url = editJobData.source_url.trim(); } catch { }
+      }
       if (editJobData.requirements?.length) clean.requirements = editJobData.requirements.filter((x) => x.trim());
       if (editJobData.skills?.length) clean.skills = editJobData.skills.filter((x) => x.trim());
 

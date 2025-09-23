@@ -139,7 +139,7 @@ export default function JobsPage() {
               <Pagination
                 pagination={pagination}
                 loading={loading}
-                onGo={setPage}
+                onGo={(p) => reloadJobs({ page: p })}
               />
             )}
           </div>

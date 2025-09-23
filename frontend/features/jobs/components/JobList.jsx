@@ -13,7 +13,7 @@ export default function JobList({
   if (loading) {
     return (
       <div className="space-y-6">
-        {[...Array(3)].map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i} className="animate-pulse">
             <div className="flex justify-between items-start space-x-4">
               <div className="flex-1 space-y-3">

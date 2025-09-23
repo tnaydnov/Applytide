@@ -100,7 +100,9 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
 
       // 3) Attach
       if (toAttach.length) {
-        await Promise.all(toAttach.map((id) => api.attachExistingDocument(appId, id)));
+        const attachResults = await Promise.allSettled(toAttach.map(id => api.attachExistingDocument(appId, id)));
+        const failed = attachResults.filter(r => r.status === 'rejected');
+        if (failed.length) toast.error(`Attached ${toAttach.length - failed.length}/${toAttach.length} files (some failed).`);
       }
 
       toast.success(toAttach.length ? 'Application created and files attached!' : 'Application created!');
@@ -121,7 +123,8 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
       isOpen={isOpen}
       onClose={onClose}
       title={job ? `Apply to ${job.title || 'Job'}` : 'Apply'}
-      size='w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl'
+      size='2xl'
+      contentClassName="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl"
     >
       <div className="space-y-6 sm:space-y-7">
         {/* Job summary */}
@@ -225,12 +228,11 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
               <input
                 type="file"
                 multiple
+                accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus,audio/*"
                 onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  setUploads((prev) => [
-                    ...prev,
-                    ...files.map((file) => ({ file, type: 'resume' })), // default type
-                  ]);
+                  const files = Array.from(e.target.files || [])
+                    .filter(f => f.size <= 10 * 1024 * 1024); // <=10MB
+                  setUploads(prev => [...prev, ...files.map(file => ({ file, type: 'resume' }))]);
                 }}
               />
             </div>

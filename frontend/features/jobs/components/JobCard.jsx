@@ -74,7 +74,7 @@ export default function JobCard({
                 className="text-indigo-400 hover:text-indigo-300 text-sm font-medium mt-2"
                 type="button"
               >
-                {isExpanded ? '...read less' : '...read more'}
+                {isExpanded ? 'Read less' : 'Read more'}
               </button>
             )}
           </div>
@@ -162,7 +162,7 @@ export default function JobCard({
             <span className="mr-1">📝</span> Apply Now
           </Button>
           <Button
-            onClick={() => onDelete?.(job.id)}
+            onClick={() => window.confirm('Delete this job?') && onDelete?.(job.id)}
             variant="outline"
             size="sm"
             className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-red-800/50"

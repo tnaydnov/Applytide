@@ -26,6 +26,7 @@ class DocumentFormat(str, Enum):
     DOCX = "docx"
     TXT = "txt"
     HTML = "html"
+    AUDIO = "audio"
 
 class ATSScore(BaseModel):
     """Enhanced ATS compatibility score"""
