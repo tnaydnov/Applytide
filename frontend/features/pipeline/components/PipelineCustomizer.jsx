@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../../components/ui";
-import { statusConfig, DEFAULT_STAGES } from "../utils/status";
+import { STATUS_CONFIG, DEFAULT_STAGES } from "../utils/status";
 
 /**
  * PipelineCustomizer
@@ -13,7 +13,7 @@ import { statusConfig, DEFAULT_STAGES } from "../utils/status";
 export default function PipelineCustomizer({
   stages,
   onStagesChange,
-  availableStages = Object.keys(statusConfig),
+  availableStages = Object.keys(STATUS_CONFIG),
   onClose,
 }) {
   const [tempStages, setTempStages] = useState(() => Array.isArray(stages) ? [...stages] : []);
@@ -88,7 +88,7 @@ export default function PipelineCustomizer({
         ) : (
           <div className="space-y-3 mb-6">
             {tempStages.map((stage, index) => {
-              const cfg = statusConfig[stage] || {};
+              const cfg = STATUS_CONFIG[stage] || {};
               const active = dragOverIndex === index;
               const dragging = dragged?.index === index;
 
@@ -159,7 +159,7 @@ export default function PipelineCustomizer({
                 className="flex items-center bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-200 rounded-xl p-4 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all text-sm border border-indigo-400/30 hover:border-indigo-300/50 hover:scale-105 group min-h-[60px]"
                 title={`Add ${stage}`}
               >
-                <span className="mr-3 text-lg flex-shrink-0">{statusConfig[stage]?.icon || "➕"}</span>
+                <span className="mr-3 text-lg flex-shrink-0">{STATUS_CONFIG[stage]?.icon || "➕"}</span>
                 <span className="font-medium group-hover:text-white transition-colors text-left flex-1">{stage}</span>
                 <svg className="w-4 h-4 ml-2 flex-shrink-0 text-indigo-400 group-hover:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

@@ -226,50 +226,90 @@ export default function PipelinePage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <h1 className="text-2xl font-bold text-white">Pipeline</h1>
           <div className="flex items-center gap-2">
-            {/* Segmented view control */}
-            <div className="inline-flex rounded-lg overflow-hidden border border-white/15 bg-white/5">
-              <button
-                type="button"
-                onClick={() => setView("cards")}
-                className={[
-                  "px-3 py-1.5 text-sm",
-                  view === "cards" ? "bg-indigo-600/70 text-white" : "text-white/80 hover:bg-white/10"
-                ].join(" ")}
-              >
-                Cards
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("board")}
-                className={[
-                  "px-3 py-1.5 text-sm border-l border-white/10",
-                  view === "board" ? "bg-indigo-600/70 text-white" : "text-white/80 hover:bg-white/10"
-                ].join(" ")}
-              >
-                Board
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAnalytics((v) => !v)}
-                className={[
-                  "px-3 py-1.5 text-sm border-l border-white/10",
-                  showAnalytics ? "bg-indigo-600/70 text-white" : "text-white/80 hover:bg-white/10"
-                ].join(" ")}
-              >
-                Analytics
-              </button>
-            </div>
-
-            <Button variant="outline" onClick={() => setShowSettings(true)}>Customize Pipeline</Button>
+            <Button
+              variant={view === "cards" ? "default" : "outline"}
+              onClick={() => setView("cards")}
+            >
+              Cards
+            </Button>
+            <Button
+              variant={view === "board" ? "default" : "outline"}
+              onClick={() => setView("board")}
+            >
+              Board
+            </Button>
+            <Button
+              variant={showAnalytics ? "default" : "outline"}
+              onClick={() => setShowAnalytics((v) => !v)}
+              className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
+            >
+              Analytics
+            </Button>
+            <Button variant="outline" onClick={() => setShowSettings(true)}>
+              Customize Pipeline
+            </Button>
             <Button onClick={reload}>Reload</Button>
           </div>
+
         </div>
 
-        {/* Analytics */}
-        {showAnalytics && renderAnalytics()}
+        {/* SUMMARY analytics – always on top (big colorful cards) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          <BigStat label="Total Applications" value={stats.totalApps} color="indigo" icon="📄" />
+          <BigStat label="In Progress" value={stats.activeApps} color="amber" icon="⏳" />
+          <BigStat label="Offers" value={stats.offers} color="emerald" icon="🌱" />
+          <BigStat label="Success Rate" value={`${stats.successRate}%`} color="violet" icon="📈" />
+          <BigStat label="7d New" value={stats.recentApps} color="cyan" icon="✨" />
+          <BigStat label="Rejected" value={stats.rejections} color="rose" icon="⛔" />
+        </div>
+
+        {/* DETAILED analytics – appears only when the "Analytics" pill is ON */}
+        {showAnalytics && (
+          <Card className="mb-6 bg-[#0b1222]/80 border-white/10 shadow-[0_0_0_1px_rgba(255,255,255,.06)]">
+            <div className="text-sm text-white/70 mb-2">Detailed Analytics</div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 space-y-2">
+                <div className="text-xs text-white/60">Conversion Rate</div>
+                <div className="h-2 bg-white/10 rounded">
+                  <div style={{ width: `${stats.conversionRate || 0}%` }} className="h-2 rounded bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+                </div>
+                <div className="text-xs text-white/60">Success Rate</div>
+                <div className="h-2 bg-white/10 rounded">
+                  <div style={{ width: `${stats.successRate || 0}%` }} className="h-2 rounded bg-gradient-to-r from-violet-400 to-fuchsia-500"></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-3">
+                  <MiniStat label="Total" value={stats.totalApps} />
+                  <MiniStat label="Active" value={stats.activeApps} />
+                  <MiniStat label="7d New" value={stats.recentApps} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs text-white/60">Top Companies</div>
+                <div className="glass-card border border-white/10 rounded-lg p-3">
+                  {(stats.topCompanies || []).length === 0 ? (
+                    <div className="text-xs text-white/50">—</div>
+                  ) : (
+                    <ul className="space-y-1 text-sm">
+                      {stats.topCompanies.map(([name, count]) => (
+                        <li key={name} className="flex items-center justify-between">
+                          <span className="truncate">{name}</span>
+                          <span className="text-white/60">{count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="text-xs text-white/60">Insights</div>
+                <div className="glass-card border border-white/10 rounded-lg p-3 text-xs text-white/70">
+                  You’ve added {stats.recentApps} application{stats.recentApps === 1 ? '' : 's'} this week.
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Controls */}
-        <div className="glass-card rounded-xl p-3 md:p-4 mb-5 border border-white/15 ring-1 ring-amber-200/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_40px_rgba(245,197,110,0.08)]">
+        <div className="rounded-xl border border-white/15 bg-[#0b1222]/80 shadow-[0_0_0_1px_rgba(255,255,255,.06)] p-3 md:p-4 mb-5">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div className="md:col-span-2">
               <Input
@@ -291,20 +331,22 @@ export default function PipelinePage() {
                 <option value="company">Sort by Company</option>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-start md:justify-end gap-2">
               <Button
+                size="sm"
                 variant={view === "board" ? "default" : "outline"}
                 onClick={() => setView("board")}
               >
                 Board
               </Button>
               <Button
+                size="sm"
                 variant={view === "cards" ? "default" : "outline"}
                 onClick={() => setView("cards")}
               >
                 Cards
               </Button>
-              <Button variant="ghost" onClick={clearFilters} title="Clear filters">
+              <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">
                 Reset
               </Button>
             </div>
@@ -330,6 +372,7 @@ export default function PipelinePage() {
             </div>
           </div>
         </div>
+
 
         {/* Content */}
         {loading ? (
@@ -466,6 +509,36 @@ function ModalShell({ title, onClose, children }) {
           <div className="p-4">{children}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BigStat({ label, value, color = "indigo", icon }) {
+  const colorMap = {
+    indigo: "from-indigo-500/20 to-indigo-500/10 border-indigo-400/20",
+    amber: "from-amber-500/20 to-amber-500/10 border-amber-400/20",
+    emerald: "from-emerald-500/20 to-emerald-500/10 border-emerald-400/20",
+    violet: "from-violet-500/20 to-violet-500/10 border-violet-400/20",
+    cyan: "from-cyan-500/20 to-cyan-500/10 border-cyan-400/20",
+    rose: "from-rose-500/20 to-rose-500/10 border-rose-400/20",
+  }[color] || "from-indigo-500/20 to-indigo-500/10 border-indigo-400/20";
+
+  return (
+    <div className={`rounded-xl border ${colorMap} bg-gradient-to-br p-4`}>
+      <div className="text-xs text-white/70 mb-1">{label}</div>
+      <div className="text-2xl font-bold text-white flex items-center gap-2">
+        {icon ? <span className="text-white/80">{icon}</span> : null}
+        <span>{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+      <div className="text-xs text-white/60">{label}</div>
+      <div className="text-lg font-semibold text-white">{value}</div>
     </div>
   );
 }
