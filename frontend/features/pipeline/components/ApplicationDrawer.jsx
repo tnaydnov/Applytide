@@ -6,25 +6,6 @@ import { api, apiFetch } from '../../../lib/api';
 import { getReminders as getGoogleReminders, createReminder as createGoogleReminder } from '../../../services/googleCalendar';
 import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "../utils/docTypes";
 
-/** --- Doc type helpers (kept local to the drawer) --- */
-async function postAppAttachmentMultipart(file, documentType) {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('document_type', documentType || 'other');
-    return apiFetch(`/applications/${appId}/attachments`, { method: 'POST', body: fd });
-}
-
-async function postAppAttachmentFromDocument(documentId, documentType) {
-    return apiFetch(`/applications/${appId}/attachments/from-document`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            document_id: String(documentId),
-            document_type: documentType || 'other',
-        }),
-    });
-}
-
 
 export default function ApplicationDrawer({ application, onClose }) {
     const toast = useToast();
@@ -32,6 +13,24 @@ export default function ApplicationDrawer({ application, onClose }) {
 
     // App ID (defensive across shapes)
     const appId = String(application?.id ?? application?.application_id ?? '');
+
+    async function postAppAttachmentMultipart(file, documentType) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('document_type', documentType || 'other');
+        return apiFetch(`/applications/${appId}/attachments`, { method: 'POST', body: fd });
+    }
+
+    async function postAppAttachmentFromDocument(documentId, documentType) {
+        return apiFetch(`/applications/${appId}/attachments/from-document`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                document_id: String(documentId),
+                document_type: documentType || 'other',
+            }),
+        });
+    }
 
     // Attachments
     const [attachments, setAttachments] = useState([]);

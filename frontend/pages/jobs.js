@@ -198,7 +198,7 @@ export default function JobsPage() {
         isOpen={detailsState.isOpen}
         job={detailsState.job}
         mode={detailsState.mode}
-        onClose={closeJobDetails}
+        onClose={closeDetailsAndClearQuery}
         onSaved={() => reloadJobs(pagination.page)}
       />
     </AuthGuard>
