@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import { Button, Card } from "../../../components/ui";
 import { getStatusConfig } from "../utils/status";
+import { createPortal } from "react-dom";
 
 // Lazy-load to avoid SSR issues; we’ll add this file next.
 const NoteModal = dynamic(() => import("./NoteModal").then(m => m.default || m), { ssr: false });
@@ -32,6 +33,25 @@ export default function ApplicationCard({
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [showMoveModal, setShowMoveModal] = useState(false);
     const [search, setSearch] = useState("");
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => setMounted(true), []);
+
+    useEffect(() => {
+        if (!mounted) return;
+        if (showMoveModal) {
+            const prev = document.body.style.overflow;
+            document.body.style.overflow = "hidden";   // prevent background scroll
+            return () => { document.body.style.overflow = prev; };
+        }
+    }, [mounted, showMoveModal]);
+
+    useEffect(() => {
+        if (!showMoveModal) return;
+        const onKey = (e) => e.key === 'Escape' && setShowMoveModal(false);
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [showMoveModal]);
 
     // Guard against missing application to prevent runtime errors.
     if (!application || !application.id) {
@@ -122,17 +142,20 @@ export default function ApplicationCard({
                 {/* Delete */}
                 <button
                     onClick={handleDelete}
-                    className={`absolute ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"
-                        } inline-flex items-center justify-center w-8 h-8 rounded-full text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-all duration-200 z-10 backdrop-blur-sm border border-red-400/30 hover:border-red-300/50`}
+                    className={`absolute ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
+                    inline-flex items-center justify-center w-9 h-9 rounded-full
+                    text-red-400 hover:text-red-300 hover:bg-red-500/15
+                    transition-all duration-200 z-10 backdrop-blur-sm
+                    border border-red-400/40 hover:border-red-300/60`}
                     title="Delete application"
                     aria-label="Delete application"
                     type="button"
                 >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6"></polyline>
-                        <path d="M19,6V20a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <path d="M10 11v6M14 11v6" />
                     </svg>
                 </button>
 
@@ -179,7 +202,7 @@ export default function ApplicationCard({
                         <div className="flex items-center justify-center mb-3 gap-2">
                             {/* Desktop drag handle */}
                             <div
-                                className="block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                                className="hidden md:block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
                                 title="Drag to move"
                                 draggable
                                 onDragStart={handleDragStart}
@@ -278,8 +301,8 @@ export default function ApplicationCard({
             )}
 
             {/* Mobile Move Modal */}
-            {showMoveModal && (
-                <div className="fixed inset-0 z-50">
+            {mounted && showMoveModal && createPortal(
+                <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
                     {/* backdrop */}
                     <button
                         aria-label="Close"
@@ -288,13 +311,12 @@ export default function ApplicationCard({
                     />
                     {/* bottom sheet */}
                     <div className="absolute inset-x-0 bottom-0">
-                        <div className="mx-auto w-full max-w-md rounded-t-2xl bg-gray-900/95 backdrop-blur-xl
-                       border border-white/15 shadow-2xl">
+                        <div className="mx-auto w-full max-w-md rounded-t-2xl bg-gray-900/95 backdrop-blur-xl border border-white/15 shadow-2xl">
                             {/* grabber */}
                             <div className="flex justify-center pt-3">
                                 <div className="h-1.5 w-12 rounded-full bg-white/20" />
                             </div>
-                            <div className="p-5 max-h-[80vh] overflow-y-auto">
+                            <div className="p-5 max-h-[80vh] overflow-y-auto overscroll-contain">
                                 <h3 className="text-lg font-semibold text-white mb-1">Move Application</h3>
                                 <p className="text-gray-300 text-sm mb-4">Move “{title}” to:</p>
 
@@ -342,7 +364,8 @@ export default function ApplicationCard({
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );

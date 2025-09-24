@@ -77,9 +77,9 @@ export default function PipelineCustomizer({
     };
 
     return (
-        <div className="relative"> {/* establishes containing block for absolute footer */}
+        <div className="flex flex-col h-full">
             {/* Scrollable body with bottom padding = footer height */}
-            <div className="space-y-6 pb-28">
+            <div className="space-y-6 overflow-y-auto pb-[calc(112px+env(safe-area-inset-bottom))]">
                 {/* Current order */}
                 <div>
                     <h4 className="text-xl font-bold text-white mb-2">Current Pipeline Order</h4>
@@ -182,13 +182,13 @@ export default function PipelineCustomizer({
             {/* Solid footer that sits on top of the content — no transparency, no gap */}
             <div
                 className="
-        absolute bottom-0 left-0 right-0 z-20
-        pt-4 pb-4 px-4
-        bg-[#0f1422]
-        border-t border-indigo-400/20
-        shadow-[0_-6px_16px_rgba(0,0,0,.35)]
-        flex flex-col sm:flex-row justify-between items-center gap-4
-      "
+                    sticky bottom-0 left-0 right-0 z-20
+                    pt-4 pb-4 px-4
+                    bg-[#0f1422]
+                    border-t border-indigo-400/20
+                    shadow-[0_-6px_16px_rgba(0,0,0,.35)]
+                    flex flex-col sm:flex-row justify-between items-center gap-4
+                "
             >
                 <Button
                     variant="outline"
