@@ -1783,19 +1783,6 @@ export default function RemindersPage() {
           </div>
 
           {/* Non-Google users: email reminder toggle (also visible to Google users if they want emails) */}
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              id="emailNotify"
-              type="checkbox"
-              className="h-4 w-4"
-              checked={emailNotify}
-              onChange={(e) => setEmailNotify(e.target.checked)}
-            />
-            <label htmlFor="emailNotify" className="text-slate-300 text-sm">
-              Email me a reminder
-              <span className="text-slate-400"> (15 minutes before)</span>
-            </label>
-          </div>
           {isGoogleConnected && (
             <div className="mt-2 flex items-center gap-2">
               <input

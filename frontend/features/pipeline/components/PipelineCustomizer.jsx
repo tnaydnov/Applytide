@@ -171,10 +171,16 @@ export default function PipelineCustomizer({
             </div>
 
             {/* Actions */}
-            <div className="sticky bottom-0 left-0 right-0 z-10 pt-4 mt-2
-                            bg-gradient-to-t from-[#0f1422]/70 to-transparent
-                            border-t border-white/10
-                            flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div
+                className="
+                            sticky bottom-0 left-0 right-0 z-20
+                            pt-4 pb-4 mt-2
+                            bg-[#0f1422]            /* <-- solid, opaque */
+                            border-t border-indigo-400/20
+                            shadow-[0_-6px_16px_rgba(0,0,0,.35)]
+                            flex flex-col sm:flex-row justify-between items-center gap-4
+                        "
+            >
                 <Button
                     variant="outline"
                     onClick={resetToDefaults}
@@ -202,6 +208,7 @@ export default function PipelineCustomizer({
                     </Button>
                 </div>
             </div>
+
         </div>
     );
 }
