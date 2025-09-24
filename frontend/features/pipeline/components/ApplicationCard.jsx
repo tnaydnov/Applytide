@@ -142,7 +142,7 @@ export default function ApplicationCard({
                 {/* Delete */}
                 <button
                     onClick={handleDelete}
-                    className={`absolute ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
+                    className={`absolute delete-app-btn ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
                     inline-flex items-center justify-center
                     w-10 h-10 rounded-full
                     text-red-400 hover:text-red-300
@@ -153,7 +153,7 @@ export default function ApplicationCard({
                     aria-label="Delete application"
                     type="button"
                 >
-                    <svg className="w-7 h-7 scale-125" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <svg className="w-6 h-6 scale-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M3 6h18" />
                         <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
@@ -205,7 +205,7 @@ export default function ApplicationCard({
                         <div className="flex items-center justify-center mb-3 gap-2">
                             {/* Desktop drag handle */}
                             <div
-                                className="hidden md:inline-flex items-center justify-center
+                                className="drag-handle-btn hidden md:inline-flex items-center justify-center
                                 text-white/70 hover:text-white cursor-grab active:cursor-grabbing
                                 w-9 h-9 rounded-lg border border-white/10 hover:bg-white/10 transition"
                                 title="Drag to move"
@@ -214,17 +214,17 @@ export default function ApplicationCard({
                                 onDragEnd={handleDragEnd}
                                 aria-label="Drag to move application"
                             >
-                                <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <circle cx="6" cy="5" r="1.3" /><circle cx="14" cy="5" r="1.3" />
-                                    <circle cx="6" cy="10" r="1.3" /><circle cx="14" cy="10" r="1.3" />
-                                    <circle cx="6" cy="15" r="1.3" /><circle cx="14" cy="15" r="1.3" />
+                                <svg className="w-5 h-5 scale-125" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <circle cx="6" cy="5" r="1.5" /><circle cx="14" cy="5" r="1.5" />
+                                    <circle cx="6" cy="10" r="1.5" /><circle cx="14" cy="10" r="1.5" />
+                                    <circle cx="6" cy="15" r="1.5" /><circle cx="14" cy="15" r="1.5" />
                                 </svg>
                             </div>
 
 
                             {/* Mobile move button */}
                             <button
-                                className="md:hidden tap-target text-gray-400 hover:text-gray-300 p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                                className="drag-handle-btn md:hidden tap-target text-gray-400 hover:text-gray-300 hover:bg-white/10 rounded-lg transition-all border border-white/10"
                                 title="Move to different stage"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -232,7 +232,7 @@ export default function ApplicationCard({
                                 }}
                                 type="button"
                             >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                                     <path
                                         fillRule="evenodd"
                                         d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"

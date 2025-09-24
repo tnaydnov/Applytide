@@ -172,6 +172,22 @@ a {
     font-size: 0.875rem;
   }
   
+  /* Exception for delete application button and drag handle */
+  .delete-app-btn,
+  .drag-handle-btn {
+    min-height: unset !important;
+    min-width: unset !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Specific fixes for drag icons visibility */
+  .drag-handle-btn svg {
+    transform: scale(1.5) !important;
+  }
+  
   /* Mobile dropdown menus */
   .dropdown-menu {
     position: fixed !important;
