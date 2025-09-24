@@ -95,7 +95,7 @@ export default function AnalysisModal({
                                 {onExportPDF && (
                                     <Button
                                         variant="outline"
-                                        onClick={() => onExportPDF(analysis, documentName)}
+                                        onClick={() => onExportPDF(analysis)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
                                         <span className="mr-1">📄</span> PDF
@@ -104,7 +104,7 @@ export default function AnalysisModal({
                                 {onExportWord && (
                                     <Button
                                         variant="outline"
-                                        onClick={() => onExportWord(analysis, documentName)}
+                                        onClick={() => onExportWord(analysis)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
                                         <span className="mr-1">📝</span> Word

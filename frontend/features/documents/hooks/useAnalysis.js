@@ -56,6 +56,8 @@ export default function useAnalysis() {
     const exportPDF = useCallback(() => {
         if (!currentAnalysis) return;
 
+        console.log("Analysis data for export:", JSON.stringify(currentAnalysis, null, 2));
+
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 20;
@@ -502,6 +504,8 @@ export default function useAnalysis() {
 
     const exportWord = useCallback(() => {
         if (!currentAnalysis) return;
+
+        console.log("Analysis data for export:", JSON.stringify(currentAnalysis, null, 2));
 
         const ats = currentAnalysis.ats_score || {};
         const ai = currentAnalysis.ai_detailed_analysis || {};
