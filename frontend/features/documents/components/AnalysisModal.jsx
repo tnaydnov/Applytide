@@ -58,11 +58,11 @@ export default function AnalysisModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="analysis-title"
-          className="w-full max-w-5xl h-[88vh] rounded-2xl ring-1 overflow-hidden"
+          className="w-[min(1500px,98vw)] max-w-none h-[min(94vh,100svh)] max-h-[94vh] flex flex-col rounded-2xl ring-1 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-white/10 bg-white/5 flex items-center justify-between shrink-0">
             <div className="min-w-0">
               <h2 id="analysis-title" className="text-xl font-bold text-slate-100 truncate">
                 AI Analysis — {documentName}
@@ -108,7 +108,7 @@ export default function AnalysisModal({
           </div>
 
           {/* Overall Score Bar (kept from new UI) */}
-          <div className="px-6 py-4 border-b border-white/10 bg-slate-900/40">
+          <div className="px-6 py-4 border-b border-white/10 bg-slate-900/40 shrink-0">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 ${overallColor} rounded-lg grid place-items-center text-slate-900 font-bold`}>
@@ -140,7 +140,7 @@ export default function AnalysisModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-4">
 
             {/* Analysis type banner (from original page) */}
             <div
@@ -322,7 +322,7 @@ export default function AnalysisModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-white/10 bg-white/5 flex items-center justify-end">
+          <div className="px-6 py-3 border-t border-white/10 bg-white/5 flex items-center justify-end shrink-0">
             <button onClick={onClose} className="btn-ghost px-6 py-2.5 rounded-lg" type="button">
               Close
             </button>

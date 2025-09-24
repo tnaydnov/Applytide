@@ -32,15 +32,15 @@ export default function DocumentsToolbar({
   onOpenCoverLetter,
 }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
       {/* Left: search & filters */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-        <div className="relative">
+      <div className="flex flex-col md:flex-row gap-2 md:items-center flex-1">
+        <div className="relative flex-1 min-w-[220px]">
           <Input
             placeholder="Search documents…"
             value={query}
             onChange={(e) => onQueryChange?.(e.target.value)}
-            className="pr-9 w-64"
+            className="pr-9 w-full"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 select-none">
             ⌘K
@@ -88,7 +88,7 @@ export default function DocumentsToolbar({
       </div>
 
       {/* Right: actions */}
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-2 justify-end flex-none">
         {onOpenCoverLetter && (
           <Button
             variant="outline"

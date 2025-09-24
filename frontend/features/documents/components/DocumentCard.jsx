@@ -57,8 +57,19 @@ export default function DocumentCard({
   const createdAt =
     document?.created_at ? new Date(document.created_at).toLocaleDateString() : "-";
 
+  const atsVal = Number(document?.ats_score);
+  const atsTier = Number.isFinite(atsVal) ? (atsVal >= 80 ? "good" : atsVal >= 60 ? "fair" : "poor") : null;
+  const atsBadgeCls =
+    atsTier === "good"
+      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+      : atsTier === "fair"
+      ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+      : atsTier === "poor"
+      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+      : "bg-slate-600/30 text-slate-300 border-slate-600/40";
+
   return (
-    <Card className="p-4 md:p-6 hover:shadow-lg transition-shadow glass-card glass-cyan">
+    <Card className="p-4 md:p-5 hover:shadow-lg transition-shadow glass-card glass-cyan">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3 *:min-w-0">
         <div className="flex items-center flex-1 min-w-0 overflow-hidden">
@@ -69,41 +80,35 @@ export default function DocumentCard({
             <h3 className="font-semibold text-slate-200 truncate w-full" title={name}>
               {name}
             </h3>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-slate-400">{docType.label}</p>
-              <span className="px-1.5 py-0.5 bg-slate-700 text-xs font-medium rounded text-slate-300">
-                {format}
+            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+              <span className="inline-flex items-center gap-1">
+                {docType.label}
+                <span className="px-1.5 py-0.5 bg-slate-700/80 text-[10px] font-medium rounded text-slate-300 ml-1">
+                  {format}
+                </span>
               </span>
             </div>
           </div>
         </div>
 
-        {/* Status */}
-        <StatusDropdown
-          value={document.status}
-          options={statusOptions}
-          onChange={(v) => onChangeStatus?.(document.id, v)}
-        />
+        {/* Right: ATS + Status */}
+        <div className="flex flex-col items-end gap-2 flex-none">
+          <div className={`px-2 py-1 rounded border text-xs font-semibold ${atsBadgeCls}`}>
+            {Number.isFinite(atsVal) ? `${atsVal.toFixed(1)}% ATS` : "No Score"}
+          </div>
+          <StatusDropdown
+            value={document.status}
+            options={statusOptions}
+            onChange={(v) => onChangeStatus?.(document.id, v)}
+          />
+        </div>
       </div>
 
-      {/* Meta */}
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-400">Size:</span>
-          <span className="text-slate-200">{sizeKb} KB</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-slate-400">Created:</span>
-          <span className="text-slate-200">{createdAt}</span>
-        </div>
-        {document?.ats_score != null && (
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-400">ATS Score:</span>
-            <span className={getScoreColor(document.ats_score)}>
-              {Number(document.ats_score).toFixed(1)}%
-            </span>
-          </div>
-        )}
+      {/* Meta (compact row) */}
+      <div className="mb-4 text-xs text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>{sizeKb} KB</span>
+        <span className="opacity-40">•</span>
+        <span>Created {createdAt}</span>
       </div>
 
       {/* Primary Resume Action */}
@@ -113,7 +118,7 @@ export default function DocumentCard({
             onClick={() => onAnalyze?.(document)}
             variant="outline"
             size="sm"
-            className="w-full bg-blue-600/30 hover:bg-blue-600/50 text-blue-100 border-blue-500/30"
+            className="w-full bg-blue-600/30 hover:bg-blue-600/50 text-blue-50 border-blue-500/30 font-semibold"
             disabled={!!analyzing}
           >
             {analyzing ? "🔄" : "🔍"} {analyzing ? "Analyzing..." : "Analyze Resume"}
@@ -127,7 +132,7 @@ export default function DocumentCard({
           onClick={() => onPreview?.(document)}
           variant="outline"
           size="sm"
-          className="flex flex-col items-center justify-center py-2 h-auto"
+          className="flex flex-col items-center justify-center py-2 h-auto hover:bg-slate-700/40"
           title={
             document?.format?.toLowerCase() === "docx"
               ? "DOCX preview not available"
@@ -142,7 +147,7 @@ export default function DocumentCard({
           onClick={() => onDownload?.(document)}
           variant="outline"
           size="sm"
-          className="flex flex-col items-center justify-center py-2 h-auto"
+          className="flex flex-col items-center justify-center py-2 h-auto hover:bg-slate-700/40"
           title="Download document"
         >
           <span className="text-lg mb-1">📥</span>
@@ -168,7 +173,7 @@ export default function DocumentCard({
             onClick={() => onAnalyzeWithJob?.(document)}
             variant="outline"
             size="sm"
-            className="w-full text-xs bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-100 border-indigo-500/30"
+            className="w-full text-xs bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-100 border-indigo-500/30"
             disabled={!!analyzing}
           >
             <span className="mr-1">🎯</span> Analyze with a Job ({jobsCount})
