@@ -21,8 +21,32 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
         if (!canGenerate) return;
         setIsGenerating(true);
         try {
-            const json = await api.generateCoverLetter(clForm);
-            setGenerated(json?.text || "");
+            const result = await api.generateCoverLetter(clForm);
+
+            // The API already extracts the text for us and returns it as a string
+            // or returns the full response object if it couldn't extract the text
+            if (typeof result === 'string') {
+                setGenerated(result);
+            } else if (result?.assistant) {
+                setGenerated(result.assistant);
+            } else if (result?.text) {
+                setGenerated(result.text);
+            } else if (result?.content) {
+                setGenerated(result.content);
+            } else if (result?.output) {
+                setGenerated(result.output);
+            } else {
+                console.error("Unexpected response format:", result);
+                setGenerated("Error: Could not parse the generated cover letter.");
+            }
+
+            // Log the extracted content
+            console.log("Cover letter content set:", typeof result === 'string'
+                ? result.substring(0, 50) + "..."
+                : "Object response");
+        } catch (error) {
+            console.error("Error generating cover letter:", error);
+            setGenerated("An error occurred while generating your cover letter. Please try again.");
         } finally {
             setIsGenerating(false);
         }

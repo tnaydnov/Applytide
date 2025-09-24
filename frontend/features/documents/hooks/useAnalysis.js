@@ -58,7 +58,6 @@ export default function useAnalysis() {
     const exportPDF = useCallback(() => {
         if (!currentAnalysis) return;
 
-        console.log("Analysis data for export:", JSON.stringify(currentAnalysis, null, 2));
 
         // Derive section_quality data since it's null in the API response
         const derivedSectionQuality = {};
@@ -598,7 +597,6 @@ export default function useAnalysis() {
     const exportWord = useCallback(() => {
         if (!currentAnalysis) return;
 
-        console.log("Analysis data for export:", JSON.stringify(currentAnalysis, null, 2));
 
         const ats = currentAnalysis.ats_score || {};
         const ai = currentAnalysis.ai_detailed_analysis || {};

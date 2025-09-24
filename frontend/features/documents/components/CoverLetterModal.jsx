@@ -44,6 +44,12 @@ export default function CoverLetterModal({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+  if (generatedCoverLetter) {
+    console.log("Cover letter received:", generatedCoverLetter.substring(0, 50) + "...");
+  }
+}, [generatedCoverLetter]);
+
   // lock scroll + ESC to close
   useEffect(() => {
     if (!open) return;

@@ -301,7 +301,34 @@ export const api = {
       throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log("Cover letter API response:", data);
+
+    // Extract the actual cover letter text from various possible response formats
+    let coverLetterText = '';
+
+    if (typeof data === 'string') {
+      // Direct string response
+      coverLetterText = data;
+    } else if (data?.content) {
+      // { content: "..." } format
+      coverLetterText = data.content;
+    } else if (data?.text) {
+      // { text: "..." } format
+      coverLetterText = data.text;
+    } else if (data?.choices && data.choices[0]?.message?.content) {
+      // OpenAI API format
+      coverLetterText = data.choices[0].message.content;
+    } else if (data?.assistant) {
+      // Format from your OpenAI log
+      coverLetterText = data.assistant;
+    } else if (data?.output) {
+      // Another common format
+      coverLetterText = data.output;
+    }
+
+    // If we still don't have text, return the whole object and let component handle it
+    return coverLetterText || data;
   },
 
   /* ---------- NEW: document status ---------- */
@@ -480,7 +507,7 @@ async function getAccessToken() {
         'Content-Type': 'application/json'
       }
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       return data.access_token;
@@ -497,7 +524,7 @@ async function getAccessToken() {
 export function connectWS(onMsg) {
   const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = `${wsProto}//${window.location.host}`;
-  
+
   let socket;
   let retryCount = 0;
   let maxRetries = 3;
@@ -523,9 +550,9 @@ export function connectWS(onMsg) {
 
     const url = `${host}/api/ws/updates?token=${encodeURIComponent(token)}`;
     console.info(`[ws] Attempting connection ${retryCount + 1}/${maxRetries} to WebSocket`);
-    
+
     const ws = new WebSocket(url);
-    
+
     // Set a connection timeout
     connectionTimeout = setTimeout(() => {
       if (ws.readyState === WebSocket.CONNECTING) {
@@ -533,36 +560,36 @@ export function connectWS(onMsg) {
         ws.close();
       }
     }, 10000); // 10 second timeout
-    
+
     ws.onopen = () => {
       clearTimeout(connectionTimeout);
       console.info('[ws] WebSocket connected successfully');
       retryCount = 0; // Reset retry count on successful connection
     };
-    
+
     ws.onmessage = (e) => {
-      try { 
-        onMsg(JSON.parse(e.data)); 
+      try {
+        onMsg(JSON.parse(e.data));
       } catch (err) {
         console.warn('[ws] Failed to parse message:', e.data, err);
       }
     };
-    
+
     ws.onerror = (e) => {
       clearTimeout(connectionTimeout);
       console.warn('[ws] WebSocket error:', e);
     };
-    
+
     ws.onclose = (evt) => {
       clearTimeout(connectionTimeout);
-      
+
       if (isIntentionallyClosed) {
         console.info('[ws] WebSocket closed intentionally');
         return;
       }
 
       console.warn('[ws] WebSocket closed:', evt.code, evt.reason);
-      
+
       // Only retry on specific error codes and if we haven't exceeded max retries
       const shouldRetry = retryCount < maxRetries && (
         evt.code === 1006 || // Connection lost
@@ -570,12 +597,12 @@ export function connectWS(onMsg) {
         evt.code === 1001 || // Going away
         evt.code === 1000    // Normal closure (might be server restart)
       );
-      
+
       if (shouldRetry) {
         retryCount++;
         const delay = getRetryDelay(retryCount - 1);
         console.info(`[ws] Retrying WebSocket in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
-        
+
         setTimeout(() => {
           if (!isIntentionallyClosed) {
             tryConnect().then(newSocket => {
@@ -587,7 +614,7 @@ export function connectWS(onMsg) {
         console.warn('[ws] Not retrying WebSocket. Real-time updates will be disabled.');
       }
     };
-    
+
     return ws;
   };
 
@@ -595,7 +622,7 @@ export function connectWS(onMsg) {
   tryConnect().then(newSocket => {
     socket = newSocket;
   });
-  
+
   // Return an object that allows graceful cleanup
   return {
     close: () => {
