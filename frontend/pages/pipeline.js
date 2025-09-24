@@ -124,14 +124,16 @@ export default function PipelinePage() {
   }, [currentStages]);
 
   // ----------------- Actions with UX sugar -----------------
-  const handleMove = useCallback((id, newStatus, currentStatus) => move(id, newStatus, currentStatus), [move]);
+  const handleMove = useCallback((id, newStatus) => move(id, newStatus), [move]);
 
-    const handleDelete = useCallback(
-    async (id, status) => {
-      await deleteApplication(id, status);
+  const handleDelete = useCallback(
+    async (id) => {
+      await deleteApplication(id);
     },
     [deleteApplication]
-  );  const clearFilters = () => {
+  );
+
+  const clearFilters = () => {
     setSearchTerm("");
     setSelectedFilter("all");
     setSortBy("recent");

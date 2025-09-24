@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Button, Card, Select, Input } from '../../../components/ui';
 import { useToast } from '../../../lib/toast';
@@ -39,7 +39,6 @@ export default function ApplicationDrawer({ application, onClose }) {
     const [pendingFile, setPendingFile] = useState(null);
     const [pendingType, setPendingType] = useState('resume');
     const [showTypeChooser, setShowTypeChooser] = useState(false);
-    const [attachmentsError, setAttachmentsError] = useState(false);
 
 
     // Docs picker
@@ -96,216 +95,30 @@ export default function ApplicationDrawer({ application, onClose }) {
 
 
     /* ------------------------------ Attachments ------------------------------ */
-    const [attachmentsLoading, setAttachmentsLoading] = useState(false);
-    const attachmentRetryRef = useRef(0);
-    const attachmentTimerRef = useRef(null);
-    
-    // Exponential backoff helper
-    const getBackoffTime = (attempt) => {
-        return Math.min(1000 * Math.pow(2, attempt), 15000); // 1s, 2s, 4s, 8s, max 15s
-    };
-
     const loadAttachments = useCallback(async () => {
         if (!appId) return setAttachments([]);
-        
-        // Prevent duplicate loading requests
-        if (attachmentsLoading) return;
-        
-        setAttachmentsLoading(true);
-        
-        // Only update error state if this isn't an auto-retry
-        if (attachmentRetryRef.current === 0) {
-            setAttachmentsError(false);
-        }
-        
         try {
-            // Use a timeout option to prevent long-hanging requests
-            const res = await apiFetch(`/applications/${appId}/attachments`, { 
-                timeout: 8000 + (attachmentRetryRef.current * 2000), // Increase timeout for retries
-                retry: attachmentRetryRef.current < 3 // Allow up to 3 retries
-            });
-            
-            if (!res.ok) {
-                console.warn(`Failed to load attachments: ${res.status} ${res.statusText}`);
-                
-                // Only show toast on first error to avoid spamming the user
-                if (attachmentRetryRef.current === 0) {
-                    // Better error message based on status code
-                    if (res.status === 404) {
-                        toast.error("No attachments found for this application.");
-                    } else if (res.status === 403) {
-                        toast.error("You don't have permission to view these attachments.");
-                    } else if (res.status >= 500) {
-                        toast.error("Server error loading attachments. We'll try again shortly.");
-                        
-                        // Auto retry for server errors with exponential backoff
-                        if (attachmentRetryRef.current < 3) {
-                            const backoffTime = getBackoffTime(attachmentRetryRef.current);
-                            console.log(`Scheduling retry in ${backoffTime}ms, attempt ${attachmentRetryRef.current + 1}`);
-                            
-                            attachmentRetryRef.current++;
-                            setTimeout(() => {
-                                if (document.body.contains(document.querySelector(`[data-app-id="${appId}"]`))) {
-                                    loadAttachments();
-                                }
-                            }, backoffTime);
-                        }
-                    } else {
-                        toast.error("Failed to load attachments. Please try again later.");
-                    }
-                }
-                
-                // Still show partial data if we have it from previous loads
-                if (attachments.length === 0) {
-                    setAttachmentsError(true);
-                }
-                
-                return;
-            }
-            
-            // Reset retry counter on success
-            attachmentRetryRef.current = 0;
-            
-            // Safely parse the response
-            let items = [];
-            try {
-                const body = await res.json();
-                items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [];
-            } catch (parseError) {
-                console.error('Error parsing attachments response:', parseError);
-                // Keep existing attachments if parsing fails
-                items = attachments.length > 0 ? attachments : [];
-            }
-            
+            const res = await apiFetch(`/applications/${appId}/attachments`);
+            const body = await res.json().catch(() => null);
+            const items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [];
             setAttachments(items);
-            // Clear error state on successful load
-            setAttachmentsError(false);
         } catch (e) {
             console.error('loadAttachments error', e);
-            
-            // Only show toast on first error attempt (not retries)
-            if (attachmentRetryRef.current === 0) {
-                toast.error("Unable to load attachments. We'll try again automatically.");
-                
-                // Auto retry for errors with exponential backoff
-                if (attachmentRetryRef.current < 3) {
-                    const backoffTime = getBackoffTime(attachmentRetryRef.current);
-                    console.log(`Scheduling retry in ${backoffTime}ms, attempt ${attachmentRetryRef.current + 1}`);
-                    
-                    attachmentRetryRef.current++;
-                    setTimeout(() => {
-                        if (document.body.contains(document.querySelector(`[data-app-id="${appId}"]`))) {
-                            loadAttachments();
-                        }
-                    }, backoffTime);
-                }
-            }
-            
-            // Only show error state if we don't have any existing data
-            if (attachments.length === 0) {
-                setAttachmentsError(true);
-            }
-        } finally {
-            setAttachmentsLoading(false);
+            setAttachments([]);
         }
-    }, [appId, toast, attachmentsLoading, attachments]);
+    }, [appId]);
 
     const handleUploadFile = async (file, chosenType) => {
-        if (!appId || !file) {
-            toast.error('Missing application ID or file');
-            return false;
-        }
-        
-        // Validate file size (10MB limit)
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-        if (file.size > MAX_FILE_SIZE) {
-            toast.error(`File size exceeds limit (${(MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)}MB). Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`);
-            return false;
-        }
-        
-        // Validate file name length (to prevent server issues with very long filenames)
-        const MAX_FILENAME_LENGTH = 100;
-        if (file.name.length > MAX_FILENAME_LENGTH) {
-            toast.error(`File name is too long (max ${MAX_FILENAME_LENGTH} characters).`);
-            return false;
-        }
-        
-        // Validate file type based on extension and mimetype
-        const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const supportedExts = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'jpg', 'jpeg', 'png'];
-        
-        // Also check mime type for extra security
-        const validMimeTypesRegex = /^(application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|rtf|plain)|text\/plain|image\/(jpeg|png))$/i;
-        
-        if (!fileExt || !supportedExts.includes(fileExt)) {
-            toast.error('File type not supported. Please upload PDF, Word, text, or image files.');
-            return false;
-        }
-        
-        if (!validMimeTypesRegex.test(file.type)) {
-            // If the extension looks ok but mime type doesn't, give a more specific warning
-            if (supportedExts.includes(fileExt)) {
-                toast.error(`The file doesn't appear to be a valid ${fileExt.toUpperCase()} file. Please check and try again.`);
-            } else {
-                toast.error('File type not supported. Please upload PDF, Word, text, or image files.');
-            }
-            return false;
-        }
-        
+        if (!appId || !file) return;
         try {
             setUploading(true);
-            
-            // Add a timeout to handle stalled uploads
-            const uploadPromise = postAppAttachmentMultipart(file, chosenType);
-            
-            // Display a progress message for large files
-            let progressToastId = null;
-            if (file.size > 2 * 1024 * 1024) { // 2MB
-                progressToastId = toast.info(`Uploading ${file.name}... Please wait.`, { duration: 30000 });
-            }
-            
-            // Race the upload against a timeout - use longer timeout for larger files
-            const dynamicTimeout = Math.max(30000, file.size / 10000); // At least 30s, or longer for big files
-            const res = await Promise.race([
-                uploadPromise,
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Upload timed out')), dynamicTimeout)
-                )
-            ]);
-            
-            // Clear the progress toast if it exists
-            if (progressToastId) {
-                toast.dismiss(progressToastId);
-            }
-            
-            if (!res.ok) {
-                const errorText = await res.text().catch(() => 'Unknown error');
-                throw new Error(`Upload failed: ${res.status} ${errorText}`);
-            }
-            
-            toast.success(`${file.name} uploaded successfully`);
-            
-            // Wait a moment before refreshing to ensure server has processed the upload
-            setTimeout(() => loadAttachments(), 500);
-            return true;
+            const res = await postAppAttachmentMultipart(file, chosenType);
+            if (!res.ok) throw new Error(await res.text());
+            toast.success('Attachment uploaded');
+            await loadAttachments();
         } catch (e) {
             console.error('handleUploadFile error', e);
-            
-            // Provide more specific error messages
-            if (e.message.includes('timed out')) {
-                toast.error('Upload timed out. Please try with a smaller file or check your connection.');
-            } else if (e.message.includes('413')) {
-                toast.error('File too large for server. Please try a smaller file.');
-            } else if (e.message.includes('429')) {
-                toast.error('Too many upload requests. Please wait a moment and try again.');
-            } else if (e.message.includes('403')) {
-                toast.error('You don\'t have permission to upload attachments.');
-            } else if (e.message.includes('500')) {
-                toast.error('Server error while processing upload. Our team has been notified.');
-            } else {
-                toast.error('Upload failed: ' + (e.message || 'Unknown error'));
-            }
-            return false;
+            toast.error('Upload failed');
         } finally {
             setUploading(false);
             setPendingFile(null);
@@ -439,36 +252,9 @@ export default function ApplicationDrawer({ application, onClose }) {
     /* -------------------------------- Lifecycle ------------------------------ */
     useEffect(() => {
         if (!appId) return;
-        
-        // Add a data attribute to help with determining if component is still mounted
-        const drawerEl = document.querySelector('.application-drawer');
-        if (drawerEl) {
-            drawerEl.setAttribute('data-app-id', appId);
-        }
-        
-        // Load each data type independently so if one fails, others still load
-        Promise.allSettled([
-            loadAttachments().catch(err => {
-                console.error("Failed to load attachments:", err);
-                // Continue showing the drawer even if attachments fail
-            }),
-            loadReminders().catch(err => {
-                console.error("Failed to load reminders:", err);
-            }),
-            loadStages().catch(err => {
-                console.error("Failed to load stages:", err);
-            })
-        ]);
-        
-        // Cleanup any pending timers on unmount
-        return () => {
-            if (attachmentTimerRef.current) {
-                clearTimeout(attachmentTimerRef.current);
-                attachmentTimerRef.current = null;
-            }
-            // Reset retry counter on unmount
-            attachmentRetryRef.current = 0;
-        };
+        loadAttachments();
+        loadReminders();
+        loadStages();
     }, [appId, loadAttachments, loadReminders, loadStages]);
 
     /* --------------------------------- Render -------------------------------- */
@@ -639,68 +425,8 @@ export default function ApplicationDrawer({ application, onClose }) {
                             )}
 
 
-                            {attachmentsLoading ? (
-                                <div className="flex items-center justify-center py-4">
-                                    <div className="inline-flex items-center px-4 py-2 bg-indigo-600/20 border border-indigo-500/30 rounded-md">
-                                        <svg className="animate-spin mr-2 h-4 w-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span className="text-sm text-indigo-300">
-                                            {attachmentRetryRef.current > 0 
-                                                ? `Retrying (attempt ${attachmentRetryRef.current})...` 
-                                                : 'Loading attachments...'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ) : attachmentsError ? (
-                                <div className="text-sm text-red-400 border border-red-400/20 bg-red-400/10 rounded-md p-3">
-                                    <div className="font-semibold mb-1">Unable to load attachments</div>
-                                    <div>
-                                        {attachmentRetryRef.current >= 3 
-                                            ? 'We tried multiple times but could not load your attachments. Our team has been notified of this issue.'
-                                            : 'There was a problem connecting to the server. The rest of the application details are still available.'
-                                        }
-                                    </div>
-                                    <div className="flex items-center mt-2 space-x-3">
-                                        <button 
-                                            className="text-red-300 hover:text-red-200 underline flex items-center" 
-                                            onClick={() => {
-                                                // Reset retry counter on manual retry
-                                                attachmentRetryRef.current = 0;
-                                                loadAttachments();
-                                            }}
-                                            disabled={attachmentsLoading}
-                                        >
-                                            <svg className="mr-1 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                            </svg>
-                                            Try again
-                                        </button>
-                                        
-                                        {/* Show attachments anyway if we have some cached */}
-                                        {attachments.length > 0 && (
-                                            <button 
-                                                className="text-indigo-400 hover:text-indigo-300 underline flex items-center" 
-                                                onClick={() => setAttachmentsError(false)}
-                                            >
-                                                Show cached attachments
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : attachments.length === 0 ? (
-                                <div className="text-sm text-slate-400 p-3 border border-slate-700/50 rounded-md bg-slate-800/40">
-                                    <div className="flex items-center space-x-2">
-                                        <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <span>No files attached to this application</span>
-                                    </div>
-                                    <div className="mt-2 text-xs text-slate-500">
-                                        Use the Upload button above to add files such as your resume, cover letter, or other relevant documents.
-                                    </div>
-                                </div>
+                            {attachments.length === 0 ? (
+                                <div className="text-sm text-slate-400">No files attached</div>
                             ) : (
                                 <div className="space-y-2">
                                     {attachments.map((att) => {
@@ -879,5 +605,4 @@ export default function ApplicationDrawer({ application, onClose }) {
         </div>
     );
 }
-
 
