@@ -14,17 +14,25 @@ export default function AnalysisModal({
   onExportPDF,
 }) {
   // scroll lock + esc to close
-  useEffect(() => {
+    useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
+
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
     const onKey = (e) => e.key === "Escape" && onClose?.();
     window.addEventListener("keydown", onKey);
+
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
 
   if (!open) return null;
 
@@ -53,12 +61,12 @@ export default function AnalysisModal({
       />
 
       {/* Surface */}
-      <div className="fixed z-50 inset-0 p-4 flex items-center justify-center">
+      <div className="fixed z-50 inset-0 p-4 flex items-center justify-center overflow-hidden">
         <ModalSurface
           role="dialog"
           aria-modal="true"
           aria-labelledby="analysis-title"
-          className="w-[min(1400px,96vw)] max-w-none h-[calc(100svh-2rem)] max-h-[calc(100svh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
+          className="w-[min(1360px,96vw)] max-w-none h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
