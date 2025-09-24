@@ -95,32 +95,30 @@ export default function useAnalysis() {
         doc.text(`Word Count: ${ats.word_count || "N/A"}`, margin, yPosition);
         yPosition += 12;
 
-        // Analysis type
+        // Job-Specific Analysis
         const isJobSpecific = ats.technical_skills_score != null || Boolean(currentAnalysis.job_match_summary);
         checkPage();
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.text(isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis", margin, yPosition);
         yPosition += 6;
+
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         const analysisTypeText = isJobSpecific
             ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
             : "This is a general analysis. Select a job for tailored matching.";
-        const analysisTypeLines = doc.splitTextToSize(analysisTypeText, contentWidth);
-        doc.text(analysisTypeLines, margin, yPosition);
-        yPosition += (analysisTypeLines.length * 5) + 8;
+        doc.text(analysisTypeText, margin, yPosition);
+        yPosition += 10;
 
-        // Job summary if available
-        if (currentAnalysis.job_match_summary) {
-            checkPage();
-            doc.setFont("helvetica", "italic");
-            const jobSummary = typeof currentAnalysis.job_match_summary === "string"
-                ? currentAnalysis.job_match_summary
-                : currentAnalysis.job_match_summary?.summary;
-            const summaryLines = doc.splitTextToSize(jobSummary, contentWidth);
-            doc.text(summaryLines, margin, yPosition);
-            yPosition += (summaryLines.length * 5) + 10;
+        // Tech skills match summary
+        if (isJobSpecific) {
+            const techMatch = ats.technical_skills_score != null ? `${Number(ats.technical_skills_score).toFixed(0)}%` : "0%";
+            const reqMatch = ats.requirements_match_score != null ? `${Number(ats.requirements_match_score).toFixed(0)}%` : "0%";
+            const keywordMatch = ats.keyword_score != null ? `${Number(ats.keyword_score).toFixed(0)}%` : "0%";
+
+            doc.text(`Tech skills match: ${techMatch}, Requirements match: ${reqMatch}, Keywords: ${keywordMatch}`, margin, yPosition);
+            yPosition += 10;
         }
 
         // Technical Skills section
@@ -130,58 +128,64 @@ export default function useAnalysis() {
             doc.setFontSize(13);
             doc.text("Technical Skills", margin, yPosition);
             yPosition += 6;
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(11);
             doc.text(`Score: ${Number(ats.technical_skills_score).toFixed(1)}%`, margin, yPosition);
             yPosition += 5;
+
             doc.setFontSize(10);
             doc.text("How well your technical skills align with job requirements", margin, yPosition);
-            yPosition += 8;
+            yPosition += 10;
 
-            // Add technical skills data if available
+            // Technical skills details
             if (ai.technical_skills) {
                 // Matched skills
                 if (ai.technical_skills.matched_skills && ai.technical_skills.matched_skills.length) {
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Matched Skills:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.technical_skills.matched_skills.forEach(skill => {
                         checkPage(6);
                         doc.text(`• ${skill}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Missing skills
                 if (ai.technical_skills.missing_skills && ai.technical_skills.missing_skills.length) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Missing Skills:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.technical_skills.missing_skills.forEach(skill => {
                         checkPage(6);
                         doc.text(`• ${skill}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Analysis
                 if (ai.technical_skills.analysis) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Analysis:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
                     const analysisLines = doc.splitTextToSize(ai.technical_skills.analysis, contentWidth - 10);
                     doc.text(analysisLines, margin, yPosition);
-                    yPosition += (analysisLines.length * 5) + 5;
+                    yPosition += (analysisLines.length * 5) + 10;
                 }
             }
         }
@@ -193,121 +197,133 @@ export default function useAnalysis() {
             doc.setFontSize(13);
             doc.text("Soft Skills", margin, yPosition);
             yPosition += 6;
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(11);
             doc.text(`Score: ${Number(ats.soft_skills_score).toFixed(1)}%`, margin, yPosition);
             yPosition += 5;
+
             doc.setFontSize(10);
             doc.text("Presence of important soft skills relevant to this role", margin, yPosition);
-            yPosition += 8;
+            yPosition += 10;
 
-            // Add soft skills data if available
+            // Soft skills details
             if (ai.soft_skills) {
                 // Found skills
                 if (ai.soft_skills.found_skills && ai.soft_skills.found_skills.length) {
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Found Skills:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.soft_skills.found_skills.forEach(skill => {
                         checkPage(6);
                         doc.text(`• ${skill}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Suggested skills
                 if (ai.soft_skills.suggested_skills && ai.soft_skills.suggested_skills.length) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Suggested Skills:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.soft_skills.suggested_skills.forEach(skill => {
                         checkPage(6);
                         doc.text(`• ${skill}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Analysis
                 if (ai.soft_skills.analysis) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Analysis:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
                     const analysisLines = doc.splitTextToSize(ai.soft_skills.analysis, contentWidth - 10);
                     doc.text(analysisLines, margin, yPosition);
-                    yPosition += (analysisLines.length * 5) + 5;
+                    yPosition += (analysisLines.length * 5) + 10;
                 }
             }
         }
 
         // Keywords section
-        if (ats.keyword_score != null || ai.keywords) {
+        if (ats.keyword_score != null) {
             checkPage();
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.text("Keywords", margin, yPosition);
             yPosition += 6;
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(11);
-            doc.text(`Score: ${Number(ats.keyword_score || 0).toFixed(1)}%`, margin, yPosition);
+            doc.text(`Score: ${Number(ats.keyword_score).toFixed(1)}%`, margin, yPosition);
             yPosition += 5;
+
             doc.setFontSize(10);
             doc.text("Job-specific terminology and industry language match", margin, yPosition);
-            yPosition += 8;
+            yPosition += 10;
 
-            // Add keywords data if available
+            // Keywords details
             if (ai.keywords) {
                 // Matched keywords
                 if (ai.keywords.matched_keywords && ai.keywords.matched_keywords.length) {
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Matched Keywords:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.keywords.matched_keywords.forEach(keyword => {
                         checkPage(6);
                         doc.text(`• ${keyword}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Missing keywords
                 if (ai.keywords.missing_keywords && ai.keywords.missing_keywords.length) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Missing Keywords:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.keywords.missing_keywords.forEach(keyword => {
                         checkPage(6);
                         doc.text(`• ${keyword}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Analysis
                 if (ai.keywords.analysis) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Analysis:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
                     const analysisLines = doc.splitTextToSize(ai.keywords.analysis, contentWidth - 10);
                     doc.text(analysisLines, margin, yPosition);
-                    yPosition += (analysisLines.length * 5) + 5;
+                    yPosition += (analysisLines.length * 5) + 10;
                 }
             }
         }
@@ -319,42 +335,47 @@ export default function useAnalysis() {
             doc.setFontSize(13);
             doc.text("Formatting", margin, yPosition);
             yPosition += 6;
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(11);
             doc.text(`Score: ${Number(ats.formatting_score).toFixed(1)}%`, margin, yPosition);
             yPosition += 5;
+
             doc.setFontSize(10);
             doc.text("ATS-friendly structure and organization", margin, yPosition);
-            yPosition += 8;
+            yPosition += 10;
 
-            // Add formatting data if available
+            // Formatting details
             if (ai.formatting) {
                 // Issues
                 if (ai.formatting.issues && ai.formatting.issues.length) {
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Issues:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
                     ai.formatting.issues.forEach(issue => {
                         checkPage(6);
                         doc.text(`• ${issue}`, margin + 5, yPosition);
                         yPosition += 5;
                     });
-                    yPosition += 3;
+                    yPosition += 5;
                 }
 
                 // Analysis
                 if (ai.formatting.analysis) {
                     checkPage();
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                     doc.text("Analysis:", margin, yPosition);
                     yPosition += 5;
+
                     doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
                     const analysisLines = doc.splitTextToSize(ai.formatting.analysis, contentWidth - 10);
                     doc.text(analysisLines, margin, yPosition);
-                    yPosition += (analysisLines.length * 5) + 5;
+                    yPosition += (analysisLines.length * 5) + 10;
                 }
             }
         }
@@ -365,10 +386,12 @@ export default function useAnalysis() {
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.text("Section Quality Analysis", margin, yPosition);
-            yPosition += 10;
+            yPosition += 8;
 
             const tableData = Object.entries(currentAnalysis.section_quality).map(([section, data]) => {
-                return [section, `${Number(data.score || 0).toFixed(0)}%`, data.improvement_needed ? "Needs work" : "Good"];
+                const score = Number(data.score || 0).toFixed(0);
+                const status = data.improvement_needed ? "Needs work" : "Good";
+                return [section, `${score}%`, status];
             });
 
             doc.autoTable({
@@ -384,33 +407,39 @@ export default function useAnalysis() {
         }
 
         // Language Analysis
-        if (currentAnalysis.action_verb_count !== undefined || currentAnalysis.readability_score !== undefined) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Language Analysis", margin, yPosition);
-            yPosition += 10;
+        checkPage();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.text("Language Analysis", margin, yPosition);
+        yPosition += 8;
 
-            const languageData = [
-                ["Action Verbs",
-                    currentAnalysis.action_verb_count || "N/A",
-                    Number(currentAnalysis.action_verb_count) >= 10 ? "Strong use of action verbs" : "Consider adding more impactful verbs"],
-                ["Readability",
-                    `${Number(currentAnalysis.readability_score || 0).toFixed(0)}%`,
-                    Number(currentAnalysis.readability_score || 0) >= 70 ? "Good content structure" : "Content needs improvement"]
-            ];
+        // Action verbs
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Action Verbs:", margin, yPosition);
+        yPosition += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`${currentAnalysis.action_verb_count || "N/A"}`, margin + 5, yPosition);
+        yPosition += 5;
+        doc.text(Number(currentAnalysis.action_verb_count) >= 10
+            ? "Strong use of action verbs"
+            : "Consider adding more impactful verbs", margin + 5, yPosition);
+        yPosition += 8;
 
-            doc.autoTable({
-                startY: yPosition,
-                head: [["Metric", "Score", "Assessment"]],
-                body: languageData,
-                theme: "striped",
-                headStyles: { fillColor: [63, 81, 181] },
-                margin: { left: margin, right: margin }
-            });
-
-            yPosition = doc.lastAutoTable.finalY + 10;
-        }
+        // Readability
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Readability:", margin, yPosition);
+        yPosition += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`${Number(currentAnalysis.readability_score || 0).toFixed(0)}%`, margin + 5, yPosition);
+        yPosition += 5;
+        doc.text(Number(currentAnalysis.readability_score || 0) >= 70
+            ? "Good content structure"
+            : "Content needs improvement", margin + 5, yPosition);
+        yPosition += 10;
 
         // Key Recommendations
         if (ai.overall_suggestions && ai.overall_suggestions.length > 0) {
@@ -429,6 +458,8 @@ export default function useAnalysis() {
                 doc.text(lines, margin, yPosition);
                 yPosition += (lines.length * 5) + 5;
             });
+
+            yPosition += 5;
         }
 
         // Document Statistics
@@ -436,22 +467,16 @@ export default function useAnalysis() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.text("Document Statistics", margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Words: ${currentAnalysis.word_count || "N/A"}`, margin, yPosition);
+        yPosition += 5;
+        doc.text(`Readability: ${Number(currentAnalysis.readability_score || 0).toFixed(1)}%`, margin, yPosition);
+        yPosition += 5;
+        doc.text(`Missing Sections: ${currentAnalysis.missing_sections?.length || 0}`, margin, yPosition);
         yPosition += 10;
-
-        const statsData = [
-            ["Words", currentAnalysis.word_count || "0"],
-            ["Readability", `${Number(currentAnalysis.readability_score || 0).toFixed(1)}%`],
-            ["Missing Sections", currentAnalysis.missing_sections?.length || "0"]
-        ];
-
-        doc.autoTable({
-            startY: yPosition,
-            body: statsData,
-            theme: "plain",
-            margin: { left: margin, right: margin }
-        });
-
-        yPosition = doc.lastAutoTable.finalY + 10;
 
         // Missing Sections
         if (Array.isArray(currentAnalysis.missing_sections) && currentAnalysis.missing_sections.length > 0) {
@@ -464,7 +489,7 @@ export default function useAnalysis() {
             doc.setFont("helvetica", "normal");
             doc.setFontSize(10);
 
-            currentAnalysis.missing_sections.forEach((section, i) => {
+            currentAnalysis.missing_sections.forEach((section) => {
                 checkPage(6);
                 doc.text(`• ${section}`, margin, yPosition);
                 yPosition += 5;
@@ -525,47 +550,47 @@ export default function useAnalysis() {
                         ],
                         spacing: { after: 400 }
                     }),
-
-                    // Analysis Type
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis",
-                                bold: true,
-                                size: 24
-                            })
-                        ],
-                        spacing: { after: 200 }
-                    }),
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: isJobSpecific
-                                    ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
-                                    : "This is a general analysis. Select a job for tailored matching."
-                            })
-                        ],
-                        spacing: { after: 300 }
-                    })
                 ]
             }]
         });
 
-        // Job summary if available
-        if (currentAnalysis.job_match_summary) {
-            const jobSummary = typeof currentAnalysis.job_match_summary === "string"
-                ? currentAnalysis.job_match_summary
-                : currentAnalysis.job_match_summary?.summary;
-
-            doc.addSection({
+        // Job-Specific Analysis
+        const jobAnalysisChildren = [
+            new Paragraph({
                 children: [
-                    new Paragraph({
-                        children: [new TextRun({ text: jobSummary, italics: true })],
-                        spacing: { after: 400 }
+                    new TextRun({ text: isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis", bold: true, size: 24 })
+                ],
+                spacing: { after: 200 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: isJobSpecific
+                            ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
+                            : "This is a general analysis. Select a job for tailored matching."
                     })
-                ]
-            });
+                ],
+                spacing: { after: 300 }
+            })
+        ];
+
+        // Tech skills match summary
+        if (isJobSpecific) {
+            const techMatch = ats.technical_skills_score != null ? `${Number(ats.technical_skills_score).toFixed(0)}%` : "0%";
+            const reqMatch = ats.requirements_match_score != null ? `${Number(ats.requirements_match_score).toFixed(0)}%` : "0%";
+            const keywordMatch = ats.keyword_score != null ? `${Number(ats.keyword_score).toFixed(0)}%` : "0%";
+
+            jobAnalysisChildren.push(
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: `Tech skills match: ${techMatch}, Requirements match: ${reqMatch}, Keywords: ${keywordMatch}` })
+                    ],
+                    spacing: { after: 300 }
+                })
+            );
         }
+
+        doc.addSection({ children: jobAnalysisChildren });
 
         // Technical Skills section
         if (ats.technical_skills_score != null) {
@@ -740,7 +765,7 @@ export default function useAnalysis() {
         }
 
         // Keywords section
-        if (ats.keyword_score != null || ai.keywords) {
+        if (ats.keyword_score != null) {
             const children = [
                 new Paragraph({
                     children: [
@@ -750,7 +775,7 @@ export default function useAnalysis() {
                 }),
                 new Paragraph({
                     children: [
-                        new TextRun({ text: `Score: ${Number(ats.keyword_score || 0).toFixed(1)}%` })
+                        new TextRun({ text: `Score: ${Number(ats.keyword_score).toFixed(1)}%` })
                     ],
                     spacing: { after: 100 }
                 }),
@@ -891,193 +916,139 @@ export default function useAnalysis() {
             doc.addSection({ children });
         }
 
-        // Section Quality Analysis
-        if (currentAnalysis.section_quality && Object.keys(currentAnalysis.section_quality).length > 0) {
-            const children = [
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Section Quality Analysis", bold: true, size: 24 })
-                    ],
-                    spacing: { after: 300 }
-                })
-            ];
-
-            // Create table rows
-            const tableRows = Object.entries(currentAnalysis.section_quality).map(([section, data]) => {
-                return new TableRow({
-                    children: [
-                        new TableCell({
-                            children: [new Paragraph({ text: section })],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({ text: `${Number(data.score || 0).toFixed(0)}%` })],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph({
-                                text: data.improvement_needed ? "Needs work" : "Good"
-                            })],
-                        })
-                    ]
-                });
-            });
-
-            // Create table
-            const table = new Table({
-                rows: [
-                    new TableRow({
-                        children: [
-                            new TableCell({
-                                children: [new Paragraph({ text: "Section", bold: true })],
-                                shading: { fill: "DDDDFF" }
-                            }),
-                            new TableCell({
-                                children: [new Paragraph({ text: "Score", bold: true })],
-                                shading: { fill: "DDDDFF" }
-                            }),
-                            new TableCell({
-                                children: [new Paragraph({ text: "Status", bold: true })],
-                                shading: { fill: "DDDDFF" }
-                            })
-                        ]
-                    }),
-                    ...tableRows
-                ]
-            });
-
-            children.push(table);
-
-            doc.addSection({
-                children
-            });
-        }
-
         // Language Analysis
-        if (currentAnalysis.action_verb_count !== undefined || currentAnalysis.readability_score !== undefined) {
-            const children = [
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Language Analysis", bold: true, size: 24 })
-                    ],
-                    spacing: { after: 300 }
-                }),
+        const languageChildren = [
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Language Analysis", bold: true, size: 24 })
+                ],
+                spacing: { after: 200 }
+            }),
 
-                // Action verbs
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Action Verbs: ", bold: true }),
-                        new TextRun({ text: currentAnalysis.action_verb_count || "N/A" })
-                    ],
-                    spacing: { after: 100 }
-                }),
-                new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: Number(currentAnalysis.action_verb_count) >= 10
-                                ? "Strong use of action verbs"
-                                : "Consider adding more impactful verbs"
-                        })
-                    ],
-                    spacing: { after: 200 }
-                }),
+            // Action verbs
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Action Verbs: ", bold: true }),
+                    new TextRun({ text: currentAnalysis.action_verb_count || "N/A" })
+                ],
+                spacing: { after: 100 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: Number(currentAnalysis.action_verb_count) >= 10
+                            ? "Strong use of action verbs"
+                            : "Consider adding more impactful verbs",
+                        italics: true
+                    })
+                ],
+                spacing: { after: 200 }
+            }),
 
-                // Readability
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Readability: ", bold: true }),
-                        new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(0)}%` })
-                    ],
-                    spacing: { after: 100 }
-                }),
-                new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: Number(currentAnalysis.readability_score || 0) >= 70
-                                ? "Good content structure"
-                                : "Content needs improvement"
-                        })
-                    ],
-                    spacing: { after: 300 }
-                })
-            ];
+            // Readability
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Readability: ", bold: true }),
+                    new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(0)}%` })
+                ],
+                spacing: { after: 100 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: Number(currentAnalysis.readability_score || 0) >= 70
+                            ? "Good content structure"
+                            : "Content needs improvement",
+                        italics: true
+                    })
+                ],
+                spacing: { after: 300 }
+            })
+        ];
 
-            doc.addSection({ children });
-        }
+        doc.addSection({ children: languageChildren });
 
         // Key Recommendations
         if (ai.overall_suggestions && ai.overall_suggestions.length > 0) {
-            doc.addSection({
-                children: [
+            const recommendationChildren = [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: "Key Recommendations", bold: true, size: 24 })
+                    ],
+                    spacing: { after: 200 }
+                })
+            ];
+
+            ai.overall_suggestions.forEach((suggestion, i) => {
+                recommendationChildren.push(
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "Key Recommendations", bold: true, size: 24 })
+                            new TextRun({ text: `${i + 1}. ${suggestion}` })
                         ],
                         spacing: { after: 200 }
-                    }),
-                    ...ai.overall_suggestions.map((suggestion, i) =>
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: `${i + 1}. ${suggestion}` })
-                            ],
-                            spacing: { after: 200 }
-                        })
-                    )
-                ]
+                    })
+                );
             });
+
+            doc.addSection({ children: recommendationChildren });
         }
 
         // Document Statistics
-        doc.addSection({
-            children: [
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Document Statistics", bold: true, size: 24 })
-                    ],
-                    spacing: { after: 200 }
-                }),
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Words: ", bold: true }),
-                        new TextRun({ text: currentAnalysis.word_count || "0" })
-                    ],
-                    spacing: { after: 100 }
-                }),
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Readability: ", bold: true }),
-                        new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(1)}%` })
-                    ],
-                    spacing: { after: 100 }
-                }),
-                new Paragraph({
-                    children: [
-                        new TextRun({ text: "Missing Sections: ", bold: true }),
-                        new TextRun({ text: currentAnalysis.missing_sections?.length || "0" })
-                    ],
-                    spacing: { after: 200 }
-                }),
-            ]
-        });
+        const statsChildren = [
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Document Statistics", bold: true, size: 24 })
+                ],
+                spacing: { after: 200 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Words: ", bold: true }),
+                    new TextRun({ text: currentAnalysis.word_count || "N/A" })
+                ],
+                spacing: { after: 100 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Readability: ", bold: true }),
+                    new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(1)}%` })
+                ],
+                spacing: { after: 100 }
+            }),
+            new Paragraph({
+                children: [
+                    new TextRun({ text: "Missing Sections: ", bold: true }),
+                    new TextRun({ text: currentAnalysis.missing_sections?.length || "0" })
+                ],
+                spacing: { after: 200 }
+            }),
+        ];
+
+        doc.addSection({ children: statsChildren });
 
         // Missing Sections
         if (Array.isArray(currentAnalysis.missing_sections) && currentAnalysis.missing_sections.length > 0) {
-            doc.addSection({
-                children: [
+            const missingSectionsChildren = [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: "Missing Sections", bold: true, size: 24 })
+                    ],
+                    spacing: { after: 200 }
+                })
+            ];
+
+            currentAnalysis.missing_sections.forEach(section => {
+                missingSectionsChildren.push(
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "Missing Sections", bold: true, size: 24 })
+                            new TextRun({ text: `• ${section}` })
                         ],
-                        spacing: { after: 200 }
-                    }),
-                    ...currentAnalysis.missing_sections.map(section =>
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: `• ${section}` })
-                            ],
-                            spacing: { after: 100 }
-                        })
-                    )
-                ]
+                        spacing: { after: 100 }
+                    })
+                );
             });
+
+            doc.addSection({ children: missingSectionsChildren });
         }
 
         // Generate and save document
