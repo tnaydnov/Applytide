@@ -252,19 +252,19 @@ export default function ApplicationDrawer({ application, onClose }) {
             {/* Drawer panel */}
             <aside
                 className="
-        absolute right-0 top-0 h-full w-full sm:w-[480px] lg:w-[560px]
-        bg-[#0f1422] border-l border-white/10 shadow-2xl
-        pointer-events-auto
-        animate-[slideIn_.25s_ease-out]
-      "
-                style={{ willChange: 'transform' }}
+                                absolute right-0 top-0 h-full
+                                w-[560px] max-w-[100vw] max-h-screen
+                                bg-[#0f1422] border-l border-white/10 shadow-2xl
+                                pointer-events-auto
+                                animate-[slideIn_.25s_ease-out]
+                            "
             >
                 <style jsx global>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0.6; }
-          to   { transform: translateX(0);   opacity: 1; }
-        }
-      `}</style>
+                    @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0.6; }
+                    to   { transform: translateX(0);   opacity: 1; }
+                    }
+                `}</style>
 
                 <div className="p-5 overflow-y-auto h-full">
                     <div className="space-y-6">

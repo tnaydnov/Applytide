@@ -178,7 +178,7 @@ export default function ApplicationCard({
                         <div className="flex items-center justify-center mb-3 gap-2">
                             {/* Desktop drag handle */}
                             <div
-                                className="hidden md:block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                                className="block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
                                 title="Drag to move"
                                 draggable
                                 onDragStart={handleDragStart}
