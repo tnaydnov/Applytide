@@ -61,13 +61,13 @@ export default function AnalysisModal({
             />
 
             {/* Surface */}
-            <div className="fixed z-50 inset-0 p-4 flex items-center justify-center overflow-y-auto">
-                <div className="w-full max-w-[min(1360px,95vw)] my-4">
+            <div className="fixed z-50 inset-0 p-4 flex items-start justify-center overflow-y-auto">
+                <div className="w-full max-w-[min(1360px,95vw)] my-6">
                     <ModalSurface
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="analysis-title"
-                        className="max-h-[calc(100vh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
+                        className="max-h-[calc(100vh-3rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -154,8 +154,8 @@ export default function AnalysisModal({
                             {/* Analysis type banner (from original page) */}
                             <div
                                 className={`p-4 rounded-lg border ${isJobSpecific
-                                        ? "bg-blue-900/30 border-blue-500/30 text-blue-200"
-                                        : "bg-amber-900/30 border-amber-500/30 text-amber-200"
+                                    ? "bg-blue-900/30 border-blue-500/30 text-blue-200"
+                                    : "bg-amber-900/30 border-amber-500/30 text-amber-200"
                                     }`}
                             >
                                 <div className="flex items-center gap-2 mb-1">
@@ -220,10 +220,10 @@ export default function AnalysisModal({
                                                     <div className="w-24 h-2 bg-slate-700 rounded overflow-hidden">
                                                         <div
                                                             className={`h-2 rounded ${Number(data.score) >= 80
-                                                                    ? "bg-green-500"
-                                                                    : Number(data.score) >= 60
-                                                                        ? "bg-yellow-500"
-                                                                        : "bg-red-500"
+                                                                ? "bg-green-500"
+                                                                : Number(data.score) >= 60
+                                                                    ? "bg-yellow-500"
+                                                                    : "bg-red-500"
                                                                 }`}
                                                             style={{ width: `${Number(data.score || 0)}%` }}
                                                         />
