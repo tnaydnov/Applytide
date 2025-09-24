@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { api, apiFetch } from "../../../lib/api";
+import { Document, Packer, Paragraph, TextRun } from 'docx';
+import { saveAs } from 'file-saver';
 
 export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}) {
     const [clOpen, setClOpen] = useState(false);
@@ -11,11 +13,15 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [generated, setGenerated] = useState("");
+    
+
 
     const canGenerate = useMemo(
         () => clForm.job_id && clForm.resume_id && !isGenerating,
         [clForm, isGenerating]
     );
+
+
 
     const generate = useCallback(async () => {
         if (!canGenerate) return;
@@ -59,19 +65,54 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
 
     const saveAsDocument = useCallback(async () => {
         if (!generated) return;
-        const res = await apiFetch("/documents", {
-            method: "POST",
-            body: JSON.stringify({
-                type: "cover_letter",
-                name: "Generated Cover Letter",
-                content: generated,
-                format: "txt",
-                status: "draft",
-            }),
-        });
-        if (res.ok) {
-            onSaved?.();
-            setClOpen(false);
+
+        try {
+            // 1. Save to server API (keep original functionality)
+            const res = await apiFetch("/documents", {
+                method: "POST",
+                body: JSON.stringify({
+                    type: "cover_letter",
+                    name: "Generated Cover Letter",
+                    content: generated,
+                    format: "txt",
+                    status: "draft",
+                }),
+            });
+
+            // 2. Generate and download Word document
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        // Split the generated text into paragraphs
+                        ...generated.split('\n').map(line =>
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: line,
+                                        size: 24 // 12pt font
+                                    })
+                                ],
+                                spacing: {
+                                    after: 200 // Add space between paragraphs
+                                }
+                            })
+                        )
+                    ]
+                }]
+            });
+
+            // Generate and save document
+            Packer.toBlob(doc).then(blob => {
+                saveAs(blob, "Generated_Cover_Letter.docx");
+            });
+
+            if (res.ok) {
+                onSaved?.();
+                setClOpen(false);
+            }
+        } catch (error) {
+            console.error("Error saving document:", error);
         }
     }, [generated, onSaved]);
 
