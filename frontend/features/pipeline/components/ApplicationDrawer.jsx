@@ -241,40 +241,30 @@ export default function ApplicationDrawer({ application, onClose }) {
 
     /* --------------------------------- Render -------------------------------- */
     return (
-        <div className="fixed inset-0 z-[9998] flex" aria-modal="true" role="dialog">
+        <div className="fixed inset-0 z-[9998] pointer-events-none" aria-modal="true" role="dialog">
             {/* Backdrop */}
-            <button
+            <div
                 onClick={onClose}
-                className="flex-1 bg-black/50 backdrop-blur-[2px]"
+                className="absolute inset-0 bg-black/50 backdrop-blur-[2px] pointer-events-auto"
                 aria-label="Close drawer backdrop"
-                type="button"
             />
 
             {/* Drawer panel */}
-            <div
+            <aside
                 className="
-          relative
-          w-full sm:w-[480px] lg:w-[560px]
-          h-full
-          bg-[#0f1422]
-          border-l border-white/10
-          shadow-2xl
-          animate-[slideIn_.25s_ease-out]
-        "
+        absolute right-0 top-0 h-full w-full sm:w-[480px] lg:w-[560px]
+        bg-[#0f1422] border-l border-white/10 shadow-2xl
+        pointer-events-auto
+        animate-[slideIn_.25s_ease-out]
+      "
                 style={{ willChange: 'transform' }}
             >
                 <style jsx global>{`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0.6;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}</style>
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0.6; }
+          to   { transform: translateX(0);   opacity: 1; }
+        }
+      `}</style>
 
                 <div className="p-5 overflow-y-auto h-full">
                     <div className="space-y-6">
@@ -577,7 +567,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                         </div>
                     </div>
                 </div>
-            </div>
+            </aside>
         </div>
     );
 }
