@@ -1,28 +1,31 @@
-import { useEffect, useRef, useState } from "react";
-import { api } from "../../../lib/api";
+import { useEffect, useState } from "react";
+import api from "../../../lib/api";
 
+/**
+ * Loads saved jobs for the current user.
+ * Normalizes the API shape to a simple array.
+ */
 export default function useJobs() {
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const abortRef = useRef();
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        abortRef.current?.abort();
-        const ctl = new AbortController();
-        abortRef.current = ctl;
-        (async () => {
-            setLoading(true);
-            try {
-                const json = await api.listJobs();
-                setJobs(Array.isArray(json) ? json : json?.data || []);
-            } catch (e) {
-                if (e.name !== "AbortError") console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        })();
-        return () => ctl.abort();
-    }, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await api.listJobs(); // GET /api/jobs
+        const items = Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : [];
+        if (alive) setJobs(items);
+      } catch (e) {
+        console.warn("[useJobs] failed to load jobs:", e);
+        if (alive) setJobs([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
-    return { jobs, loading };
+  return { jobs, loading };
 }
