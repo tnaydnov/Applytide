@@ -58,7 +58,7 @@ export default function AnalysisModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="analysis-title"
-          className="w-[min(1500px,98vw)] max-w-none h-[min(94vh,100svh)] max-h-[94vh] flex flex-col rounded-2xl ring-1 overflow-hidden"
+          className="w-[min(1400px,96vw)] max-w-none h-[calc(100svh-2rem)] max-h-[calc(100svh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

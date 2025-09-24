@@ -15,6 +15,8 @@ import useResumes from "../features/documents/hooks/useResumes";
 import useAnalysis from "../features/documents/hooks/useAnalysis";
 import useCoverLetter from "../features/documents/hooks/useCoverLetter";
 import useToast from "../features/documents/hooks/useToast";
+import LoadingOverlay from "../features/documents/components/LoadingOverlay";
+
 
 export default function DocumentsView() {
   const toast = useToast();
@@ -95,6 +97,9 @@ export default function DocumentsView() {
         onOpenUpload={() => setOpenUpload(true)}
         onOpenCoverLetter={() => setClOpen(true)}
       />
+
+      {/* Notices */}
+      <DocxPreviewNotice />
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
@@ -192,8 +197,12 @@ export default function DocumentsView() {
         title="Analyze Resume With…"
       />
 
-      {/* Notices */}
-      <DocxPreviewNotice />
+      {/* Global loading overlay while analysis runs */}
+      {analyzing && !analysisModalOpen && (
+        <LoadingOverlay text="Analyzing your resume…" />
+      )}
+
+
     </div>
   );
 }
