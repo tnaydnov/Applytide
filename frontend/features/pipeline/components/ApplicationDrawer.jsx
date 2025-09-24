@@ -76,6 +76,24 @@ export default function ApplicationDrawer({ application, onClose }) {
         }
     }, [appId]);
 
+    const deleteStage = useCallback(async (stageId) => {
+        if (!appId || !stageId) return;
+        const ok = window.confirm("Delete this stage from history?");
+        if (!ok) return;
+
+        try {
+            const res = await apiFetch(`/applications/${appId}/stages/${stageId}`, { method: "DELETE" });
+            if (!res.ok) throw new Error(await res.text());
+            // Optimistic update
+            setStages((prev) => prev.filter((s) => String(s.id) !== String(stageId)));
+            toast.success("Stage removed");
+        } catch (e) {
+            console.error("deleteStage error", e);
+            toast.error("Failed to remove stage");
+        }
+    }, [appId, toast]);
+
+
     /* ------------------------------ Attachments ------------------------------ */
     const loadAttachments = useCallback(async () => {
         if (!appId) return setAttachments([]);
@@ -325,13 +343,27 @@ export default function ApplicationDrawer({ application, onClose }) {
                                             const whenStr = Number.isNaN(when.getTime()) ? "—" : when.toLocaleString();
                                             return (
                                                 <li key={st.id} className="relative pl-6">
-                                                    {/* timeline dot */}
                                                     <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-indigo-500 border border-indigo-300/60" />
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div className="text-slate-100 font-medium">{st.name}</div>
-                                                        <div className="text-xs text-slate-400 whitespace-nowrap">{whenStr}</div>
+
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-xs text-slate-400 whitespace-nowrap">{whenStr}</div>
+                                                            <button
+                                                                onClick={() => deleteStage(st.id)}
+                                                                className="p-1.5 rounded-md text-slate-400 hover:text-red-300 hover:bg-red-500/15 transition"
+                                                                title="Delete stage from history"
+                                                                aria-label="Delete stage"
+                                                            >
+                                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-3h4m-6 3h8M9 7v12m6-12v12" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </li>
+
                                             );
                                         })}
                                 </ol>
