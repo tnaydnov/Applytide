@@ -143,21 +143,24 @@ export default function ApplicationCard({
                 <button
                     onClick={handleDelete}
                     className={`absolute ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
-                    inline-flex items-center justify-center w-9 h-9 rounded-full
-                    text-red-400 hover:text-red-300 hover:bg-red-500/15
-                    transition-all duration-200 z-10 backdrop-blur-sm
-                    border border-red-400/40 hover:border-red-300/60`}
+                    inline-flex items-center justify-center
+                    w-10 h-10 rounded-full
+                    text-red-400 hover:text-red-300
+                    bg-black/20 hover:bg-red-500/15
+                    border-2 border-red-400/40 hover:border-red-300/60
+                    shadow-sm backdrop-blur-sm z-10 transition`}
                     title="Delete application"
                     aria-label="Delete application"
                     type="button"
                 >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                         <path d="M3 6h18" />
                         <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                         <path d="M10 11v6M14 11v6" />
                     </svg>
                 </button>
+
 
                 <div className={viewMode === "board" ? "p-3 pt-8" : "p-6"}>
                     {/* Header */}
@@ -202,16 +205,19 @@ export default function ApplicationCard({
                         <div className="flex items-center justify-center mb-3 gap-2">
                             {/* Desktop drag handle */}
                             <div
-                                className="hidden md:block text-gray-400 hover:text-gray-300 cursor-grab active:cursor-grabbing p-2 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                                className="hidden md:inline-flex items-center justify-center
+                                text-white/70 hover:text-white cursor-grab active:cursor-grabbing
+                                w-9 h-9 rounded-lg border border-white/10 hover:bg-white/10 transition"
                                 title="Drag to move"
                                 draggable
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                                 aria-label="Drag to move application"
                             >
-                                {/* 6 dots icon */}
-                                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+                                <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <circle cx="6" cy="5" r="1.3" /><circle cx="10" cy="5" r="1.3" />
+                                    <circle cx="6" cy="9" r="1.3" /><circle cx="10" cy="9" r="1.3" />
+                                    <circle cx="6" cy="13" r="1.3" /><circle cx="10" cy="13" r="1.3" />
                                 </svg>
                             </div>
 
@@ -303,70 +309,75 @@ export default function ApplicationCard({
             {/* Mobile Move Modal */}
             {mounted && showMoveModal && createPortal(
                 <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
-                    {/* backdrop */}
+                    {/* Backdrop */}
                     <button
                         aria-label="Close"
                         onClick={() => setShowMoveModal(false)}
                         className="absolute inset-0 bg-black/50"
                     />
-                    {/* bottom sheet */}
-                    <div className="absolute inset-x-0 bottom-0">
-                        <div className="mx-auto w-full max-w-md rounded-t-2xl bg-gray-900/95 backdrop-blur-xl border border-white/15 shadow-2xl">
-                            {/* grabber */}
-                            <div className="flex justify-center pt-3">
-                                <div className="h-1.5 w-12 rounded-full bg-white/20" />
-                            </div>
-                            <div className="p-5 max-h-[80vh] overflow-y-auto overscroll-contain">
-                                <h3 className="text-lg font-semibold text-white mb-1">Move Application</h3>
-                                <p className="text-gray-300 text-sm mb-4">Move “{title}” to:</p>
+                    {/* Bottom sheet */}
+                    <div className="absolute inset-x-0 bottom-0 animate-[slideUp_.22s_ease-out]">
+                        <div className="mx-auto w-full max-w-md rounded-t-2xl
+                      bg-[#0e1424] text-white border border-white/15 shadow-2xl">
+                            {/* Sticky header with grabber */}
+                            <div className="sticky top-0 z-10 bg-[#0e1424] pt-3 pb-3 px-5 border-b border-white/10">
+                                <div className="flex justify-center mb-2">
+                                    <div className="h-1.5 w-12 rounded-full bg-white/20" />
+                                </div>
+                                <h3 className="text-base font-semibold leading-none">Move Application</h3>
+                                <p className="text-xs text-white/60 mt-1">Move “{title}” to:</p>
 
-                                {/* searchable list if you have many stages */}
-                                <div className="mb-3">
+                                <div className="mt-3">
                                     <input
                                         type="search"
                                         placeholder="Search stages…"
                                         onChange={(e) => setSearch(e.target.value)}
-                                        className="w-full rounded-md bg-gray-800 border border-white/10 text-white px-3 py-2 text-sm"
+                                        className="w-full h-10 rounded-md bg-white/5 ring-1 ring-white/10
+                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60
+                         placeholder-white/40 px-3 text-sm"
                                     />
                                 </div>
+                            </div>
 
-                                <div className="space-y-2">
-                                    {availableStatuses
-                                        .filter(s => !search || s.toLowerCase().includes(search.toLowerCase()))
-                                        .map((statusOption) => {
-                                            const cfg = getStatusConfig(statusOption);
-                                            return (
-                                                <button
-                                                    key={statusOption}
-                                                    onClick={() => handleMobileMove(statusOption)}
-                                                    className={`w-full text-left px-4 py-3 rounded-lg border ${cfg.gradient}
-                                 hover:border-opacity-70 transition`}
-                                                    type="button"
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        <span>{cfg.icon}</span>
-                                                        <span className="font-medium">{statusOption}</span>
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                </div>
+                            {/* Scrollable list */}
+                            <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-2">
+                                {availableStatuses
+                                    .filter(s => !search || s.toLowerCase().includes(search.toLowerCase()))
+                                    .map((statusOption) => {
+                                        const cfg = getStatusConfig(statusOption);
+                                        return (
+                                            <button
+                                                key={statusOption}
+                                                onClick={() => handleMobileMove(statusOption)}
+                                                className={`w-full text-left px-4 py-3 rounded-lg border ${cfg.gradient}
+                              hover:border-white/60 hover:bg-white/5 transition`}
+                                                type="button"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <span>{cfg.icon}</span>
+                                                    <span className="font-medium">{statusOption}</span>
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                            </div>
 
+                            {/* Sticky footer */}
+                            <div className="sticky bottom-0 bg-[#0e1424] px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 border-t border-white/10">
                                 <button
                                     onClick={() => setShowMoveModal(false)}
-                                    className="mt-5 w-full px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600"
+                                    className="w-full h-10 rounded-lg bg-white/10 text-white/80 hover:bg-white/15"
                                     type="button"
                                 >
                                     Cancel
                                 </button>
-                                {/* safe-area padding for iOS */}
-                                <div className="pb-[env(safe-area-inset-bottom)]" />
                             </div>
                         </div>
                     </div>
                 </div>,
                 document.body
             )}
+
         </>
     );
 }
