@@ -215,6 +215,31 @@ export default function useAnalysis() {
                     });
                     yPosition += 5;
                 }
+
+                if (ai.technical_skills && ai.technical_skills.improvements && ai.technical_skills.improvements.length) {
+                    checkPage();
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Improvement Examples:", margin, yPosition);
+                    yPosition += 8;
+
+                    doc.setFont("helvetica", "normal");
+                    ai.technical_skills.improvements.forEach((imp, i) => {
+                        checkPage(20);
+                        doc.setFontSize(10);
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
+                        yPosition += 7;
+
+                        doc.setFont("helvetica", "italic");
+                        doc.setFontSize(9);
+                        doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
+                        yPosition += 5;
+
+                        doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
+                        yPosition += 10;
+                    });
+                }
             }
         }
 
@@ -268,6 +293,31 @@ export default function useAnalysis() {
                         yPosition += 5;
                     });
                     yPosition += 5;
+                }
+
+                if (ai.soft_skills && ai.soft_skills.improvements && ai.soft_skills.improvements.length) {
+                    checkPage();
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Improvement Examples:", margin, yPosition);
+                    yPosition += 8;
+
+                    doc.setFont("helvetica", "normal");
+                    ai.soft_skills.improvements.forEach((imp, i) => {
+                        checkPage(20);
+                        doc.setFontSize(10);
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
+                        yPosition += 7;
+
+                        doc.setFont("helvetica", "italic");
+                        doc.setFontSize(9);
+                        doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
+                        yPosition += 5;
+
+                        doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
+                        yPosition += 10;
+                    });
                 }
             }
         }
@@ -367,6 +417,31 @@ export default function useAnalysis() {
                     yPosition += 5;
                 });
                 yPosition += 5;
+            }
+
+            if (ai.keywords && ai.keywords.improvements && ai.keywords.improvements.length) {
+                checkPage();
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "bold");
+                doc.text("Improvement Examples:", margin, yPosition);
+                yPosition += 8;
+
+                doc.setFont("helvetica", "normal");
+                ai.keywords.improvements.forEach((imp, i) => {
+                    checkPage(20);
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
+                    yPosition += 7;
+
+                    doc.setFont("helvetica", "italic");
+                    doc.setFontSize(9);
+                    doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
+                    yPosition += 5;
+
+                    doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
+                    yPosition += 10;
+                });
             }
         }
 
@@ -529,6 +604,7 @@ export default function useAnalysis() {
         const ai = currentAnalysis.ai_detailed_analysis || {};
         const overall = Number(ats.overall_score || 0).toFixed(1);
         const isJobSpecific = ats.technical_skills_score != null || Boolean(currentAnalysis.job_match_summary);
+        const readabilityScore = currentAnalysis.readability_score || ats.readability_score || 0;
 
         // Create document
         const doc = new Document({
@@ -568,7 +644,7 @@ export default function useAnalysis() {
                     }),
                     new Paragraph({
                         children: [
-                            new TextRun({ text: `Word Count: ${ats.word_count || "N/A"}` })
+                            new TextRun({ text: `Word Count: ${currentAnalysis.word_count || "N/A"}` })
                         ],
                         spacing: { after: 400 }
                     }),
@@ -596,16 +672,19 @@ export default function useAnalysis() {
             })
         ];
 
-        // Tech skills match summary
-        if (isJobSpecific) {
-            const techMatch = ats.technical_skills_score != null ? `${Number(ats.technical_skills_score).toFixed(0)}%` : "0%";
-            const reqMatch = ats.requirements_match_score != null ? `${Number(ats.requirements_match_score).toFixed(0)}%` : "0%";
-            const keywordMatch = ats.keyword_score != null ? `${Number(ats.keyword_score).toFixed(0)}%` : "0%";
+        // Tech skills match summary from job_match_summary
+        if (currentAnalysis.job_match_summary) {
+            let summaryText = "";
+            if (typeof currentAnalysis.job_match_summary === "string") {
+                summaryText = currentAnalysis.job_match_summary;
+            } else if (currentAnalysis.job_match_summary.summary) {
+                summaryText = currentAnalysis.job_match_summary.summary;
+            }
 
             jobAnalysisChildren.push(
                 new Paragraph({
                     children: [
-                        new TextRun({ text: `Tech skills match: ${techMatch}, Requirements match: ${reqMatch}, Keywords: ${keywordMatch}` })
+                        new TextRun({ text: summaryText })
                     ],
                     spacing: { after: 300 }
                 })
@@ -637,21 +716,21 @@ export default function useAnalysis() {
                 })
             ];
 
-            // Add technical skills data if available
+            // Technical skills details from ai.technical_skills
             if (ai.technical_skills) {
-                // Matched skills
-                if (ai.technical_skills.matched_skills && ai.technical_skills.matched_skills.length) {
+                // Strengths
+                if (ai.technical_skills.strengths && ai.technical_skills.strengths.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Matched Skills:", bold: true })],
+                            children: [new TextRun({ text: "Strengths:", bold: true })],
                             spacing: { after: 100 }
                         })
                     );
 
-                    ai.technical_skills.matched_skills.forEach(skill => {
+                    ai.technical_skills.strengths.forEach(item => {
                         children.push(
                             new Paragraph({
-                                children: [new TextRun({ text: `• ${skill}` })],
+                                children: [new TextRun({ text: `• ${item}` })],
                                 spacing: { after: 100 },
                                 indent: { left: 360 }
                             })
@@ -659,8 +738,28 @@ export default function useAnalysis() {
                     });
                 }
 
-                // Missing skills
-                if (ai.technical_skills.missing_skills && ai.technical_skills.missing_skills.length) {
+                // Weaknesses
+                if (ai.technical_skills.weaknesses && ai.technical_skills.weaknesses.length) {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: "Areas to Improve:", bold: true })],
+                            spacing: { after: 100 }
+                        })
+                    );
+
+                    ai.technical_skills.weaknesses.forEach(item => {
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `• ${item}` })],
+                                spacing: { after: 100 },
+                                indent: { left: 360 }
+                            })
+                        );
+                    });
+                }
+
+                // Missing elements
+                if (ai.technical_skills.missing_elements && ai.technical_skills.missing_elements.length) {
                     children.push(
                         new Paragraph({
                             children: [new TextRun({ text: "Missing Skills:", bold: true })],
@@ -668,10 +767,10 @@ export default function useAnalysis() {
                         })
                     );
 
-                    ai.technical_skills.missing_skills.forEach(skill => {
+                    ai.technical_skills.missing_elements.forEach(item => {
                         children.push(
                             new Paragraph({
-                                children: [new TextRun({ text: `• ${skill}` })],
+                                children: [new TextRun({ text: `• ${item}` })],
                                 spacing: { after: 100 },
                                 indent: { left: 360 }
                             })
@@ -679,21 +778,39 @@ export default function useAnalysis() {
                     });
                 }
 
-                // Analysis
-                if (ai.technical_skills.analysis) {
+                // Improvement examples
+                if (ai.technical_skills.improvements && ai.technical_skills.improvements.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Analysis:", bold: true })],
-                            spacing: { after: 100 }
-                        })
-                    );
-
-                    children.push(
-                        new Paragraph({
-                            children: [new TextRun({ text: ai.technical_skills.analysis })],
+                            children: [new TextRun({ text: "Improvement Examples:", bold: true })],
                             spacing: { after: 200 }
                         })
                     );
+
+                    ai.technical_skills.improvements.forEach((imp, i) => {
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `${i + 1}. ${imp.suggestion}`, bold: true })],
+                                spacing: { after: 100 }
+                            })
+                        );
+
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `Before: ${imp.example_before}`, italics: true })],
+                                spacing: { after: 100 },
+                                indent: { left: 360 }
+                            })
+                        );
+
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `After: ${imp.example_after}`, italics: true })],
+                                spacing: { after: 200 },
+                                indent: { left: 360 }
+                            })
+                        );
+                    });
                 }
             }
 
@@ -723,10 +840,10 @@ export default function useAnalysis() {
                 })
             ];
 
-            // Add soft skills data if available
+            // Soft skills details from ai.soft_skills
             if (ai.soft_skills) {
-                // Found skills
-                if (ai.soft_skills.found_skills && ai.soft_skills.found_skills.length) {
+                // Relevant skills
+                if (ai.soft_skills.relevant_skills && ai.soft_skills.relevant_skills.length) {
                     children.push(
                         new Paragraph({
                             children: [new TextRun({ text: "Found Skills:", bold: true })],
@@ -734,10 +851,10 @@ export default function useAnalysis() {
                         })
                     );
 
-                    ai.soft_skills.found_skills.forEach(skill => {
+                    ai.soft_skills.relevant_skills.forEach(item => {
                         children.push(
                             new Paragraph({
-                                children: [new TextRun({ text: `• ${skill}` })],
+                                children: [new TextRun({ text: `• ${item}` })],
                                 spacing: { after: 100 },
                                 indent: { left: 360 }
                             })
@@ -745,8 +862,8 @@ export default function useAnalysis() {
                     });
                 }
 
-                // Suggested skills
-                if (ai.soft_skills.suggested_skills && ai.soft_skills.suggested_skills.length) {
+                // Missing elements
+                if (ai.soft_skills.missing_elements && ai.soft_skills.missing_elements.length) {
                     children.push(
                         new Paragraph({
                             children: [new TextRun({ text: "Suggested Skills:", bold: true })],
@@ -754,10 +871,10 @@ export default function useAnalysis() {
                         })
                     );
 
-                    ai.soft_skills.suggested_skills.forEach(skill => {
+                    ai.soft_skills.missing_elements.forEach(item => {
                         children.push(
                             new Paragraph({
-                                children: [new TextRun({ text: `• ${skill}` })],
+                                children: [new TextRun({ text: `• ${item}` })],
                                 spacing: { after: 100 },
                                 indent: { left: 360 }
                             })
@@ -765,21 +882,39 @@ export default function useAnalysis() {
                     });
                 }
 
-                // Analysis
-                if (ai.soft_skills.analysis) {
+                // Improvement examples
+                if (ai.soft_skills.improvements && ai.soft_skills.improvements.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Analysis:", bold: true })],
-                            spacing: { after: 100 }
-                        })
-                    );
-
-                    children.push(
-                        new Paragraph({
-                            children: [new TextRun({ text: ai.soft_skills.analysis })],
+                            children: [new TextRun({ text: "Improvement Examples:", bold: true })],
                             spacing: { after: 200 }
                         })
                     );
+
+                    ai.soft_skills.improvements.forEach((imp, i) => {
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `${i + 1}. ${imp.suggestion}`, bold: true })],
+                                spacing: { after: 100 }
+                            })
+                        );
+
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `Before: ${imp.example_before}`, italics: true })],
+                                spacing: { after: 100 },
+                                indent: { left: 360 }
+                            })
+                        );
+
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `After: ${imp.example_after}`, italics: true })],
+                                spacing: { after: 200 },
+                                indent: { left: 360 }
+                            })
+                        );
+                    });
                 }
             }
 
@@ -809,64 +944,136 @@ export default function useAnalysis() {
                 })
             ];
 
-            // Add keywords data if available
-            if (ai.keywords) {
-                // Matched keywords
-                if (ai.keywords.matched_keywords && ai.keywords.matched_keywords.length) {
+            // Keywords details from ai.keywords or keyword_analysis
+            const keywordData = ai.keywords || currentAnalysis.keyword_analysis || {};
+
+            // Found keywords
+            if (keywordData.keywords_found && keywordData.keywords_found.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Matched Keywords:", bold: true })],
+                        spacing: { after: 100 }
+                    })
+                );
+
+                keywordData.keywords_found.forEach(item => {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Matched Keywords:", bold: true })],
+                            children: [new TextRun({ text: `• ${item}` })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
+                        })
+                    );
+                });
+            } else if (keywordData.strengths && keywordData.strengths.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Strengths:", bold: true })],
+                        spacing: { after: 100 }
+                    })
+                );
+
+                keywordData.strengths.forEach(item => {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: `• ${item}` })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
+                        })
+                    );
+                });
+            }
+
+            // Missing keywords
+            if (keywordData.keywords_missing && keywordData.keywords_missing.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Missing Keywords:", bold: true })],
+                        spacing: { after: 100 }
+                    })
+                );
+
+                keywordData.keywords_missing.forEach(item => {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: `• ${item}` })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
+                        })
+                    );
+                });
+            } else if (keywordData.missing_elements && keywordData.missing_elements.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Missing Keywords:", bold: true })],
+                        spacing: { after: 100 }
+                    })
+                );
+
+                keywordData.missing_elements.forEach(item => {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: `• ${item}` })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
+                        })
+                    );
+                });
+            }
+
+            // Weaknesses
+            if (keywordData.weaknesses && keywordData.weaknesses.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Areas to Improve:", bold: true })],
+                        spacing: { after: 100 }
+                    })
+                );
+
+                keywordData.weaknesses.forEach(item => {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: `• ${item}` })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
+                        })
+                    );
+                });
+            }
+
+            // Improvement examples
+            if (ai.keywords && ai.keywords.improvements && ai.keywords.improvements.length) {
+                children.push(
+                    new Paragraph({
+                        children: [new TextRun({ text: "Improvement Examples:", bold: true })],
+                        spacing: { after: 200 }
+                    })
+                );
+
+                ai.keywords.improvements.forEach((imp, i) => {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: `${i + 1}. ${imp.suggestion}`, bold: true })],
                             spacing: { after: 100 }
                         })
                     );
 
-                    ai.keywords.matched_keywords.forEach(keyword => {
-                        children.push(
-                            new Paragraph({
-                                children: [new TextRun({ text: `• ${keyword}` })],
-                                spacing: { after: 100 },
-                                indent: { left: 360 }
-                            })
-                        );
-                    });
-                }
-
-                // Missing keywords
-                if (ai.keywords.missing_keywords && ai.keywords.missing_keywords.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Missing Keywords:", bold: true })],
-                            spacing: { after: 100 }
-                        })
-                    );
-
-                    ai.keywords.missing_keywords.forEach(keyword => {
-                        children.push(
-                            new Paragraph({
-                                children: [new TextRun({ text: `• ${keyword}` })],
-                                spacing: { after: 100 },
-                                indent: { left: 360 }
-                            })
-                        );
-                    });
-                }
-
-                // Analysis
-                if (ai.keywords.analysis) {
-                    children.push(
-                        new Paragraph({
-                            children: [new TextRun({ text: "Analysis:", bold: true })],
-                            spacing: { after: 100 }
+                            children: [new TextRun({ text: `Before: ${imp.example_before}`, italics: true })],
+                            spacing: { after: 100 },
+                            indent: { left: 360 }
                         })
                     );
 
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: ai.keywords.analysis })],
-                            spacing: { after: 200 }
+                            children: [new TextRun({ text: `After: ${imp.example_after}`, italics: true })],
+                            spacing: { after: 200 },
+                            indent: { left: 360 }
                         })
                     );
-                }
+                });
             }
 
             doc.addSection({ children });
@@ -895,21 +1102,21 @@ export default function useAnalysis() {
                 })
             ];
 
-            // Add formatting data if available
+            // Formatting details from ai.formatting
             if (ai.formatting) {
-                // Issues
-                if (ai.formatting.issues && ai.formatting.issues.length) {
+                // Strengths
+                if (ai.formatting.strengths && ai.formatting.strengths.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Issues:", bold: true })],
+                            children: [new TextRun({ text: "Strengths:", bold: true })],
                             spacing: { after: 100 }
                         })
                     );
 
-                    ai.formatting.issues.forEach(issue => {
+                    ai.formatting.strengths.forEach(item => {
                         children.push(
                             new Paragraph({
-                                children: [new TextRun({ text: `• ${issue}` })],
+                                children: [new TextRun({ text: `• ${item}` })],
                                 spacing: { after: 100 },
                                 indent: { left: 360 }
                             })
@@ -917,21 +1124,69 @@ export default function useAnalysis() {
                     });
                 }
 
-                // Analysis
-                if (ai.formatting.analysis) {
+                // Weaknesses
+                if (ai.formatting.weaknesses && ai.formatting.weaknesses.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: "Analysis:", bold: true })],
+                            children: [new TextRun({ text: "Areas to Improve:", bold: true })],
                             spacing: { after: 100 }
                         })
                     );
 
+                    ai.formatting.weaknesses.forEach(item => {
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `• ${item}` })],
+                                spacing: { after: 100 },
+                                indent: { left: 360 }
+                            })
+                        );
+                    });
+                }
+
+                // Improvement examples
+                if (ai.formatting.improvements && ai.formatting.improvements.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: ai.formatting.analysis })],
+                            children: [new TextRun({ text: "Improvement Examples:", bold: true })],
                             spacing: { after: 200 }
                         })
                     );
+
+                    ai.formatting.improvements.forEach((imp, i) => {
+                        children.push(
+                            new Paragraph({
+                                children: [new TextRun({ text: `${i + 1}. ${imp.suggestion}`, bold: true })],
+                                spacing: { after: 100 }
+                            })
+                        );
+
+                        if (imp.example) {
+                            children.push(
+                                new Paragraph({
+                                    children: [new TextRun({ text: `Example: ${imp.example}`, italics: true })],
+                                    spacing: { after: 200 },
+                                    indent: { left: 360 }
+                                })
+                            );
+                        } else if (imp.example_before && imp.example_after) {
+                            children.push(
+                                new Paragraph({
+                                    children: [new TextRun({ text: `Before: ${imp.example_before}`, italics: true })],
+                                    spacing: { after: 100 },
+                                    indent: { left: 360 }
+                                })
+                            );
+
+                            children.push(
+                                new Paragraph({
+                                    children: [new TextRun({ text: `After: ${imp.example_after}`, italics: true })],
+                                    spacing: { after: 200 },
+                                    indent: { left: 360 }
+                                })
+                            );
+                        }
+                    });
                 }
             }
 
@@ -971,14 +1226,14 @@ export default function useAnalysis() {
             new Paragraph({
                 children: [
                     new TextRun({ text: "Readability: ", bold: true }),
-                    new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(0)}%` })
+                    new TextRun({ text: `${Number(readabilityScore).toFixed(0)}%` })
                 ],
                 spacing: { after: 100 }
             }),
             new Paragraph({
                 children: [
                     new TextRun({
-                        text: Number(currentAnalysis.readability_score || 0) >= 70
+                        text: Number(readabilityScore) >= 70
                             ? "Good content structure"
                             : "Content needs improvement",
                         italics: true
@@ -1033,7 +1288,7 @@ export default function useAnalysis() {
             new Paragraph({
                 children: [
                     new TextRun({ text: "Readability: ", bold: true }),
-                    new TextRun({ text: `${Number(currentAnalysis.readability_score || 0).toFixed(1)}%` })
+                    new TextRun({ text: `${Number(readabilityScore).toFixed(1)}%` })
                 ],
                 spacing: { after: 100 }
             }),
