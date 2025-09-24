@@ -471,7 +471,7 @@ function ModalShell({ title, onClose, children }) {
             </button>
           </div>
           {/* Scrollable body */}
-          <div className="p-4 overflow-y-auto max-h-[74vh]">{children}</div>
+          <div className="p-4 overflow-y-auto max-h-[74vh] pb-28">{children}</div>
         </div>
       </div>
     </div>

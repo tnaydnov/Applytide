@@ -31,6 +31,7 @@ export default function ApplicationCard({
     const router = useRouter();
     const [showNoteModal, setShowNoteModal] = useState(false);
     const [showMoveModal, setShowMoveModal] = useState(false);
+    const [search, setSearch] = useState("");
 
     // Guard against missing application to prevent runtime errors.
     if (!application || !application.id) {
@@ -278,37 +279,68 @@ export default function ApplicationCard({
 
             {/* Mobile Move Modal */}
             {showMoveModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-900/95 backdrop-blur-xl rounded-xl p-6 border border-white/20 w-full max-w-sm">
-                        <h3 className="text-lg font-semibold text-white mb-4">Move Application</h3>
-                        <p className="text-gray-300 text-sm mb-4">
-                            Move "{title}" to:
-                        </p>
-                        <div className="space-y-2 mb-6">
-                            {availableStatuses.map((statusOption) => {
-                                const cfg = getStatusConfig(statusOption);
-                                return (
-                                    <button
-                                        key={statusOption}
-                                        onClick={() => handleMobileMove(statusOption)}
-                                        className={`tap-target w-full text-left px-4 py-3 rounded-lg transition-all duration-200 border ${cfg.gradient} hover:border-opacity-75`}
-                                        type="button"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <span>{cfg.icon}</span>
-                                            <span className="font-medium">{statusOption}</span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                <div className="fixed inset-0 z-50">
+                    {/* backdrop */}
+                    <button
+                        aria-label="Close"
+                        onClick={() => setShowMoveModal(false)}
+                        className="absolute inset-0 bg-black/50"
+                    />
+                    {/* bottom sheet */}
+                    <div className="absolute inset-x-0 bottom-0">
+                        <div className="mx-auto w-full max-w-md rounded-t-2xl bg-gray-900/95 backdrop-blur-xl
+                       border border-white/15 shadow-2xl">
+                            {/* grabber */}
+                            <div className="flex justify-center pt-3">
+                                <div className="h-1.5 w-12 rounded-full bg-white/20" />
+                            </div>
+                            <div className="p-5 max-h-[80vh] overflow-y-auto">
+                                <h3 className="text-lg font-semibold text-white mb-1">Move Application</h3>
+                                <p className="text-gray-300 text-sm mb-4">Move “{title}” to:</p>
+
+                                {/* searchable list if you have many stages */}
+                                <div className="mb-3">
+                                    <input
+                                        type="search"
+                                        placeholder="Search stages…"
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="w-full rounded-md bg-gray-800 border border-white/10 text-white px-3 py-2 text-sm"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    {availableStatuses
+                                        .filter(s => !search || s.toLowerCase().includes(search.toLowerCase()))
+                                        .map((statusOption) => {
+                                            const cfg = getStatusConfig(statusOption);
+                                            return (
+                                                <button
+                                                    key={statusOption}
+                                                    onClick={() => handleMobileMove(statusOption)}
+                                                    className={`w-full text-left px-4 py-3 rounded-lg border ${cfg.gradient}
+                                 hover:border-opacity-70 transition`}
+                                                    type="button"
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <span>{cfg.icon}</span>
+                                                        <span className="font-medium">{statusOption}</span>
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                </div>
+
+                                <button
+                                    onClick={() => setShowMoveModal(false)}
+                                    className="mt-5 w-full px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600"
+                                    type="button"
+                                >
+                                    Cancel
+                                </button>
+                                {/* safe-area padding for iOS */}
+                                <div className="pb-[env(safe-area-inset-bottom)]" />
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setShowMoveModal(false)}
-                            className="tap-target w-full px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-                            type="button"
-                        >
-                            Cancel
-                        </button>
                     </div>
                 </div>
             )}
