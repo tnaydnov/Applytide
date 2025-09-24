@@ -58,7 +58,7 @@ export default function DocumentsView() {
     currentAnalysis,
     analyzeResume,
     analyzeResumeWithJob,
-    exportMarkdown,
+    exportWord,
     exportPDF,
   } = useAnalysis();
 
@@ -157,14 +157,19 @@ export default function DocumentsView() {
         defaultType="resume"
       />
 
-      <AnalysisModal
-        open={analysisModalOpen}
-        onClose={() => setAnalysisModalOpen(false)}
-        analysis={currentAnalysis}
-        documentName={currentAnalysis?.document_name || "Document"}
-        onExportMarkdown={exportMarkdown}
-        onExportPDF={exportPDF}
-      />
+      {analysisModalOpen && (
+        <AnalysisModal
+          open={true}
+          analysis={currentAnalysis}
+          documentName={
+            docs.find((d) => d.id === currentAnalysis?.document_id)?.name ||
+            "Document"
+          }
+          onClose={() => setAnalysisModalOpen(false)}
+          onExportPDF={() => exportPDF(currentAnalysis, docs.find((d) => d.id === currentAnalysis?.document_id)?.name || "Document")}
+          onExportWord={exportWord}
+        />
+      )}
 
       <CoverLetterModal
         open={clOpen}

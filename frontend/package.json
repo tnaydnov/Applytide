@@ -12,7 +12,11 @@
     "axios": "^1.7.7",
     "canvas-confetti": "^1.9.3",
     "date-fns": "^4.1.0",
+    "docx": "^8.2.4",
+    "file-saver": "^2.0.5",
     "formidable": "^3.5.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.1",
     "next": "^14.2.32",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

@@ -1,18 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui";
 import ExpandableScoreCategory from "./ExpandableScoreCategory";
 import { getScoreColor } from "../utils/helpers";
 import ModalSurface from "./ModalSurface";
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, BorderStyle } from 'docx';
+import { saveAs } from 'file-saver';
 
 export default function AnalysisModal({
     open,
     onClose,
     analysis = {},
     documentName = "Document",
-    onExportMarkdown,
+    onExportWord,
     onExportPDF,
 }) {
+    // Export analysis as PDF
     // scroll lock + esc to close
     useEffect(() => {
         if (!open) return;
@@ -87,22 +92,22 @@ export default function AnalysisModal({
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                {onExportMarkdown && (
+                                {onExportWord && (
                                     <Button
                                         variant="outline"
-                                        onClick={onExportMarkdown}
+                                        onClick={() => onExportPDF?.(analysis, documentName)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
-                                        ⬇️ Markdown
+                                        <span className="mr-1">📄</span> PDF
                                     </Button>
                                 )}
                                 {onExportPDF && (
                                     <Button
                                         variant="outline"
-                                        onClick={onExportPDF}
+                                        onClick={() => onExportWord?.(analysis, documentName)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
-                                        ⬇️ PDF
+                                        <span className="mr-1">📝</span> Word
                                     </Button>
                                 )}
                                 <button
