@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { api } from "../../../lib/api";
 
 /**
  * Handles running AI analysis on a resume and exposing modal state.
@@ -11,8 +12,7 @@ export default function useAnalysis() {
   const analyzeResume = useCallback(async (doc) => {
     setAnalyzing(true);
     try {
-      const res = await fetch(`/api/documents/${doc.id}/analyze`, { method: "POST" });
-      const json = await res.json();
+      const json = await api.analyzeDocument(doc.id);
       setCurrentAnalysis(json);
       setAnalysisModalOpen(true);
     } finally {
@@ -29,12 +29,7 @@ export default function useAnalysis() {
     }
     setAnalyzing(true);
     try {
-      const res = await fetch(`/api/documents/${doc.id}/analyze-with-job`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: useJobId }),
-      });
-      const json = await res.json();
+      const json = await api.analyzeDocument(doc.id, { jobId: useJobId });
       setCurrentAnalysis(json);
       setAnalysisModalOpen(true);
     } finally {

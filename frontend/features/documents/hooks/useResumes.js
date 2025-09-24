@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getDocName } from "../utils/helpers";
 
 /**
  * Derive resume options from documents (id + display label)
@@ -7,7 +8,7 @@ import { useMemo } from "react";
 export default function useResumes(docs = []) {
   return useMemo(() => {
     return docs
-      .filter((d) => d.type === "resume")
-      .map((d) => ({ id: d.id, label: d.name || d.file_name || `Resume ${d.id}` }));
+      .filter((d) => (d.type || d.document_type) === "resume")
+      .map((d) => ({ id: d.id, label: getDocName(d) || `Resume ${d.id}` }));
   }, [docs]);
 }
