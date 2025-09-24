@@ -100,7 +100,7 @@ export default function Column({
                 const data = text ? JSON.parse(text) : null;
                 if (!data || !data.id) return;
                 if (allowDropFor(data)) {
-                    onMove?.(data.id, status);
+                    onMove?.(data.id, status, data.status);
                 }
             } catch {
                 // swallow parse errors

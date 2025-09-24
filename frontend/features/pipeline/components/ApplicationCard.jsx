@@ -70,7 +70,7 @@ export default function ApplicationCard({
             try {
                 e.dataTransfer.setData(
                     "text/plain",
-                    JSON.stringify({ id: application.id, currentStatus: application.status })
+                    JSON.stringify({ id: application.id, status: application.status })
                 );
                 e.dataTransfer.effectAllowed = "move";
             } catch {
@@ -89,10 +89,10 @@ export default function ApplicationCard({
         (e) => {
             e?.stopPropagation?.();
             if (typeof window !== "undefined" && window.confirm("Are you sure you want to delete this application?")) {
-                onDelete && onDelete(application.id);
+                onDelete && onDelete(application.id, application.status);
             }
         },
-        [application.id, onDelete]
+        [application.id, application.status, onDelete]
     );
 
     const handleView = useCallback(
@@ -117,7 +117,7 @@ export default function ApplicationCard({
             setShowMoveModal(false);
             return;
         }
-        onMove && onMove(application.id, newStatus);
+        onMove && onMove(application.id, newStatus, application.status);
         setShowMoveModal(false);
     };
 

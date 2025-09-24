@@ -50,43 +50,125 @@ async function refreshToken() {
   }
 }
 
+// Cache for failed endpoints to avoid hammering broken APIs
+const failedEndpointCache = new Map();
+
+// Rate limiting helper
+const isRateLimited = (endpoint) => {
+  const now = Date.now();
+  const entry = failedEndpointCache.get(endpoint);
+  
+  if (!entry) return false;
+  
+  // If the endpoint has failed more than 3 times in the last minute, rate limit it
+  if (entry.count > 3 && (now - entry.firstFail) < 60000) {
+    return true;
+  }
+  
+  // Clear old entries (older than 5 minutes)
+  if (now - entry.firstFail > 300000) {
+    failedEndpointCache.delete(endpoint);
+    return false;
+  }
+  
+  return false;
+};
+
 export async function apiFetch(endpoint, options = {}) {
-  try {
-    // Set credentials to include for all requests
-    const isFormData = options?.body instanceof FormData;
-    const headers = {
-      ...(options.headers || {}),
-      ...(isFormData ? {} : { 'Content-Type': options.headers?.['Content-Type'] || 'application/json' }),
-    };
+  // Early return for rate-limited endpoints to avoid hammering broken APIs
+  if (isRateLimited(endpoint)) {
+    console.warn(`API endpoint ${endpoint} is currently rate limited due to repeated failures`);
+    return new Response(JSON.stringify({
+      error: "This endpoint is temporarily unavailable due to repeated failures"
+    }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+  }
+  
+  let attemptCount = 0;
+  const maxAttempts = options.retry === false ? 1 : 2;
+  
+  while (attemptCount < maxAttempts) {
+    attemptCount++;
+    try {
+      // Set credentials to include for all requests
+      const isFormData = options?.body instanceof FormData;
+      const headers = {
+        ...(options.headers || {}),
+        ...(isFormData ? {} : { 'Content-Type': options.headers?.['Content-Type'] || 'application/json' }),
+      };
 
-    const fetchOptions = {
-      ...options,
-      credentials: 'include',
-      headers,
-    };
+      const fetchOptions = {
+        ...options,
+        credentials: 'include',
+        headers,
+      };
 
-    const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+      // Add request timeout for better error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+      
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...fetchOptions,
+        signal: controller.signal
+      });
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
 
-    if (response.status === 401 &&
-      !endpoint.includes('/auth/refresh') &&
-      !endpoint.includes('/auth/login')) {
-      try {
-        const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include'
-        });
-        if (refreshResponse.ok) {
-          return await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+      // Handle 401 Unauthorized by trying to refresh the token and retry
+      if (response.status === 401 &&
+        !endpoint.includes('/auth/refresh') &&
+        !endpoint.includes('/auth/login')) {
+        try {
+          const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+          if (refreshResponse.ok) {
+            // Try one more time with the refreshed token
+            return await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed', refreshError);
         }
-      } catch (refreshError) {
-        console.error('Token refresh failed', refreshError);
       }
-    }
+      
+      // Handle 500 errors by tracking them
+      if (response.status >= 500) {
+        const now = Date.now();
+        const entry = failedEndpointCache.get(endpoint) || { count: 0, firstFail: now };
+        entry.count++;
+        if (!entry.firstFail) entry.firstFail = now;
+        failedEndpointCache.set(endpoint, entry);
+        
+        console.warn(`API endpoint ${endpoint} returned ${response.status} (failure count: ${entry.count})`);
+      }
 
-    return response;
-  } catch (error) {
-    console.error(`API fetch error for ${endpoint}:`, error);
-    throw error;
+      return response;
+    } catch (error) {
+      // Only retry if this isn't the last attempt
+      if (attemptCount < maxAttempts) {
+        console.warn(`API fetch for ${endpoint} failed, retrying...`, error);
+        // Wait briefly before retrying
+        await new Promise(resolve => setTimeout(resolve, 800));
+        continue;
+      }
+      
+      console.error(`API fetch error for ${endpoint}:`, error);
+      
+      // Track failed endpoints
+      const now = Date.now();
+      const entry = failedEndpointCache.get(endpoint) || { count: 0, firstFail: now };
+      entry.count++;
+      if (!entry.firstFail) entry.firstFail = now;
+      failedEndpointCache.set(endpoint, entry);
+      
+      // For AbortError, give a more helpful message
+      if (error.name === 'AbortError') {
+        throw new Error(`Request to ${endpoint} timed out`);
+      }
+      
+      throw error;
+    }
   }
 }
 
@@ -500,13 +582,17 @@ export function connectWS(onMsg) {
   
   let socket;
   let retryCount = 0;
-  let maxRetries = 3;
+  let maxRetries = 5; // Increased from 3 to 5
   let isIntentionallyClosed = false;
   let connectionTimeout;
+  let reconnectTimeout;
 
   const getRetryDelay = (attempt) => {
-    // Exponential backoff: 2s, 4s, 8s, then stop
-    return Math.min(2000 * Math.pow(2, attempt), 8000);
+    // Improved exponential backoff with jitter: base of 1.5s, 3s, 6s, 12s, 20s
+    const base = Math.min(1500 * Math.pow(2, attempt), 20000);
+    // Add jitter to prevent thundering herd problem (±15%)
+    const jitter = base * (0.85 + Math.random() * 0.3);
+    return Math.floor(jitter);
   };
 
   const tryConnect = async () => {
@@ -564,11 +650,14 @@ export function connectWS(onMsg) {
       console.warn('[ws] WebSocket closed:', evt.code, evt.reason);
       
       // Only retry on specific error codes and if we haven't exceeded max retries
+      // Added 1008 (Policy Violation) and 1011 (Internal Error) as retryable codes
       const shouldRetry = retryCount < maxRetries && (
         evt.code === 1006 || // Connection lost
         evt.code === 1005 || // No close code
         evt.code === 1001 || // Going away
-        evt.code === 1000    // Normal closure (might be server restart)
+        evt.code === 1000 || // Normal closure (might be server restart)
+        evt.code === 1008 || // Policy violation (often temporary)
+        evt.code === 1011    // Internal server error (can be temporary)
       );
       
       if (shouldRetry) {
@@ -576,15 +665,36 @@ export function connectWS(onMsg) {
         const delay = getRetryDelay(retryCount - 1);
         console.info(`[ws] Retrying WebSocket in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
         
-        setTimeout(() => {
+        // Clear any existing reconnect timeout
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+        
+        reconnectTimeout = setTimeout(() => {
           if (!isIntentionallyClosed) {
             tryConnect().then(newSocket => {
               socket = newSocket;
+              reconnectTimeout = null;
+            }).catch(err => {
+              console.error('[ws] Reconnection attempt failed:', err);
+              reconnectTimeout = null;
             });
           }
         }, delay);
       } else {
         console.warn('[ws] Not retrying WebSocket. Real-time updates will be disabled.');
+        // After exhausting retries, try one last time after a longer delay (30s)
+        // This can help recover from temporary network/server issues
+        if (!isIntentionallyClosed) {
+          console.info('[ws] Scheduling final reconnect attempt in 30s');
+          reconnectTimeout = setTimeout(() => {
+            retryCount = 0; // Reset retry count for this "new" attempt
+            tryConnect().then(newSocket => {
+              socket = newSocket;
+              reconnectTimeout = null;
+            });
+          }, 30000);
+        }
       }
     };
     
@@ -600,14 +710,32 @@ export function connectWS(onMsg) {
   return {
     close: () => {
       isIntentionallyClosed = true;
-      clearTimeout(connectionTimeout);
+      // Clean up all timeouts
+      if (connectionTimeout) clearTimeout(connectionTimeout);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      
       if (socket) {
         console.info('[ws] Closing WebSocket connection intentionally');
-        socket.close(1000, 'Client initiated close');
+        try {
+          socket.close(1000, 'Client initiated close');
+        } catch (err) {
+          console.warn('[ws] Error while closing socket:', err);
+        }
       }
     },
-    // Expose the underlying socket for compatibility
-    send: (data) => socket?.send(data),
+    // Expose the underlying socket for compatibility with a safer implementation
+    send: (data) => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(data);
+          return true;
+        } catch (err) {
+          console.warn('[ws] Error sending data:', err);
+          return false;
+        }
+      }
+      return false;
+    },
     get readyState() { return socket?.readyState || WebSocket.CLOSED; }
   };
 }
