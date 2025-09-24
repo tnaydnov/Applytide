@@ -153,7 +153,7 @@ export default function ApplicationCard({
                     aria-label="Delete application"
                     type="button"
                 >
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                         <path d="M3 6h18" />
                         <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
@@ -206,20 +206,22 @@ export default function ApplicationCard({
                             {/* Desktop drag handle */}
                             <div
                                 className="hidden md:inline-flex items-center justify-center
-                                text-white/70 hover:text-white cursor-grab active:cursor-grabbing
-                                w-9 h-9 rounded-lg border border-white/10 hover:bg-white/10 transition"
+                                w-10 h-10 rounded-lg border border-white/15
+                                text-slate-300 hover:text-white hover:bg-white/10
+                                cursor-grab active:cursor-grabbing transition"
                                 title="Drag to move"
                                 draggable
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                                 aria-label="Drag to move application"
                             >
-                                <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <circle cx="6" cy="5" r="1.3" /><circle cx="10" cy="5" r="1.3" />
                                     <circle cx="6" cy="9" r="1.3" /><circle cx="10" cy="9" r="1.3" />
                                     <circle cx="6" cy="13" r="1.3" /><circle cx="10" cy="13" r="1.3" />
                                 </svg>
                             </div>
+
 
                             {/* Mobile move button */}
                             <button
@@ -313,16 +315,19 @@ export default function ApplicationCard({
                     <button
                         aria-label="Close"
                         onClick={() => setShowMoveModal(false)}
-                        className="absolute inset-0 bg-black/50"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
+
                     {/* Bottom sheet */}
                     <div className="absolute inset-x-0 bottom-0 animate-[slideUp_.22s_ease-out]">
                         <div className="mx-auto w-full max-w-md rounded-t-2xl
-                      bg-[#0e1424] text-white border border-white/15 shadow-2xl">
-                            {/* Sticky header with grabber */}
-                            <div className="sticky top-0 z-10 bg-[#0e1424] pt-3 pb-3 px-5 border-b border-white/10">
+                      bg-gradient-to-b from-[#11182c] to-[#0b1120]
+                      text-white shadow-2xl ring-1 ring-white/10">
+
+                            {/* Sticky header */}
+                            <div className="sticky top-0 z-10 bg-transparent pt-3 pb-3 px-5 border-b border-white/10">
                                 <div className="flex justify-center mb-2">
-                                    <div className="h-1.5 w-12 rounded-full bg-white/20" />
+                                    <div className="h-1.5 w-12 rounded-full bg-white/25" />
                                 </div>
                                 <h3 className="text-base font-semibold leading-none">Move Application</h3>
                                 <p className="text-xs text-white/60 mt-1">Move “{title}” to:</p>
@@ -332,8 +337,9 @@ export default function ApplicationCard({
                                         type="search"
                                         placeholder="Search stages…"
                                         onChange={(e) => setSearch(e.target.value)}
-                                        className="w-full h-10 rounded-md bg-white/5 ring-1 ring-white/10
-                         focus:outline-none focus:ring-2 focus:ring-indigo-400/60
+                                        className="w-full h-10 rounded-md bg-white/[0.06]
+                         ring-1 ring-white/15 focus:outline-none
+                         focus:ring-2 focus:ring-indigo-400/60
                          placeholder-white/40 px-3 text-sm"
                                     />
                                 </div>
@@ -349,9 +355,11 @@ export default function ApplicationCard({
                                             <button
                                                 key={statusOption}
                                                 onClick={() => handleMobileMove(statusOption)}
-                                                className={`w-full text-left px-4 py-3 rounded-lg border ${cfg.gradient}
-                              hover:border-white/60 hover:bg-white/5 transition`}
                                                 type="button"
+                                                className="w-full text-left px-4 py-3 rounded-lg
+                             bg-white/[0.04] ring-1 ring-white/10
+                             hover:bg-white/[0.07] hover:ring-white/25
+                             transition"
                                             >
                                                 <span className="flex items-center gap-2">
                                                     <span>{cfg.icon}</span>
@@ -363,10 +371,13 @@ export default function ApplicationCard({
                             </div>
 
                             {/* Sticky footer */}
-                            <div className="sticky bottom-0 bg-[#0e1424] px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 border-t border-white/10">
+                            <div className="sticky bottom-0 bg-transparent px-5
+                        pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3
+                        border-t border-white/10">
                                 <button
                                     onClick={() => setShowMoveModal(false)}
-                                    className="w-full h-10 rounded-lg bg-white/10 text-white/80 hover:bg-white/15"
+                                    className="w-full h-10 rounded-lg bg-white/10 text-white/85
+                       hover:bg-white/15 transition"
                                     type="button"
                                 >
                                     Cancel
@@ -377,6 +388,7 @@ export default function ApplicationCard({
                 </div>,
                 document.body
             )}
+
 
         </>
     );
