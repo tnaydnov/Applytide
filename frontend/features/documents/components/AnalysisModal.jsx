@@ -66,7 +66,7 @@ export default function AnalysisModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="analysis-title"
-          className="w-[min(1360px,96vw)] max-w-none h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
+          className="w-[min(1360px,96vw)] max-h-[calc(100dvh-2rem)] flex flex-col rounded-2xl ring-1 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -148,7 +148,7 @@ export default function AnalysisModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-6 space-y-4">
 
             {/* Analysis type banner (from original page) */}
             <div
