@@ -77,7 +77,7 @@ export default function PipelineCustomizer({
     };
 
     return (
-        <div className="space-y-6 pb-28">
+        <div className="space-y-6">
             {/* Current order */}
             <div>
                 <h4 className="text-xl font-bold text-white mb-2">Current Pipeline Order</h4>

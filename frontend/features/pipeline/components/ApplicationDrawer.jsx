@@ -316,7 +316,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                             {stages.length === 0 ? (
                                 <div className="text-sm text-slate-400">No stages yet.</div>
                             ) : (
-                                <ol className="relative border-l border-slate-700/50 ml-3 space-y-4">
+                                <ol className="relative ml-3 pl-3 border-l border-slate-700/50 space-y-4">
                                     {stages
                                         .slice()
                                         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -324,11 +324,12 @@ export default function ApplicationDrawer({ application, onClose }) {
                                             const when = new Date(st.created_at);
                                             const whenStr = Number.isNaN(when.getTime()) ? "—" : when.toLocaleString();
                                             return (
-                                                <li key={st.id} className="ml-4">
-                                                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-indigo-500 border border-indigo-300/50" />
-                                                    <div className="flex items-center justify-between">
+                                                <li key={st.id} className="relative pl-6">
+                                                    {/* timeline dot */}
+                                                    <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-indigo-500 border border-indigo-300/60" />
+                                                    <div className="flex items-center justify-between gap-3">
                                                         <div className="text-slate-100 font-medium">{st.name}</div>
-                                                        <div className="text-xs text-slate-400">{whenStr}</div>
+                                                        <div className="text-xs text-slate-400 whitespace-nowrap">{whenStr}</div>
                                                     </div>
                                                 </li>
                                             );
@@ -336,6 +337,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                 </ol>
                             )}
                         </Card>
+
 
 
 
