@@ -92,19 +92,19 @@ export default function AnalysisModal({
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                {onExportWord && (
+                                {onExportPDF && (
                                     <Button
                                         variant="outline"
-                                        onClick={() => onExportPDF?.(analysis, documentName)}
+                                        onClick={() => onExportPDF(analysis, documentName)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
                                         <span className="mr-1">📄</span> PDF
                                     </Button>
                                 )}
-                                {onExportPDF && (
+                                {onExportWord && (
                                     <Button
                                         variant="outline"
-                                        onClick={() => onExportWord?.(analysis, documentName)}
+                                        onClick={() => onExportWord(analysis, documentName)}
                                         className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700/40"
                                     >
                                         <span className="mr-1">📝</span> Word
