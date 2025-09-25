@@ -11,6 +11,7 @@ import CalendarView from "../features/reminders/components/calendar/CalendarView
 import CreateReminderModal from "../features/reminders/components/modals/CreateReminderModal";
 import ReminderDetailsModal from "../features/reminders/components/modals/ReminderDetailsModal";
 import { Button } from "../components/ui";
+import CalendarLegend from "../features/reminders/components/calendar/CalendarLegend";
 
 export default function RemindersPage() {
   const [activeTab, setActiveTab] = useState("my"); // "my" | "calendar" | "import"
@@ -62,6 +63,11 @@ export default function RemindersPage() {
       />
       <StatsDashboard stats={stats} />
       <ViewTabs active={activeTab} onChange={setActiveTab} />
+      <div className="mt-3 rounded-lg bg-white/[0.03] ring-1 ring-white/10 p-3 text-[13px] text-slate-300 flex flex-wrap gap-x-4 gap-y-2">
+        <div>• <span className="text-slate-100 font-medium">Colors:</span> Follow-up (violet), Interview (pink), Deadline (rose), Call (amber), Google (cyan).</div>
+        <div>• <span className="text-slate-100 font-medium">Jump quickly:</span> use the date picker in the calendar toolbar to jump months/weeks/days.</div>
+        <div>• <span className="text-slate-100 font-medium">Click items:</span> open details, add notes, or import Google events into an application.</div>
+      </div>
 
       {/* Content areas */}
       {activeTab === "my" && (
@@ -95,6 +101,7 @@ export default function RemindersPage() {
               </button>
             ))}
           </div>
+          <CalendarLegend />
           <CalendarView
             view={calendarView}
             date={calendar.selectedDate}
