@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import useReminderNotes from "../hooks/useReminderNotes";
+import useReminderNotes from "../../hooks/useReminderNotes";
 import { Button, Badge } from "../../../../components/ui";
 import { formatTime, getTimeUntil, safeDate } from "../../utils/date";
 import { getReminderTypeColor, findAppById } from "../../utils/reminders";
