@@ -41,7 +41,7 @@ export default function MonthGrid({ date, reminders = [], events = [], onSelectI
                 <button
                   key={`e-${e.id}`}
                   type="button"
-                  className="w-full truncate rounded px-1 py-0.5 text-[11px] bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/30"
+                  className="w-full text-left truncate rounded px-1 py-0.5 text-[11px] bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/30 hover:bg-sky-500/20"
                   onClick={() => onSelectItem?.({ type: "google", data: e })}
                   title={e.summary || e.title || "Event"}
                 >

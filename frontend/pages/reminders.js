@@ -128,20 +128,20 @@ export default function RemindersPage() {
             </div>
           </div>
 
-          <ul className="divide-y rounded-lg border bg-white">
+          <ul className="divide-y divide-white/10 rounded-xl ring-1 ring-white/10 bg-white/[0.03]">
             {googleImportList.length === 0 && (
               <li className="p-6 text-center text-gray-500">No importable events in this window.</li>
             )}
             {googleImportList.map((e) => (
-              <li key={e.id} className="p-4 flex items-start justify-between gap-4">
+              <li key={e.id} className="p-4 flex items-start justify-between gap-4 text-slate-200">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-slate-100">
                     {e.summary || e.title || "Event"}
                   </div>
-                  <div className="text-sm text-gray-700">
+                  <div className="text-sm text-slate-300">
                     {new Date(e?.start?.dateTime ?? e?.start?.date).toLocaleString()}
                   </div>
-                  {e.location && <div className="text-xs text-gray-600 mt-1">{e.location}</div>}
+                  {e.location && <div className="text-xs text-slate-400 mt-1">{e.location}</div>}
                 </div>
                 <div className="flex-shrink-0">
                   <Button

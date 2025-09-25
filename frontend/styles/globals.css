@@ -1116,3 +1116,57 @@ select option {
     opacity: 1;
   }
 }
+
+.neon-pink {        /* Interviews */
+  background: rgba(255, 64, 160, .18);
+  color: #ffd6f1;
+  border: 1px solid rgba(255, 64, 160, .45);
+  box-shadow:
+    0 0 14px inset rgba(255, 64, 160, .22),
+    0 8px 24px rgba(255, 64, 160, .18);
+}
+
+.neon-violet {      /* Follow-ups */
+  background: rgba(139, 92, 246, .18);
+  color: #e4d9ff;
+  border: 1px solid rgba(139, 92, 246, .45);
+  box-shadow:
+    0 0 14px inset rgba(139, 92, 246, .22),
+    0 8px 24px rgba(139, 92, 246, .18);
+}
+
+.neon-rose {        /* Deadlines */
+  background: rgba(244, 63, 94, .18);
+  color: #ffd5dc;
+  border: 1px solid rgba(244, 63, 94, .45);
+  box-shadow:
+    0 0 14px inset rgba(244, 63, 94, .22),
+    0 8px 24px rgba(244, 63, 94, .18);
+}
+
+.neon-amber {       /* Calls / phone */
+  background: rgba(245, 158, 11, .18);
+  color: #ffe7b3;
+  border: 1px solid rgba(245, 158, 11, .45);
+  box-shadow:
+    0 0 14px inset rgba(245, 158, 11, .22),
+    0 8px 24px rgba(245, 158, 11, .18);
+}
+
+.neon-slate {       /* Default */
+  background: rgba(148, 163, 184, .16);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, .35);
+  box-shadow:
+    0 0 14px inset rgba(148, 163, 184, .18),
+    0 8px 24px rgba(148, 163, 184, .12);
+}
+
+/* subtle hover pop */
+.neon-pink:hover,
+.neon-violet:hover,
+.neon-rose:hover,
+.neon-amber:hover,
+.neon-slate:hover {
+  filter: brightness(1.06);
+}
