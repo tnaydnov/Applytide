@@ -7,9 +7,9 @@ import StatsDashboard from "../features/reminders/components/StatsDashboard";
 import ViewTabs from "../features/reminders/components/ViewTabs";
 import EventsList from "../features/reminders/components/EventsList";
 
-import CalendarView from "../features/reminders/calendar/CalendarView";
-import CreateReminderModal from "../features/reminders/modals/CreateReminderModal";
-import ReminderDetailsModal from "../features/reminders/modals/ReminderDetailsModal";
+import CalendarView from "../features/reminders/components/calendar/CalendarView";
+import CreateReminderModal from "../features/reminders/components/modals/CreateReminderModal";
+import ReminderDetailsModal from "../features/reminders/components/modals/ReminderDetailsModal";
 import { Button } from "../components/ui";
 
 export default function RemindersPage() {
