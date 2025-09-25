@@ -263,7 +263,7 @@ export default function PasswordResetPage() {
             <p className="mt-2">
               Don't have an account?{" "}
               <button
-                onClick={() => router.push("/register")}
+                onClick={() => router.push("/login")}
                 className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
               >
                 Create one here

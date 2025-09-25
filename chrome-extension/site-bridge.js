@@ -9,7 +9,7 @@ let sent = false;
 
 // Check if we're on an authentication page where the user wouldn't be logged in yet
 function isAuthPage() {
-  const authPaths = ['/login', '/register', '/auth/', '/reset-password'];
+  const authPaths = ['/login', '/auth/', '/reset-password'];
   return authPaths.some(path => location.pathname.startsWith(path));
 }
 

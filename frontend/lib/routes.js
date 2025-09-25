@@ -2,7 +2,6 @@
 export const PUBLIC_ROUTES = new Set([
   '/',
   '/login',
-  '/register', 
   '/auth/reset',
   '/auth/verify',
   '/auth/callback',
