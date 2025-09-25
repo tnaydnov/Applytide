@@ -136,10 +136,13 @@ export function computeStats(reminders = []) {
  * (Kept compatible with the existing UI classes.)
  */
 export function getReminderTypeColor(name = "") {
-    const type = String(name).toLowerCase();
-    if (type.includes("interview")) return "bg-purple-100 text-purple-800";
-    if (type.includes("follow")) return "bg-blue-100 text-blue-800";
-    if (type.includes("deadline")) return "bg-red-100 text-red-800";
-    if (type.includes("call") || type.includes("phone")) return "bg-yellow-100 text-yellow-800";
-    return "bg-gray-100 text-gray-800";
+  const type = String(name).toLowerCase();
+  // dark-friendly chips: subtle fill + readable text + thin ring
+  if (type.includes("interview")) return "bg-purple-500/15 text-purple-200 ring-1 ring-purple-400/30";
+  if (type.includes("follow"))   return "bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/30";
+  if (type.includes("deadline")) return "bg-rose-500/15 text-rose-200 ring-1 ring-rose-400/30";
+  if (type.includes("call") || type.includes("phone"))
+                                  return "bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/30";
+  return "bg-slate-500/15 text-slate-200 ring-1 ring-slate-400/30";
 }
+

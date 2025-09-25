@@ -86,9 +86,8 @@ export default function RemindersPage() {
             {["month", "week", "day"].map((v) => (
               <button
                 key={v}
-                className={`px-3 py-1 rounded border text-sm ${
-                  calendarView === v ? "bg-blue-50 border-blue-300 text-blue-700" : ""
-                }`}
+                className={`px-3 py-1 rounded border text-sm ${calendarView === v ? "bg-blue-50 border-blue-300 text-blue-700" : ""
+                  }`}
                 onClick={() => setCalendarView(v)}
                 type="button"
               >
@@ -105,6 +104,7 @@ export default function RemindersPage() {
             reminders={reminders}
             googleEvents={calendar.googleEvents}
             onSelectItem={onSelectItem}
+            onGoToDate={calendar.setSelectedDate}
           />
         </div>
       )}

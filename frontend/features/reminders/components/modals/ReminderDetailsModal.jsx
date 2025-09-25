@@ -47,29 +47,28 @@ export default function ReminderDetailsModal({
       onClose?.();
     } catch (e) {
       console.error("importGoogleEventAsReminder failed:", e);
-      // surface errors in your toast system if you wire one here
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white p-4 shadow-lg">
+    <div className="fixed inset-0 z-50 modal-backdrop p-4">
+      <div className="modal-glass w-full max-w-2xl p-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">
+          <h3 className="modal-title text-lg">
             {isReminder ? "Reminder details" : "Google Calendar event"}
           </h3>
-          <button className="text-gray-500" onClick={onClose} type="button">✕</button>
+          <button className="modal-close rounded-md px-2 py-1 text-slate-200" onClick={onClose} type="button">✕</button>
         </div>
 
         {isReminder && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center gap-2">
               <Badge className={getReminderTypeColor(reminder?.name)}>{reminder?.name}</Badge>
-              <div className="text-sm text-gray-600">{getTimeUntil(reminder?.scheduled_at)}</div>
+              <div className="text-sm text-slate-300">{getTimeUntil(reminder?.scheduled_at)}</div>
             </div>
 
-            <div className="rounded border p-3">
-              <div className="text-sm text-gray-700">
+            <div className="rounded ring-1 ring-white/10 bg-white/[0.03] p-3">
+              <div className="text-sm text-slate-200">
                 {new Date(reminder?.scheduled_at).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
@@ -77,20 +76,20 @@ export default function ReminderDetailsModal({
                 })}{" "}
                 • {formatTime(reminder?.scheduled_at)}
               </div>
-              <div className="mt-1 text-sm text-gray-600">
+              <div className="mt-1 text-sm text-slate-300">
                 {appForReminder?.job?.company_name} — {appForReminder?.job?.title}
               </div>
               {reminder?.description && (
-                <p className="mt-2 text-gray-800 whitespace-pre-wrap">{reminder.description}</p>
+                <p className="mt-2 whitespace-pre-wrap text-slate-200">{reminder.description}</p>
               )}
             </div>
 
             <section className="mt-4">
-              <h4 className="font-medium text-gray-900">Notes</h4>
+              <h4 className="font-medium text-slate-100">Notes</h4>
               <div className="mt-2 space-y-2">
-                {notesLoading && <div className="text-sm text-gray-500">Loading notes…</div>}
+                {notesLoading && <div className="text-sm text-slate-400">Loading notes…</div>}
                 {!notesLoading && notes.length === 0 && (
-                  <div className="text-sm text-gray-500">No notes yet.</div>
+                  <div className="text-sm text-slate-400">No notes yet.</div>
                 )}
                 {notes.map((n) => (
                   <NoteRow key={n.id} note={n} onSave={saveNote} onDelete={removeNote} />
@@ -110,23 +109,23 @@ export default function ReminderDetailsModal({
 
         {isGoogle && (
           <div className="mt-4 space-y-3">
-            <div className="rounded border p-3">
-              <div className="text-sm font-medium text-gray-900">{event.summary || "Event"}</div>
-              <div className="text-sm text-gray-700">
+            <div className="rounded ring-1 ring-white/10 bg-white/[0.03] p-3">
+              <div className="text-sm font-medium text-slate-100">{event.summary || "Event"}</div>
+              <div className="text-sm text-slate-300">
                 {safeDate(event?.start?.dateTime ?? event?.start?.date)?.toLocaleString?.() || "—"}
               </div>
               {event?.location && (
-                <div className="text-sm text-gray-600 mt-1">{event.location}</div>
+                <div className="mt-1 text-sm text-slate-400">{event.location}</div>
               )}
               {event?.description && (
-                <p className="mt-2 text-gray-800 whitespace-pre-wrap">{event.description}</p>
+                <p className="mt-2 whitespace-pre-wrap text-slate-200">{event.description}</p>
               )}
             </div>
 
-            <div className="rounded border p-3">
-              <label className="block text-sm font-medium">Import into application</label>
+            <div className="rounded ring-1 ring-white/10 bg-white/[0.03] p-3">
+              <label className="block text-sm font-medium text-slate-300">Import into application</label>
               <select
-                className="mt-1 w-full rounded border px-2 py-1"
+                className="input-glass input-cyan mt-1 w-full text-sm"
                 value={importAppId}
                 onChange={(e) => setImportAppId(e.target.value)}
               >
@@ -162,7 +161,7 @@ function AddNote({ onAdd }) {
   return (
     <form className="mt-3 flex gap-2" onSubmit={submit}>
       <input
-        className="flex-1 rounded border px-2 py-1"
+        className="input-glass input-cyan flex-1 text-sm"
         placeholder="Add a note…"
         value={body}
         onChange={(e) => setBody(e.target.value)}
@@ -180,11 +179,11 @@ function NoteRow({ note, onSave, onDelete }) {
     if (ok) setEditing(false);
   };
   return (
-    <div className="rounded border p-2">
+    <div className="rounded ring-1 ring-white/10 bg-white/[0.03] p-2">
       {editing ? (
         <div className="flex gap-2">
           <input
-            className="flex-1 rounded border px-2 py-1"
+            className="input-glass input-cyan flex-1 text-sm"
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -194,12 +193,12 @@ function NoteRow({ note, onSave, onDelete }) {
       ) : (
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-sm text-gray-800 whitespace-pre-wrap">{note.body}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="whitespace-pre-wrap text-sm text-slate-200">{note.body}</div>
+            <div className="mt-1 text-xs text-slate-400">
               {new Date(note.created_at || note.updated_at || Date.now()).toLocaleString()}
             </div>
           </div>
-          <div className="flex-shrink-0 flex gap-2">
+          <div className="flex flex-shrink-0 gap-2">
             <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
             <Button size="sm" variant="destructive" onClick={() => onDelete?.(note.id)}>Delete</Button>
           </div>

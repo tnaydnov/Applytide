@@ -1,7 +1,3 @@
-/**
- * The four stat cards row: TOTAL, UPCOMING, OVERDUE, THIS WEEK
- * Props: { stats: { total, upcoming, overdue, thisWeek } }
- */
 export default function StatsDashboard({ stats = {} }) {
   const items = [
     { key: "total", label: "TOTAL" },
@@ -15,12 +11,12 @@ export default function StatsDashboard({ stats = {} }) {
       {items.map((it) => (
         <div
           key={it.key}
-          className="rounded-md bg-white p-4 shadow ring-1 ring-black/5"
+          className="glass-card p-4 ring-1 ring-white/10"
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-300">
             {it.label}
           </div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">
+          <div className="mt-1 text-2xl font-semibold text-slate-100">
             {stats[it.key] ?? 0}
           </div>
         </div>
