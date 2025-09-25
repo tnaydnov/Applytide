@@ -12,7 +12,7 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden; 
+  overflow-x: hidden;
   overflow-y: auto;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -27,8 +27,8 @@ body {
   text-size-adjust: 100%;
 }
 
-#__next { 
-  min-height: 100%; 
+#__next {
+  min-height: 100%;
 }
 
 body {
@@ -43,27 +43,28 @@ a {
 /* Mobile-first responsive breakpoints and utilities */
 @media screen and (max-width: 768px) {
   html {
-    font-size: 14px; /* Slightly smaller base font for mobile */
+    font-size: 14px;
+    /* Slightly smaller base font for mobile */
   }
-  
+
   body {
     font-size: 14px;
     line-height: 1.5;
   }
-  
+
   /* Mobile container spacing */
   .mobile-container {
     padding: 1rem !important;
     max-width: 100vw !important;
   }
-  
+
   /* Mobile card styling */
   .mobile-card {
     padding: 1rem !important;
     border-radius: 12px !important;
     margin-bottom: 0.75rem !important;
   }
-  
+
   /* Mobile button sizing */
   .mobile-btn {
     min-height: 44px !important;
@@ -72,7 +73,7 @@ a {
     border-radius: 8px !important;
     font-weight: 500 !important;
   }
-  
+
   /* Mobile text hierarchy */
   .mobile-title {
     font-size: 1.25rem !important;
@@ -80,46 +81,60 @@ a {
     line-height: 1.3 !important;
     margin-bottom: 0.5rem !important;
   }
-  
+
   .mobile-subtitle {
     font-size: 1rem !important;
     font-weight: 600 !important;
     line-height: 1.4 !important;
     margin-bottom: 0.75rem !important;
   }
-  
+
   .mobile-body {
     font-size: 0.875rem !important;
     line-height: 1.5 !important;
     margin-bottom: 0.5rem !important;
   }
-  
+
   .mobile-caption {
     font-size: 0.75rem !important;
     line-height: 1.4 !important;
     opacity: 0.8;
   }
-  
+
   /* Mobile spacing system */
-  .mobile-space-xs { margin-bottom: 0.25rem !important; }
-  .mobile-space-sm { margin-bottom: 0.5rem !important; }
-  .mobile-space-md { margin-bottom: 0.75rem !important; }
-  .mobile-space-lg { margin-bottom: 1rem !important; }
-  .mobile-space-xl { margin-bottom: 1.5rem !important; }
-  
+  .mobile-space-xs {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .mobile-space-sm {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .mobile-space-md {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .mobile-space-lg {
+    margin-bottom: 1rem !important;
+  }
+
+  .mobile-space-xl {
+    margin-bottom: 1.5rem !important;
+  }
+
   /* Mobile grid system */
   .mobile-grid-2 {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 0.75rem !important;
   }
-  
+
   .mobile-flex-center {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
   }
-  
+
   .mobile-flex-between {
     display: flex !important;
     align-items: center !important;
@@ -139,19 +154,27 @@ a {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   /* Mobile-friendly cards */
   .glass-card {
     margin: 0.5rem;
     padding: 1rem !important;
     border-radius: 0.75rem;
   }
-  
+
   /* Better mobile text sizes */
-  h1 { font-size: 1.5rem !important; }
-  h2 { font-size: 1.25rem !important; }
-  h3 { font-size: 1.125rem !important; }
-  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  h3 {
+    font-size: 1.125rem !important;
+  }
+
   /* Mobile navigation improvements */
   .mobile-nav {
     position: fixed;
@@ -163,15 +186,15 @@ a {
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
-  /* Touch-friendly buttons */
-  button, .btn {
+
+  /* Touch-friendly default buttons (opt-in) */
+  .btn {
     min-height: 44px;
     min-width: 44px;
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
   }
-  
+
   /* Exception for delete application button and drag handle */
   .delete-app-btn,
   .drag-handle-btn {
@@ -182,12 +205,12 @@ a {
     align-items: center !important;
     justify-content: center !important;
   }
-  
+
   /* Specific fixes for drag icons visibility */
   .drag-handle-btn svg {
     transform: scale(1.5) !important;
   }
-  
+
   /* Mobile dropdown menus */
   .dropdown-menu {
     position: fixed !important;
@@ -200,26 +223,29 @@ a {
     overflow-y: auto;
     z-index: 60;
   }
-  
+
   /* Mobile form improvements */
-  input, textarea, select {
-    font-size: 16px; /* Prevents zoom on iOS */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+    /* Prevents zoom on iOS */
     padding: 0.75rem;
     min-height: 44px;
   }
-  
+
   /* Mobile table responsiveness */
   .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   /* Mobile card layouts */
   .card-grid {
     grid-template-columns: 1fr !important;
     gap: 0.75rem !important;
   }
-  
+
   /* Hide desktop-only elements */
   .desktop-only {
     display: none !important;
@@ -230,19 +256,28 @@ a {
   html {
     font-size: 13px;
   }
-  
+
   .glass-card {
     margin: 0.25rem;
     padding: 0.75rem !important;
     border-radius: 0.5rem;
   }
-  
+
   /* Extra small screen adjustments */
-  h1 { font-size: 1.25rem !important; }
-  h2 { font-size: 1.125rem !important; }
-  h3 { font-size: 1rem !important; }
-  
-  button, .btn {
+  h1 {
+    font-size: 1.25rem !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+  }
+
+  h3 {
+    font-size: 1rem !important;
+  }
+
+  button,
+  .btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
   }
@@ -288,30 +323,72 @@ a {
 
 /* Mobile-friendly spacing utilities */
 @media screen and (max-width: 768px) {
-  .mobile-p-2 { padding: 0.5rem !important; }
-  .mobile-p-3 { padding: 0.75rem !important; }
-  .mobile-p-4 { padding: 1rem !important; }
-  .mobile-m-2 { margin: 0.5rem !important; }
-  .mobile-m-3 { margin: 0.75rem !important; }
-  .mobile-m-4 { margin: 1rem !important; }
-  
-  .mobile-text-sm { font-size: 0.875rem !important; }
-  .mobile-text-base { font-size: 1rem !important; }
-  .mobile-text-lg { font-size: 1.125rem !important; }
-  
-  .mobile-hidden { display: none !important; }
-  .mobile-block { display: block !important; }
-  .mobile-flex { display: flex !important; }
-  .mobile-grid { display: grid !important; }
-  
-  .mobile-full-width { width: 100% !important; }
-  .mobile-max-w-none { max-width: none !important; }
+  .mobile-p-2 {
+    padding: 0.5rem !important;
+  }
+
+  .mobile-p-3 {
+    padding: 0.75rem !important;
+  }
+
+  .mobile-p-4 {
+    padding: 1rem !important;
+  }
+
+  .mobile-m-2 {
+    margin: 0.5rem !important;
+  }
+
+  .mobile-m-3 {
+    margin: 0.75rem !important;
+  }
+
+  .mobile-m-4 {
+    margin: 1rem !important;
+  }
+
+  .mobile-text-sm {
+    font-size: 0.875rem !important;
+  }
+
+  .mobile-text-base {
+    font-size: 1rem !important;
+  }
+
+  .mobile-text-lg {
+    font-size: 1.125rem !important;
+  }
+
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .mobile-block {
+    display: block !important;
+  }
+
+  .mobile-flex {
+    display: flex !important;
+  }
+
+  .mobile-grid {
+    display: grid !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  .mobile-max-w-none {
+    max-width: none !important;
+  }
 }
 
 /* Prevent mobile zoom on form inputs */
 @media screen and (max-width: 768px) {
+
   input[type="text"],
-  input[type="email"], 
+  input[type="email"],
   input[type="password"],
   input[type="search"],
   input[type="tel"],
@@ -329,6 +406,7 @@ a {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: none;
@@ -339,24 +417,31 @@ a {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
 @keyframes glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
   }
+
   50% {
     box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
   }
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
   }
@@ -429,14 +514,53 @@ a {
 }
 
 /* Status indicators - Unified Dark Theme */
-.status-saved { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3); }
-.status-applied { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
-.status-phone-screen { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-.status-tech { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-.status-on-site { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
-.status-offer { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-.status-accepted { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
-.status-rejected { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.status-saved {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.status-applied {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-phone-screen {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-tech {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-on-site {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.status-offer {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-accepted {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
 
 /* Text truncation helpers */
 .line-clamp-3 {
@@ -468,62 +592,130 @@ a {
 }
 
 /* ===== Applytide Glass Utilities ===== */
-:root{
-  --ink-100:#f3f6ff;
-  --surface-1:rgba(255,255,255,.04);
-  --surface-2:rgba(255,255,255,.06);
-  --border-1:rgba(255,255,255,.10);
-  --border-2:rgba(255,255,255,.16);
+:root {
+  --ink-100: #f3f6ff;
+  --surface-1: rgba(255, 255, 255, .04);
+  --surface-2: rgba(255, 255, 255, .06);
+  --border-1: rgba(255, 255, 255, .10);
+  --border-2: rgba(255, 255, 255, .16);
   /* Non-blue accents */
-  --rose:244,63,94;   /* #F43F5E */
-  --amber:245,158,11; /* #F59E0B */
-  --cyan:34,211,238;  /* #22D3EE */
-  --orchidA:255,31,142;
-  --orchidB:255,138,0;
+  --rose: 244, 63, 94;
+  /* #F43F5E */
+  --amber: 245, 158, 11;
+  /* #F59E0B */
+  --cyan: 34, 211, 238;
+  /* #22D3EE */
+  --orchidA: 255, 31, 142;
+  --orchidB: 255, 138, 0;
 }
 
 /* cards */
-.glass-card{
-  background:linear-gradient(180deg,var(--surface-2),var(--surface-1));
-  border:1px solid var(--border-1);
-  border-radius:14px;
-  backdrop-filter:blur(16px);
-  box-shadow:0 4px 24px rgba(2,8,23,.25);
+.glass-card {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+  border: 1px solid var(--border-1);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(2, 8, 23, .25);
 }
-.glass-rose{  border-color:rgba(var(--rose),.25);  box-shadow:0 6px 24px rgba(var(--rose),.10);}
-.glass-amber{ border-color:rgba(var(--amber),.25); box-shadow:0 6px 24px rgba(var(--amber),.10);}
-.glass-cyan{  border-color:rgba(var(--cyan),.25);  box-shadow:0 6px 24px rgba(var(--cyan),.10);}
-.glass-violet{ border-color:rgba(139, 92, 246, 0.25); box-shadow:0 6px 24px rgba(139, 92, 246, 0.10);}
+
+.glass-rose {
+  border-color: rgba(var(--rose), .25);
+  box-shadow: 0 6px 24px rgba(var(--rose), .10);
+}
+
+.glass-amber {
+  border-color: rgba(var(--amber), .25);
+  box-shadow: 0 6px 24px rgba(var(--amber), .10);
+}
+
+.glass-cyan {
+  border-color: rgba(var(--cyan), .25);
+  box-shadow: 0 6px 24px rgba(var(--cyan), .10);
+}
+
+.glass-violet {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.10);
+}
 
 /* inputs */
-.input-glass{
-  background:rgba(255,255,255,.07);
-  color:var(--ink-100);
-  border:1px solid var(--border-2);
-  border-radius:10px;
-  padding:.60rem .8rem;
-  outline:none;
-  transition:box-shadow .2s,background .2s,border-color .2s,transform .05s;
+.input-glass {
+  background: rgba(255, 255, 255, .07);
+  color: var(--ink-100);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: .60rem .8rem;
+  outline: none;
+  transition: box-shadow .2s, background .2s, border-color .2s, transform .05s;
 }
-.input-glass::placeholder{ color:rgba(226,232,240,.6); }
-.input-rose:focus{  box-shadow:0 0 0 3px rgba(var(--rose),.35);  border-color:rgba(var(--rose),.40);}
-.input-amber:focus{ box-shadow:0 0 0 3px rgba(var(--amber),.35);border-color:rgba(var(--amber),.40);}
-.input-cyan:focus{  box-shadow:0 0 0 3px rgba(var(--cyan),.35);  border-color:rgba(var(--cyan),.40);}
-.input-glass:active{ transform:translateY(1px); }
+
+.input-glass::placeholder {
+  color: rgba(226, 232, 240, .6);
+}
+
+.input-rose:focus {
+  box-shadow: 0 0 0 3px rgba(var(--rose), .35);
+  border-color: rgba(var(--rose), .40);
+}
+
+.input-amber:focus {
+  box-shadow: 0 0 0 3px rgba(var(--amber), .35);
+  border-color: rgba(var(--amber), .40);
+}
+
+.input-cyan:focus {
+  box-shadow: 0 0 0 3px rgba(var(--cyan), .35);
+  border-color: rgba(var(--cyan), .40);
+}
+
+.input-glass:active {
+  transform: translateY(1px);
+}
 
 /* buttons */
-.btn-orchid{
-  background:linear-gradient(90deg, rgba(var(--orchidA),1) 0%, rgba(var(--orchidB),1) 100%);
-  color:#fff; border:none;
+.btn-orchid {
+  background: linear-gradient(90deg, rgba(var(--orchidA), 1) 0%, rgba(var(--orchidB), 1) 100%);
+  color: #fff;
+  border: none;
 }
-.btn-orchid:hover{ filter:brightness(1.05); }
-.btn-orchid:active{ filter:brightness(.98); }
+
+.btn-orchid:hover {
+  filter: brightness(1.05);
+}
+
+.btn-orchid:active {
+  filter: brightness(.98);
+}
 
 /* chips */
-.chip{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .5rem;border-radius:9999px;font-size:.75rem;border:1px solid transparent;line-height:1;}
-.chip-amber{ color:rgba(var(--amber),.9);  background:rgba(var(--amber),.15); border-color:rgba(var(--amber),.25);}
-.chip-rose{  color:rgba(var(--rose),.9);   background:rgba(var(--rose),.15);  border-color:rgba(var(--rose),.25);}
-.chip-cyan{  color:rgba(var(--cyan),.95);  background:rgba(var(--cyan),.15);  border-color:rgba(var(--cyan),.25);}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .25rem .5rem;
+  border-radius: 9999px;
+  font-size: .75rem;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+
+.chip-amber {
+  color: rgba(var(--amber), .9);
+  background: rgba(var(--amber), .15);
+  border-color: rgba(var(--amber), .25);
+}
+
+.chip-rose {
+  color: rgba(var(--rose), .9);
+  background: rgba(var(--rose), .15);
+  border-color: rgba(var(--rose), .25);
+}
+
+.chip-cyan {
+  color: rgba(var(--cyan), .95);
+  background: rgba(var(--cyan), .15);
+  border-color: rgba(var(--cyan), .25);
+}
 
 
 /* Make glass style apply to nested native fields */
@@ -531,46 +723,82 @@ a {
 .input-glass input,
 .input-glass select,
 .input-glass textarea {
-  background: rgba(255,255,255,.07) !important;
-  color: #E9EDF7 !important;         /* readable on dark */
-  border: 1px solid rgba(255,255,255,.16) !important;
+  background: rgba(255, 255, 255, .07) !important;
+  color: #E9EDF7 !important;
+  /* readable on dark */
+  border: 1px solid rgba(255, 255, 255, .16) !important;
   border-radius: 10px;
 }
 
 .input-glass input::placeholder,
 .input-glass textarea::placeholder {
-  color: rgba(226,232,240,.65) !important;  /* visible placeholders */
+  color: rgba(226, 232, 240, .65) !important;
+  /* visible placeholders */
 }
 
-.input-rose:focus-within { box-shadow: 0 0 0 3px rgba(244,63,94,.35); border-color: rgba(244,63,94,.45) !important; }
-.input-amber:focus-within { box-shadow: 0 0 0 3px rgba(245,158,11,.35); border-color: rgba(245,158,11,.45) !important; }
-.input-cyan:focus-within { box-shadow: 0 0 0 3px rgba(34,211,238,.35); border-color: rgba(34,211,238,.45) !important; }
+.input-rose:focus-within {
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, .35);
+  border-color: rgba(244, 63, 94, .45) !important;
+}
+
+.input-amber:focus-within {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, .35);
+  border-color: rgba(245, 158, 11, .45) !important;
+}
+
+.input-cyan:focus-within {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, .35);
+  border-color: rgba(34, 211, 238, .45) !important;
+}
 
 /* Force dropdown/light list legibility */
-.dropdown-light { background: #fff; color: #0f172a; border: 1px solid #e5e7eb; border-radius: 10px; }
-.dropdown-light .item { padding: .55rem .7rem; border-radius: 8px; color: #0f172a; }
-.dropdown-light .item:hover { background: #f8fafc; }
+.dropdown-light {
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.dropdown-light .item {
+  padding: .55rem .7rem;
+  border-radius: 8px;
+  color: #0f172a;
+}
+
+.dropdown-light .item:hover {
+  background: #f8fafc;
+}
 
 /* Native <option> contrast, especially on macOS dark mode */
-.input-glass select option { color: #0f172a; background: #ffffff; }
+.input-glass select option {
+  color: #0f172a;
+  background: #ffffff;
+}
 
 
 /* ==== GLASS MODAL THEME (high-contrast) ==== */
 :root {
-  --modal-glass-bg: rgba(15, 23, 42, 0.72);       /* slate-900 @ 72% */
+  --modal-glass-bg: rgba(15, 23, 42, 0.72);
+  /* slate-900 @ 72% */
   --modal-glass-border: rgba(255, 255, 255, 0.10);
   --modal-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
-  --modal-title: #f8fafc;                          /* slate-50 */
-  --modal-label: #e2e8f0;                          /* slate-200 */
-  --modal-text: #f1f5f9;                           /* slate-100 */
-  --modal-muted: #94a3b8;                          /* slate-400 */
+  --modal-title: #f8fafc;
+  /* slate-50 */
+  --modal-label: #e2e8f0;
+  /* slate-200 */
+  --modal-text: #f1f5f9;
+  /* slate-100 */
+  --modal-muted: #94a3b8;
+  /* slate-400 */
 }
 
 .modal-backdrop {
-  position: fixed; inset: 0;
-  background: radial-gradient(1200px 1200px at 30% -10%, rgba(244,63,94,.20), transparent 60%),
-              radial-gradient(900px 900px at 120% 120%, rgba(251,191,36,.15), transparent 55%),
-              rgba(2,6,23,0.55); /* slate-950/55 */
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(1200px 1200px at 30% -10%, rgba(244, 63, 94, .20), transparent 60%),
+    radial-gradient(900px 900px at 120% 120%, rgba(251, 191, 36, .15), transparent 55%),
+    rgba(2, 6, 23, 0.55);
+  /* slate-950/55 */
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -590,6 +818,7 @@ a {
   font-weight: 800;
   letter-spacing: .2px;
 }
+
 .modal-glass .modal-subtle {
   color: var(--modal-muted);
 }
@@ -598,15 +827,16 @@ a {
 .modal-divider {
   height: 1px;
   background:
-    linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
 }
 
 /* Form controls inside modal = readable */
 .modal-glass input,
 .modal-glass textarea,
 .modal-glass select {
-  background: rgba(2, 6, 23, 0.55);                 /* slate-950/55 */
-  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(2, 6, 23, 0.55);
+  /* slate-950/55 */
+  border: 1px solid rgba(255, 255, 255, .10);
   color: var(--modal-text);
 }
 
@@ -620,28 +850,34 @@ a {
 .modal-glass textarea:focus,
 .modal-glass select:focus {
   outline: none;
-  border-color: rgba(168, 85, 247, .45);            /* purple-500 */
+  border-color: rgba(168, 85, 247, .45);
+  /* purple-500 */
   box-shadow: 0 0 0 3px rgba(168, 85, 247, .25);
 }
 
 /* Native select dropdown readability (browser-controlled) */
 .modal-glass select,
 .modal-glass option {
-  color: #0f172a;                                    /* slate-900 */
-  background: #f8fafc;                              /* white-ish */
+  color: #0f172a;
+  /* slate-900 */
+  background: #f8fafc;
+  /* white-ish */
 }
+
 @media (prefers-color-scheme: dark) {
+
   .modal-glass select,
   .modal-glass option {
     color: #e2e8f0;
-    background: #0b1220;                             /* very dark */
+    background: #0b1220;
+    /* very dark */
   }
 }
 
 /* Make “empty state” callouts look intentional in glass */
 .modal-callout {
-  background: rgba(255,255,255,.06);
-  border: 1px dashed rgba(255,255,255,.16);
+  background: rgba(255, 255, 255, .06);
+  border: 1px dashed rgba(255, 255, 255, .16);
   color: var(--modal-text);
   border-radius: 10px;
   padding: .85rem 1rem;
@@ -651,9 +887,10 @@ a {
 .modal-close {
   transition: transform .15s ease, background .15s ease;
 }
+
 .modal-close:hover {
   transform: scale(1.06);
-  background: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, .08);
 }
 
 /* Footer buttons: primary gradient + ghost */
@@ -662,13 +899,20 @@ a {
   color: #fff;
   border: 0;
 }
-.btn-primary-gradient:hover { filter: brightness(1.08); }
+
+.btn-primary-gradient:hover {
+  filter: brightness(1.08);
+}
+
 .btn-ghost {
-  border: 1px solid rgba(255,255,255,.16);
+  border: 1px solid rgba(255, 255, 255, .16);
   background: transparent;
   color: var(--modal-text);
 }
-.btn-ghost:hover { background: rgba(255,255,255,.06); }
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, .06);
+}
 
 /* Modal surface */
 .modal-surface {
@@ -749,10 +993,11 @@ a {
 }
 
 /* Preserve the original paragraph structure in job details */
-.job-desc{
-  white-space: pre-wrap;  /* keep line breaks from the source */
+.job-desc {
+  white-space: pre-wrap;
+  /* keep line breaks from the source */
   word-break: break-word;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   font-size: 14px;
   line-height: 1.6;
 }
@@ -760,39 +1005,58 @@ a {
 /* Dark-select readability */
 :root .dark select,
 :root .dark select option {
-  color: #e5e7eb !important;        /* Tailwind slate-200 */
-  background-color: #0b1220 !important; /* your dark bg */
+  color: #e5e7eb !important;
+  /* Tailwind slate-200 */
+  background-color: #0b1220 !important;
+  /* your dark bg */
 }
 
-select, select option {
-  color: #111827;          /* gray-900 */
-  background: #ffffff;     /* white */
+select,
+select option {
+  color: #111827;
+  /* gray-900 */
+  background: #ffffff;
+  /* white */
 }
+
 .dark select {
-  color: #f3f4f6;          /* gray-100 */
-  background: #1f2937;     /* gray-800 */
+  color: #f3f4f6;
+  /* gray-100 */
+  background: #1f2937;
+  /* gray-800 */
 }
+
 .dark select option {
-  color: #111827;          /* force readable inside dropdown list */
+  color: #111827;
+  /* force readable inside dropdown list */
   background: #ffffff;
 }
 
 
 @layer base {
+
   /* Make native form controls prefer dark rendering */
-  :root, body, select, option {
+  :root,
+  body,
+  select,
+  option {
     color-scheme: dark;
   }
 
   /* When the browser allows styling of options, ensure contrast */
   select option {
-    background-color: #0f172a; /* slate-900 */
-    color: #e2e8f0;           /* slate-100 */
+    background-color: #0f172a;
+    /* slate-900 */
+    color: #e2e8f0;
+    /* slate-100 */
   }
+
   select option:checked,
   select option:hover {
-    background-color: #1f2937; /* slate-800 */
-    color: #e5e7eb;           /* slate-200 */
+    background-color: #1f2937;
+    /* slate-800 */
+    color: #e5e7eb;
+    /* slate-200 */
   }
 }
 
@@ -812,29 +1076,43 @@ select, select option {
 }
 
 
-.glow-reminder { box-shadow: 0 0 0 1px rgba(99,102,241,.35), 0 8px 20px rgba(99,102,241,.25); }
+.glow-reminder {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, .35), 0 8px 20px rgba(99, 102, 241, .25);
+}
 
 /* before: overflow-hidden or overflow-y-auto can block react-dnd previews */
 .pipeline-board {
-  overflow: visible;     /* ✅ lets the drag preview float above */
+  overflow: visible;
+  /* ✅ lets the drag preview float above */
 }
 
 /* drawer mask/backdrop should NOT eat pointer events when closed */
 .drawer-mask {
   pointer-events: none;
 }
+
 .drawer-mask[data-open="true"] {
   pointer-events: auto;
 }
 
 .peeker {
-  pointer-events: none;                 /* container ignores */
+  pointer-events: none;
+  /* container ignores */
 }
-.peeker > button {
-  pointer-events: auto;                 /* only the button is clickable */
+
+.peeker>button {
+  pointer-events: auto;
+  /* only the button is clickable */
 }
 
 @keyframes slideUp {
-  from { transform: translateY(12px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
