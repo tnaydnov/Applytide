@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "../../../components/ui";
+import { Button } from "../../../../components/ui";
 
 export default function CreateReminderModal({
   open,

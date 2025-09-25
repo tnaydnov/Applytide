@@ -1,5 +1,5 @@
-import { isSameDay, safeDate } from "../utils/date";
-import { getReminderTypeColor } from "../utils/reminders";
+import { isSameDay, safeDate } from "../../utils/date";
+import { getReminderTypeColor } from "../../utils/reminders";
 
 export default function DayGrid({ date, reminders = [], events = [], onSelectItem }) {
   const rs = reminders.filter((r) => isSameDay(r.scheduled_at, date));

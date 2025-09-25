@@ -1,5 +1,5 @@
-import { generateMonthCalendarCells } from "../utils/calendar";
-import { getReminderTypeColor } from "../utils/reminders";
+import { generateMonthCalendarCells } from "../../utils/calendar";
+import { getReminderTypeColor } from "../../utils/reminders";
 
 export default function MonthGrid({ date, reminders = [], events = [], onSelectItem }) {
   const cells = generateMonthCalendarCells(date, reminders, events);

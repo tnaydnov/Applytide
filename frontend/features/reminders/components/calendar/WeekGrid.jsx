@@ -1,5 +1,5 @@
-import { isSameDay, weekRange, safeDate } from "../utils/date";
-import { getReminderTypeColor } from "../utils/reminders";
+import { isSameDay, weekRange, safeDate } from "../../utils/date";
+import { getReminderTypeColor } from "../../utils/reminders";
 
 export default function WeekGrid({ date, reminders = [], events = [], onSelectItem }) {
   const [start, end] = weekRange(date);
