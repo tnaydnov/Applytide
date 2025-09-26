@@ -30,14 +30,16 @@ export default function PricingPage() {
         { name: 'Chrome extension for job saving', included: true },
         { name: 'Unlimited reminders & scheduling', included: true },
         { name: 'Unlimited document storage', included: true },
-        { name: 'AI resume & job analysis', included: true },
+        { name: 'AI cover letter generation (10/month)', included: true, badge: 'Limited' },
+        { name: 'Analytics dashboard', included: true },
+        { name: 'AI resume & job analysis (7/month)', included: true, badge: 'Limited' },
         { name: 'Google Calendar integration', included: true },
         { name: 'Interview scheduling', included: true },
         { name: 'Email notifications', included: true },
         { name: 'Unlimited applications', included: false },
         { name: 'Advanced analytics dashboard', included: false },
-        { name: 'AI cover letter generation', included: false },
-        { name: 'AI resume generation', included: false },
+        { name: 'Unlimited AI features', included: false },
+        { name: 'AI resume generation from scratch', included: false },
       ],
       cta: 'Current Plan',
       ctaAction: null
@@ -52,8 +54,9 @@ export default function PricingPage() {
       features: [
         { name: 'Everything in Free', included: true },
         { name: 'Unlimited job applications', included: true },
-        { name: 'Advanced analytics dashboard (6+ sections)', included: true, badge: 'Hot' },
-        { name: 'AI cover letter generation', included: true, badge: 'AI' },
+        { name: 'Advanced analytics dashboard', included: true, badge: 'Hot' },
+        { name: 'Unlimited AI cover letter generation', included: true, badge: 'AI' },
+        { name: 'Unlimited AI resume & job analysis', included: true, badge: 'AI' },
         { name: 'AI resume generation from scratch', included: true, badge: 'AI' },
         { name: 'AI resume optimization from job analysis', included: true, badge: 'AI' },
         { name: 'Smart email thread management & auto-tracking', included: true, badge: 'AI' },
@@ -199,6 +202,7 @@ export default function PricingPage() {
                         <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium
                   ${f.badge === 'AI' ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30'
                             : f.badge === 'Hot' ? 'bg-red-900/30 text-red-300 border border-red-500/30'
+                            : f.badge === 'Limited' ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-500/30'
                               : 'bg-blue-900/30 text-blue-300 border border-blue-500/30'}`}>
                           {f.badge}
                         </span>
