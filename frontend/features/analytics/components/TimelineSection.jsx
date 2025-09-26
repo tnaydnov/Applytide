@@ -84,8 +84,8 @@ export default function TimelineSection({ analytics }) {
 
       {/* Charts: Stage Duration + Timeline Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Stage Duration Breakdown
           </h3>
           <BarChart data={stageDurations} height={300} />
@@ -96,8 +96,8 @@ export default function TimelineSection({ analytics }) {
           )}
         </div>
 
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Process Timeline Trends
           </h3>
           <LineChart data={timelineTrends} height={300} />
@@ -110,8 +110,8 @@ export default function TimelineSection({ analytics }) {
       </div>
 
       {/* Bottleneck Analysis */}
-      <div className="glass-card glass-cyan">
-        <h3 className="text-lg font-semibold mb-4 text-slate-200">
+      <div className="glass-card glass-cyan p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Process Bottlenecks
         </h3>
 

@@ -55,15 +55,15 @@ export default function ApplicationsSection({ analytics }) {
     >
       {/* Status Breakdown + Applications by Month */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Application Status Breakdown
           </h3>
           <DonutChart data={statusBreakdown} height={300} />
         </div>
 
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Applications by Month
           </h3>
           <BarChart data={monthlyData} height={300} />
@@ -71,8 +71,8 @@ export default function ApplicationsSection({ analytics }) {
       </div>
 
       {/* Top Job Titles Applied For */}
-      <div className="glass-card glass-cyan">
-        <h3 className="text-lg font-semibold mb-4 text-slate-200">
+      <div className="glass-card glass-cyan p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Top Job Titles Applied For
         </h3>
 
@@ -92,11 +92,11 @@ export default function ApplicationsSection({ analytics }) {
                   className="flex items-center justify-between"
                 >
                   <div className="flex items-center flex-1">
-                    <div className="w-32 text-sm text-slate-300 truncate">
+                    <div className="w-24 sm:w-32 text-xs sm:text-sm text-slate-300 truncate">
                       {title?.title ?? "—"}
                     </div>
                     <div className="flex-1 mx-4">
-                      <div className="bg-slate-700 rounded-full h-4">
+                      <div className="bg-slate-700 rounded-full h-3 sm:h-4">
                         <div
                           className="bg-blue-500 h-4 rounded-full transition-[width] duration-300 ease-out"
                           style={{ width: `${pct}%` }}

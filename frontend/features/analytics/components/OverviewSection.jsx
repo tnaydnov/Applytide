@@ -76,15 +76,15 @@ export default function OverviewSection({ analytics }) {
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="glass-card glass-cyan">
-                    <h3 className="text-lg font-semibold mb-4 text-slate-200">
+                <div className="glass-card glass-cyan p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
                         Application Status Distribution
                     </h3>
                     <DonutChart data={statusDistribution} height={300} />
                 </div>
 
-                <div className="glass-card glass-cyan">
-                    <h3 className="text-lg font-semibold mb-4 text-slate-200">
+                <div className="glass-card glass-cyan p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
                         Applications Over Time
                     </h3>
                     <AreaChart data={applicationsOverTime} height={300} />
@@ -98,8 +98,8 @@ export default function OverviewSection({ analytics }) {
             <ExpectationsSection analytics={analytics} />
 
             {/* Funnel */}
-            <div className="glass-card glass-cyan">
-                <h3 className="text-lg font-semibold mb-4 text-slate-200">
+            <div className="glass-card glass-cyan p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
                     Application Funnel
                 </h3>
 

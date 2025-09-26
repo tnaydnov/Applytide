@@ -72,8 +72,8 @@ export default function CompaniesSection({ analytics }) {
 
       {/* Charts: Size Distribution + Success by Size */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Company Size Distribution
           </h3>
           <DonutChart data={sizeDistribution} height={300} />
@@ -84,8 +84,8 @@ export default function CompaniesSection({ analytics }) {
           )}
         </div>
 
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Success Rate by Company Size
           </h3>
           <BarChart data={successBySize} height={300} />
@@ -98,8 +98,8 @@ export default function CompaniesSection({ analytics }) {
       </div>
 
       {/* Top Companies */}
-      <div className="glass-card glass-cyan">
-        <h3 className="text-lg font-semibold mb-4 text-slate-200">
+      <div className="glass-card glass-cyan p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Top Companies by Applications
         </h3>
 

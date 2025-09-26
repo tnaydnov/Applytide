@@ -25,9 +25,9 @@ export default function ConsistencyHeatmap({ analytics }) {
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
   return (
-    <div className="glass-card glass-cyan">
+    <div className="glass-card glass-cyan p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-slate-200">Consistency (last 12 weeks)</h3>
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">Consistency (last 12 weeks)</h3>
         <div className="text-sm text-slate-400">
           Streak: <span className="text-indigo-300">{activity.streak?.current || 0}</span> days
           {" · "}

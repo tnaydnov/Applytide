@@ -60,8 +60,8 @@ export default function SourcesSection({ analytics }) {
       </div>
 
       {!!top.length && (
-        <div className="glass-card glass-cyan">
-          <h3 className="text-lg font-semibold mb-4 text-slate-200">Top Sources</h3>
+        <div className="glass-card glass-cyan p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">Top Sources</h3>
           <div className="space-y-2">
             {top.slice(0, 8).map((row, i) => (
               <div key={`${row.label}-${i}`} className="flex items-center justify-between p-3 rounded-lg border border-slate-700/50 bg-slate-800/40">

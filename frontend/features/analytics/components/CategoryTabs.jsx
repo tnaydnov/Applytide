@@ -69,11 +69,11 @@ export default function CategoryTabs({
   className,
 }) {
   return (
-    <div className={cn("mb-8", className)}>
+    <div className={cn("mb-8 -mx-4 sm:mx-0", className)}>
       <div
         role="tablist"
         aria-label="Analytics categories"
-        className="flex flex-wrap gap-2"
+        className="flex gap-2 overflow-x-auto no-scrollbar px-4 sm:px-0 whitespace-nowrap snap-x"
       >
         {categories.map((cat) => {
           const active = selected === cat.id;
