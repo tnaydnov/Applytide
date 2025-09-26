@@ -45,65 +45,70 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
     );
   }
 
-  // 1) Adaptive bar width (wider when fewer bars)
+  // Constant horizontal padding so every chart "starts" at the same x.
+  const PAD_X = 16;            // 16px left/right
+  const GUTTER_BOTTOM = 40;     // space for labels so they never clip
+
+  // Adaptive bar width (or explicit override)
   const bw =
     barWidth ??
     (items.length > 36 ? 12 : items.length > 28 ? 16 : items.length > 18 ? 20 : 28);
 
-  // 2) Heuristic for label layout:
-  // - rotate when very narrow
-  // - otherwise wrap to 2 lines
+  // Rotate labels only when really tight
   const rotateLabels = bw <= 16 && items.length >= 6;
 
-  // add padding-bottom to keep rotated labels visible; never clip
-  return (
-    <div className={`w-full min-w-0 ${className}`} style={{ height }} role="img" aria-label="Bar chart">
-      <div className="h-full overflow-x-auto pb-8 sm:pb-6"> {/* <-- extra bottom padding */}
-        <div className="flex items-end h-full gap-2 sm:gap-3 p-3 sm:p-4 w-max min-w-full">
-          {items.map((item, index) => {
-            const ratio = clamp01(values[index] / m);
-            const barH = Math.max(2, Math.floor(ratio * (height - 64))); // leave room for labels
-            const maxLabelW = Math.max(bw * 3, 44);
-            // short label fallback for super-narrow bars
-            const labelText = String(item.label ?? "");
-            const short =
-              labelText.length > 10 && rotateLabels
-                ? labelText.split(/\s+/).map(w => w[0]).join("").slice(0, 8).toUpperCase()
-                : labelText;
+  // Height available for columns (minus the bottom gutter)
+  const innerHeight = Math.max(2, height - GUTTER_BOTTOM);
 
-            return (
-              <div key={index} className="flex flex-col items-center" style={{ width: bw }}>
-                <div
-                  className="rounded-t w-full"
-                  style={{
-                    height: `${barH}px`,
-                    backgroundColor: palette[index % palette.length],
-                  }}
-                  title={`${item.label ?? ""}: ${values[index]}`}
-                />
-                {/* LABEL */}
-                <span
-                  className={[
-                    "mt-1 text-[10px] leading-tight text-slate-400 text-center",
-                    rotateLabels ? "origin-top-right -rotate-45 whitespace-nowrap" : "break-words",
-                  ].join(" ")}
-                  title={labelText}
-                  style={{
-                    maxWidth: maxLabelW,
-                  }}
-                >
-                  {rotateLabels ? short : labelText}
-                </span>
-                {/* VALUE */}
-                <span className="text-[11px] text-slate-500">{values[index]}</span>
-              </div>
-            );
-          })}
+  return (
+    <div className={`relative w-full min-w-0 ${className}`} style={{ height }} role="img" aria-label="Bar chart">
+      {/* Scroll only horizontally when needed; bottom gutter is fixed so labels never clip */}
+      <div
+        className="absolute inset-y-0"
+        style={{ left: PAD_X, right: PAD_X, paddingBottom: GUTTER_BOTTOM }}
+      >
+        <div className="h-full overflow-x-auto">
+          <div className="flex items-end h-full gap-2 sm:gap-3 w-max min-w-full">
+            {items.map((item, index) => {
+              const ratio = clamp01(values[index] / m);
+              const barH = Math.max(2, Math.floor(ratio * (innerHeight - 16))); // tiny headroom
+              const labelText = String(item.label ?? "");
+              const short =
+                labelText.length > 10 && rotateLabels
+                  ? labelText.split(/\s+/).map(w => w[0]).join("").slice(0, 8).toUpperCase()
+                  : labelText;
+
+              return (
+                <div key={index} className="flex flex-col items-center" style={{ width: bw }}>
+                  <div
+                    className="rounded-t w-full"
+                    style={{
+                      height: barH,
+                      backgroundColor: palette[index % palette.length],
+                    }}
+                    title={`${item.label ?? ""}: ${values[index]}`}
+                  />
+                  <span
+                    className={[
+                      "mt-1 text-[10px] leading-tight text-slate-400 text-center",
+                      rotateLabels ? "origin-top-right -rotate-45 whitespace-nowrap" : "break-words",
+                    ].join(" ")}
+                    title={labelText}
+                    style={{ maxWidth: Math.max(bw * 3, 44) }}
+                  >
+                    {rotateLabels ? short : labelText}
+                  </span>
+                  <span className="text-[11px] text-slate-500">{values[index]}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 
 export function LineChart({ data, height = 400, className = "" }) {
@@ -124,8 +129,8 @@ export function PieChart({ data, height = 400, className = "" }) {
   const total = Math.max(1, sum(items.map((d) => Math.max(0, safeNumber(d.value)))));
 
   return (
-    <div className={`w-full ${className}`} style={{ height }} role="img" aria-label="Pie chart">
-      <div className="flex items-center justify-center h-full gap-4 sm:gap-6 p-3 sm:p-4">
+    <div className={`w-full ${className}`} style={{ minHeight: height }} role="img" aria-label="Pie chart">
+      <div className="flex flex-col sm:flex-row items-center justify-center h-full gap-4 sm:gap-6 p-3 sm:p-4">
         <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border border-slate-700" style={{ background: buildConicGradient(items) }} />
         <div className="grid grid-cols-2 sm:block gap-x-4 gap-y-1.5">
           {items.length === 0 ? (
@@ -153,8 +158,8 @@ export function DonutChart({ data, height = 400, className = "" }) {
   const total = Math.max(1, sum(items.map((d) => Math.max(0, safeNumber(d.value)))));
 
   return (
-    <div className={`w-full ${className}`} style={{ height }} role="img" aria-label="Donut chart">
-      <div className="flex items-center justify-center h-full gap-4 sm:gap-6 p-3 sm:p-4">
+    <div className={`w-full ${className}`} style={{ minHeight: height }} role="img" aria-label="Donut chart">
+      <div className="flex flex-col sm:flex-row items-center justify-center h-full gap-4 sm:gap-6 p-3 sm:p-4">
         <div className="relative">
           <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border border-slate-700" style={{ background: buildConicGradient(items) }} />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -187,6 +192,7 @@ export function DonutChart({ data, height = 400, className = "" }) {
     </div>
   );
 }
+
 
 export function AreaChart({ data, height = 400, className = "" }) {
   const count = toArray(data).length;
