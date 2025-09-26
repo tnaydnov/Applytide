@@ -1,5 +1,6 @@
 import Head from "next/head";
 import { Button } from "../components/ui";
+import { useMemo, useState } from "react";
 
 import useAnalytics from "../features/analytics/hooks/useAnalytics";
 import CategoryTabs from "../features/analytics/components/CategoryTabs";
