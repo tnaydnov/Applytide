@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_, or_, desc, case
 from ..db.session import get_db
@@ -14,6 +14,7 @@ import tempfile
 import csv
 import json
 from statistics import median
+from io import BytesIO
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -734,86 +735,276 @@ def calculate_salary_metrics(applications: List[models.Application], db: Session
 @router.get("/export/csv")
 def export_analytics_csv(
     range_param: str = Query('6m', alias='range'),
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Export analytics data as CSV"""
-    
-    # Get analytics data
-    analytics_data = get_analytics(range_param, db, current_user)
-    
-    # Create temporary CSV file
+    """
+    Export analytics as a single CSV with section headers and blank rows between sections.
+    Keeps Excel-friendly format.
+    """
+    analytics = get_analytics(range_param, db, current_user)
+
     temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='')
-    
     try:
-        writer = csv.writer(temp_file)
-        
-        # Write overview metrics
-        writer.writerow(['Metric', 'Value'])
-        writer.writerow(['Total Applications', analytics_data['overview']['totalApplications']])
-        writer.writerow(['Interview Rate (%)', analytics_data['overview']['interviewRate']])
-        writer.writerow(['Offer Rate (%)', analytics_data['overview']['offerRate']])
-        writer.writerow(['Avg Response Time (days)', analytics_data['overview']['avgResponseTime']])
-        
-        # Write status distribution
-        writer.writerow([])  # Empty row
-        writer.writerow(['Status Distribution'])
-        writer.writerow(['Status', 'Count'])
-        for item in analytics_data['overview']['statusDistribution']:
-            writer.writerow([item['label'], item['value']])
-        
+        w = csv.writer(temp_file)
+
+        # --- Overview ---
+        w.writerow(["Overview"])
+        w.writerow(["Metric", "Value"])
+        ov = analytics.get("overview", {})
+        w.writerow(["Total Applications", ov.get("totalApplications", 0)])
+        w.writerow(["Interview Rate (%)", ov.get("interviewRate", 0)])
+        w.writerow(["Offer Rate (%)", ov.get("offerRate", 0)])
+        w.writerow(["Avg Response Time (days)", ov.get("avgResponseTime", 0)])
+        w.writerow([])
+        w.writerow(["Status Distribution"])
+        w.writerow(["Status", "Count"])
+        for item in ov.get("statusDistribution", []):
+            w.writerow([item.get("label", ""), item.get("value", 0)])
+        w.writerow([])
+        w.writerow(["Applications Over Time"])
+        w.writerow(["Date", "Count"])
+        for item in ov.get("applicationsOverTime", []):
+            w.writerow([item.get("date", ""), item.get("count", 0)])
+
+        # --- Applications ---
+        w.writerow([])
+        w.writerow(["Applications"])
+        ap = analytics.get("applications", {})
+        w.writerow(["Total Applications", ap.get("totalApplications", 0)])
+        w.writerow(["Unique Companies", ap.get("uniqueCompanies", 0)])
+        w.writerow([])
+        w.writerow(["Status Breakdown"])
+        w.writerow(["Status", "Count", "Percentage"])
+        for s in ap.get("statusBreakdown", []):
+            w.writerow([s.get("status", ""), s.get("count", 0), s.get("percentage", 0)])
+        w.writerow([])
+        w.writerow(["Applications by Month"])
+        w.writerow(["Month", "Count"])
+        for m in ap.get("monthlyData", ap.get("applicationsByMonth", [])):
+            w.writerow([m.get("month", ""), m.get("count", 0)])
+        w.writerow([])
+        w.writerow(["Top Job Titles"])
+        w.writerow(["Title", "Count"])
+        for t in ap.get("jobTitles", ap.get("topJobTitles", [])):
+            w.writerow([t.get("title", ""), t.get("count", 0)])
+
+        # --- Interviews ---
+        w.writerow([])
+        w.writerow(["Interviews"])
+        iv = analytics.get("interviews", {})
+        w.writerow(["Total Interviews", iv.get("totalInterviews", 0)])
+        w.writerow(["Success Rate (%)", iv.get("successRate", 0)])
+        w.writerow(["Avg Interviews/App", iv.get("avgInterviewsPerApp", 0)])
+        w.writerow(["Interview → Offer (%)", iv.get("conversionRate", iv.get("interviewConversionRate", 0))])
+        w.writerow([])
+        w.writerow(["Interview Types"])
+        w.writerow(["Type", "Count"])
+        for t in iv.get("typeBreakdown", iv.get("interviewTypeBreakdown", [])):
+            w.writerow([t.get("type", ""), t.get("count", 0)])
+        w.writerow([])
+        w.writerow(["Interview Outcomes"])
+        w.writerow(["Outcome", "Count"])
+        for o in iv.get("interviewOutcomes", []):
+            w.writerow([o.get("outcome", ""), o.get("count", 0)])
+
+        # --- Companies ---
+        w.writerow([])
+        w.writerow(["Companies"])
+        co = analytics.get("companies", {})
+        w.writerow(["Total Companies", co.get("totalCompanies", 0)])
+        w.writerow(["Avg Applications/Company", co.get("avgApplicationsPerCompany", 0)])
+        w.writerow([])
+        w.writerow(["Top Companies"])
+        w.writerow(["Company", "Applications", "Interviews", "Offers"])
+        for c in co.get("topCompanies", []):
+            w.writerow([c.get("name", ""), c.get("applications", 0), c.get("interviews", 0), c.get("offers", 0)])
+        w.writerow([])
+        w.writerow(["Company Size Distribution"])
+        w.writerow(["Size", "Count"])
+        for s in co.get("sizeDistribution", co.get("companySizeDistribution", [])):
+            w.writerow([s.get("size", s.get("label", "")), s.get("count", s.get("value", 0))])
+
+        # --- Timeline ---
+        w.writerow([])
+        w.writerow(["Timeline"])
+        tl = analytics.get("timeline", {})
+        w.writerow(["Avg Process Days", tl.get("avgProcessDuration", 0)])
+        w.writerow(["Total Processes", tl.get("totalProcesses", 0)])
+        w.writerow([])
+        w.writerow(["Stage Transitions (avg days, count)"])
+        w.writerow(["Transition", "Avg Days", "Count"])
+        for s in tl.get("stageDurations", tl.get("stageTransitions", [])):
+            w.writerow([
+                s.get("transition", f"{s.get('from_stage','')} → {s.get('to_stage','')}"),
+                s.get("avg_days", s.get("duration", 0)),
+                s.get("count", 1),
+            ])
+        w.writerow([])
+        w.writerow(["Weekly Application Trends"])
+        w.writerow(["Week", "Applications"])
+        for wk in tl.get("timelineTrends", tl.get("weeklyApplicationTrends", [])):
+            w.writerow([wk.get("week", ""), wk.get("applications", 0)])
+        w.writerow([])
+        w.writerow(["Bottlenecks"])
+        w.writerow(["Stage", "Avg Duration (days)", "Applications"])
+        for b in tl.get("bottlenecks", []):
+            w.writerow([
+                b.get("stage", ""),
+                b.get("avg_duration_days", b.get("avgDays", 0)),
+                b.get("applications_count", 0)
+            ])
+
+        # --- Sources (if present) ---
+        so = analytics.get("sources", {})
+        if so:
+          w.writerow([])
+          w.writerow(["Sources"])
+          w.writerow(["Source", "Applications"])
+          for s in so.get("breakdown", []):
+              w.writerow([s.get("source", s.get("label","")), s.get("count", s.get("value",0))])
+
+        # --- Best Time / Habits (if present) ---
+        bt = analytics.get("bestTime", {})
+        if bt:
+          w.writerow([])
+          w.writerow(["Best Time to Apply"])
+          if bt.get("bestWindowText"):
+              w.writerow([bt["bestWindowText"]])
+          w.writerow([])
+          w.writerow(["By Weekday"])
+          w.writerow(["Day", "Score"])
+          for d in bt.get("byWeekday", []):
+              w.writerow([d.get("label",""), d.get("value",0)])
+          w.writerow([])
+          w.writerow(["By Hour"])
+          w.writerow(["Hour", "Score"])
+          for h in bt.get("byHour", []):
+              w.writerow([h.get("label",""), h.get("value",0)])
+
         temp_file.close()
-        
         return FileResponse(
             temp_file.name,
             media_type='text/csv',
             filename=f'analytics-data-{range_param}.csv'
         )
-        
     except Exception as e:
         temp_file.close()
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {str(e)}")
 
+
 @router.get("/export/pdf")
 def export_analytics_pdf(
     range_param: str = Query('6m', alias='range'),
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Export analytics data as PDF"""
-    
-    # For now, return a simple text file as PDF generation requires additional libraries
-    analytics_data = get_analytics(range_param, db, current_user)
-    
-    temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
-    
+    """
+    Export a compact PDF summary. Falls back to a .txt if reportlab is missing.
+    """
+    analytics = get_analytics(range_param, db, current_user)
+
     try:
-        temp_file.write("Applytide Analytics Report\n")
-        temp_file.write("=" * 25 + "\n\n")
-        temp_file.write(f"Time Range: {range_param}\n")
-        temp_file.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        
-        # Write overview metrics
-        overview = analytics_data['overview']
-        temp_file.write("Overview Metrics:\n")
-        temp_file.write(f"- Total Applications: {overview['totalApplications']}\n")
-        temp_file.write(f"- Interview Rate: {overview['interviewRate']}%\n")
-        temp_file.write(f"- Offer Rate: {overview['offerRate']}%\n")
-        temp_file.write(f"- Avg Response Time: {overview['avgResponseTime']} days\n\n")
-        
-        # Write status distribution
-        temp_file.write("Status Distribution:\n")
-        for item in overview['statusDistribution']:
-            temp_file.write(f"- {item['label']}: {item['value']}\n")
-        
+        from reportlab.lib.pagesizes import LETTER
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib import colors
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=LETTER, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
+        styles = getSampleStyleSheet()
+        story = []
+
+        def h(txt): story.append(Paragraph(f"<b>{txt}</b>", styles["Heading3"]))
+        def p(txt): story.append(Paragraph(txt, styles["BodyText"]))
+        def sp(h=8): story.append(Spacer(1, h))
+        def table(title, rows):
+            if not rows: return
+            story.append(Spacer(1, 6))
+            data = rows
+            t = Table(data, hAlign="LEFT")
+            t.setStyle(TableStyle([
+                ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0,0), (-1,0), colors.whitesmoke),
+                ("FONTSIZE", (0,0), (-1,-1), 9),
+                ("BOTTOMPADDING", (0,0), (-1,0), 6),
+            ]))
+            story.append(Paragraph(f"<b>{title}</b>", styles["BodyText"]))
+            story.append(t)
+
+        # --- Overview ---
+        h("Applytide Analytics Report")
+        p(f"Range: {range_param}")
+        sp()
+        ov = analytics.get("overview", {})
+        table("Overview", [
+            ["Metric", "Value"],
+            ["Total Applications", ov.get("totalApplications", 0)],
+            ["Interview Rate (%)", ov.get("interviewRate", 0)],
+            ["Offer Rate (%)", ov.get("offerRate", 0)],
+            ["Avg Response Time (days)", ov.get("avgResponseTime", 0)],
+        ])
+
+        # Applications
+        ap = analytics.get("applications", {})
+        table("Applications – Status Breakdown", [["Status","Count","%"]] + [
+            [s.get("status",""), s.get("count",0), s.get("percentage",0)] for s in ap.get("statusBreakdown", [])
+        ])
+        table("Applications – By Month", [["Month","Count"]] + [
+            [m.get("month",""), m.get("count",0)] for m in ap.get("monthlyData", ap.get("applicationsByMonth", []))
+        ])
+
+        # Interviews
+        iv = analytics.get("interviews", {})
+        table("Interviews – Types", [["Type","Count"]] + [
+            [t.get("type",""), t.get("count",0)] for t in iv.get("typeBreakdown", iv.get("interviewTypeBreakdown", []))
+        ])
+        table("Interviews – Outcomes", [["Outcome","Count"]] + [
+            [o.get("outcome",""), o.get("count",0)] for o in iv.get("interviewOutcomes", [])
+        ])
+
+        # Companies
+        co = analytics.get("companies", {})
+        table("Companies – Top", [["Company","Apps","Interviews","Offers"]] + [
+            [c.get("name",""), c.get("applications",0), c.get("interviews",0), c.get("offers",0)]
+            for c in co.get("topCompanies", [])
+        ])
+
+        # Timeline
+        tl = analytics.get("timeline", {})
+        table("Timeline – Stage Transitions", [["Transition","Avg Days","Count"]] + [
+            [
+                s.get("transition", f"{s.get('from_stage','')} → {s.get('to_stage','')}"),
+                s.get("avg_days", s.get("duration",0)),
+                s.get("count",1)
+            ]
+            for s in tl.get("stageDurations", tl.get("stageTransitions", []))
+        ])
+
+        # Best Time (if any)
+        bt = analytics.get("bestTime", {})
+        if bt:
+            story.append(Spacer(1, 6))
+            p(f"<b>Best Time to Apply:</b> {bt.get('bestWindowText','')}")
+            table("By Weekday", [["Day","Score"]] + [[d.get("label",""), d.get("value",0)] for d in bt.get("byWeekday", [])])
+            table("By Hour", [["Hour","Score"]] + [[h.get("label",""), h.get("value",0)] for h in bt.get("byHour", [])])
+
+        doc.build(story)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="application/pdf",
+                                 headers={"Content-Disposition": f"attachment; filename=analytics-report-{range_param}.pdf"})
+    except Exception:
+        # Fallback to the previous simple text export if reportlab isn't available
+        temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+        temp_file.write("Applytide Analytics Report\n=========================\n\n")
+        temp_file.write(f"Range: {range_param}\n\n")
+        ov = analytics.get("overview", {})
+        temp_file.write("Overview:\n")
+        temp_file.write(f"- Total Applications: {ov.get('totalApplications',0)}\n")
+        temp_file.write(f"- Interview Rate: {ov.get('interviewRate',0)}%\n")
+        temp_file.write(f"- Offer Rate: {ov.get('offerRate',0)}%\n")
+        temp_file.write(f"- Avg Response Time: {ov.get('avgResponseTime',0)} days\n")
         temp_file.close()
-        
-        return FileResponse(
-            temp_file.name,
-            media_type='text/plain',
-            filename=f'analytics-report-{range_param}.txt'
-        )
-        
-    except Exception as e:
-        temp_file.close()
-        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+        return FileResponse(temp_file.name, media_type='text/plain',
+                            filename=f'analytics-report-{range_param}.txt')

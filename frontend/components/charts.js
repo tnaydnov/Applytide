@@ -57,7 +57,7 @@ function buildConicGradient(data) {
 
 /* ------------------------------ Components ------------------------------ */
 
-export function BarChart({ data, height = 400, className = "" }) {
+export function BarChart({ data, height = 400, className = "", barWidth }) {
   const items = toArray(data);
   const values = items.map((d) => Math.max(0, safeNumber(d.value)));
   const m = max(values);
@@ -78,33 +78,47 @@ export function BarChart({ data, height = 400, className = "" }) {
     );
   }
 
+  // Adaptive bar width: wide for few bars, narrower for many
+  const bw =
+    barWidth ??
+    (items.length > 36 ? 12 : items.length > 28 ? 16 : items.length > 18 ? 20 : 28);
+
   return (
-    <div className={`w-full ${className}`} style={{ height }} role="img" aria-label="Bar chart">
-      <div className="flex items-end justify-center h-full gap-3 p-4">
-        {items.map((item, index) => {
-          const ratio = clamp01(values[index] / m);
-          const barH = Math.max(2, Math.floor(ratio * (height - 64))); // leave room for labels
-          return (
-            <div key={index} className="flex flex-col items-center min-w-[30px]">
-              <div
-                className="rounded-t w-[30px]"
-                style={{
-                  height: `${barH}px`,
-                  backgroundColor: palette[index % palette.length],
-                }}
-                title={`${item.label ?? ""}: ${values[index]}`}
-              />
-              <span className="mt-2 text-xs text-slate-400 max-w-[60px] truncate" title={item.label}>
-                {item.label}
-              </span>
-              <span className="text-[11px] text-slate-500">{values[index]}</span>
-            </div>
-          );
-        })}
+    <div className={`w-full min-w-0 ${className}`} style={{ height }} role="img" aria-label="Bar chart">
+      {/* Make the row scroll horizontally if content exceeds container width */}
+      <div className="h-full overflow-x-auto">
+        <div className="flex items-end h-full gap-3 p-4 w-max min-w-full">
+          {items.map((item, index) => {
+            const ratio = clamp01(values[index] / m);
+            const barH = Math.max(2, Math.floor(ratio * (height - 64))); // leave room for labels
+
+            return (
+              <div key={index} className="flex flex-col items-center" style={{ width: bw }}>
+                <div
+                  className="rounded-t w-full"
+                  style={{
+                    height: `${barH}px`,
+                    backgroundColor: palette[index % palette.length],
+                  }}
+                  title={`${item.label ?? ""}: ${values[index]}`}
+                />
+                <span
+                  className="mt-2 text-[10px] text-slate-400 truncate"
+                  title={item.label}
+                  style={{ maxWidth: bw * 2 }}
+                >
+                  {item.label}
+                </span>
+                <span className="text-[11px] text-slate-500">{values[index]}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
+
 
 export function LineChart({ data, height = 400, className = "" }) {
   // Placeholder: intentionally simple but robust.

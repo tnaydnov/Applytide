@@ -1,41 +1,41 @@
 import { BarChart } from "../../../components/charts";
 
-/**
- * BestTimeSection
- * Day-of-week and Hour-of-day histograms, with a “best window” callout.
- *
- * Expects analytics.bestTime:
- * - byWeekday: [{ label, value }]       // Mon..Sun
- * - byHour: [{ label, value }]          // 0..23 or 4h buckets
- * - bestWindowText: string
- */
 export default function BestTimeSection({ analytics }) {
-  const t = analytics?.bestTime || {};
-  const dows = Array.isArray(t.byWeekday) ? t.byWeekday : [];
-  const hours = Array.isArray(t.byHour) ? t.byHour : [];
-  const hint = t.bestWindowText || (dows[0]?.label ? `Most active on ${dows[0].label}` : "");
-
-  if (!dows.length && !hours.length) return null;
+  const bt = analytics?.bestTime || {};
+  const byWeekday = Array.isArray(bt.byWeekday) ? bt.byWeekday : [];
+  const byHour = Array.isArray(bt.byHour) ? bt.byHour : [];
+  const annotation = bt.bestWindowText || "";
 
   return (
-    <section className="space-y-6" id="panel-habits" role="tabpanel" aria-labelledby="tab-habits">
-      <div className="glass-card glass-cyan">
-        <div className="flex items-center justify-between mb-4">
+    <section id="panel-habits" role="tabpanel" aria-labelledby="tab-habits" className="space-y-6">
+      <div className="glass-card glass-cyan p-4 sm:p-6 overflow-hidden">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-slate-200">Best Time to Apply</h3>
-          {hint && <div className="text-sm text-indigo-300">{hint}</div>}
+          {annotation && (
+            <span className="text-xs text-slate-400">{annotation}</span>
+          )}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <h4 className="text-sm text-slate-300 mb-2">By Day of Week</h4>
-            <BarChart data={dows} height={260} />
+
+        {/* Make the charts 2-up on large screens, 1-up on small; prevent overflow */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0">
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-2">By Day of Week</p>
+            {/* Your chart component should use parent width; height is fixed */}
+            <div className="w-full h-[280px]">
+              <BarChart data={byWeekday} height={280} />
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm text-slate-300 mb-2">By Hour of Day</h4>
-            <BarChart data={hours} height={260} />
+
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400 mb-2">By Hour of Day</p>
+            <div className="w-full h-[280px]">
+              <BarChart data={byHour} height={280} barWidth={16} />
+            </div>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
-          Use this to plan your weekly cadence. Times reflect *your* activity/outcomes, not generic advice.
+
+        <p className="mt-4 text-xs text-slate-500">
+          Use this to plan your weekly cadence. Times reflect <em>your</em> activity/outcomes, not generic advice.
         </p>
       </div>
     </section>

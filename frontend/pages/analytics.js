@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
   const currentTab = selectedMetric || DEFAULT_METRIC;
 
   const renderSection = () => {
-    if (!analytics) {
+    if (!data) {
       return (
         <div className="glass-card glass-cyan p-8 text-center text-slate-400">
           No analytics yet. Start tracking applications to see insights here.
@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
               <p className="mt-2 text-slate-400">Track your job search progress and insights</p>
             </div>
 
-            <div className="mt-4 md:mt-0 flex space-x-3">
+            <div className="mt-4 md:mt-0 flex items-center justify-between gap-3 w-full md:w-auto">
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
@@ -110,20 +110,29 @@ export default function AnalyticsPage() {
                 {demoMode ? "Exit Demo" : "Try Demo Data"}
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => exportReport("csv")}
-                className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700"
-              >
-                Export CSV
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => exportReport("pdf")}
-                className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700"
-              >
-                Export PDF
-              </Button>
+            </div>
+
+            {/* Right-aligned export dropdown */}
+            <div className="mt-3 md:mt-0">
+              <div className="relative inline-block text-left">
+                <details className="group">
+                  <summary className="list-none">
+                    <Button variant="outline" className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700">
+                      Export ▾
+                    </Button>
+                  </summary>
+                  <div className="absolute right-0 mt-2 w-40 origin-top-right rounded-md border border-slate-600/60 bg-slate-800/90 backdrop-blur p-1 shadow-lg">
+                    <button onClick={() => exportReport("csv")}
+                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200">
+                      CSV (all sections)
+                    </button>
+                    <button onClick={() => exportReport("pdf")}
+                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200">
+                      PDF summary
+                    </button>
+                  </div>
+                </details>
+              </div>
             </div>
           </div>
         </div>
