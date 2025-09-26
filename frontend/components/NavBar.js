@@ -88,7 +88,7 @@ export default function NavBar() {
       icon: "tools",
       subItems: [
         { label: "Documents", href: "/documents", icon: "description" },
-        { label: "Analytics", href: "/analytics", icon: "analytics", isPro: true },
+        { label: "Analytics", href: "/analytics", icon: "analytics" },
         { label: "Reminders", href: "/reminders", icon: "notifications" }
       ]
     }
