@@ -19,6 +19,52 @@ import {
   DEFAULT_METRIC,
 } from "../features/analytics/utils/constants";
 
+// Put this helper above your component (same file is fine)
+function ExportMenu({ onExport }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="relative inline-block text-left"
+      tabIndex={0}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}
+      onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+    >
+      <Button
+        variant="outline"
+        className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+      >
+        Export ▾
+      </Button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-2 w-44 origin-top-right rounded-md border border-slate-600/60 bg-slate-800/90 backdrop-blur p-1 shadow-lg"
+        >
+          <button
+            role="menuitem"
+            onClick={() => { onExport("csv"); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200"
+          >
+            CSV (all sections)
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => { onExport("pdf"); setOpen(false); }}
+            className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200"
+          >
+            PDF summary
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function AnalyticsPage() {
   const {
     analytics,
@@ -114,25 +160,7 @@ export default function AnalyticsPage() {
 
             {/* Right-aligned export dropdown */}
             <div className="mt-3 md:mt-0">
-              <div className="relative inline-block text-left">
-                <details className="group">
-                  <summary className="list-none">
-                    <Button variant="outline" className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700">
-                      Export ▾
-                    </Button>
-                  </summary>
-                  <div className="absolute right-0 mt-2 w-40 origin-top-right rounded-md border border-slate-600/60 bg-slate-800/90 backdrop-blur p-1 shadow-lg">
-                    <button onClick={() => exportReport("csv")}
-                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200">
-                      CSV (all sections)
-                    </button>
-                    <button onClick={() => exportReport("pdf")}
-                      className="w-full text-left px-3 py-2 text-sm rounded hover:bg-slate-700/60 text-slate-200">
-                      PDF summary
-                    </button>
-                  </div>
-                </details>
-              </div>
+              <ExportMenu onExport={exportReport} />
             </div>
           </div>
         </div>

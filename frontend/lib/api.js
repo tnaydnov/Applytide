@@ -421,26 +421,49 @@ export const api = {
       credentials: 'include',
     });
     if (!response.ok) throw new Error(await response.text());
+
     const blob = await response.blob();
+    const cd = response.headers.get("content-disposition") || "";
+    let filename = `analytics-report-${timeRange}.pdf`;
+
+    const starMatch = cd.match(/filename\*\s*=\s*[^']+''([^;]+)/i);
+    const quoted = cd.match(/filename\s*=\s*"([^"]+)"/i);
+    const unquoted = cd.match(/filename\s*=\s*([^;]+)/i);
+    if (starMatch) filename = decodeURIComponent(starMatch[1]);
+    else if (quoted) filename = quoted[1];
+    else if (unquoted) filename = unquoted[1].trim();
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `analytics-report-${timeRange}.pdf`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   },
+
   exportAnalyticsCSV: async (timeRange = "6m") => {
     const response = await fetch(`${API_BASE}/analytics/export/csv?range=${timeRange}`, {
       credentials: 'include',
     });
     if (!response.ok) throw new Error(await response.text());
+
     const blob = await response.blob();
+    const cd = response.headers.get("content-disposition") || "";
+    let filename = `analytics-data-${timeRange}.csv`;
+
+    const starMatch = cd.match(/filename\*\s*=\s*[^']+''([^;]+)/i);
+    const quoted = cd.match(/filename\s*=\s*"([^"]+)"/i);
+    const unquoted = cd.match(/filename\s*=\s*([^;]+)/i);
+    if (starMatch) filename = decodeURIComponent(starMatch[1]);
+    else if (quoted) filename = quoted[1];
+    else if (unquoted) filename = unquoted[1].trim();
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `analytics-data-${timeRange}.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
