@@ -29,7 +29,7 @@ function buildConicGradient(data) {
 
 /* ------------------------------ Components ------------------------------ */
 
-export function BarChart({ data, height = 400, className = "", barWidth, rotateLabelsOnMobile = true }) {
+export function BarChart({ data, height = 400, className = "", barWidth }) {
   const items = toArray(data);
   const values = items.map((d) => Math.max(0, safeNumber(d.value)));
   const m = max(values);
@@ -45,38 +45,57 @@ export function BarChart({ data, height = 400, className = "", barWidth, rotateL
     );
   }
 
-  // Adaptive bar width (narrower as categories increase)
-  const bw = barWidth ?? (items.length > 36 ? 12 : items.length > 28 ? 16 : items.length > 18 ? 20 : 28);
+  // 1) Adaptive bar width (wider when fewer bars)
+  const bw =
+    barWidth ??
+    (items.length > 36 ? 12 : items.length > 28 ? 16 : items.length > 18 ? 20 : 28);
 
+  // 2) Heuristic for label layout:
+  // - rotate when very narrow
+  // - otherwise wrap to 2 lines
+  const rotateLabels = bw <= 16 && items.length >= 6;
+
+  // add padding-bottom to keep rotated labels visible; never clip
   return (
     <div className={`w-full min-w-0 ${className}`} style={{ height }} role="img" aria-label="Bar chart">
-      {/* horizontal scroll if needed */}
-      <div className="h-full overflow-x-auto overscroll-x-contain no-scrollbar">
+      <div className="h-full overflow-x-auto pb-8 sm:pb-6"> {/* <-- extra bottom padding */}
         <div className="flex items-end h-full gap-2 sm:gap-3 p-3 sm:p-4 w-max min-w-full">
           {items.map((item, index) => {
             const ratio = clamp01(values[index] / m);
             const barH = Math.max(2, Math.floor(ratio * (height - 64))); // leave room for labels
+            const maxLabelW = Math.max(bw * 3, 44);
+            // short label fallback for super-narrow bars
+            const labelText = String(item.label ?? "");
+            const short =
+              labelText.length > 10 && rotateLabels
+                ? labelText.split(/\s+/).map(w => w[0]).join("").slice(0, 8).toUpperCase()
+                : labelText;
 
             return (
               <div key={index} className="flex flex-col items-center" style={{ width: bw }}>
                 <div
                   className="rounded-t w-full"
-                  style={{ height: `${barH}px`, backgroundColor: palette[index % palette.length] }}
+                  style={{
+                    height: `${barH}px`,
+                    backgroundColor: palette[index % palette.length],
+                  }}
                   title={`${item.label ?? ""}: ${values[index]}`}
                 />
-                {/* label */}
+                {/* LABEL */}
                 <span
                   className={[
-                    "mt-1 sm:mt-2 leading-tight text-[9px] sm:text-xs text-slate-400 truncate",
-                    rotateLabelsOnMobile ? "-rotate-45 origin-top-right sm:rotate-0" : "",
+                    "mt-1 text-[10px] leading-tight text-slate-400 text-center",
+                    rotateLabels ? "origin-top-right -rotate-45 whitespace-nowrap" : "break-words",
                   ].join(" ")}
-                  title={item.label}
-                  style={{ maxWidth: bw * 2 }}
+                  title={labelText}
+                  style={{
+                    maxWidth: maxLabelW,
+                  }}
                 >
-                  {item.label}
+                  {rotateLabels ? short : labelText}
                 </span>
-                {/* value (hide on mobile to reduce crowding) */}
-                <span className="hidden sm:block text-[11px] text-slate-500">{values[index]}</span>
+                {/* VALUE */}
+                <span className="text-[11px] text-slate-500">{values[index]}</span>
               </div>
             );
           })}
@@ -85,6 +104,7 @@ export function BarChart({ data, height = 400, className = "", barWidth, rotateL
     </div>
   );
 }
+
 
 export function LineChart({ data, height = 400, className = "" }) {
   const count = toArray(data).length;

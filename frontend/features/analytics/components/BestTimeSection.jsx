@@ -29,7 +29,7 @@ export default function BestTimeSection({ analytics }) {
           <div className="min-w-0">
             <p className="text-xs text-slate-400 mb-2">By Hour of Day</p>
             <div className="w-full h-[280px]">
-              <BarChart data={byHour} height={280} barWidth={16} />
+              <BarChart data={byHour} height={280} barWidth={12} />
             </div>
           </div>
         </div>

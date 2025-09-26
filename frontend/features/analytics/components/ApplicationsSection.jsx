@@ -55,14 +55,14 @@ export default function ApplicationsSection({ analytics }) {
     >
       {/* Status Breakdown + Applications by Month */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Application Status Breakdown
           </h3>
           <DonutChart data={statusBreakdown} height={300} />
         </div>
 
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Applications by Month
           </h3>
@@ -71,7 +71,7 @@ export default function ApplicationsSection({ analytics }) {
       </div>
 
       {/* Top Job Titles Applied For */}
-      <div className="glass-card glass-cyan p-4 sm:p-6">
+      <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
         <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Top Job Titles Applied For
         </h3>

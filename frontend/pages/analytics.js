@@ -19,7 +19,6 @@ import {
   DEFAULT_METRIC,
 } from "../features/analytics/utils/constants";
 
-// Put this helper above your component (same file is fine)
 function ExportMenu({ onExport }) {
   const [open, setOpen] = useState(false);
   return (
@@ -63,6 +62,7 @@ function ExportMenu({ onExport }) {
     </div>
   );
 }
+
 
 
 export default function AnalyticsPage() {

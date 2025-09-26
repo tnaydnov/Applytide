@@ -81,7 +81,7 @@ export default function InterviewsSection({ analytics }) {
 
       {/* Charts: Types + Success by Type */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Interview Types
           </h3>
@@ -93,7 +93,7 @@ export default function InterviewsSection({ analytics }) {
           )}
         </div>
 
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Success by Interview Type
           </h3>
@@ -107,7 +107,7 @@ export default function InterviewsSection({ analytics }) {
       </div>
 
       {/* Performance Over Time */}
-      <div className="glass-card glass-cyan p-4 sm:p-6">
+      <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
         <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Interview Performance Trends
         </h3>

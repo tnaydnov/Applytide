@@ -212,6 +212,7 @@ a {
   border-radius: 14px;
   backdrop-filter: blur(16px);
   box-shadow: 0 4px 24px rgba(2, 8, 23, .25);
+  overflow: visible;
 }
 
 /* Glass navigation - USED */

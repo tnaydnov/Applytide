@@ -28,7 +28,7 @@ export default function KPICard({
 
   if (loading) {
     return (
-      <div className={cn("glass-card glass-cyan p-4", className)}>
+      <div className={cn("glass-card glass-cyan p-4 overflow-visible", className)}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="h-3 w-28 rounded bg-slate-700/60" />
@@ -42,7 +42,7 @@ export default function KPICard({
   }
 
   return (
-    <div className={cn("glass-card glass-cyan p-4", className)}>
+    <div className={cn("glass-card glass-cyan p-4 overflow-visible", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-slate-400">{fallback(title)}</p>

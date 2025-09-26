@@ -35,13 +35,13 @@ export default function SourcesSection({ analytics }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="glass-card glass-cyan lg:col-span-1">
+        <div className="glass-card glass-cyan lg:col-span-1 overflow-visible">
           <h3 className="text-lg font-semibold mb-4 text-slate-200">Source Breakdown</h3>
           <DonutChart data={breakdown} height={300} />
           {!breakdown.length && <p className="text-sm text-slate-400 mt-2">No source data yet.</p>}
         </div>
 
-        <div className="glass-card glass-cyan lg:col-span-2">
+        <div className="glass-card glass-cyan lg:col-span-2 overflow-visible">
           <h3 className="text-lg font-semibold mb-4 text-slate-200">Conversion by Source</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -60,7 +60,7 @@ export default function SourcesSection({ analytics }) {
       </div>
 
       {!!top.length && (
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">Top Sources</h3>
           <div className="space-y-2">
             {top.slice(0, 8).map((row, i) => (

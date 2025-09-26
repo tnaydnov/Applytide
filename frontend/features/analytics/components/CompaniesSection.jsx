@@ -72,7 +72,7 @@ export default function CompaniesSection({ analytics }) {
 
       {/* Charts: Size Distribution + Success by Size */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Company Size Distribution
           </h3>
@@ -84,7 +84,7 @@ export default function CompaniesSection({ analytics }) {
           )}
         </div>
 
-        <div className="glass-card glass-cyan p-4 sm:p-6">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Success Rate by Company Size
           </h3>
@@ -98,7 +98,7 @@ export default function CompaniesSection({ analytics }) {
       </div>
 
       {/* Top Companies */}
-      <div className="glass-card glass-cyan p-4 sm:p-6">
+      <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
         <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
           Top Companies by Applications
         </h3>
