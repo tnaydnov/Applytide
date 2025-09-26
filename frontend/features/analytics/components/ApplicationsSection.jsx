@@ -11,13 +11,13 @@ import { BarChart, DonutChart } from "../../../components/charts";
 export default function ApplicationsSection({ analytics }) {
   const app = analytics?.applications || {};
 
-  const statusBreakdown = Array.isArray(app.statusBreakdown)
-    ? app.statusBreakdown
-    : [];
-
-  const monthlyData = Array.isArray(app.monthlyData) ? app.monthlyData : [];
-
-  const jobTitles = Array.isArray(app.jobTitles) ? app.jobTitles : [];
+  const statusBreakdown = Array.isArray(app.statusBreakdown) ? app.statusBreakdown : [];
+  const monthlyData = Array.isArray(app.monthlyData) ? app.monthlyData
+                    : Array.isArray(app.applicationsByMonth) ? app.applicationsByMonth
+                    : [];
+  const jobTitles = Array.isArray(app.jobTitles) ? app.jobTitles
+                   : Array.isArray(app.topJobTitles) ? app.topJobTitles
+                   : [];
 
   const kpis = [
     {

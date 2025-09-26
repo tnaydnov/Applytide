@@ -8,6 +8,10 @@ import ApplicationsSection from "../features/analytics/components/ApplicationsSe
 import InterviewsSection from "../features/analytics/components/InterviewsSection";
 import CompaniesSection from "../features/analytics/components/CompaniesSection";
 import TimelineSection from "../features/analytics/components/TimelineSection";
+import SourcesSection from "../features/analytics/components/SourcesSection";
+import ExperimentsSection from "../features/analytics/components/ExperimentsSection";
+import BestTimeSection from "../features/analytics/components/BestTimeSection";
+import { generateDemoAnalytics } from "../features/analytics/utils/sampleData";
 
 import {
   TIME_RANGE_OPTIONS,
@@ -26,6 +30,10 @@ export default function AnalyticsPage() {
 
     exportReport,
   } = useAnalytics();
+
+  const [demoMode, setDemoMode] = useState(false);
+  const demoData = useMemo(() => (demoMode ? generateDemoAnalytics() : null), [demoMode]);
+  const data = demoData || analytics;
 
   // ---------------------------------- Loading ---------------------------------
   if (loading && !analytics) {
@@ -51,18 +59,15 @@ export default function AnalyticsPage() {
       );
     }
     switch (currentTab) {
-      case "overview":
-        return <OverviewSection analytics={analytics} />;
-      case "applications":
-        return <ApplicationsSection analytics={analytics} />;
-      case "interviews":
-        return <InterviewsSection analytics={analytics} />;
-      case "companies":
-        return <CompaniesSection analytics={analytics} />;
-      case "timeline":
-        return <TimelineSection analytics={analytics} />;
-      default:
-        return <OverviewSection analytics={analytics} />;
+      case "overview": return <OverviewSection analytics={data} />;
+      case "applications": return <ApplicationsSection analytics={data} />;
+      case "interviews": return <InterviewsSection analytics={data} />;
+      case "companies": return <CompaniesSection analytics={data} />;
+      case "sources": return <SourcesSection analytics={data} />;
+      case "habits": return <BestTimeSection analytics={data} />;
+      case "experiments": return <ExperimentsSection analytics={data} />;
+      case "timeline": return <TimelineSection analytics={data} />;
+      default: return <OverviewSection analytics={data} />;
     }
   };
 
@@ -94,6 +99,15 @@ export default function AnalyticsPage() {
                   </option>
                 ))}
               </select>
+
+              <Button
+                variant="outline"
+                onClick={() => setDemoMode((v) => !v)}
+                className={`text-sm border-slate-600 ${demoMode ? "text-yellow-300 hover:bg-yellow-900/20" : "text-slate-300 hover:bg-slate-700"}`}
+                title="Preview with sample data"
+              >
+                {demoMode ? "Exit Demo" : "Try Demo Data"}
+              </Button>
 
               <Button
                 variant="outline"

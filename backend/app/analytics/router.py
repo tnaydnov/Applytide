@@ -13,8 +13,256 @@ from ..db.models import User
 import tempfile
 import csv
 import json
+from statistics import median
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+
+# -------------------- NEW HELPERS --------------------
+
+def _date_str(dt):
+    try:
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return str(dt)[:10]
+
+def _weekday_label(i):  # 0=Mon
+    labels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+    return labels[i % 7]
+
+def calculate_activity_metrics(applications: List[models.Application]) -> Dict[str, Any]:
+    """GitHub-like day grid for last 12 weeks; simple streaks."""
+    if not applications:
+        return {"activityByDay": [], "streak": {"current": 0, "best": 0}}
+
+    today = datetime.now(timezone.utc).date()
+    days_back = 84
+    counts = {}
+    for app in applications:
+        key = _date_str(app.created_at.date())
+        counts[key] = counts.get(key, 0) + 1
+
+    series = []
+    for i in range(days_back):
+        d = today - timedelta(days=(days_back - 1 - i))
+        key = d.strftime("%Y-%m-%d")
+        series.append({"date": key, "count": counts.get(key, 0)})
+
+    # streaks (current and best)
+    cur = 0
+    best = 0
+    running = 0
+    # count backward
+    for i in range(days_back-1, -1, -1):
+        if series[i]["count"] > 0:
+            running += 1
+            cur = running
+        else:
+            best = max(best, running)
+            if cur > 0:
+                # we passed the current streak; keep scanning for best
+                running = 0
+            else:
+                running = 0
+    best = max(best, running)
+
+    return {"activityByDay": series, "streak": {"current": cur, "best": best}}
+
+def calculate_sources_metrics(applications: List[models.Application], stages: List[models.Stage]) -> Dict[str, Any]:
+    """Breakdown & conversion by source/channel if available."""
+    breakdown = []
+    interview_rate = []
+    offer_rate = []
+    top_sources = []
+
+    # determine source field if exists
+    source_attr = None
+    for cand in ["source", "channel", "apply_source"]:
+        if hasattr(models.Application, cand):
+            source_attr = cand
+            break
+
+    if not source_attr:
+        # Nothing to compute; return empty shapes
+        return {"breakdown": [], "interviewRateBySource": [], "offerRateBySource": [], "topSources": []}
+
+    # Build per-source aggregates
+    per = {}
+    for app in applications:
+        src = getattr(app, source_attr, None) or "Other"
+        d = per.setdefault(src, {"apps": 0, "int_apps": set(), "off_apps": set()})
+        d["apps"] += 1
+
+    # Map application->source
+    app_to_src = {}
+    for app in applications:
+        app_to_src[app.id] = getattr(app, source_attr, None) or "Other"
+
+    # Interviews & offers per source from stages
+    for s in stages:
+        src = app_to_src.get(s.application_id, "Other")
+        nm = (s.name or "").lower()
+        if any(k in nm for k in ["interview", "phone", "screen", "tech", "onsite", "on-site"]):
+            per[src]["int_apps"].add(s.application_id)
+        if "offer" in nm or (s.outcome or "").lower() == "offer":
+            per[src]["off_apps"].add(s.application_id)
+
+    for src, d in per.items():
+        apps = d["apps"]
+        breakdown.append({"label": src, "value": apps})
+        ir = round((len(d["int_apps"]) / apps) * 100, 1) if apps else 0
+        orate = round((len(d["off_apps"]) / apps) * 100, 1) if apps else 0
+        interview_rate.append({"label": src, "value": ir})
+        offer_rate.append({"label": src, "value": orate})
+        top_sources.append({"label": src, "applications": apps, "interviewRate": ir, "offerRate": orate})
+
+    # sort by value desc
+    interview_rate.sort(key=lambda x: x["value"], reverse=True)
+    offer_rate.sort(key=lambda x: x["value"], reverse=True)
+    top_sources.sort(key=lambda x: x["applications"], reverse=True)
+
+    return {
+        "breakdown": breakdown,
+        "interviewRateBySource": interview_rate,
+        "offerRateBySource": offer_rate,
+        "topSources": top_sources,
+    }
+
+def calculate_experiments_metrics(applications: List[models.Application], stages: List[models.Stage]) -> Dict[str, Any]:
+    """Resume version & cover letter impact if fields exist."""
+    # Optional fields
+    resume_attr = None
+    for cand in ["resume_version_id", "resume_version", "resume_id"]:
+        if hasattr(models.Application, cand):
+            resume_attr = cand
+            break
+    cl_attr = None
+    for cand in ["has_cover_letter", "cover_letter", "cover_letter_used"]:
+        if hasattr(models.Application, cand):
+            cl_attr = cand
+            break
+
+    # map app_id -> has interview
+    interviewed = set()
+    for s in stages:
+        nm = (s.name or "").lower()
+        if any(k in nm for k in ["interview", "phone", "screen", "tech", "onsite", "on-site"]):
+            interviewed.add(s.application_id)
+
+    out = {"resumeVersions": [], "coverLetterImpact": None}
+
+    if resume_attr:
+        per = {}
+        for app in applications:
+            key = getattr(app, resume_attr, None) or "Default"
+            d = per.setdefault(key, {"apps": 0, "int": 0})
+            d["apps"] += 1
+            if app.id in interviewed:
+                d["int"] += 1
+        for key, d in per.items():
+            rate = round((d["int"] / d["apps"]) * 100, 1) if d["apps"] else 0
+            out["resumeVersions"].append({"label": str(key), "interviewRate": rate, "count": d["apps"]})
+
+        out["resumeVersions"].sort(key=lambda x: x["interviewRate"], reverse=True)
+
+    if cl_attr:
+        with_cl = {"apps": 0, "int": 0}
+        without_cl = {"apps": 0, "int": 0}
+        for app in applications:
+            has_cl = bool(getattr(app, cl_attr, False))
+            target = with_cl if has_cl else without_cl
+            target["apps"] += 1
+            if app.id in interviewed:
+                target["int"] += 1
+
+        out["coverLetterImpact"] = {
+            "withCL": {
+                "rate": round((with_cl["int"] / with_cl["apps"]) * 100, 1) if with_cl["apps"] else 0,
+                "count": with_cl["apps"],
+            },
+            "withoutCL": {
+                "rate": round((without_cl["int"] / without_cl["apps"]) * 100, 1) if without_cl["apps"] else 0,
+                "count": without_cl["apps"],
+            },
+        }
+
+    return out
+
+def calculate_best_time_metrics(applications: List[models.Application], stages: List[models.Stage]) -> Dict[str, Any]:
+    """Histogram by weekday/hour based on application created time."""
+    if not applications:
+        return {"byWeekday": [], "byHour": [], "bestWindowText": ""}
+
+    # Simple counts by weekday
+    wd = {i: 0 for i in range(7)}
+    hr = {i: 0 for i in range(24)}
+
+    for app in applications:
+        dt = app.created_at
+        wd[dt.weekday()] = wd.get(dt.weekday(), 0) + 1
+        hr[dt.hour] = hr.get(dt.hour, 0) + 1
+
+    by_weekday = [{"label": _weekday_label(k), "value": v} for k, v in wd.items()]
+    by_weekday.sort(key=lambda x: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].index(x["label"]))
+
+    by_hour = [{"label": f"{h}:00", "value": v} for h, v in hr.items()]
+    by_hour.sort(key=lambda x: int(x["label"].split(":")[0]))
+
+    # pick a simple best window: max weekday + top hour band
+    top_day = max(by_weekday, key=lambda x: x["value"]) if by_weekday else None
+    top_hour = max(by_hour, key=lambda x: x["value"]) if by_hour else None
+    best_text = f"{top_day['label']} around {top_hour['label']}" if top_day and top_hour else ""
+
+    return {"byWeekday": by_weekday, "byHour": by_hour, "bestWindowText": best_text}
+
+def calculate_expectations_metrics(applications: List[models.Application], stages: List[models.Stage]) -> Dict[str, Any]:
+    """Median/p75 time-to-first-response/interview/decision."""
+    if not applications:
+        return {"medians": {}, "p75": {}}
+
+    # Build per-application ordered stages
+    app_stages_map: Dict[int, List[models.Stage]] = {}
+    for s in stages:
+        app_stages_map.setdefault(s.application_id, []).append(s)
+
+    response_days = []
+    interview_days = []
+    decision_days = []
+
+    for app in applications:
+        st = sorted(app_stages_map.get(app.id, []), key=lambda x: x.created_at)
+        if not st:
+            continue
+
+        first = st[0].created_at
+        response_days.append((first - app.created_at).days)
+
+        # first interview stage
+        inter = next((x for x in st if "interview" in (x.name or "").lower() or "screen" in (x.name or "").lower()), None)
+        if inter:
+          interview_days.append((inter.created_at - app.created_at).days)
+
+        # decision stage if we can infer
+        decis = next((x for x in st[::-1] if "offer" in (x.name or "").lower() or (x.outcome or "").lower() in ["offer","rejected","hired","declined"]), None)
+        if decis:
+          decision_days.append((decis.created_at - app.created_at).days)
+
+    def stats(nums):
+        arr = sorted([n for n in nums if isinstance(n, (int, float)) and n >= 0])
+        if not arr:
+            return None, None
+        m = int(median(arr))
+        p75i = int(arr[max(0, int(len(arr)*0.75)-1)])
+        return m, p75i
+
+    m_resp, p_resp = stats(response_days)
+    m_int, p_int = stats(interview_days)
+    m_dec, p_dec = stats(decision_days)
+
+    med = {k:v for k,v in [("response",m_resp),("interview",m_int),("decision",m_dec)] if v is not None}
+    p75 = {k:v for k,v in [("response",p_resp),("interview",p_int),("decision",p_dec)] if v is not None}
+
+    return {"medians": med, "p75": p75}
+
 
 def get_time_range_filter(range_param: str):
     """Convert range parameter to datetime filter"""
@@ -41,38 +289,36 @@ def get_analytics(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    """Get comprehensive analytics data for the user"""
-    
     start_date = get_time_range_filter(range_param)
-    
-    # Get all user applications within time range
+
     applications = db.query(models.Application).filter(
         models.Application.user_id == current_user.id,
         models.Application.created_at >= start_date
     ).all()
-    
+
     app_ids = [app.id for app in applications]
-    
-    # Get all stages for these applications
+
     stages = []
     if app_ids:
-        stages = db.query(models.Stage).filter(
-            models.Stage.application_id.in_(app_ids)
-        ).all()
-    
-    # Calculate overview metrics
+        stages = db.query(models.Stage).filter(models.Stage.application_id.in_(app_ids)).all()
+
     overview_data = calculate_overview_metrics(applications, stages, start_date, db)
-    
-    # Calculate different metric sections
+
     analytics_data = {
         "overview": overview_data,
         "applications": calculate_application_metrics(applications, db),
         "interviews": calculate_interview_metrics(stages, applications),
         "companies": calculate_company_metrics(applications, db),
         "timeline": calculate_timeline_metrics(applications, stages),
-        "salary": calculate_salary_metrics(applications, db)
+        "salary": calculate_salary_metrics(applications, db),
+
+        # NEW: additional sections (all degrade gracefully)
+        "activity": calculate_activity_metrics(applications),
+        "sources": calculate_sources_metrics(applications, stages),
+        "experiments": calculate_experiments_metrics(applications, stages),
+        "bestTime": calculate_best_time_metrics(applications, stages),
+        "expectations": calculate_expectations_metrics(applications, stages),
     }
-    
     return analytics_data
 
 def calculate_overview_metrics(applications: List[models.Application], stages: List[models.Stage], start_date: datetime, db: Session) -> Dict[str, Any]:

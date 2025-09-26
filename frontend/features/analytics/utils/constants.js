@@ -15,9 +15,11 @@ export const METRIC_CATEGORIES = Object.freeze([
   { id: "applications", label: "Applications", icon: "📝" },
   { id: "interviews", label: "Interviews", icon: "🎯" },
   { id: "companies", label: "Companies", icon: "🏢" },
+  { id: "sources", label: "Sources", icon: "🧭" },
+  { id: "habits", label: "Habits", icon: "🔥" },        // consistency + timing
+  { id: "experiments", label: "Experiments", icon: "🧪" },
   { id: "timeline", label: "Timeline", icon: "⏱️" },
-  // If you later enable salary analytics, just uncomment:
-  // { id: "salary", label: "Salary", icon: "💰" },
+  // { id: "salary", label: "Salary", icon: "💰" }, // optional future
 ]);
 
 export const DEFAULT_METRIC = "overview";

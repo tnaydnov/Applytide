@@ -83,63 +83,122 @@ export async function exportAnalyticsPDF(range = "6m") {
  */
 export function normalizeAnalytics(raw) {
   const safe = (v, d) => (v == null ? d : v);
+  const pick = (obj, keys, def) => {
+    for (const k of keys) {
+      if (obj && obj[k] != null) return obj[k];
+    }
+    return def;
+  };
+
+  const r = raw || {};
+  const ov = r.overview || {};
+  const ap = r.applications || {};
+  const iv = r.interviews || {};
+  const co = r.companies || {};
+  const tl = r.timeline || {};
+  const ac = r.activity || {};
+  const so = r.sources || {};
+  const ex = r.experiments || {};
+  const bt = r.bestTime || {};
+  const expt = r.expectations || {};
+  const sa = r.salary || {};
 
   return {
     overview: {
-      totalApplications: safe(raw?.overview?.totalApplications, 0),
-      applicationsChange: safe(raw?.overview?.applicationsChange, 0),
-      interviewRate: safe(raw?.overview?.interviewRate, 0),
-      interviewRateChange: safe(raw?.overview?.interviewRateChange, 0),
-      offerRate: safe(raw?.overview?.offerRate, 0),
-      offerRateChange: safe(raw?.overview?.offerRateChange, 0),
-      avgResponseTime: safe(raw?.overview?.avgResponseTime, 0),
-      responseTimeChange: safe(raw?.overview?.responseTimeChange, 0),
-      statusDistribution: safe(raw?.overview?.statusDistribution, []),
-      applicationsOverTime: safe(raw?.overview?.applicationsOverTime, []),
-      funnel: safe(raw?.overview?.funnel, []),
+      totalApplications: safe(ov.totalApplications, 0),
+      applicationsChange: safe(ov.applicationsChange, 0),
+      interviewRate: safe(ov.interviewRate, 0),
+      interviewRateChange: safe(ov.interviewRateChange, 0),
+      offerRate: safe(ov.offerRate, 0),
+      offerRateChange: safe(ov.offerRateChange, 0),
+      avgResponseTime: safe(ov.avgResponseTime, 0),
+      responseTimeChange: safe(ov.responseTimeChange, 0),
+      statusDistribution: safe(ov.statusDistribution, []),
+      applicationsOverTime: safe(ov.applicationsOverTime, []),
+      funnel: safe(ov.funnel, []),
     },
+
     applications: {
-      statusBreakdown: safe(raw?.applications?.statusBreakdown, []),
-      monthlyData: safe(raw?.applications?.monthlyData, []),
-      jobTitles: safe(raw?.applications?.jobTitles, []),
-      totalApplications: safe(raw?.applications?.totalApplications, 0),
-      successRate: safe(raw?.applications?.successRate, 0),
-      avgResponseTime: safe(raw?.applications?.avgResponseTime, 0),
+      statusBreakdown: safe(pick(ap, ["statusBreakdown"], [])),
+      monthlyData: safe(pick(ap, ["monthlyData", "applicationsByMonth"], [])),
+      jobTitles: safe(pick(ap, ["jobTitles", "topJobTitles"], [])),
+      totalApplications: safe(ap.totalApplications, 0),
+      successRate: safe(ap.successRate, 0),
+      avgResponseTime: safe(ap.avgResponseTime, 0),
+      uniqueCompanies: safe(pick(ap, ["uniqueCompanies"], 0)),
     },
+
     interviews: {
-      typeBreakdown: safe(raw?.interviews?.typeBreakdown, []),
-      successByType: safe(raw?.interviews?.successByType, []),
-      totalInterviews: safe(raw?.interviews?.totalInterviews, 0),
-      successRate: safe(raw?.interviews?.successRate, 0),
-      avgInterviewsPerApp: safe(raw?.interviews?.avgInterviewsPerApp, 0),
-      conversionRate: safe(raw?.interviews?.conversionRate, 0),
-      performanceOverTime: safe(raw?.interviews?.performanceOverTime, []),
+      typeBreakdown: safe(pick(iv, ["typeBreakdown", "interviewTypeBreakdown"], [])),
+      successByType: safe(pick(iv, ["successByType"], [])),
+      totalInterviews: safe(iv.totalInterviews, 0),
+      successRate: safe(iv.successRate, 0),
+      avgInterviewsPerApp: safe(iv.avgInterviewsPerApp, 0),
+      conversionRate: safe(pick(iv, ["conversionRate","interviewConversionRate"], 0)),
+      performanceOverTime: safe(pick(iv, ["performanceOverTime"], [])),
+      interviewOutcomes: safe(pick(iv, ["interviewOutcomes"], [])),
     },
+
     companies: {
-      topCompanies: safe(raw?.companies?.topCompanies, []),
-      sizeDistribution: safe(raw?.companies?.sizeDistribution, []),
-      successBySize: safe(raw?.companies?.successBySize, []),
-      totalCompanies: safe(raw?.companies?.totalCompanies, 0),
-      avgSuccessRate: safe(raw?.companies?.avgSuccessRate, 0),
-      responseRate: safe(raw?.companies?.responseRate, 0),
+      topCompanies: safe(co.topCompanies, []),
+      sizeDistribution: safe(pick(co, ["sizeDistribution","companySizeDistribution"], [])),
+      successBySize: safe(co.successBySize, []),
+      totalCompanies: safe(co.totalCompanies, 0),
+      avgSuccessRate: safe(co.avgSuccessRate, 0),
+      responseRate: safe(co.responseRate, 0),
+      avgApplicationsPerCompany: safe(co.avgApplicationsPerCompany, 0),
     },
+
     timeline: {
-      stageDurations: safe(raw?.timeline?.stageDurations, []),
-      timelineTrends: safe(raw?.timeline?.timelineTrends, []),
-      bottlenecks: safe(raw?.timeline?.bottlenecks, []),
-      avgProcessDuration: safe(raw?.timeline?.avgProcessDuration, 0),
-      avgResponseTime: safe(raw?.timeline?.avgResponseTime, 0),
-      avgInterviewTime: safe(raw?.timeline?.avgInterviewTime, 0),
-      avgDecisionTime: safe(raw?.timeline?.avgDecisionTime, 0),
+      stageDurations: safe(pick(tl, ["stageDurations","stageTransitions"], [])),
+      timelineTrends: safe(pick(tl, ["timelineTrends","weeklyApplicationTrends"], [])),
+      bottlenecks: safe(tl.bottlenecks, []),
+      avgProcessDuration: safe(tl.avgProcessDuration, 0),
+      avgResponseTime: safe(tl.avgResponseTime, 0),
+      avgInterviewTime: safe(tl.avgInterviewTime, 0),
+      avgDecisionTime: safe(tl.avgDecisionTime, 0),
+      totalProcesses: safe(tl.totalProcesses, 0),
     },
+
+    activity: {
+      activityByDay: safe(ac.activityByDay, []),
+      streak: safe(ac.streak, { current: 0, best: 0 }),
+    },
+
+    sources: {
+      breakdown: safe(so.breakdown, []),
+      interviewRateBySource: safe(so.interviewRateBySource, []),
+      offerRateBySource: safe(so.offerRateBySource, []),
+      topSources: safe(so.topSources, []),
+    },
+
+    experiments: {
+      resumeVersions: safe(ex.resumeVersions, []),
+      coverLetterImpact: safe(ex.coverLetterImpact, null),
+    },
+
+    bestTime: {
+      byWeekday: safe(bt.byWeekday, []),
+      byHour: safe(bt.byHour, []),
+      bestWindowText: safe(bt.bestWindowText, ""),
+    },
+
+    expectations: {
+      medians: safe(expt.medians, {}),
+      p75: safe(expt.p75, {}),
+    },
+
     salary: {
-      avgSalaryOffered: safe(raw?.salary?.avgSalaryOffered, 0),
-      salaryRange: safe(raw?.salary?.salaryRange, { min: 0, max: 0 }),
-      salaryRangeDistribution: safe(raw?.salary?.salaryRangeDistribution, []),
-      salaryByTitle: safe(raw?.salary?.salaryByTitle, []),
+      avgSalaryOffered: safe(sa.avgSalaryOffered, 0),
+      salaryRange: safe(sa.salaryRange, { min: 0, max: 0 }),
+      salaryRangeDistribution: safe(sa.salaryRangeDistribution, []),
+      salaryByTitle: safe(sa.salaryByTitle, []),
+      applicationsWithSalary: safe(sa.applicationsWithSalary, 0),
+      totalApplications: safe(sa.totalApplications, 0),
     },
   };
 }
+
 
 export default {
   fetchAnalytics,
