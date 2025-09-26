@@ -547,14 +547,6 @@ export default function NavBar() {
           </div>
         </div>
       )}
-
-
-      {/* Premium Modal */}
-      <PremiumModal
-        isOpen={showPremiumModal}
-        onClose={() => setShowPremiumModal(false)}
-        feature="Analytics Dashboard"
-      />
     </nav>
   );
 }
