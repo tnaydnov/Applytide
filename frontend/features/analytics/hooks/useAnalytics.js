@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../lib/toast";
 import {
@@ -11,7 +11,6 @@ import {
 /**
  * Centralized hook for the Analytics page.
  * Handles:
- *  - premium gate check
  *  - fetching analytics for a selected time range
  *  - exporting CSV/PDF
  *  - UI state for selected tab/metric
@@ -20,56 +19,18 @@ export default function useAnalytics(initialRange = "6m") {
   const { isAuthenticated } = useAuth();
   const toast = useToast();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState(initialRange); // "1m" | "3m" | "6m" | "1y" | "all"
   const [selectedMetric, setSelectedMetric] = useState("overview");
   const [analytics, setAnalytics] = useState(null);
 
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-
   // Keeps track of latest request to avoid race conditions on quick switches
   const reqIdRef = useRef(0);
 
-  // ---- Premium Status ------------------------------------------------------
+  // ---- Fetch Analytics when authenticated and timeRange changes ------------
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function checkPremiumStatus() {
-      setLoading(true);
-      try {
-        if (!isAuthenticated) {
-          setIsPremium(false);
-          return;
-        }
-        const res = await fetch("/api/user/premium-status", {
-          credentials: "include",
-        });
-        if (res.ok) {
-          const { isPremium: premiumFlag } = await res.json();
-          if (!cancelled) setIsPremium(!!premiumFlag);
-        } else {
-          if (!cancelled) setIsPremium(false);
-        }
-      } catch (err) {
-        console.error("Premium status check failed:", err);
-        if (!cancelled) setIsPremium(false);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    checkPremiumStatus();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
-
-  // ---- Fetch Analytics when premium + timeRange changes --------------------
-
-  useEffect(() => {
-    if (!isPremium) return;
+    if (!isAuthenticated) return;
 
     const myReqId = ++reqIdRef.current;
     let cancelled = false;
@@ -97,7 +58,7 @@ export default function useAnalytics(initialRange = "6m") {
     return () => {
       cancelled = true;
     };
-  }, [isPremium, timeRange, toast]);
+  }, [timeRange, toast, isAuthenticated]);
 
   // ---- Export helpers ------------------------------------------------------
 
@@ -116,18 +77,6 @@ export default function useAnalytics(initialRange = "6m") {
     }
   };
 
-  // ---- Derived state -------------------------------------------------------
-
-  const premiumGate = useMemo(
-    () => ({
-      isPremium,
-      showPremiumModal,
-      openPremiumModal: () => setShowPremiumModal(true),
-      closePremiumModal: () => setShowPremiumModal(false),
-    }),
-    [isPremium, showPremiumModal]
-  );
-
   return {
     // data
     analytics,
@@ -138,9 +87,6 @@ export default function useAnalytics(initialRange = "6m") {
     setTimeRange,
     selectedMetric,
     setSelectedMetric,
-
-    // premium
-    ...premiumGate,
 
     // actions
     exportReport,
