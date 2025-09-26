@@ -1,7 +1,15 @@
+/* ============================================================================ */
+/* APPLYTIDE - GLOBAL STYLES (CLEANED & ORGANIZED)                             */
+/* ============================================================================ */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================================ */
+/* 1. BASE STYLES & RESET                                                      */
+/* ============================================================================ */
 
 * {
   box-sizing: border-box;
@@ -21,7 +29,6 @@ body {
   background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
   color: #e2e8f0;
   min-height: 100vh;
-  /* Mobile viewport handling */
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -40,11 +47,14 @@ a {
   text-decoration: none;
 }
 
-/* Mobile-first responsive breakpoints and utilities */
+/* ============================================================================ */
+/* 2. RESPONSIVE BREAKPOINTS                                                   */
+/* ============================================================================ */
+
+/* Mobile-first responsive design */
 @media screen and (max-width: 768px) {
   html {
     font-size: 14px;
-    /* Slightly smaller base font for mobile */
   }
 
   body {
@@ -52,203 +62,25 @@ a {
     line-height: 1.5;
   }
 
-  /* Mobile container spacing */
-  .mobile-container {
+  /* Essential mobile utilities - ACTUALLY USED */
+  .mobile-p-4 {
     padding: 1rem !important;
-    max-width: 100vw !important;
   }
 
-  /* Mobile card styling */
-  .mobile-card {
-    padding: 1rem !important;
-    border-radius: 12px !important;
-    margin-bottom: 0.75rem !important;
-  }
-
-  /* Mobile button sizing */
-  .mobile-btn {
-    min-height: 44px !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.875rem !important;
-    border-radius: 8px !important;
-    font-weight: 500 !important;
-  }
-
-  /* Mobile text hierarchy */
-  .mobile-title {
-    font-size: 1.25rem !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
-    margin-bottom: 0.5rem !important;
-  }
-
-  .mobile-subtitle {
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-    line-height: 1.4 !important;
-    margin-bottom: 0.75rem !important;
-  }
-
-  .mobile-body {
-    font-size: 0.875rem !important;
-    line-height: 1.5 !important;
-    margin-bottom: 0.5rem !important;
-  }
-
-  .mobile-caption {
-    font-size: 0.75rem !important;
-    line-height: 1.4 !important;
-    opacity: 0.8;
-  }
-
-  /* Mobile spacing system */
-  .mobile-space-xs {
-    margin-bottom: 0.25rem !important;
-  }
-
-  .mobile-space-sm {
-    margin-bottom: 0.5rem !important;
-  }
-
-  .mobile-space-md {
-    margin-bottom: 0.75rem !important;
-  }
-
-  .mobile-space-lg {
-    margin-bottom: 1rem !important;
-  }
-
-  .mobile-space-xl {
-    margin-bottom: 1.5rem !important;
-  }
-
-  /* Mobile grid system */
-  .mobile-grid-2 {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 0.75rem !important;
-  }
-
-  .mobile-flex-center {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .mobile-flex-between {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
+  /* Mobile-friendly form inputs */
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 0.75rem;
+    min-height: 44px;
   }
 }
 
-/* Desktop responsive styles */
 @media screen and (min-width: 769px) {
   body {
     font-size: 16px;
     line-height: 1.5;
-  }
-
-  /* Better mobile padding and margins */
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  /* Mobile-friendly cards */
-  .glass-card {
-    margin: 0.5rem;
-    padding: 1rem !important;
-    border-radius: 0.75rem;
-  }
-
-  /* Better mobile text sizes */
-  h1 {
-    font-size: 1.5rem !important;
-  }
-
-  h2 {
-    font-size: 1.25rem !important;
-  }
-
-  h3 {
-    font-size: 1.125rem !important;
-  }
-
-  /* Mobile navigation improvements */
-  .mobile-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: rgba(15, 15, 35, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  /* Touch-friendly default buttons (opt-in) */
-  .btn {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  /* Exception for delete application button and drag handle */
-  .delete-app-btn,
-  .drag-handle-btn {
-    min-height: unset !important;
-    min-width: unset !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  /* Specific fixes for drag icons visibility */
-  .drag-handle-btn svg {
-    transform: scale(1.5) !important;
-  }
-
-  /* Mobile dropdown menus */
-  .dropdown-menu {
-    position: fixed !important;
-    left: 1rem !important;
-    right: 1rem !important;
-    top: auto !important;
-    bottom: auto !important;
-    width: auto !important;
-    max-height: 70vh;
-    overflow-y: auto;
-    z-index: 60;
-  }
-
-  /* Mobile form improvements */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-    /* Prevents zoom on iOS */
-    padding: 0.75rem;
-    min-height: 44px;
-  }
-
-  /* Mobile table responsiveness */
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Mobile card layouts */
-  .card-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem !important;
-  }
-
-  /* Hide desktop-only elements */
-  .desktop-only {
-    display: none !important;
   }
 }
 
@@ -257,13 +89,6 @@ a {
     font-size: 13px;
   }
 
-  .glass-card {
-    margin: 0.25rem;
-    padding: 0.75rem !important;
-    border-radius: 0.5rem;
-  }
-
-  /* Extra small screen adjustments */
   h1 {
     font-size: 1.25rem !important;
   }
@@ -275,15 +100,12 @@ a {
   h3 {
     font-size: 1rem !important;
   }
-
-  button,
-  .btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-  }
 }
 
-/* Modern scrollbar */
+/* ============================================================================ */
+/* 3. SCROLLBAR STYLING                                                        */
+/* ============================================================================ */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -312,95 +134,10 @@ a {
   }
 }
 
-/* Touch-friendly tap targets */
-.tap-target {
-  min-height: 44px;
-  min-width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+/* ============================================================================ */
+/* 4. ANIMATIONS & KEYFRAMES                                                   */
+/* ============================================================================ */
 
-/* Mobile-friendly spacing utilities */
-@media screen and (max-width: 768px) {
-  .mobile-p-2 {
-    padding: 0.5rem !important;
-  }
-
-  .mobile-p-3 {
-    padding: 0.75rem !important;
-  }
-
-  .mobile-p-4 {
-    padding: 1rem !important;
-  }
-
-  .mobile-m-2 {
-    margin: 0.5rem !important;
-  }
-
-  .mobile-m-3 {
-    margin: 0.75rem !important;
-  }
-
-  .mobile-m-4 {
-    margin: 1rem !important;
-  }
-
-  .mobile-text-sm {
-    font-size: 0.875rem !important;
-  }
-
-  .mobile-text-base {
-    font-size: 1rem !important;
-  }
-
-  .mobile-text-lg {
-    font-size: 1.125rem !important;
-  }
-
-  .mobile-hidden {
-    display: none !important;
-  }
-
-  .mobile-block {
-    display: block !important;
-  }
-
-  .mobile-flex {
-    display: flex !important;
-  }
-
-  .mobile-grid {
-    display: grid !important;
-  }
-
-  .mobile-full-width {
-    width: 100% !important;
-  }
-
-  .mobile-max-w-none {
-    max-width: none !important;
-  }
-}
-
-/* Prevent mobile zoom on form inputs */
-@media screen and (max-width: 768px) {
-
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="number"],
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
-}
-
-/* Modern animations */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -423,27 +160,15 @@ a {
   }
 }
 
-@keyframes glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+@keyframes slideUp {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
   }
 
-  50% {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
-  }
-}
-
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -455,65 +180,62 @@ a {
   animation: fadeIn 0.3s ease-out;
 }
 
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
+/* ============================================================================ */
+/* 5. GLASS MORPHISM COMPONENTS (HEAVILY USED)                                */
+/* ============================================================================ */
+
+/* CSS Variables for glass theme */
+:root {
+  --surface-1: rgba(255, 255, 255, .04);
+  --surface-2: rgba(255, 255, 255, .06);
+  --border-1: rgba(255, 255, 255, .10);
+  --border-2: rgba(255, 255, 255, .16);
+  --rose: 244, 63, 94;
+  --amber: 245, 158, 11;
+  --cyan: 34, 211, 238;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s infinite;
+/* Base glass card - HEAVILY USED */
+.glass-card {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+  border: 1px solid var(--border-1);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(2, 8, 23, .25);
 }
 
-/* Modern gradients - Unified Color Scheme */
-.gradient-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-}
-
-.gradient-secondary {
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-}
-
-.gradient-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.gradient-accent {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.gradient-danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
+/* Glass navigation - USED */
 .glass-nav {
   background: rgba(15, 15, 35, 0.85);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Button effects */
-.btn-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Glass card variants - HEAVILY USED */
+.glass-rose {
+  border-color: rgba(var(--rose), .25);
+  box-shadow: 0 6px 24px rgba(var(--rose), .10);
 }
 
-.btn-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+.glass-amber {
+  border-color: rgba(var(--amber), .25);
+  box-shadow: 0 6px 24px rgba(var(--amber), .10);
 }
 
-.btn-glow:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+.glass-cyan {
+  border-color: rgba(var(--cyan), .25);
+  box-shadow: 0 6px 24px rgba(var(--cyan), .10);
 }
 
-/* Card shadows */
-.card-shadow {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+.glass-violet {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.10);
 }
 
-.card-shadow-lg {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
+/* ============================================================================ */
+/* 6. STATUS INDICATORS (USED IN PIPELINE)                                    */
+/* ============================================================================ */
 
-/* Status indicators - Unified Dark Theme */
 .status-saved {
   background: rgba(107, 114, 128, 0.2);
   color: #9ca3af;
@@ -562,86 +284,82 @@ a {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Text truncation helpers */
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+/* ============================================================================ */
+/* 7. MODAL SYSTEM (USED IN VARIOUS COMPONENTS)                               */
+/* ============================================================================ */
 
-/* Utility classes */
-.text-gradient {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.animation-delay-200 {
-  animation-delay: 0.2s;
-}
-
-.animation-delay-300 {
-  animation-delay: 0.3s;
-}
-
-.animation-delay-500 {
-  animation-delay: 0.5s;
-}
-
-/* ===== Applytide Glass Utilities ===== */
 :root {
-  --ink-100: #f3f6ff;
-  --surface-1: rgba(255, 255, 255, .04);
-  --surface-2: rgba(255, 255, 255, .06);
-  --border-1: rgba(255, 255, 255, .10);
-  --border-2: rgba(255, 255, 255, .16);
-  /* Non-blue accents */
-  --rose: 244, 63, 94;
-  /* #F43F5E */
-  --amber: 245, 158, 11;
-  /* #F59E0B */
-  --cyan: 34, 211, 238;
-  /* #22D3EE */
-  --orchidA: 255, 31, 142;
-  --orchidB: 255, 138, 0;
+  --modal-glass-bg: rgba(15, 23, 42, 0.72);
+  --modal-glass-border: rgba(255, 255, 255, 0.10);
+  --modal-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --modal-title: #f8fafc;
+  --modal-label: #e2e8f0;
+  --modal-text: #f1f5f9;
+  --modal-muted: #94a3b8;
 }
 
-/* cards */
-.glass-card {
-  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
-  border: 1px solid var(--border-1);
-  border-radius: 14px;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 4px 24px rgba(2, 8, 23, .25);
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(1200px 1200px at 30% -10%, rgba(244, 63, 94, .20), transparent 60%),
+    radial-gradient(900px 900px at 120% 120%, rgba(251, 191, 36, .15), transparent 55%),
+    rgba(2, 6, 23, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
-.glass-rose {
-  border-color: rgba(var(--rose), .25);
-  box-shadow: 0 6px 24px rgba(var(--rose), .10);
+.modal-glass {
+  background: var(--modal-glass-bg);
+  border: 1px solid var(--modal-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--modal-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(120%);
 }
 
-.glass-amber {
-  border-color: rgba(var(--amber), .25);
-  box-shadow: 0 6px 24px rgba(var(--amber), .10);
+.modal-glass .modal-title {
+  color: var(--modal-title);
+  font-weight: 800;
+  letter-spacing: .2px;
 }
 
-.glass-cyan {
-  border-color: rgba(var(--cyan), .25);
-  box-shadow: 0 6px 24px rgba(var(--cyan), .10);
+.modal-glass .modal-subtle {
+  color: var(--modal-muted);
 }
 
-.glass-violet {
-  border-color: rgba(139, 92, 246, 0.25);
-  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.10);
+.modal-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
 }
 
-/* inputs */
+.modal-glass input,
+.modal-glass textarea,
+.modal-glass select {
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, .10);
+  color: var(--modal-text);
+}
+
+.modal-glass input::placeholder,
+.modal-glass textarea::placeholder {
+  color: var(--modal-muted);
+}
+
+.modal-glass input:focus,
+.modal-glass textarea:focus,
+.modal-glass select:focus {
+  outline: none;
+  border-color: rgba(168, 85, 247, .45);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, .25);
+}
+
+/* ============================================================================ */
+/* 8. FORM CONTROLS & INPUTS                                                  */
+/* ============================================================================ */
+
 .input-glass {
   background: rgba(255, 255, 255, .07);
-  color: var(--ink-100);
+  color: #f3f6ff;
   border: 1px solid var(--border-2);
   border-radius: 10px;
   padding: .60rem .8rem;
@@ -672,267 +390,30 @@ a {
   transform: translateY(1px);
 }
 
-/* buttons */
-.btn-orchid {
-  background: linear-gradient(90deg, rgba(var(--orchidA), 1) 0%, rgba(var(--orchidB), 1) 100%);
-  color: #fff;
-  border: none;
-}
+/* Native form control styling */
+@layer base {
+  :root,
+  body,
+  select,
+  option {
+    color-scheme: dark;
+  }
 
-.btn-orchid:hover {
-  filter: brightness(1.05);
-}
-
-.btn-orchid:active {
-  filter: brightness(.98);
-}
-
-/* chips */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .25rem .5rem;
-  border-radius: 9999px;
-  font-size: .75rem;
-  border: 1px solid transparent;
-  line-height: 1;
-}
-
-.chip-amber {
-  color: rgba(var(--amber), .9);
-  background: rgba(var(--amber), .15);
-  border-color: rgba(var(--amber), .25);
-}
-
-.chip-rose {
-  color: rgba(var(--rose), .9);
-  background: rgba(var(--rose), .15);
-  border-color: rgba(var(--rose), .25);
-}
-
-.chip-cyan {
-  color: rgba(var(--cyan), .95);
-  background: rgba(var(--cyan), .15);
-  border-color: rgba(var(--cyan), .25);
-}
-
-
-/* Make glass style apply to nested native fields */
-.input-glass,
-.input-glass input,
-.input-glass select,
-.input-glass textarea {
-  background: rgba(255, 255, 255, .07) !important;
-  color: #E9EDF7 !important;
-  /* readable on dark */
-  border: 1px solid rgba(255, 255, 255, .16) !important;
-  border-radius: 10px;
-}
-
-.input-glass input::placeholder,
-.input-glass textarea::placeholder {
-  color: rgba(226, 232, 240, .65) !important;
-  /* visible placeholders */
-}
-
-.input-rose:focus-within {
-  box-shadow: 0 0 0 3px rgba(244, 63, 94, .35);
-  border-color: rgba(244, 63, 94, .45) !important;
-}
-
-.input-amber:focus-within {
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, .35);
-  border-color: rgba(245, 158, 11, .45) !important;
-}
-
-.input-cyan:focus-within {
-  box-shadow: 0 0 0 3px rgba(34, 211, 238, .35);
-  border-color: rgba(34, 211, 238, .45) !important;
-}
-
-/* Force dropdown/light list legibility */
-.dropdown-light {
-  background: #fff;
-  color: #0f172a;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-}
-
-.dropdown-light .item {
-  padding: .55rem .7rem;
-  border-radius: 8px;
-  color: #0f172a;
-}
-
-.dropdown-light .item:hover {
-  background: #f8fafc;
-}
-
-/* Native <option> contrast, especially on macOS dark mode */
-.input-glass select option {
-  color: #0f172a;
-  background: #ffffff;
-}
-
-
-/* ==== GLASS MODAL THEME (high-contrast) ==== */
-:root {
-  --modal-glass-bg: rgba(15, 23, 42, 0.72);
-  /* slate-900 @ 72% */
-  --modal-glass-border: rgba(255, 255, 255, 0.10);
-  --modal-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
-  --modal-title: #f8fafc;
-  /* slate-50 */
-  --modal-label: #e2e8f0;
-  /* slate-200 */
-  --modal-text: #f1f5f9;
-  /* slate-100 */
-  --modal-muted: #94a3b8;
-  /* slate-400 */
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(1200px 1200px at 30% -10%, rgba(244, 63, 94, .20), transparent 60%),
-    radial-gradient(900px 900px at 120% 120%, rgba(251, 191, 36, .15), transparent 55%),
-    rgba(2, 6, 23, 0.55);
-  /* slate-950/55 */
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-
-.modal-glass {
-  background: var(--modal-glass-bg);
-  border: 1px solid var(--modal-glass-border);
-  border-radius: 16px;
-  box-shadow: var(--modal-shadow);
-  -webkit-backdrop-filter: blur(18px) saturate(120%);
-  backdrop-filter: blur(18px) saturate(120%);
-}
-
-/* Header typography */
-.modal-glass .modal-title {
-  color: var(--modal-title);
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-
-.modal-glass .modal-subtle {
-  color: var(--modal-muted);
-}
-
-/* Divide sections with a subtle glow line */
-.modal-divider {
-  height: 1px;
-  background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
-}
-
-/* Form controls inside modal = readable */
-.modal-glass input,
-.modal-glass textarea,
-.modal-glass select {
-  background: rgba(2, 6, 23, 0.55);
-  /* slate-950/55 */
-  border: 1px solid rgba(255, 255, 255, .10);
-  color: var(--modal-text);
-}
-
-.modal-glass input::placeholder,
-.modal-glass textarea::placeholder {
-  color: var(--modal-muted);
-}
-
-/* Focus ring with soft glow */
-.modal-glass input:focus,
-.modal-glass textarea:focus,
-.modal-glass select:focus {
-  outline: none;
-  border-color: rgba(168, 85, 247, .45);
-  /* purple-500 */
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, .25);
-}
-
-/* Native select dropdown readability (browser-controlled) */
-.modal-glass select,
-.modal-glass option {
-  color: #0f172a;
-  /* slate-900 */
-  background: #f8fafc;
-  /* white-ish */
-}
-
-@media (prefers-color-scheme: dark) {
-
-  .modal-glass select,
-  .modal-glass option {
+  select option {
+    background-color: #0f172a;
     color: #e2e8f0;
-    background: #0b1220;
-    /* very dark */
+  }
+
+  select option:checked,
+  select option:hover {
+    background-color: #1f2937;
+    color: #e5e7eb;
   }
 }
 
-/* Make “empty state” callouts look intentional in glass */
-.modal-callout {
-  background: rgba(255, 255, 255, .06);
-  border: 1px dashed rgba(255, 255, 255, .16);
-  color: var(--modal-text);
-  border-radius: 10px;
-  padding: .85rem 1rem;
-}
-
-/* Close button hover */
-.modal-close {
-  transition: transform .15s ease, background .15s ease;
-}
-
-.modal-close:hover {
-  transform: scale(1.06);
-  background: rgba(255, 255, 255, .08);
-}
-
-/* Footer buttons: primary gradient + ghost */
-.btn-primary-gradient {
-  background: linear-gradient(90deg, #7c3aed, #db2777);
-  color: #fff;
-  border: 0;
-}
-
-.btn-primary-gradient:hover {
-  filter: brightness(1.08);
-}
-
-.btn-ghost {
-  border: 1px solid rgba(255, 255, 255, .16);
-  background: transparent;
-  color: var(--modal-text);
-}
-
-.btn-ghost:hover {
-  background: rgba(255, 255, 255, .06);
-}
-
-/* Modal surface */
-.modal-surface {
-  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.7));
-  border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --tw-ring-color: rgba(255, 255, 255, 0.1);
-  --tw-ring-offset-width: 0px;
-  --tw-ring-offset-color: #fff;
-  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-}
-
-/* Field system */
-.section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 1.25rem;
-  margin-top: 1.25rem;
-}
+/* ============================================================================ */
+/* 9. FIELD SYSTEM (USED IN MODALS)                                           */
+/* ============================================================================ */
 
 .field {
   display: flex;
@@ -941,7 +422,6 @@ a {
 }
 
 .field-label {
-  /* smaller, muted, not shouty */
   font-size: 11px;
   line-height: 1rem;
   font-weight: 500;
@@ -967,7 +447,12 @@ a {
   color: rgb(100 116 139);
 }
 
-/* Subtle blocks inside modals */
+.section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
+}
+
 .card-subtle {
   border-radius: 0.75rem;
   background-color: rgba(15, 23, 42, 0.6);
@@ -980,86 +465,26 @@ a {
   padding: 1rem;
 }
 
-/* Dividers that align with grid columns */
 .soft-divider {
   height: 1px;
   width: 100%;
   background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
+/* ============================================================================ */
+/* 10. UTILITY CLASSES                                                        */
+/* ============================================================================ */
 
-.modal-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Preserve the original paragraph structure in job details */
+/* Job description formatting */
 .job-desc {
   white-space: pre-wrap;
-  /* keep line breaks from the source */
   word-break: break-word;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   font-size: 14px;
   line-height: 1.6;
 }
 
-/* Dark-select readability */
-:root .dark select,
-:root .dark select option {
-  color: #e5e7eb !important;
-  /* Tailwind slate-200 */
-  background-color: #0b1220 !important;
-  /* your dark bg */
-}
-
-select,
-select option {
-  color: #111827;
-  /* gray-900 */
-  background: #ffffff;
-  /* white */
-}
-
-.dark select {
-  color: #f3f4f6;
-  /* gray-100 */
-  background: #1f2937;
-  /* gray-800 */
-}
-
-.dark select option {
-  color: #111827;
-  /* force readable inside dropdown list */
-  background: #ffffff;
-}
-
-
-@layer base {
-
-  /* Make native form controls prefer dark rendering */
-  :root,
-  body,
-  select,
-  option {
-    color-scheme: dark;
-  }
-
-  /* When the browser allows styling of options, ensure contrast */
-  select option {
-    background-color: #0f172a;
-    /* slate-900 */
-    color: #e2e8f0;
-    /* slate-100 */
-  }
-
-  select option:checked,
-  select option:hover {
-    background-color: #1f2937;
-    /* slate-800 */
-    color: #e5e7eb;
-    /* slate-200 */
-  }
-}
-
+/* Calendar tooltips */
 .calendar-container {
   position: relative;
 }
@@ -1075,18 +500,16 @@ select option {
   max-width: 300px;
 }
 
-
+/* Reminder highlights */
 .glow-reminder {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, .35), 0 8px 20px rgba(99, 102, 241, .25);
 }
 
-/* before: overflow-hidden or overflow-y-auto can block react-dnd previews */
+/* Pipeline board drag & drop */
 .pipeline-board {
   overflow: visible;
-  /* ✅ lets the drag preview float above */
 }
 
-/* drawer mask/backdrop should NOT eat pointer events when closed */
 .drawer-mask {
   pointer-events: none;
 }
@@ -1097,76 +520,42 @@ select option {
 
 .peeker {
   pointer-events: none;
-  /* container ignores */
 }
 
-.peeker>button {
+.peeker > button {
   pointer-events: auto;
-  /* only the button is clickable */
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(12px);
-    opacity: 0;
-  }
+/* ============================================================================ */
+/* 11. RARELY USED BUT KEPT (Consider removing if truly unused)               */
+/* ============================================================================ */
 
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+/* Modal surface variant */
+.modal-surface {
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.7));
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --tw-ring-color: rgba(255, 255, 255, 0.1);
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 
-.neon-pink {        /* Interviews */
-  background: rgba(255, 64, 160, .18);
-  color: #ffd6f1;
-  border: 1px solid rgba(255, 64, 160, .45);
-  box-shadow:
-    0 0 14px inset rgba(255, 64, 160, .22),
-    0 8px 24px rgba(255, 64, 160, .18);
+.modal-scroll {
+  -webkit-overflow-scrolling: touch;
 }
 
-.neon-violet {      /* Follow-ups */
-  background: rgba(139, 92, 246, .18);
-  color: #e4d9ff;
-  border: 1px solid rgba(139, 92, 246, .45);
-  box-shadow:
-    0 0 14px inset rgba(139, 92, 246, .22),
-    0 8px 24px rgba(139, 92, 246, .18);
+/* Touch-friendly tap targets */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.neon-rose {        /* Deadlines */
-  background: rgba(244, 63, 94, .18);
-  color: #ffd5dc;
-  border: 1px solid rgba(244, 63, 94, .45);
-  box-shadow:
-    0 0 14px inset rgba(244, 63, 94, .22),
-    0 8px 24px rgba(244, 63, 94, .18);
-}
-
-.neon-amber {       /* Calls / phone */
-  background: rgba(245, 158, 11, .18);
-  color: #ffe7b3;
-  border: 1px solid rgba(245, 158, 11, .45);
-  box-shadow:
-    0 0 14px inset rgba(245, 158, 11, .22),
-    0 8px 24px rgba(245, 158, 11, .18);
-}
-
-.neon-slate {       /* Default */
-  background: rgba(148, 163, 184, .16);
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, .35);
-  box-shadow:
-    0 0 14px inset rgba(148, 163, 184, .18),
-    0 8px 24px rgba(148, 163, 184, .12);
-}
-
-/* subtle hover pop */
-.neon-pink:hover,
-.neon-violet:hover,
-.neon-rose:hover,
-.neon-amber:hover,
-.neon-slate:hover {
-  filter: brightness(1.06);
-}
+/* ============================================================================ */
+/* END OF CLEANED GLOBALS.CSS                                                  */
+/* ============================================================================ */
