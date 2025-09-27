@@ -10,9 +10,9 @@ from typing import List, Optional
 from pydantic import BaseModel, ValidationError, field_validator
 import json
 
-from app.db.session import get_db
-from app.api.deps_auth import get_current_user
-from app.db.models import User, UserProfile
+from ...db.session import get_db
+from ...api.deps_auth import get_current_user
+from ...db.models import User, UserProfile
 
 router = APIRouter(prefix="/api/profile", tags=["User Profile"])
 

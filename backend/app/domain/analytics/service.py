@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 from uuid import UUID
 
 from .ports import IAnalyticsReadRepo
-from .dto import ApplicationLiteDTO, StageLiteDTO
+from .dto import StageLiteDTO
 from .metrics import (
     calculate_overview_metrics, calculate_application_metrics, calculate_interview_metrics,
     calculate_company_metrics, calculate_timeline_metrics, calculate_activity_metrics,

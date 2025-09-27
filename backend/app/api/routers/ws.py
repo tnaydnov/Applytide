@@ -5,9 +5,9 @@ from typing import Optional
 from http.cookies import SimpleCookie
 import uuid
 
-from app.db.session import get_db
-from app.infra.security.tokens import decode_access
-from app.db import models
+from ...db.session import get_db
+from ...infra.security.tokens import decode_access
+from ...db import models
 
 router = APIRouter(prefix="/api/ws", tags=["ws"])
 

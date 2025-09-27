@@ -1,10 +1,10 @@
 import time
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
-from app.db.session import SessionLocal
-from app.db import models
-from app.config import settings
-from app.infra.notifications.email_service import email_service
+from ...db.session import SessionLocal
+from ...db import models
+from ...config import settings
+from ...infra.notifications.email_service import email_service
 
 FOLLOW_UP_DAYS = 3
 LOOP_SECONDS = 60

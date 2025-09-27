@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional, List, Tuple
 from uuid import UUID
 from .repository import IApplicationRepo, IStageRepo, INoteRepo, IAttachmentRepo
-from .dto import ApplicationDTO, StageDTO, NoteDTO, AttachmentDTO, CardRowDTO, JobTinyDTO
+from .dto import ApplicationDTO, StageDTO, NoteDTO, AttachmentDTO, CardRowDTO
 from .errors import ApplicationNotFound, StageNotFound, AttachmentNotFound, BadRequest
 
 class AttachmentPort:

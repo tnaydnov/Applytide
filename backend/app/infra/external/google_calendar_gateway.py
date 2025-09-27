@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid as _uuid
 import httpx
 
-from ...auth.oauth.google import get_valid_google_token
+from .google_oauth import get_valid_google_token
 from ...domain.reminders.ports import ICalendarGateway
 
 class GoogleCalendarGateway(ICalendarGateway):

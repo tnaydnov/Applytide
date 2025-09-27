@@ -4,8 +4,8 @@ from uuid import UUID
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
-from app.db import models
-from app.domain.auth.ports import IOAuthTokenRepo
+from ...db import models
+from ...domain.auth.ports import IOAuthTokenRepo
 
 class OAuthTokenSQLARepo(IOAuthTokenRepo):
     def __init__(self, db: Session):

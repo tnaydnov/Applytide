@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
-from app.db.session import get_db
-from app.db import models
-from app.api.deps_auth import get_current_user
+from ...db.session import get_db
+from ...db import models
+from ...api.deps_auth import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

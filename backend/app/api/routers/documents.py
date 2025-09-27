@@ -6,11 +6,11 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from ...db.session import get_db
-from ...auth.deps import get_current_user
+from ..deps_auth import get_current_user
 from ...db.models import User
 from ..schemas.documents import (
     DocumentType, DocumentStatus, DocumentResponse, DocumentListResponse,
-    CoverLetterRequest, DocumentOptimizationRequest, DocumentAnalysis,
+    DocumentOptimizationRequest, DocumentAnalysis,
     TemplateListResponse, DocumentTemplate
 )
 from ..deps import get_document_service

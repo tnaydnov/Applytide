@@ -6,11 +6,11 @@ from sqlalchemy import select
 from typing import List
 from datetime import datetime, timezone
 
-from app.db.session import get_db
-from app.db import models
-from app.api.deps_auth import get_current_user
-from app.db.models import User
-from app.api.schemas.preferences import PreferenceCreate, PreferenceUpdate, PreferenceOut
+from ...db.session import get_db
+from ...db import models
+from ...api.deps_auth import get_current_user
+from ...db.models import User
+from ...api.schemas.preferences import PreferenceCreate, PreferenceUpdate, PreferenceOut
 
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
 

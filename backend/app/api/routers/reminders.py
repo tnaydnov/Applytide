@@ -6,8 +6,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 
-from ...auth.deps import get_current_user
-from ...auth.schemas import UserInfo as User
+from ..deps_auth import get_current_user
+from ...api.schemas.auth import UserInfo as User
 from ...domain.reminders.service import ReminderService
 from ..deps import get_reminder_service
 

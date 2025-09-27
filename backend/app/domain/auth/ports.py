@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import Protocol, Optional, Dict, Any, Tuple
+from typing import Protocol, Optional, Dict, Any
 from uuid import UUID
-from datetime import datetime
 
 class IOAuthTokenRepo(Protocol):
     def upsert_token(self, *, user_id: UUID, provider: str, token_data: Dict[str, Any]) -> None: ...

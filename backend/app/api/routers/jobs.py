@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ...auth.deps import get_current_user
+from ..deps_auth import get_current_user
 from ...db import models
 from ...api.utils.pagination import PaginatedResponse, PaginationParams
 from ...domain.jobs.service import JobService

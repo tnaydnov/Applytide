@@ -10,7 +10,6 @@ import os
 import mimetypes
 import re
 from fastapi import HTTPException
-from datetime import datetime
 
 from ...db import models
 from ...infra.files.document_store import DocumentStore, sanitize_display_name
@@ -18,7 +17,7 @@ from ...infra.extractors.text_extractor import TextExtractor, SAFE_BULLET
 from ...api.schemas.documents import (
     DocumentType, DocumentStatus, DocumentFormat,
     DocumentAnalysis, ATSScore, CoverLetterRequest, DocumentOptimizationRequest,
-    DocumentResponse, DocumentListResponse, DocumentTemplate, TemplateListResponse
+    DocumentResponse, DocumentListResponse
 )
 
 # Optional OpenAI (sync) for resume analysis details

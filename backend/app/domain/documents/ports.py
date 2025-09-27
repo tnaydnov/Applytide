@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Protocol, Optional, Tuple
+from typing import Protocol, Optional
 from pathlib import Path
 
 class CoverLetterProvider(Protocol):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from statistics import median
-from typing import List, Dict, Any, Iterable
+from typing import List, Dict, Any
 from .dto import ApplicationLiteDTO, StageLiteDTO, JobLiteDTO, CompanyLiteDTO
 
 def _date_str(dt): return dt.strftime("%Y-%m-%d")

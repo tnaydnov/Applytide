@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional, Tuple
 from uuid import UUID, uuid4
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 from .ports import IOAuthTokenRepo, IHTTPClient, ISettings

@@ -6,7 +6,7 @@ import pdfplumber
 import fitz  # PyMuPDF
 import io
 import re
-from typing import Optional, Dict, List
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)

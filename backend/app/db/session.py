@@ -2,8 +2,6 @@ from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from .base import Base
 from ..config import settings
 
 # pre_ping=True fixes stale connections after long idle times.

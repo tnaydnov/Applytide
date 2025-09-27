@@ -1,4 +1,3 @@
-# backend/app/domain/jobs/service.py
 from __future__ import annotations
 from typing import Optional, Dict, List, Tuple
 from uuid import UUID

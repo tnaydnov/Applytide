@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
-from app.db.session import get_db
-from app.db import models
+from ...db.session import get_db
+from ...db import models
 
 def cleanup_expired_sessions():
     """Remove expired sessions from the database"""

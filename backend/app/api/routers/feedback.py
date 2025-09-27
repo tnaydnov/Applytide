@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 import os
 import uuid
-from app.config import settings
-from app.infra.notifications.email_service import email_service
+from ...config import settings
+from ...infra.notifications.email_service import email_service
 
 router = APIRouter(prefix="/api", tags=["feedback"])
 

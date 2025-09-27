@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from ...db import models
 from ...api.deps_auth import get_current_user
 from ...api.utils.pagination import PaginationParams, PaginatedResponse
-from ...ws.router import broadcast
+from .ws import broadcast
 
 from ..schemas.applications import (
     ApplicationCreate, ApplicationOut, ApplicationUpdate,
