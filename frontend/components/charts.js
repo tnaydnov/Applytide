@@ -54,17 +54,20 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
     return label.length > longest.length ? label : longest;
   }, "");
 
-  // Adaptive bar width (or explicit override)
-  const bw =
-    barWidth ??
-    (items.length > 36 ? 10 : items.length > 28 ? 14 : items.length > 18 ? 18 : items.length > 12 ? 24 : 32);
+  // Much more generous bar widths - prioritize readability over fitting everything
+  const bw = barWidth ?? 60; // Fixed wider width - let it scroll if needed
 
-  // More conservative rotation logic - only when bars are very narrow AND we have many items
-  const shouldRotate = (bw <= 14 && items.length >= 8) || (bw <= 18 && items.length >= 20);
+  // No rotation - we have enough space now
+  const shouldRotate = false;
   
-  // Dynamic spacing based on content and rotation
+  // More space for multi-line text
   const maxLabelChars = Math.max(...items.map(item => String(item.label ?? "").length));
-  const GUTTER_BOTTOM = shouldRotate ? 85 : Math.max(50, Math.min(90, maxLabelChars * 4 + 35));
+  const estimatedLines = Math.max(...items.map(item => {
+    const label = String(item.label ?? "");
+    // Estimate how many lines this label will need (assuming ~8 chars per line)
+    return Math.ceil(label.length / 8);
+  }));
+  const GUTTER_BOTTOM = Math.max(60, estimatedLines * 16 + 40); // 16px per line + padding
 
   // Height available for columns (minus the bottom gutter)
   const innerHeight = Math.max(2, height - GUTTER_BOTTOM);
@@ -77,25 +80,26 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
         style={{ left: PAD_X, right: PAD_X, paddingBottom: GUTTER_BOTTOM }}
       >
         <div className="h-full overflow-x-auto">
-          <div className={`flex items-end h-full w-max min-w-full ${shouldRotate ? 'gap-1 sm:gap-2' : 'gap-2 sm:gap-3'}`}>
+          <div className="flex items-end h-full gap-4 sm:gap-6 w-max min-w-full">
             {items.map((item, index) => {
               const ratio = clamp01(values[index] / m);
               const barH = Math.max(2, Math.floor(ratio * (innerHeight - 16))); // tiny headroom
               const labelText = String(item.label ?? "");
               
-              // Smarter text truncation based on available space
-              const getMaxChars = () => {
-                if (shouldRotate) return 12; // Rotated text can be longer
-                if (bw >= 32) return Math.floor(bw / 4); // ~8 chars for 32px width
-                if (bw >= 24) return Math.floor(bw / 3.5); // ~7 chars for 24px width  
-                if (bw >= 18) return Math.floor(bw / 3); // ~6 chars for 18px width
-                return Math.floor(bw / 2.5); // ~4-5 chars for narrow bars
+              // Break long labels into words for multi-line display
+              const words = labelText.split(/\s+/);
+              const renderWords = () => {
+                if (words.length === 1) {
+                  // Single word - just center it
+                  return <div className="text-center">{words[0]}</div>;
+                }
+                // Multiple words - stack vertically
+                return words.map((word, i) => (
+                  <div key={i} className="text-center leading-tight">
+                    {word}
+                  </div>
+                ));
               };
-
-              const maxChars = getMaxChars();
-              const displayText = labelText.length > maxChars 
-                ? labelText.slice(0, maxChars - 1) + "…" 
-                : labelText;
 
               return (
                 <div key={index} className="flex flex-col items-center" style={{ width: bw, minWidth: bw }}>
@@ -107,34 +111,19 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
                     }}
                     title={`${item.label ?? ""}: ${values[index]}`}
                   />
-                  <div className="mt-2 flex flex-col items-center" style={{ width: shouldRotate ? bw * 2 : bw, height: shouldRotate ? 45 : 'auto' }}>
-                    <span
-                      className={[
-                        "text-slate-400 select-none",
-                        shouldRotate 
-                          ? "text-[9px] sm:text-[10px] leading-tight -rotate-45 origin-top-left whitespace-nowrap transform-gpu absolute" 
-                          : "text-[10px] sm:text-xs leading-tight text-center",
-                      ].join(" ")}
+                  <div className="mt-2 flex flex-col items-center" style={{ width: bw }}>
+                    <div
+                      className="text-[10px] sm:text-xs text-slate-400 select-none text-center leading-tight"
                       title={labelText}
                       style={{ 
-                        maxWidth: shouldRotate ? "none" : bw,
-                        overflow: shouldRotate ? "visible" : "hidden",
-                        textOverflow: shouldRotate ? "clip" : "ellipsis",
-                        whiteSpace: shouldRotate ? "nowrap" : "normal",
-                        ...(shouldRotate ? { 
-                          left: '50%', 
-                          top: '0px',
-                          transformOrigin: '0 0',
-                          marginLeft: '-3px'
-                        } : {})
+                        width: bw - 4, // Slight padding from edges
+                        wordBreak: 'break-word',
+                        hyphens: 'auto'
                       }}
                     >
-                      {displayText}
-                    </span>
-                    <span 
-                      className="text-[9px] sm:text-[10px] text-slate-500" 
-                      style={{ marginTop: shouldRotate ? '28px' : '2px' }}
-                    >
+                      {renderWords()}
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 mt-1">
                       {values[index]}
                     </span>
                   </div>
