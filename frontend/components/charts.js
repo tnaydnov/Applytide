@@ -86,42 +86,66 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
               const barH = Math.max(2, Math.floor(ratio * (innerHeight - 16))); // tiny headroom
               const labelText = String(item.label ?? "");
               
-              // Break long labels into words for multi-line display
-              const words = labelText.split(/\s+/);
-              const renderWords = () => {
+              // Smart text wrapping - preserve whole words, only break if absolutely necessary
+              const smartWrap = (text, maxWidth) => {
+                const words = text.split(/\s+/);
                 if (words.length === 1) {
-                  // Single word - just center it
-                  return <div className="text-center">{words[0]}</div>;
+                  // Single word - check if it fits, if not break intelligently
+                  if (text.length <= 10) {
+                    return [text];
+                  }
+                  // For very long single words, break at natural points
+                  const breakPoints = text.match(/.{1,10}/g) || [text];
+                  return breakPoints;
                 }
-                // Multiple words - stack vertically
-                return words.map((word, i) => (
-                  <div key={i} className="text-center leading-tight">
-                    {word}
-                  </div>
-                ));
+                // Multiple words - try to fit 2 words per line if possible
+                const lines = [];
+                for (let i = 0; i < words.length; i += 2) {
+                  if (i + 1 < words.length) {
+                    const twoWords = words[i] + ' ' + words[i + 1];
+                    if (twoWords.length <= 12) {
+                      lines.push(twoWords);
+                    } else {
+                      lines.push(words[i]);
+                      lines.push(words[i + 1]);
+                    }
+                  } else {
+                    lines.push(words[i]);
+                  }
+                }
+                return lines;
               };
 
+              const textLines = smartWrap(labelText, bw);
+
               return (
-                <div key={index} className="flex flex-col items-center" style={{ width: bw, minWidth: bw }}>
-                  <div
-                    className="rounded-t w-full"
-                    style={{
-                      height: barH,
-                      backgroundColor: palette[index % palette.length],
-                    }}
-                    title={`${item.label ?? ""}: ${values[index]}`}
-                  />
-                  <div className="mt-2 flex flex-col items-center" style={{ width: bw }}>
+                <div key={index} className="flex flex-col items-center justify-end h-full" style={{ width: bw, minWidth: bw }}>
+                  {/* Bar container - fills available space above baseline */}
+                  <div className="flex flex-col justify-end" style={{ height: innerHeight }}>
+                    <div
+                      className="rounded-t w-full"
+                      style={{
+                        height: barH,
+                        backgroundColor: palette[index % palette.length],
+                      }}
+                      title={`${item.label ?? ""}: ${values[index]}`}
+                    />
+                  </div>
+                  
+                  {/* Fixed baseline area for labels and values */}
+                  <div className="flex flex-col items-center mt-2" style={{ width: bw, minHeight: GUTTER_BOTTOM - 16 }}>
                     <div
                       className="text-[10px] sm:text-xs text-slate-400 select-none text-center leading-tight"
                       title={labelText}
                       style={{ 
                         width: bw - 4, // Slight padding from edges
-                        wordBreak: 'break-word',
-                        hyphens: 'auto'
                       }}
                     >
-                      {renderWords()}
+                      {textLines.map((line, i) => (
+                        <div key={i} className="text-center">
+                          {line}
+                        </div>
+                      ))}
                     </div>
                     <span className="text-[9px] sm:text-[10px] text-slate-500 mt-1">
                       {values[index]}
