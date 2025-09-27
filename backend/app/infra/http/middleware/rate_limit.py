@@ -4,7 +4,7 @@ from typing import Callable
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from fastapi import status
-from app.infra.cache.redis_client import r
+from ...cache.redis_client import r
 
 class GlobalRateLimitMiddleware:
     """Global rate limiting middleware for all requests"""

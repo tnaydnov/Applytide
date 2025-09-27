@@ -1,7 +1,7 @@
 """Rate limiting service using Redis"""
 import time
 from typing import Tuple
-from app.infra.cache.redis_client import r
+from ..cache.redis_client import r
 
 class RateLimiter:
     def __init__(self, key_prefix: str, max_attempts: int, window_seconds: int):

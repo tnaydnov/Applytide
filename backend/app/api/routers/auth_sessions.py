@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.db.session import get_db
-from app.db import models
-from app.api.deps_auth import get_current_user
-from app.infra.security.tokens import decode_refresh
-from app.config import settings
+from ...db.session import get_db
+from ...db import models
+from ..deps_auth import get_current_user
+from ...infra.security.tokens import decode_refresh
+from ...config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

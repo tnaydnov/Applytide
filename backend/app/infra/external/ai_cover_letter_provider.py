@@ -19,7 +19,7 @@ from openai import AsyncOpenAI
 
 # If your project exposes settings, try to import them; else fall back to env
 try:
-    from app.config import settings  # type: ignore
+    from ...config import settings  # type: ignore
     OPENAI_API_KEY = settings.OPENAI_API_KEY
     OPENAI_BASE_URL = getattr(settings, "OPENAI_BASE_URL", None)
     OPENAI_ORG = getattr(settings, "OPENAI_ORGANIZATION", None)

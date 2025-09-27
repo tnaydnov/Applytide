@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from ...db.session import get_db
 from ...db import models
 from ...api.deps_auth import get_current_user
-from ...db.models import User
 from ...api.schemas.preferences import PreferenceCreate, PreferenceUpdate, PreferenceOut
 
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
