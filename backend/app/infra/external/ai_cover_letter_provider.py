@@ -36,7 +36,7 @@ except Exception:
     HTTPS_PROXY = os.getenv("HTTPS_PROXY")
     DEFAULT_MODEL = os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
 
-from ..db import models  # noqa: E402
+from ...db import models  # noqa: E402
 
 
 def _safe_str(x: object, limit: int | None = None) -> str:

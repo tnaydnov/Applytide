@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Dict, Any
 import requests
-from app.domain.auth.ports import IHTTPClient
+from ...domain.auth.ports import IHTTPClient
 
 class RequestsHTTPClient(IHTTPClient):
     def get(self, url: str, headers: Dict[str, str] | None = None, params: Dict[str, str] | None = None, timeout: int = 10):
