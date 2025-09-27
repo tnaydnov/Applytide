@@ -670,13 +670,17 @@ def calculate_salary_metrics(applications: List[models.Application], db: Session
     for app in applications:
         job = db.query(models.Job).filter(models.Job.id == app.job_id).first()
         if job:
-            # Extract salary information
-            if job.salary_min or job.salary_max:
+            # Extract salary information (currently not stored in DB, so we skip this)
+            # TODO: Add salary fields to Job model when implementing salary tracking
+            salary_min = getattr(job, 'salary_min', None)
+            salary_max = getattr(job, 'salary_max', None)
+            
+            if salary_min or salary_max:
                 salary_info = {
                     "title": job.title,
-                    "min_salary": job.salary_min or 0,
-                    "max_salary": job.salary_max or 0,
-                    "avg_salary": ((job.salary_min or 0) + (job.salary_max or 0)) / 2 if job.salary_min or job.salary_max else 0,
+                    "min_salary": salary_min or 0,
+                    "max_salary": salary_max or 0,
+                    "avg_salary": ((salary_min or 0) + (salary_max or 0)) / 2 if salary_min or salary_max else 0,
                     "application_status": app.status
                 }
                 salary_data.append(salary_info)
