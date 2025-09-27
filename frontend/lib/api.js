@@ -513,7 +513,6 @@ export const api = {
   getUserCareerGoals: () => apiFetch("/profile/career-goals").then((r) => r.json()),
   updateCareerGoals: (goals) =>
     apiFetch("/profile/career-goals", { method: "PUT", body: JSON.stringify(goals) }).then((r) => r.json()),
-  getProfileCompleteness: () => apiFetch("/profile/completeness").then((r) => r.json()),
 };
 
 /* -----------------------------------

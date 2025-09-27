@@ -1,4 +1,4 @@
-import AuthGuard from "../components/AuthGuard";
+import AuthGuard from "../components/guards/AuthGuard";
 import { Button, Card } from "../components/ui";
 
 import JobFilters from "../features/jobs/components/JobFilters";

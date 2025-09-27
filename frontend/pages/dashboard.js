@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
-import AuthGuard from "../components/AuthGuard";
+import AuthGuard from "../components/guards/AuthGuard";
 import { usePremiumFeature } from '../components/PremiumFeature';
 import Link from "next/link";
 import Head from "next/head";
