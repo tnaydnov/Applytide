@@ -84,11 +84,13 @@ export default function CompaniesSection({ analytics }) {
           )}
         </div>
 
-        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-hidden">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Success Rate by Company Size
           </h3>
-          <BarChart data={successBySize} height={300} />
+          <div className="w-full min-w-0">
+            <BarChart data={successBySize} height={300} />
+          </div>
           {successBySize.length === 0 && (
             <p className="mt-3 text-sm text-slate-400">
               No success-by-size data yet.

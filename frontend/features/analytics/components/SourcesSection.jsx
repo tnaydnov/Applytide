@@ -41,16 +41,20 @@ export default function SourcesSection({ analytics }) {
                     {!breakdown.length && <p className="text-sm text-slate-400 mt-2">No source data yet.</p>}
                 </div>
 
-                <div className="glass-card glass-cyan lg:col-span-2 overflow-visible">
+                <div className="glass-card glass-cyan lg:col-span-2 overflow-hidden">
                     <h3 className="text-lg font-semibold mb-4 text-slate-200">Conversion by Source</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
+                        <div className="min-w-0">
                             <h4 className="text-sm text-slate-300 mb-2">Interview Rate</h4>
-                            <BarChart data={intRate} height={260} barWidth={24} />
+                            <div className="w-full min-w-0">
+                                <BarChart data={intRate} height={280} />
+                            </div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <h4 className="text-sm text-slate-300 mb-2">Offer Rate</h4>
-                            <BarChart data={offerRate} height={260} barWidth={24} />
+                            <div className="w-full min-w-0">
+                                <BarChart data={offerRate} height={280} />
+                            </div>
                         </div>
                     </div>
                     {!intRate.length && !offerRate.length && (

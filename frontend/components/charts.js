@@ -47,15 +47,23 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
 
   // Constant horizontal padding so every chart "starts" at the same x.
   const PAD_X = 16;            // 16px left/right
-  const GUTTER_BOTTOM = 40;     // space for labels so they never clip
+  
+  // Calculate longest label to determine needed space
+  const longestLabel = items.reduce((longest, item) => {
+    const label = String(item.label ?? "");
+    return label.length > longest.length ? label : longest;
+  }, "");
 
   // Adaptive bar width (or explicit override)
   const bw =
     barWidth ??
     (items.length > 36 ? 12 : items.length > 28 ? 16 : items.length > 18 ? 20 : 28);
 
-  // Rotate labels only when really tight
-  const rotateLabels = bw <= 16 && items.length >= 6;
+  // Better rotation logic: rotate if bars are narrow OR labels are long
+  const rotateLabels = bw <= 20 || longestLabel.length > 8 || items.length >= 12;
+  
+  // Responsive gutter bottom based on rotation and content
+  const GUTTER_BOTTOM = rotateLabels ? 60 : Math.max(50, longestLabel.length > 12 ? 70 : 50);
 
   // Height available for columns (minus the bottom gutter)
   const innerHeight = Math.max(2, height - GUTTER_BOTTOM);
@@ -73,13 +81,19 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
               const ratio = clamp01(values[index] / m);
               const barH = Math.max(2, Math.floor(ratio * (innerHeight - 16))); // tiny headroom
               const labelText = String(item.label ?? "");
-              const short =
-                labelText.length > 10 && rotateLabels
-                  ? labelText.split(/\s+/).map(w => w[0]).join("").slice(0, 8).toUpperCase()
-                  : labelText;
+              
+              // Better text truncation logic
+              const truncateText = (text, maxLength) => {
+                if (text.length <= maxLength) return text;
+                return text.slice(0, maxLength - 1) + "…";
+              };
+
+              const displayText = rotateLabels 
+                ? (labelText.length > 15 ? truncateText(labelText, 15) : labelText)
+                : (labelText.length > Math.floor(bw / 6) ? truncateText(labelText, Math.floor(bw / 6)) : labelText);
 
               return (
-                <div key={index} className="flex flex-col items-center" style={{ width: bw }}>
+                <div key={index} className="flex flex-col items-center" style={{ width: bw, minWidth: bw }}>
                   <div
                     className="rounded-t w-full"
                     style={{
@@ -88,17 +102,24 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
                     }}
                     title={`${item.label ?? ""}: ${values[index]}`}
                   />
-                  <span
-                    className={[
-                      "mt-1 text-[10px] leading-tight text-slate-400 text-center",
-                      rotateLabels ? "origin-top-right -rotate-45 whitespace-nowrap" : "break-words",
-                    ].join(" ")}
-                    title={labelText}
-                    style={{ maxWidth: Math.max(bw * 3, 44) }}
-                  >
-                    {rotateLabels ? short : labelText}
-                  </span>
-                  <span className="text-[11px] text-slate-500">{values[index]}</span>
+                  <div className="mt-1 flex flex-col items-center" style={{ width: rotateLabels ? bw * 1.5 : bw }}>
+                    <span
+                      className={[
+                        "text-slate-400 text-center overflow-hidden",
+                        rotateLabels 
+                          ? "text-[10px] sm:text-xs leading-tight -rotate-45 origin-center whitespace-nowrap" 
+                          : "text-[9px] sm:text-[10px] leading-tight break-words",
+                      ].join(" ")}
+                      title={labelText}
+                      style={{ 
+                        maxWidth: rotateLabels ? bw * 2 : bw,
+                        wordBreak: rotateLabels ? 'keep-all' : 'break-word'
+                      }}
+                    >
+                      {displayText}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{values[index]}</span>
+                  </div>
                 </div>
               );
             })}

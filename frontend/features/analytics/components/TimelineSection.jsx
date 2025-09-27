@@ -84,11 +84,13 @@ export default function TimelineSection({ analytics }) {
 
       {/* Charts: Stage Duration + Timeline Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-hidden">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">
             Stage Duration Breakdown
           </h3>
-          <BarChart data={stageDurations} height={300} />
+          <div className="w-full min-w-0">
+            <BarChart data={stageDurations} height={300} />
+          </div>
           {stageDurations.length === 0 && (
             <p className="mt-3 text-sm text-slate-400">
               No stage duration data yet.

@@ -36,9 +36,11 @@ export default function ExperimentsSection({ analytics }) {
       )}
 
       {!!versions.length && (
-        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-visible">
+        <div className="glass-card glass-cyan p-4 sm:p-6 overflow-hidden">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-slate-200">Resume Version Performance</h3>
-          <BarChart data={versions.map(v => ({ label: v.label, value: v.interviewRate ?? 0 }))} height={300} />
+          <div className="w-full min-w-0">
+            <BarChart data={versions.map(v => ({ label: v.label, value: v.interviewRate ?? 0 }))} height={300} />
+          </div>
           <p className="text-xs text-slate-500 mt-2">Showing interview rate per variant (requires outcomes).</p>
         </div>
       )}

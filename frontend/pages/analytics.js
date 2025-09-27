@@ -32,7 +32,7 @@ function ExportMenu({ onExport }) {
     >
       <Button
         variant="outline"
-        className="text-sm border-slate-600 text-slate-300 hover:bg-slate-700"
+        className="text-xs sm:text-sm border-slate-600 text-slate-300 hover:bg-slate-700 flex-1 sm:flex-none"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
@@ -129,24 +129,26 @@ export default function AnalyticsPage() {
           title="Analytics Dashboard"
           subtitle="Track your job search progress and insights"
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                className="rounded-md border border-slate-600 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/50 text-slate-200"
+                className="rounded-md border border-slate-600 py-2 px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/50 text-slate-200 min-w-0"
               >
                 {TIME_RANGE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <Button
-                variant="outline"
-                onClick={() => setDemoMode((v) => !v)}
-                className={`text-sm border-slate-600 ${demoMode ? "text-yellow-300 hover:bg-yellow-900/20" : "text-slate-300 hover:bg-slate-700"}`}
-              >
-                {demoMode ? "Exit Demo" : "Try Demo Data"}
-              </Button>
-              <ExportMenu onExport={exportReport} />
+              <div className="flex gap-2 sm:gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDemoMode((v) => !v)}
+                  className={`text-xs sm:text-sm border-slate-600 flex-1 sm:flex-none ${demoMode ? "text-yellow-300 hover:bg-yellow-900/20" : "text-slate-300 hover:bg-slate-700"}`}
+                >
+                  {demoMode ? "Exit Demo" : "Demo"}
+                </Button>
+                <ExportMenu onExport={exportReport} />
+              </div>
             </div>
           }
         />

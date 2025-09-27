@@ -18,18 +18,19 @@ export default function BestTimeSection({ analytics }) {
 
         {/* Make the charts 2-up on large screens, 1-up on small; prevent overflow */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0">
-          <div className="min-w-0">
+          <div className="min-w-0 overflow-hidden">
             <p className="text-xs text-slate-400 mb-2">By Day of Week</p>
             {/* Your chart component should use parent width; height is fixed */}
-            <div className="w-full h-[280px]">
+            <div className="w-full h-[280px] min-w-0">
               <BarChart data={byWeekday} height={280} />
             </div>
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 overflow-hidden">
             <p className="text-xs text-slate-400 mb-2">By Hour of Day</p>
-            <div className="w-full h-[280px]">
-              <BarChart data={byHour} height={280} barWidth={12} />
+            <div className="w-full h-[320px] min-w-0">
+              {/* Increased height and removed narrow barWidth for better hour labels */}
+              <BarChart data={byHour} height={320} />
             </div>
           </div>
         </div>
