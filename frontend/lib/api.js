@@ -53,7 +53,6 @@ async function refreshToken() {
 export async function apiFetch(endpoint, options = {}) {
   try {
     const interceptorActive = typeof window !== 'undefined' && window.__APPLYTIDE_FETCH_INTERCEPTOR__;
-    // Set credentials to include for all requests
     const isFormData = options?.body instanceof FormData;
     const headers = {
       ...(options.headers || {}),
@@ -61,8 +60,8 @@ export async function apiFetch(endpoint, options = {}) {
     };
 
     const fetchOptions = {
+      credentials: 'include', // ensure cookies are sent
       ...options,
-      credentials: 'include',
       headers,
     };
 
@@ -519,147 +518,102 @@ export const api = {
    WebSocket helper
 ----------------------------------- */
 
-async function getAccessToken() {
-  try {
-    // Call the extension-token endpoint which returns a token we can use for WebSocket auth
-    const response = await fetch(`${API_BASE}/auth/extension-token`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.access_token;
-    } else {
-      console.warn('[ws] Failed to get extension token:', response.status, response.statusText);
-      return null;
-    }
-  } catch (error) {
-    console.warn('[ws] Failed to get access token:', error);
-    return null;
-  }
-}
-
 export function connectWS(onMsg) {
   const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = `${wsProto}//${window.location.host}`;
+  const url = `${host}/api/ws/updates`; // cookie-based auth on the server side
 
   let socket;
-  let retryCount = 0;
-  let maxRetries = 3;
   let isIntentionallyClosed = false;
   let connectionTimeout;
+  let heartbeatTimer;
+  let retryCount = 0;
 
   const getRetryDelay = (attempt) => {
-    // Exponential backoff: 2s, 4s, 8s, then stop
-    return Math.min(2000 * Math.pow(2, attempt), 8000);
+    // 1s * 2^attempt, capped at 30s
+    const base = 1000 * Math.pow(2, attempt);
+    return Math.min(base, 30000);
   };
 
-  const tryConnect = async () => {
-    if (retryCount >= maxRetries || isIntentionallyClosed) {
-      console.warn('[ws] Max retries reached or connection closed. Giving up WebSocket connection.');
-      return null;
+  const clearHeartbeat = () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
     }
+  };
 
-    const token = await getAccessToken();
-    if (!token) {
-      console.warn('[ws] No access token available. Skipping WebSocket connection.');
-      return null;
-    }
+  const startHeartbeat = () => {
+    clearHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      try { socket?.readyState === WebSocket.OPEN && socket.send('ping'); } catch {}
+    }, 25000); // 25s
+  };
 
-    const url = `${host}/api/ws/updates?token=${encodeURIComponent(token)}`;
-    console.info(`[ws] Attempting connection ${retryCount + 1}/${maxRetries} to WebSocket`);
+  const tryConnect = () => {
+    if (isIntentionallyClosed) return;
 
     const ws = new WebSocket(url);
 
-    // Set a connection timeout
+    // connection timeout (10s)
     connectionTimeout = setTimeout(() => {
       if (ws.readyState === WebSocket.CONNECTING) {
-        console.warn('[ws] Connection timeout, closing WebSocket');
         ws.close();
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
     ws.onopen = () => {
       clearTimeout(connectionTimeout);
-      console.info('[ws] WebSocket connected successfully');
-      retryCount = 0; // Reset retry count on successful connection
+      retryCount = 0;
+      startHeartbeat();
     };
 
     ws.onmessage = (e) => {
       try {
         onMsg(JSON.parse(e.data));
       } catch (err) {
-        console.warn('[ws] Failed to parse message:', e.data, err);
+        // ignore non-JSON keepalives
       }
     };
 
-    ws.onerror = (e) => {
+    ws.onerror = () => {
       clearTimeout(connectionTimeout);
-      console.warn('[ws] WebSocket error:', e);
     };
 
     ws.onclose = (evt) => {
       clearTimeout(connectionTimeout);
+      clearHeartbeat();
 
-      if (isIntentionallyClosed) {
-        console.info('[ws] WebSocket closed intentionally');
-        return;
-      }
+      if (isIntentionallyClosed) return;
 
-      console.warn('[ws] WebSocket closed:', evt.code, evt.reason);
-
-      // Only retry on specific error codes and if we haven't exceeded max retries
-      const shouldRetry = retryCount < maxRetries && (
-        evt.code === 1006 || // Connection lost
-        evt.code === 1005 || // No close code
-        evt.code === 1001 || // Going away
-        evt.code === 1000    // Normal closure (might be server restart)
-      );
-
-      if (shouldRetry) {
-        retryCount++;
-        const delay = getRetryDelay(retryCount - 1);
-        console.info(`[ws] Retrying WebSocket in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
-
-        setTimeout(() => {
-          if (!isIntentionallyClosed) {
-            tryConnect().then(newSocket => {
-              socket = newSocket;
-            });
-          }
-        }, delay);
+      // retry indefinitely with backoff for transient codes
+      const transient = [1000, 1001, 1005, 1006];
+      if (transient.includes(evt.code)) {
+        const delay = getRetryDelay(retryCount++);
+        setTimeout(tryConnect, delay);
       } else {
-        console.warn('[ws] Not retrying WebSocket. Real-time updates will be disabled.');
+        // hard failures: still retry, but with capped delay
+        const delay = getRetryDelay(retryCount++);
+        setTimeout(tryConnect, delay);
       }
     };
 
-    return ws;
+    socket = ws;
   };
 
-  // Start the connection
-  tryConnect().then(newSocket => {
-    socket = newSocket;
-  });
+  tryConnect();
 
-  // Return an object that allows graceful cleanup
   return {
     close: () => {
       isIntentionallyClosed = true;
       clearTimeout(connectionTimeout);
-      if (socket) {
-        console.info('[ws] Closing WebSocket connection intentionally');
-        socket.close(1000, 'Client initiated close');
-      }
+      clearHeartbeat();
+      try { socket?.close(1000, 'Client initiated close'); } catch {}
     },
-    // Expose the underlying socket for compatibility
     send: (data) => socket?.send(data),
     get readyState() { return socket?.readyState || WebSocket.CLOSED; }
   };
 }
+
 
 /* -----------------------------------
    IO (CSV)

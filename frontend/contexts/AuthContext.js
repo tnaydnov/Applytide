@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { useRouter } from 'next/router';
 import { isPublicRoute, isPublicResource } from '../lib/routes';
-
 
 const AuthContext = createContext();
 
@@ -17,101 +16,109 @@ export function AuthProvider({ children }) {
   const [tokenExpiry, setTokenExpiry] = useState(null);
   const router = useRouter();
 
-  // Add this code in AuthProvider function after defining the states
+  // single-flight refresh control
+  const refreshInFlightRef = useRef(null);
+  const originalFetchRef = useRef(null);
+
+  // Global fetch interceptor
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__APPLYTIDE_FETCH_INTERCEPTOR__ = true;
-      // Store the original fetch to restore it later
-      const originalFetch = window.fetch;
+    if (typeof window === 'undefined' || window.__APPLYTIDE_FETCH_INTERCEPTOR__) return;
 
-      window.fetch = async function (resource, init = {}) {
-        const urlStr = typeof resource === 'string' ? resource : (resource?.url || '');
-        const response = await originalFetch(resource, init);
+    window.__APPLYTIDE_FETCH_INTERCEPTOR__ = true;
+    const originalFetch = window.fetch;
+    originalFetchRef.current = originalFetch;
 
-        if (
-          response.status === 401 &&
-          !isPublicResource(urlStr) &&
-          !urlStr.includes('/api/auth/login') &&
-          !urlStr.includes('/api/auth/refresh')
-        ) {
-          try {
-            const refreshResponse = await originalFetch(`/api/auth/refresh`, {  // <— use originalFetch
-              method: 'POST',
-              credentials: 'include'
+    window.fetch = async function (resource, init = {}) {
+      // Always ensure cookies go with the request (callers can override)
+      const mergedInit = {
+        credentials: 'include',
+        ...init,
+      };
+
+      // Get URL string for checks
+      const urlStr = typeof resource === 'string' ? resource : (resource?.url || '');
+
+      // Do the request
+      const resp = await originalFetch(resource, mergedInit);
+
+      // If 401 and NOT an auth endpoint and NOT public resource -> try refresh
+      if (
+        resp.status === 401 &&
+        !isPublicResource(urlStr) &&
+        !urlStr.includes('/api/auth/login') &&
+        !urlStr.includes('/api/auth/refresh')
+      ) {
+        try {
+          // single-flight refresh
+          if (!refreshInFlightRef.current) {
+            refreshInFlightRef.current = (async () => {
+              const r = await originalFetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+              if (!r.ok) throw new Error('refresh failed');
+              const data = await r.json();
+              setUser(data.user);
+              setTokenExpiry(Date.now() + (data.expires_in * 1000 || 15 * 60 * 1000));
+              return true;
+            })().finally(() => {
+              refreshInFlightRef.current = null;
             });
-            if (refreshResponse.ok) {
-              const userData = await refreshResponse.json();
-              setUser(userData.user);
-              setTokenExpiry(Date.now() + (userData.expires_in * 1000 || 15 * 60 * 1000));
-              return originalFetch(resource, init); // retry once
-            } else {
-              setUser(null);
-              if (!isPublicRoute(window.location.pathname)) window.location.href = '/login';
-            }
-          } catch (refreshError) {
-            console.error('Token refresh error:', refreshError);
           }
+          const ok = await refreshInFlightRef.current;
+          if (ok) {
+            // retry original request once
+            return await originalFetch(resource, mergedInit);
+          }
+        } catch (e) {
+          // refresh failed: drop auth + redirect if on a private page
+          setUser(null);
+          if (!isPublicRoute(window.location.pathname)) window.location.href = '/login';
         }
-        return response;
-      };
+      }
 
-      // Cleanup function
-      return () => {
-        window.fetch = originalFetch;
-      };
-    }
+      return resp;
+    };
+
+    // Cleanup: restore original fetch
+    return () => {
+      if (originalFetchRef.current) window.fetch = originalFetchRef.current;
+      originalFetchRef.current = null;
+      window.__APPLYTIDE_FETCH_INTERCEPTOR__ = false;
+    };
   }, []);
 
-  // Check auth status on mount
+  // Check auth on mount + every 5 min on non-public (and home) pages
   useEffect(() => {
-    // Always check auth status, but handle redirects differently for public vs private pages
     checkAuthStatus();
 
-    // Only set up polling if we're not on pure public pages (login, register, etc.)
-    // But always check on home page to show correct state
     if (!isPublicRoute(router.pathname) || router.pathname === '/') {
       const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [router.pathname]);
 
+  // Proactive refresh 2 min before expiry
   useEffect(() => {
     if (!tokenExpiry || !user) return;
 
-    // Calculate when to refresh (2 minutes before expiry)
-    const refreshTime = tokenExpiry - (2 * 60 * 1000);
+    const refreshTime = tokenExpiry - 2 * 60 * 1000;
     const now = Date.now();
     const timeUntilRefresh = Math.max(0, refreshTime - now);
 
-    console.log(`Token will refresh in ${Math.round(timeUntilRefresh / 1000)} seconds`);
-
-    const refreshTimer = setTimeout(() => {
-      console.log('Refreshing token proactively...');
+    const timer = setTimeout(() => {
       silentRefresh();
     }, timeUntilRefresh);
 
-    return () => clearTimeout(refreshTimer);
+    return () => clearTimeout(timer);
   }, [tokenExpiry, user]);
 
   async function silentRefresh() {
     try {
-      console.log('Performing silent refresh...');
-      const response = await fetch(`/api/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Silent refresh successful:', data);
-        setUser(data.user);
-        // Set new expiry time (15 minutes from now or from server)
-        setTokenExpiry(Date.now() + (data.expires_in * 1000 || 15 * 60 * 1000));
-        return true;
-      } else {
-        console.error('Failed to refresh token');
-        return false;
-      }
+      const ofetch = originalFetchRef.current || fetch;
+      const r = await ofetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+      if (!r.ok) return false;
+      const data = await r.json();
+      setUser(data.user);
+      setTokenExpiry(Date.now() + (data.expires_in * 1000 || 15 * 60 * 1000));
+      return true;
     } catch (err) {
       console.error('Token refresh error:', err);
       return false;
@@ -121,18 +128,14 @@ export function AuthProvider({ children }) {
   async function checkAuthStatus() {
     try {
       setLoading(true);
-
-      const response = await fetch(`/api/auth/me`, {
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        userData.isOAuthUser = userData.google_id ? true : false;
-        userData.googleConnected = userData.google_id ? true : false;
+      const r = await fetch('/api/auth/me', { credentials: 'include' });
+      if (r.ok) {
+        const userData = await r.json();
+        userData.isOAuthUser = !!userData.google_id;
+        userData.googleConnected = !!userData.google_id;
         setUser(userData);
-        // Set token expiry time (15 minutes from now as a safe default)
-        setTokenExpiry(Date.now() + (15 * 60 * 1000));
+        // We don't know exact exp from /me, so set a conservative default (15m)
+        setTokenExpiry(Date.now() + 15 * 60 * 1000);
         setError(null);
         return true;
       } else {
@@ -153,21 +156,20 @@ export function AuthProvider({ children }) {
   async function login(email, password, remember = false) {
     try {
       setLoading(true);
-      const response = await api.login({ email, password, remember_me: remember });
-
+      const response = await api.login(email, password, remember);
       if (response && response.user) {
-        response.user.isOAuthUser = response.user.google_id ? true : false;
-        response.user.googleConnected = response.user.google_id ? true : false;
+        response.user.isOAuthUser = !!response.user.google_id;
+        response.user.googleConnected = !!response.user.google_id;
         setUser(response.user);
         setTokenExpiry(Date.now() + (response.expires_in * 1000 || 15 * 60 * 1000));
         setError(null);
         return true;
       } else {
-        setError("Login failed");
+        setError('Login failed');
         return false;
       }
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || 'Login failed');
       return false;
     } finally {
       setLoading(false);
@@ -176,22 +178,12 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     try {
-      // Call backend to invalidate the current session
-      await fetch(`/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-
-      // Then clear user data locally
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
       setUser(null);
       setTokenExpiry(null);
-
-      // Redirect to login
-      window.location.href = '/login';
-    } catch (err) {
-      console.error("Logout error:", err);
-      // Even if server logout fails, clear local data
-      setUser(null);
       window.location.href = '/login';
     }
   }
@@ -204,12 +196,8 @@ export function AuthProvider({ children }) {
     logout,
     checkAuthStatus,
     silentRefresh,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

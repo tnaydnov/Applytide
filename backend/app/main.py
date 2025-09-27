@@ -128,7 +128,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     try:
         redis = get_redis()
-        redis_status = "healthy" if await redis.ping() else "unhealthy"
+        redis_status = "healthy" if redis.ping() else "unhealthy"
     except Exception as e:
         redis_status = f"unhealthy: {str(e)}"
 

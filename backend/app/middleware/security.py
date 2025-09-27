@@ -28,10 +28,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "style-src": ["'self'"],
                 "img-src": ["'self'", "data:"],
                 "font-src": ["'self'"],
-                "connect-src": ["'self'", "https://api.applytide.com"],
+                # allow API + WS to the API host (and schemes for CDNs if you ever add them)
+                "connect-src": ["'self'", "https://api.applytide.com", "wss://api.applytide.com"],
                 "frame-src": ["'self'"],
                 "object-src": ["'none'"],
-                "base-uri": ["'self'"]
+                "base-uri": ["'self'"],
             }
             
             # Only add unsafe-inline in development

@@ -10,10 +10,9 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [revoking, setRevoking] = useState(null);
-  const { isAuthenticated } = useAuth();
 
+  const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
-  const auth = useAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -27,13 +26,10 @@ export default function SessionsPage() {
       setError(null);
 
       const response = await apiFetch("/auth/sessions");
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
 
       const data = await response.json();
-      setSessions(data);
+      setSessions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching sessions:", err);
       setError("Failed to load sessions. Please try again.");
@@ -43,42 +39,42 @@ export default function SessionsPage() {
   }
 
   async function handleRevoke(sessionId) {
-    if (confirm("Are you sure you want to revoke this session?")) {
-      try {
-        setRevoking(sessionId);
+    if (!confirm("Are you sure you want to revoke this session?")) return;
 
-        const response = await apiFetch("/auth/sessions/revoke", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ session_id: sessionId })
-        });
+    try {
+      setRevoking(sessionId);
 
-        const data = await response.json();
+      const response = await apiFetch("/auth/sessions/revoke", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
 
-        // Check if we revoked our own session
-        if (data.message === "Your current session has been revoked") {
-          // Use the auth context to update global state
-          if (auth && auth.logout) {
-            auth.logout();
-          }
+      // The API always returns JSON
+      const data = await response.json().catch(() => ({}));
 
-          // Redirect to login page
-          router.push('/login');
-          return;
-        }
-
-        // Refresh sessions list for other sessions
-        fetchSessions();
-      } catch (err) {
-        console.error("Error revoking session:", err);
-        setError("Failed to revoke session. Please try again.");
-      } finally {
-        setRevoking(null);
+      // If we revoked our own session, backend also cleared cookies
+      if (data.current_session_revoked === true || data.message === "Your current session has been revoked") {
+        // Update global auth state + redirect
+        if (typeof logout === 'function') await logout();
+        router.push('/login');
+        return;
       }
+
+      // Otherwise refresh list
+      fetchSessions();
+    } catch (err) {
+      console.error("Error revoking session:", err);
+      setError("Failed to revoke session. Please try again.");
+    } finally {
+      setRevoking(null);
     }
   }
+
+  const fmt = (iso, pattern) => {
+    if (!iso) return '—';
+    try { return format(new Date(iso), pattern); } catch { return '—'; }
+  };
 
   return (
     <ResponsiveContainer>
@@ -89,7 +85,9 @@ export default function SessionsPage() {
         {error && (
           <div className="bg-red-900 text-red-200 p-4 rounded-lg mb-6 flex items-center justify-between">
             <div className="flex items-center">
-              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path></svg>
+              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+              </svg>
               <span>{error}</span>
             </div>
             <Button onClick={() => fetchSessions()} variant="danger">
@@ -130,8 +128,8 @@ export default function SessionsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300">{session.ip_address || 'Unknown'}</td>
-                    <td className="px-6 py-4 text-gray-300">{format(new Date(session.last_seen_at), 'MMM d, yyyy h:mm a')}</td>
-                    <td className="px-6 py-4 text-gray-300">{format(new Date(session.created_at), 'MMM d, yyyy')}</td>
+                    <td className="px-6 py-4 text-gray-300">{fmt(session.last_seen_at, 'MMM d, yyyy h:mm a')}</td>
+                    <td className="px-6 py-4 text-gray-300">{fmt(session.created_at, 'MMM d, yyyy')}</td>
                     <td className="px-6 py-4">
                       <Button
                         onClick={() => handleRevoke(session.id)}

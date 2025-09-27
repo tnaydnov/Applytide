@@ -71,7 +71,7 @@ def list_sessions(
             "device_type": s.device_type,
             "user_agent": s.user_agent,
             "ip_address": s.ip_address,
-            "last_seen_at": s.last_seen_at.isoformat(),
+            "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
             "created_at": s.created_at.isoformat(),
             "expires_at": s.expires_at.isoformat(),
             "is_current": s.refresh_token_jti == current_jti,
@@ -142,7 +142,7 @@ def revoke_session(
             "current_session_revoked": True
         })
         response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/auth")
+        response.delete_cookie("refresh_token", path="/api/auth")
         return response
 
     return {"message": "Session revoked", "current_session_revoked": False}

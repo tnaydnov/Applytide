@@ -1,7 +1,8 @@
 from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Set
+from typing import Optional
+from http.cookies import SimpleCookie
 from ..db.session import get_db
 from ..auth.tokens import decode_access
 from ..db import models
@@ -11,6 +12,30 @@ router = APIRouter(prefix="/api/ws", tags=["ws"])
 
 # Store authenticated clients with their user IDs
 authenticated_clients: dict[WebSocket, uuid.UUID] = {}
+
+async def _user_from_token_str(token: str, db: Session) -> models.User:
+    try:
+        payload = decode_access(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = db.query(models.User).filter(models.User.id == uuid.UUID(str(user_id))).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+def _cookie_access_token(ws: WebSocket) -> Optional[str]:
+    raw = ws.headers.get("cookie")
+    if not raw:
+        return None
+    c = SimpleCookie()
+    c.load(raw)
+    if "access_token" in c:
+        return c["access_token"].value
+    return None
+
 
 async def get_user_from_token(token: str, db: Session) -> models.User:
     """Get user from access token for WebSocket authentication"""
@@ -36,30 +61,37 @@ async def get_user_from_token(token: str, db: Session) -> models.User:
 
 @router.websocket("/updates")
 async def updates(
-    ws: WebSocket, 
-    token: str = Query(..., description="Access token for authentication"),
-    db: Session = Depends(get_db)
+    ws: WebSocket,
+    token: Optional[str] = Query(None, description="Access token (optional if cookie present)"),
+    db: Session = Depends(get_db),
 ):
-    """WebSocket endpoint for real-time updates. Requires authentication via token query parameter."""
+    """WebSocket endpoint for real-time updates. Auth via ?token= or access_token cookie."""
     try:
-        # Authenticate user before accepting connection
-        user = await get_user_from_token(token, db)
-        
+        token = token or _cookie_access_token(ws)
+        if not token:
+            await ws.close(code=1008, reason="Authentication failed")
+            return
+
+        user = await _user_from_token_str(token, db)
+
         await ws.accept()
         authenticated_clients[ws] = user.id
         print(f"WebSocket connected for user {user.id}")
-        
+
         try:
             while True:
-                # Keep the socket alive; we don't expect client messages yet
-                await ws.receive_text()
+                msg = await ws.receive_text()  # simple keepalive from client
+                # (Optional) allow re-auth messages if you implement FE token rotation over WS
+                # if msg.startswith('AUTH '):
+                #     new_token = msg.split(' ', 1)[1]
+                #     user = await _user_from_token_str(new_token, db)
+                #     authenticated_clients[ws] = user.id
         except WebSocketDisconnect:
-            print(f"WebSocket disconnected for user {user.id}")
+            pass
         finally:
             authenticated_clients.pop(ws, None)
-            
+
     except HTTPException:
-        # Authentication failed - close connection
         await ws.close(code=1008, reason="Authentication failed")
     except Exception as e:
         print(f"WebSocket error: {e}")

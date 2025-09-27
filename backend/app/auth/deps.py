@@ -1,10 +1,8 @@
 import uuid
 from fastapi import Depends, HTTPException, status, Cookie, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
 from sqlalchemy.orm import Session
 from ..db.session import get_db
-from typing import Optional, Union
 from ..db import models
 from .tokens import decode_access
 
@@ -13,55 +11,41 @@ security = HTTPBearer(auto_error=False)
 async def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
-    access_token: Optional[str] = Cookie(None),  # Try cookie first
-    authorization: Optional[str] = Depends(security)  # Fallback to header
+    access_token: str | None = Cookie(None),
+    authorization: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> models.User:
-    """Get current authenticated user from token in cookie or header"""
+    """Get current authenticated user from token in cookie or header (Bearer)."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    # First try cookie
+
     token = access_token
-    
-    # If no cookie, try header
     if not token and authorization:
-        scheme, param = authorization.scheme.lower(), authorization.credentials
+        scheme = (authorization.scheme or "").lower()
         if scheme != "bearer":
             raise credentials_exception
-        token = param
-    
+        token = authorization.credentials
+
     if not token:
         raise credentials_exception
-        
+
     try:
-        payload = decode_access(token)
-        token_id = payload.get("jti")
-        if token_id:
-            revoked = db.query(models.RefreshToken).filter(
-                models.RefreshToken.jti == token_id,
-                models.RefreshToken.revoked_at.is_not(None)
-            ).first()
-            if revoked:
-                raise credentials_exception
+        payload = decode_access(token)  # already checks Redis blacklist + type
         user_id = payload.get("sub")
-        if user_id is None:
+        if not user_id:
             raise credentials_exception
-            
-        # Convert string to UUID if needed
         if isinstance(user_id, str):
             try:
                 user_id = uuid.UUID(user_id)
             except ValueError:
                 raise credentials_exception
-    except Exception as e:
-        print(f"Token decode error: {e}")
+    except Exception:
         raise credentials_exception
-        
+
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    if user is None:
+    if not user:
         raise credentials_exception
-        
+
     return user

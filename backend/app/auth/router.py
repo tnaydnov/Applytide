@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 from ..db.session import get_db
 from ..db import models
 from . import schemas
+from jose import jwt
 from ..core.security import hash_password, verify_password
 from .tokens import (
-    create_access_token, create_refresh_token,
+    create_access_token, create_refresh_token, decode_access,
     decode_refresh, revoke_refresh_token, revoke_all_user_tokens,
-    create_email_token, verify_email_token
+    create_email_token, verify_email_token, revoke_jti
 )
 from .rate_limiting import login_limiter, refresh_limiter, email_limiter
 from .email_service import email_service
@@ -187,6 +188,17 @@ async def login(
         max_age=60 * 60 * 24 * refresh_days,  # 7 or 30 days
         path="/api/auth"
     )
+
+    if not request.cookies.get("client_id"):
+        response.set_cookie(
+            key="client_id",
+            value=str(uuid.uuid4()),
+            httponly=False,  # client may read it
+            secure=settings.SECURE_COOKIES,
+            samesite=settings.SAME_SITE_COOKIES,
+            max_age=60 * 60 * 24 * 365 * 2,  # 2 years
+            path="/"
+        )
     
     # Return user info
     user_data = schemas.UserInfo(
@@ -232,12 +244,12 @@ def refresh_token(
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/")
+        response.delete_cookie("refresh_token", path="/api/auth")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing refresh token"
         )
-    
+        
     # Check rate limit
     user_agent, ip_address = get_client_info(request)
     is_allowed, retry_after = refresh_limiter.check_rate_limit(ip_address)
@@ -266,33 +278,35 @@ def refresh_token(
         # Create new tokens
         new_access = create_access_token(user_id)
         new_refresh, _ = create_refresh_token(
-            user_id, 
-            family=family, 
-            user_agent=user_agent, 
+            user_id,
+            family=family,
+            user_agent=user_agent,
             ip_address=ip_address
         )
-        
-        # Set new cookies
+
+        # Compute remaining lifetime from the token's exp to set cookie max_age
+        new_refresh_data = jwt.decode(new_refresh, settings.REFRESH_SECRET, algorithms=["HS256"])
+        expires_in = max(0, int(new_refresh_data["exp"] - int(datetime.now(timezone.utc).timestamp())))
+
+        # Set cookies (keep attributes consistent)
         response.set_cookie(
             key="access_token",
             value=new_access,
             httponly=True,
             secure=settings.SECURE_COOKIES,
             samesite=settings.SAME_SITE_COOKIES,
-            max_age=60 * 15,  # 15 minutes
-            path="/"
+            max_age=60 * 15,
+            path="/",
         )
-        
-        # Use the same expiry as before since we're refreshing
-        # Calculate based on token family creation time
+
         response.set_cookie(
             key="refresh_token",
             value=new_refresh,
             httponly=True,
             secure=settings.SECURE_COOKIES,
             samesite=settings.SAME_SITE_COOKIES,
-            # Keep the same expiry as the original refresh token family
-            path="/api/auth"
+            max_age=expires_in,  # ✅ ensure persistence across browser restarts
+            path="/api/auth",
         )
         
         # Get user info
@@ -355,7 +369,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             # Add this block to delete the session record
             if jti:
                 db_session = db.query(models.UserSession).filter(
-                    models.UserSession.token_id == jti
+                    models.UserSession.refresh_token_jti == jti
                 ).first()
                 if db_session:
                     db.delete(db_session)
@@ -364,6 +378,17 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             # Already invalid, that's fine
             print(f"Error during logout: {e}")
     
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        try:
+            data = decode_access(access_token)
+            remaining = max(0, int(data["exp"] - int(datetime.now(timezone.utc).timestamp())))
+            jti = data.get("jti")
+            if jti and remaining > 0:
+                revoke_jti(jti, remaining)
+        except Exception:
+            pass
+
     # Clear cookies regardless
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/api/auth")
@@ -605,8 +630,16 @@ async def upload_avatar(
         raise HTTPException(status_code=400, detail="Only image files are allowed")
     
     # Validate file size (5MB max)
-    if file.size > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    # Starlette UploadFile has no .size; use file.seek/tell
+    MAX = 5 * 1024 * 1024
+    size = 0
+    try:
+        pos = await file.read()  # read all (or stream in chunks if you prefer)
+        size = len(pos)
+        if size > MAX:
+            raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    finally:
+        await file.seek(0)
     
     # TODO: Implement actual file upload to cloud storage (S3, etc.)
     # For now, we'll just return a placeholder

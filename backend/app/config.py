@@ -40,6 +40,8 @@ class Settings:
     def REFRESH_TTL_DAYS(self) -> int:
         # Shorter refresh token lifetime in development
         return int(os.getenv("REFRESH_TTL_DAYS", "7" if self.ENVIRONMENT == "production" else "1"))
+    
+    REFRESH_TTL_EXTENDED_DAYS: int = int(os.getenv("REFRESH_TTL_EXTENDED_DAYS", "30"))
 
     # Add new security settings
     SECURE_COOKIES: bool = os.getenv("SECURE_COOKIES", "false").lower() == "true"
