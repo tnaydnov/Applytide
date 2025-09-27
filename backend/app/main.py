@@ -105,11 +105,11 @@ app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
 app.include_router(reminders_router)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(GlobalRateLimitMiddleware,
-                   max_requests=1000,
-                   window_seconds=3600,
-                   enabled=True)
+# app.add_middleware(SecurityHeadersMiddleware)
+# app.add_middleware(GlobalRateLimitMiddleware,
+#                    max_requests=1000,
+#                    window_seconds=3600,
+#                    enabled=True)
 
 @app.get("/health", tags=["monitoring"])
 async def health_check(db: AsyncSession = Depends(get_db)):
