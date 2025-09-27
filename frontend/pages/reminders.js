@@ -12,6 +12,8 @@ import CreateReminderModal from "../features/reminders/components/modals/CreateR
 import ReminderDetailsModal from "../features/reminders/components/modals/ReminderDetailsModal";
 import { Button } from "../components/ui";
 import CalendarLegend from "../features/reminders/components/calendar/CalendarLegend";
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 export default function RemindersPage() {
   const [activeTab, setActiveTab] = useState("my"); // "my" | "calendar" | "import"
@@ -55,11 +57,15 @@ export default function RemindersPage() {
   const googleImportList = useMemo(() => calendar.googleEvents, [calendar.googleEvents]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <RemindersHeader
-        onCreate={() => setCreateOpen(true)}
-        reminders={reminders}
-        applications={applications}
+    <PageContainer>
+      <PageHeader
+        title="Reminders"
+        subtitle="Follow-ups, interviews, and calendar sync"
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            New Reminder
+          </Button>
+        }
       />
       <StatsDashboard stats={stats} />
       <ViewTabs active={activeTab} onChange={setActiveTab} />
@@ -179,6 +185,6 @@ export default function RemindersPage() {
         onImported={onImportDone}
         applications={applications}
       />
-    </div>
+    </PageContainer>
   );
 }

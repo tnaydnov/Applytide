@@ -7,6 +7,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { ToastProvider } from '../lib/toast';
 import { isPublicRoute } from '../lib/routes';
 import Head from 'next/head';
+import AppLayout from "../components/layout/AppLayout";
 
 export default function MyApp({ Component, pageProps, router }) {
   const isPublicPage = isPublicRoute(router.pathname);
@@ -17,7 +18,7 @@ export default function MyApp({ Component, pageProps, router }) {
         <Head>
           <title>Applytide - Track Every Job Application Like a Pro</title>
         </Head>
-        <div className="min-h-screen flex flex-col" style={{background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)'}}>
+        <AppLayout className="flex flex-col">
           {isPublicPage && router.pathname !== '/' ? (
             // Public pages (login, reset password, etc.) - excluding home page
             <>
@@ -49,7 +50,7 @@ export default function MyApp({ Component, pageProps, router }) {
           
           {/* Floating Feedback Button - appears on all pages */}
           <FloatingFeedbackButton />
-        </div>
+        </AppLayout>
       </AuthProvider>
     </ToastProvider>
   );

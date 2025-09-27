@@ -1,5 +1,7 @@
 import Head from 'next/head';
 import { useState } from 'react';
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 export default function Privacy() {
   const [currentDate] = useState(new Date().toLocaleDateString('en-US', {
@@ -15,12 +17,13 @@ export default function Privacy() {
         <meta name="description" content="Applytide's privacy policy explains how we collect, use, and protect your information." />
         <meta name="robots" content="noindex" />
       </Head>
-      
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+      <PageContainer size="md">
+        <PageHeader title="Privacy Policy" />
         <div className="prose prose-invert max-w-none">
           <h1 className="text-3xl font-bold text-white mb-4">Privacy Policy</h1>
           <p className="text-slate-300">Last Updated: {currentDate}</p>
-          
+
           <p className="text-slate-300 mb-6">Welcome to Applytide. We are committed to protecting your privacy and providing you with a safe experience when using our services.</p>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Data Controller & Contact Information</h2>
@@ -44,7 +47,7 @@ export default function Privacy() {
           </ul>
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Information We Collect</h2>
           <p className="text-slate-300 mb-4">When you use our Chrome extension and website, we may collect the following types of information:</p>
-          
+
           <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-300">
             <li><strong>Authentication Information</strong>: When you create an account or log in, we collect your email address, password (securely hashed), and optional profile information.</li>
             <li><strong>Job Application Data</strong>: Information about job listings you save, including job titles, descriptions, requirements, company information, and application status.</li>
@@ -56,14 +59,14 @@ export default function Privacy() {
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Google Integrations & User Data</h2>
           <div className="text-slate-300 mb-4">
             <p className="mb-4">Applytide integrates with Google services in two ways, and we strictly comply with Google's Limited Use requirements and the Google API Services User Data Policy.</p>
-            
+
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">Google Sign-In (OAuth)</h3>
             <p className="mb-2">When you sign in with Google, we access:</p>
             <ul className="list-disc pl-6 space-y-1 mb-4">
               <li><strong>Email address</strong>: Used to identify your account and send notifications</li>
               <li><strong>Profile information</strong>: Your name and profile picture for account personalization</li>
             </ul>
-            
+
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">Google Calendar Integration (Optional)</h3>
             <p className="mb-2">When you connect Google Calendar, we access:</p>
             <ul className="list-disc pl-6 space-y-1 mb-4">
@@ -71,7 +74,7 @@ export default function Privacy() {
               <li><strong>Event creation</strong>: We only create events when you explicitly request reminders</li>
               <li><strong>Event reading</strong>: We read events only to display them in your dashboard and avoid duplicates</li>
             </ul>
-            
+
             <p className="mb-4"><strong>Our Google API Data Commitments:</strong></p>
             <ul className="list-disc pl-6 space-y-2 mb-4">
               <li>We access <strong>only the minimum data required</strong> for the specific features you request</li>
@@ -81,21 +84,21 @@ export default function Privacy() {
               <li>You can <strong>revoke access anytime</strong> via your Google Account → Security → Third-party apps</li>
               <li>Your Google data is <strong>encrypted in transit and at rest</strong></li>
             </ul>
-            
+
             <p className="mb-4">You may disconnect Google services from your Applytide account at any time through your account settings or by revoking access directly in your Google Account.</p>
           </div>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Chrome Extension Data Collection</h2>
           <div className="text-slate-300 mb-4">
             <p className="mb-4">Our Chrome extension helps you extract job information from job boards. Here's exactly what it does:</p>
-            
+
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">What We Access</h3>
             <ul className="list-disc pl-6 space-y-2 mb-4">
               <li><strong>Active tab content</strong>: Only when you click the extension button to extract job data</li>
               <li><strong>Job listing information</strong>: Company names, job titles, descriptions, requirements, and salary information visible on the page</li>
               <li><strong>Page URL</strong>: To identify the job listing source and provide application links</li>
             </ul>
-            
+
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">What We DON'T Access</h3>
             <ul className="list-disc pl-6 space-y-2 mb-4">
               <li><strong>Browsing history</strong>: We do not track or monitor your general web browsing</li>
@@ -103,7 +106,7 @@ export default function Privacy() {
               <li><strong>Password or form data</strong>: The extension never accesses login credentials or personal form inputs</li>
               <li><strong>Background tracking</strong>: The extension only operates when you actively use it</li>
             </ul>
-            
+
             <p className="mb-4">All extracted job data is sent to your Applytide account and stored securely according to this privacy policy.</p>
           </div>
 
@@ -181,7 +184,7 @@ export default function Privacy() {
               <li>Objection to processing</li>
             </ul>
             <p className="mt-4">
-              <strong>To exercise your rights:</strong> Contact us at <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a> 
+              <strong>To exercise your rights:</strong> Contact us at <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a>
               or use the in-app account settings. We will respond within 30-45 days.
             </p>
             <p className="mt-4">
@@ -205,10 +208,10 @@ export default function Privacy() {
             </ul>
             <p className="mt-4 text-sm text-slate-400">Note: As an individual developer project, all privacy inquiries should be sent to the email addresses above.</p>
           </div>
-          
+
           <p className="text-slate-400 italic mt-10">This privacy policy was last updated on {currentDate}.</p>
         </div>
-      </div>
+      </PageContainer>
     </>
   );
 }

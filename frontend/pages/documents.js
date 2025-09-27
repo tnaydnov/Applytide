@@ -8,6 +8,8 @@ import JobPickerModal from "../features/documents/components/JobPickerModal";
 import DocxPreviewNotice from "../features/documents/components/DocxPreviewNotice";
 import { DOCUMENT_TYPES, DOCUMENT_STATUS } from "../features/documents/utils/constants";
 import { getDocName } from "../features/documents/utils/helpers";
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 import useDocuments from "../features/documents/hooks/useDocuments";
 import useJobs from "../features/documents/hooks/useJobs";
@@ -84,7 +86,8 @@ export default function DocumentsView() {
   }, [docs]);
 
   return (
-    <div className="space-y-4">
+    <PageContainer>
+      <PageHeader title="Documents" subtitle="Manage resumes, cover letters and exports" />
       <DocumentsToolbar
         query={query}
         onQueryChange={setQuery}
@@ -208,6 +211,6 @@ export default function DocumentsView() {
       )}
 
 
-    </div>
+    </PageContainer>
   );
 }

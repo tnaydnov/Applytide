@@ -3,13 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 import { Input, Select, Button, Card } from "../components/ui";
 import Column from "../features/pipeline/components/Column";
 import ApplicationCard from "../features/pipeline/components/ApplicationCard";
 import PipelineCustomizer from "../features/pipeline/components/PipelineCustomizer";
 import usePipelineData from "../features/pipeline/hooks/usePipelineData";
-import { KNOWN_STATUSES, getStatusConfig } from "../features/pipeline/utils/status";
+import { KNOWN_STATUSES } from "../features/pipeline/utils/status";
 
 // Lazy-load large overlays to keep SSR happy
 const ApplicationDrawer = dynamic(
@@ -144,36 +146,24 @@ export default function PipelinePage() {
     <>
       <Head><title>Pipeline</title></Head>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <h1 className="text-2xl font-bold text-white">Pipeline</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={view === "cards" ? "default" : "outline"}
-              onClick={() => setView("cards")}
-            >
-              Cards
-            </Button>
-            <Button
-              variant={view === "board" ? "default" : "outline"}
-              onClick={() => setView("board")}
-            >
-              Board
-            </Button>
-            <Button
-              variant={showAnalytics ? "default" : "outline"}
-              onClick={() => setShowAnalytics((v) => !v)}
-              className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
-            >
-              Analytics
-            </Button>
-            <Button variant="outline" onClick={() => setShowSettings(true)}>
-              Customize Pipeline
-            </Button>
-          </div>
-
-        </div>
+      <PageContainer>
+        <PageHeader
+          title="Pipeline"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant={view === "cards" ? "default" : "outline"} onClick={() => setView("cards")}>Cards</Button>
+              <Button variant={view === "board" ? "default" : "outline"} onClick={() => setView("board")}>Board</Button>
+              <Button
+                variant={showAnalytics ? "default" : "outline"}
+                onClick={() => setShowAnalytics((v) => !v)}
+                className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
+              >
+                Analytics
+              </Button>
+              <Button variant="outline" onClick={() => setShowSettings(true)}>Customize Pipeline</Button>
+            </div>
+          }
+        />
 
         {/* SUMMARY analytics – always on top (big colorful cards) */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -306,7 +296,7 @@ export default function PipelinePage() {
             ))}
           </div>
         )}
-      </div>
+      </PageContainer>
 
       {/* Drawer */}
       {activeApp && (

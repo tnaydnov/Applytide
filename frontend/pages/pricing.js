@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import { Button, Card } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../lib/toast';
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 export default function PricingPage() {
   const { user } = useAuth();
@@ -93,7 +95,8 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen py-12" style={{ background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)' }}>
+    <PageContainer>
+      <PageHeader title="Choose Your Plan" subtitle="Accelerate your job search with powerful tools" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
@@ -202,8 +205,8 @@ export default function PricingPage() {
                         <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium
                   ${f.badge === 'AI' ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30'
                             : f.badge === 'Hot' ? 'bg-red-900/30 text-red-300 border border-red-500/30'
-                            : f.badge === 'Limited' ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-500/30'
-                              : 'bg-blue-900/30 text-blue-300 border border-blue-500/30'}`}>
+                              : f.badge === 'Limited' ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-500/30'
+                                : 'bg-blue-900/30 text-blue-300 border border-blue-500/30'}`}>
                           {f.badge}
                         </span>
                       )}
@@ -351,6 +354,6 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
