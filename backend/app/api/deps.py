@@ -21,10 +21,10 @@ from ..infra.repositories.applications_sqlalchemy import (
 from ..infra.files.attachment_store import AttachmentStore
 from ..domain.applications.service import ApplicationService
 from ..domain.documents.service import DocumentService
-from ..domain.documents.ports import CoverLetterProvider, TextExtractor, DocumentStore
+from ..domain.documents.ports import CoverLetterProvider, TextExtractor, DocumentStore as DocumentStorePort
 from ..infra.external.ai_cover_letter_provider import AICoverLetterService
 from ..infra.extractors.pdf_extractor import PDFExtractor
-from ..infra.files.document_store import LocalDocumentStore
+from ..infra.files.document_store import DocumentStore as FSDocumentStore
 from ..domain.reminders.service import ReminderService
 from ..infra.repositories.reminders_sqlalchemy import ReminderSQLARepository, ReminderNoteSQLARepository
 from ..infra.external.google_calendar_gateway import GoogleCalendarGateway
@@ -49,7 +49,7 @@ async def get_document_service() -> AsyncGenerator[DocumentService, None]:
         provider = None
 
     extractor: TextExtractor = PDFExtractor()   # or a CompositeTextExtractor
-    store: DocumentStore = LocalDocumentStore(base_dir="/app/uploads/documents")
+    store: DocumentStorePort = FSDocumentStore(base_dir="/app/uploads/documents")
 
     svc = DocumentService(store=store, extractor=extractor, cover_letter_provider=provider)
     try:
