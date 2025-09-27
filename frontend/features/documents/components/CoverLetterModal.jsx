@@ -45,12 +45,6 @@ export default function CoverLetterModal({
     const [isFullscreen, setIsFullscreen] = useState(false);
     useEffect(() => setMounted(true), []);
 
-    useEffect(() => {
-        if (generatedCoverLetter) {
-            console.log("Cover letter received:", generatedCoverLetter.substring(0, 50) + "...");
-        }
-    }, [generatedCoverLetter]);
-
     // lock scroll + ESC to close
     useEffect(() => {
         if (!open) return;
@@ -289,12 +283,6 @@ export default function CoverLetterModal({
                                     )}
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="flex gap-3 justify-end pt-4 border-t border-white/10">
-                            <button onClick={onClose} className="btn-ghost px-6 py-2.5 rounded-lg" type="button">
-                                Close
-                            </button>
                         </div>
                     </div>
                 </ModalSurface>

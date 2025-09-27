@@ -29,8 +29,6 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
         try {
             const result = await api.generateCoverLetter(clForm);
 
-            console.log("Cover letter API response:", result);
-
             // The API returns a different structure than expected
             if (typeof result === 'string') {
                 setGenerated(result);
@@ -49,12 +47,6 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
                 setGenerated("Error: Could not parse the generated cover letter.");
             }
 
-            // Log the extracted content
-            console.log("Cover letter content set:", typeof result === 'string'
-                ? result.substring(0, 50) + "..."
-                : result?.cover_letter
-                    ? result.cover_letter.substring(0, 50) + "..."
-                    : "Object response");
         } catch (error) {
             console.error("Error generating cover letter:", error);
             setGenerated("An error occurred while generating your cover letter. Please try again.");
@@ -64,7 +56,6 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
     }, [canGenerate, clForm]);
 
     const saveAsDocument = useCallback(() => {
-        console.log("Save as Document clicked! Content length:", generated?.length || 0);
 
         if (!generated) {
             console.error("No content to save!");
@@ -72,7 +63,6 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
         }
 
         try {
-            console.log("Creating document structure...");
             // Create Word document directly without server API
             const doc = new Document({
                 sections: [{
@@ -80,7 +70,6 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
                     children: [
                         // Split the generated text into paragraphs
                         ...generated.split('\n').map((line, i) => {
-                            console.log(`Processing line ${i + 1}/${generated.split('\n').length}`);
                             return new Paragraph({
                                 children: [
                                     new TextRun({
@@ -98,12 +87,8 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
             });
 
             // Generate and save document directly without server
-            console.log("Generating blob...");
             Packer.toBlob(doc).then(blob => {
-                console.log("Blob generated, size:", blob.size, "bytes");
-                console.log("Saving file...");
                 saveAs(blob, "Cover_Letter.docx");
-                console.log("Word document saved successfully!");
             }).catch(err => {
                 console.error("Error in Packer.toBlob:", err);
             });

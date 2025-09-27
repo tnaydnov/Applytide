@@ -302,7 +302,6 @@ export const api = {
     }
 
     const data = await response.json();
-    console.log("Cover letter API response:", data);
 
     // Extract the actual cover letter text from various possible response formats
     let coverLetterText = '';

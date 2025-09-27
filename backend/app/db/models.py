@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint, JSON, Column
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
+
 
 from .base import Base
 from .session import engine
@@ -14,6 +16,31 @@ JSONList = JSONB if IS_POSTGRES else JSONB  # keep JSONB when available; fallbac
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
+
+class UserProfile(Base):
+    """Simplified user profile for AI personalization"""
+    __tablename__ = "user_profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True)
+
+    # Geographic Preferences
+    preferred_locations = Column(JSON)   # ["San Francisco, CA", "Remote", ...]
+    country = Column(String)
+    remote_preference = Column(String)   # "remote_only", "hybrid", "onsite", "any"
+
+    # Career Preferences
+    target_roles = Column(JSON)
+    target_industries = Column(JSON)
+    experience_level = Column(String)
+
+    # Skills and Career Goals
+    skills = Column(JSON)
+    career_goals = Column(JSON)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # ---------- Users ----------
 class User(Base):

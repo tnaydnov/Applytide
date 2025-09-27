@@ -19,26 +19,24 @@ except Exception:
     except Exception:
         ProxyHeadersMiddleware = None
 
-from .middleware.security import SecurityHeadersMiddleware
-from .middleware.rate_limiting import GlobalRateLimitMiddleware
-from .auth.router import router as auth_router
-from .auth.sessions import router as sessions_router
-from .jobs.router import router as jobs_router
-from .applications.router import router as applications_router
-from .ws.router import router as ws_router
-from .dashboard.router import router as dashboard_router
-from .match.router import router as match_router
-from .analytics.router import router as analytics_router
-from .documents.router import router as documents_router
-from .api.profile import router as profile_router
-from .preferences.router import router as preferences_router
-from app.ai.router import router as ai_router
-from .feedback.router import router as feedback_router
-from .tasks.cleanup import cleanup_expired_sessions
+from .infra.http.middleware.security_headers import SecurityHeadersMiddleware
+from .infra.http.middleware.rate_limit import GlobalRateLimitMiddleware
+from .api.routers.jobs import router as jobs_router
+from .api.routers.applications import router as applications_router
+from .api.routers.ws import router as ws_router
+from .api.routers.dashboard import router as dashboard_router
+from .api.routers.analytics import router as analytics_router
+from .api.routers.documents import router as documents_router
+from .api.routers.profile import router as profile_router
+from .api.routers.preferences import router as preferences_router
+from .api.routers.ai import router as ai_router
+from .api.routers.feedback import router as feedback_router
+from .infra.tasks.cleanup import cleanup_expired_sessions
 from .db.session import get_db
-from .services.redis_client import get_redis
-from app.auth.oauth.router import router as oauth_router
-from app.calendars.router import router as calendar_router
+from .infra.cache.redis_client import get_redis
+from .api.routers.reminders import router as reminders_router
+from .api.routers.auth import router as auth_router
+from .api.routers.auth_sessions import router as auth_sessions_router
 
 app = FastAPI(title="Applytide API")
 
@@ -93,26 +91,25 @@ allowed_hosts = _split_env_list(
 allowed_hosts += ["backend", "frontend"]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
-# (Optional) security/rate limiting middlewares
-# app.add_middleware(SecurityHeadersMiddleware)
-# app.add_middleware(GlobalRateLimitMiddleware)
-
 # --- Routers
 app.include_router(auth_router)
-app.include_router(sessions_router)
+app.include_router(auth_sessions_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(ws_router)
 app.include_router(dashboard_router)
-app.include_router(match_router)
 app.include_router(analytics_router)
 app.include_router(documents_router)
 app.include_router(profile_router)
 app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
-app.include_router(oauth_router)
-app.include_router(calendar_router)
+app.include_router(reminders_router)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(GlobalRateLimitMiddleware,
+                   max_requests=1000,
+                   window_seconds=3600,
+                   enabled=True)
 
 @app.get("/health", tags=["monitoring"])
 async def health_check(db: AsyncSession = Depends(get_db)):

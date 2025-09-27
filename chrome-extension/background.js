@@ -199,7 +199,6 @@ async function loginWithGoogle() {
   const tokenFromBridge = new Promise((resolve) => {
     const listener = (msg) => {
       if (msg?.type === "APPLYTIDE_BRIDGE_AUTH" && msg?.access_token) {
-        console.log("[Applytide bg] bridge token received");
         chrome.runtime.onMessage.removeListener(listener);
         resolve(msg.access_token);
       }
