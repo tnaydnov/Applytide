@@ -80,10 +80,10 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
         style={{ left: PAD_X, right: PAD_X, paddingBottom: GUTTER_BOTTOM }}
       >
         <div className="h-full overflow-x-auto">
-          <div className="flex items-end h-full gap-4 sm:gap-6 w-max min-w-full">
+          <div className="flex items-end gap-4 sm:gap-6 w-max min-w-full" style={{ height: `${height}px` }}>
             {items.map((item, index) => {
               const ratio = clamp01(values[index] / m);
-              const barH = Math.max(2, Math.floor(ratio * (innerHeight - 16))); // tiny headroom
+              const barH = Math.max(4, Math.floor(ratio * innerHeight)); // Ensure minimum visible height
               const labelText = String(item.label ?? "");
               
               // Smart text wrapping - preserve whole words, only break if absolutely necessary
@@ -119,21 +119,23 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
               const textLines = smartWrap(labelText, bw);
 
               return (
-                <div key={index} className="flex flex-col items-center justify-end h-full" style={{ width: bw, minWidth: bw }}>
-                  {/* Bar container - fills available space above baseline */}
-                  <div className="flex flex-col justify-end" style={{ height: innerHeight }}>
-                    <div
-                      className="rounded-t w-full"
-                      style={{
-                        height: barH,
-                        backgroundColor: palette[index % palette.length],
-                      }}
-                      title={`${item.label ?? ""}: ${values[index]}`}
-                    />
-                  </div>
+                <div key={index} className="flex flex-col items-center" style={{ width: bw, minWidth: bw }}>
+                  {/* Spacer to push bar to bottom */}
+                  <div style={{ flex: '1 1 0', minHeight: '10px' }} />
+                  
+                  {/* The actual bar */}
+                  <div
+                    className="rounded-t w-full"
+                    style={{
+                      height: barH,
+                      backgroundColor: palette[index % palette.length],
+                      minHeight: '4px' // Ensure it's always visible
+                    }}
+                    title={`${item.label ?? ""}: ${values[index]}`}
+                  />
                   
                   {/* Fixed baseline area for labels and values */}
-                  <div className="flex flex-col items-center mt-2" style={{ width: bw, minHeight: GUTTER_BOTTOM - 16 }}>
+                  <div className="flex flex-col items-center mt-2" style={{ width: bw, height: GUTTER_BOTTOM - 16 }}>
                     <div
                       className="text-[10px] sm:text-xs text-slate-400 select-none text-center leading-tight"
                       title={labelText}
