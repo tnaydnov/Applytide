@@ -28,7 +28,6 @@ from .applications.router import router as applications_router
 from .ws.router import router as ws_router
 from .dashboard.router import router as dashboard_router
 from .match.router import router as match_router
-from .io.router import router as io_router
 from .analytics.router import router as analytics_router
 from .documents.router import router as documents_router
 from .api.profile import router as profile_router
@@ -106,7 +105,6 @@ app.include_router(applications_router)
 app.include_router(ws_router)
 app.include_router(dashboard_router)
 app.include_router(match_router)
-app.include_router(io_router)
 app.include_router(analytics_router)
 app.include_router(documents_router)
 app.include_router(profile_router)
