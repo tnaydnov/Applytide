@@ -21,15 +21,15 @@ export default function BestTimeSection({ analytics }) {
           <div className="min-w-0 overflow-hidden">
             <p className="text-xs text-slate-400 mb-2">By Day of Week</p>
             {/* Your chart component should use parent width; height is fixed */}
-            <div className="w-full h-[280px] min-w-0">
-              <BarChart data={byWeekday} height={280} />
+            <div className="w-full h-[320px] min-w-0">
+              <BarChart data={byWeekday} height={320} />
             </div>
           </div>
 
           <div className="min-w-0 overflow-hidden">
             <p className="text-xs text-slate-400 mb-2">By Hour of Day</p>
             <div className="w-full h-[320px] min-w-0">
-              {/* Increased height and removed narrow barWidth for better hour labels */}
+              {/* Same height as the weekday chart for visual consistency */}
               <BarChart data={byHour} height={320} />
             </div>
           </div>
