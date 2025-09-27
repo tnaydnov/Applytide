@@ -149,6 +149,7 @@ export default function PipelinePage() {
       <PageContainer>
         <PageHeader
           title="Pipeline"
+          subtitle="Manage applications and track your progress"
           actions={
             <div className="flex items-center gap-2">
               <Button variant={view === "cards" ? "default" : "outline"} onClick={() => setView("cards")}>Cards</Button>

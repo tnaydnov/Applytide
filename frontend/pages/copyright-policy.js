@@ -21,7 +21,6 @@ export default function CopyrightPolicy() {
       <PageContainer size="md">
         <PageHeader title="Copyright (DMCA) Policy" />
         <div className="prose prose-invert max-w-none">
-          <h1 className="text-3xl font-bold text-white mb-4">Copyright (DMCA) Policy</h1>
           <p className="text-slate-300">Last updated: {currentDate}</p>
 
           <p className="text-slate-300 my-4">

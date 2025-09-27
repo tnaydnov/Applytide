@@ -21,10 +21,7 @@ export default function Privacy() {
       <PageContainer size="md">
         <PageHeader title="Privacy Policy" />
         <div className="prose prose-invert max-w-none">
-          <h1 className="text-3xl font-bold text-white mb-4">Privacy Policy</h1>
           <p className="text-slate-300">Last Updated: {currentDate}</p>
-
-          <p className="text-slate-300 mb-6">Welcome to Applytide. We are committed to protecting your privacy and providing you with a safe experience when using our services.</p>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Data Controller & Contact Information</h2>
           <div className="text-slate-300 mb-4">

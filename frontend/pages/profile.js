@@ -10,6 +10,8 @@ import PersonalInfoForm from "../features/profile/components/PersonalInfoForm";
 import NotificationsForm from "../features/profile/components/NotificationsForm";
 import SecurityForm from "../features/profile/components/SecurityForm";
 import ActivityPanel from "../features/profile/components/ActivityPanel";
+import PageContainer from "../components/layout/PageContainer";
+import PageHeader from "../components/layout/PageHeader";
 
 import {
   updateProfile,
@@ -187,94 +189,87 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div
-      className="min-h-screen py-8"
-      style={{ background: "linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)" }}
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
-          <p className="text-gray-300 mt-2">Manage your account and preferences</p>
+    <PageContainer>
+      <PageHeader
+        title="Profile Settings"
+        subtitle="Manage your account and preferences"
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Sidebar */}
+        <div className="lg:col-span-1">
+          <ProfileSidebar user={user} avatar={avatar} onLogout={handleLogout} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <ProfileSidebar user={user} avatar={avatar} onLogout={handleLogout} />
-          </div>
-
-          {/* Content */}
-          <div className="lg:col-span-3">
-            {/* Tabs */}
-            <div className="mb-8">
-              <nav className="flex space-x-1 bg-black/20 p-1 rounded-xl">
-                {tabs.map((tab) => {
-                  const active = activeTab === tab.id;
-                  const disabled = !!tab.disabled;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => !disabled && setActiveTab(tab.id)}
-                      disabled={disabled}
-                      className={`relative flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
-                        active
-                          ? "bg-indigo-600 text-white shadow-lg"
-                          : disabled
+        {/* Content */}
+        <div className="lg:col-span-3">
+          {/* Tabs */}
+          <div className="mb-8">
+            <nav className="flex space-x-1 bg-black/20 p-1 rounded-xl">
+              {tabs.map((tab) => {
+                const active = activeTab === tab.id;
+                const disabled = !!tab.disabled;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => !disabled && setActiveTab(tab.id)}
+                    disabled={disabled}
+                    className={`relative flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors ${active
+                        ? "bg-indigo-600 text-white shadow-lg"
+                        : disabled
                           ? "text-gray-500 cursor-not-allowed opacity-60"
                           : "text-gray-300 hover:text-white hover:bg-white/5"
                       }`}
-                    >
-                      <span className="mr-2">{tab.icon}</span>
-                      {tab.name}
-                      {tab.comingSoon && (
-                        <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold bg-yellow-500 text-black rounded-full">
-                          SOON
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
+                  >
+                    <span className="mr-2">{tab.icon}</span>
+                    {tab.name}
+                    {tab.comingSoon && (
+                      <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold bg-yellow-500 text-black rounded-full">
+                        SOON
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
 
-            {/* Panels */}
-            <div className="space-y-6">
-              {activeTab === "personal" && (
-                <PersonalInfoForm
-                  values={personalInfo}
-                  onChange={handlePersonalInfoChange}
-                  onSubmit={handleUpdatePersonalInfo}
-                  loading={loading}
-                />
-              )}
+          {/* Panels */}
+          <div className="space-y-6">
+            {activeTab === "personal" && (
+              <PersonalInfoForm
+                values={personalInfo}
+                onChange={handlePersonalInfoChange}
+                onSubmit={handleUpdatePersonalInfo}
+                loading={loading}
+              />
+            )}
 
-              {activeTab === "notifications" && (
-                <NotificationsForm
-                  values={preferences}
-                  onChange={handlePreferencesChange}
-                  onSubmit={handleUpdatePreferences}
-                  loading={loading}
-                />
-              )}
+            {activeTab === "notifications" && (
+              <NotificationsForm
+                values={preferences}
+                onChange={handlePreferencesChange}
+                onSubmit={handleUpdatePreferences}
+                loading={loading}
+              />
+            )}
 
-              {activeTab === "security" && (
-                <SecurityForm
-                  user={user}
-                  passwordForm={passwordForm}
-                  onChangePasswordInput={handlePasswordChange}
-                  onSubmitPassword={handleChangePassword}
-                  loading={loading}
-                  onLogoutAll={handleLogout}
-                  onDeleteAccount={handleDeleteAccount}
-                />
-              )}
+            {activeTab === "security" && (
+              <SecurityForm
+                user={user}
+                passwordForm={passwordForm}
+                onChangePasswordInput={handlePasswordChange}
+                onSubmitPassword={handleChangePassword}
+                loading={loading}
+                onLogoutAll={handleLogout}
+                onDeleteAccount={handleDeleteAccount}
+              />
+            )}
 
-              {activeTab === "activity" && <ActivityPanel />}
-            </div>
+            {activeTab === "activity" && <ActivityPanel />}
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

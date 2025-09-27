@@ -21,7 +21,6 @@ export default function CookiePolicy() {
             <PageContainer size="md">
                 <PageHeader title="Cookie Policy" />
                 <div className="prose prose-invert max-w-none">
-                    <h1 className="text-3xl font-bold text-white mb-4">Cookie Policy</h1>
                     <p className="text-slate-300">Last updated: {currentDate}</p>
 
                     <h2 className="text-2xl font-bold text-white mt-8 mb-4">1. What are Cookies?</h2>
