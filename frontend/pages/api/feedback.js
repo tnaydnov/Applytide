@@ -1,6 +1,5 @@
 import formidable from 'formidable';
 import fs from 'fs';
-import path from 'path';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,7 +14,11 @@ export default async function handler(req, res) {
       uploadDir: '/tmp',
     });
 
-    const [fields, files] = await form.parse(req);
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:8000';
+
+    const { fields, files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, flds, fls) => (err ? reject(err) : resolve({ fields: flds, files: fls })));
+    });
 
     // Extract form fields (formidable returns arrays for field values)
     const name = Array.isArray(fields.name) ? fields.name[0] : fields.name || '';
@@ -28,9 +31,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Type and message are required' });
     }
 
-    // Get the backend URL - for Docker with nginx, use direct backend service
-    const backendUrl = 'http://backend:8000';
-    
     // Prepare form data for backend
     const formData = new FormData();
     formData.append('name', name);
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
           const fileBuffer = fs.readFileSync(file.filepath);
           const blob = new Blob([fileBuffer], { type: file.mimetype || 'image/png' });
           formData.append('screenshot', blob, file.originalFilename || 'screenshot.png');
-          
+
           // Clean up temporary file
           fs.unlinkSync(file.filepath);
         } catch (fileError) {
@@ -57,10 +57,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // Forward the request to the backend
-    const response = await fetch(`${backendUrl}/feedback`, {
+    // Forward the request to the backend (forward cookies if present)
+    const headers = {};
+    if (req.headers?.cookie) headers['cookie'] = req.headers.cookie;
+    const response = await fetch(`${BACKEND_URL}/feedback`, {
       method: 'POST',
       body: formData,
+      headers
     });
 
     if (response.ok) {

@@ -1,23 +1,25 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AuthGuard({ children }) {
   const { loading, isAuthenticated, checkAuthStatus } = useAuth();
   const router = useRouter();
 
-  // If we ever mount while unauthenticated, double-check once
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      checkAuthStatus();
-    }
-  }, [loading, isAuthenticated, checkAuthStatus]);
+    if (loading) return;
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/login');
+    if (!isAuthenticated) {
+      // one last silent check
+      checkAuthStatus().then((ok) => {
+        if (!ok) {
+          const returnTo = encodeURIComponent(router.asPath || '/');
+          router.replace(`/login?next=${returnTo}`);
+        }
+      });
     }
-  }, [loading, isAuthenticated, router]);
+  }, [loading, isAuthenticated, checkAuthStatus, router]);
+
 
   if (loading) {
     return (

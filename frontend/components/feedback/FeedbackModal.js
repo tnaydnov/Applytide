@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { Button } from './ui';
-import toast from '../lib/toast';
+import { Button } from '../ui';
+import { useToast } from '../../lib/toast';
 
 const FeedbackModal = ({ isOpen, onClose }) => {
+  const toast = useToast();
+
+  if (!isOpen) return null;
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -87,8 +91,6 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">

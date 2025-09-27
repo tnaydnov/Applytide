@@ -52,6 +52,7 @@ async function refreshToken() {
 
 export async function apiFetch(endpoint, options = {}) {
   try {
+    const interceptorActive = typeof window !== 'undefined' && window.__APPLYTIDE_FETCH_INTERCEPTOR__;
     // Set credentials to include for all requests
     const isFormData = options?.body instanceof FormData;
     const headers = {
@@ -67,7 +68,7 @@ export async function apiFetch(endpoint, options = {}) {
 
     const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
 
-    if (response.status === 401 &&
+    if (!interceptorActive && response.status === 401 &&
       !endpoint.includes('/auth/refresh') &&
       !endpoint.includes('/auth/login')) {
       try {
@@ -336,7 +337,7 @@ export const api = {
     apiFetch(`/documents/${id}/status`, {
       method: "PUT",
       body: JSON.stringify({ new_status }),
-    }),
+    }).then(r => r.json()),
 
   /* ---------- NEW: preview (opens a blob tab) ---------- */
   previewDocument: async (id) => {
@@ -473,7 +474,6 @@ export const api = {
   // search
   advancedSearch: (payload) =>
     apiFetch("/search/advanced", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json()),
-  quickSearch: (query) => apiFetch(`/search/quick?query=${encodeURIComponent(query)}`).then((r) => r.json()),
   getSearchSuggestions: (query) =>
     apiFetch(`/search/suggestions?q=${encodeURIComponent(query)}`).then((r) => r.json()),
   getFilterOptions: () => apiFetch("/search/filters").then((r) => r.json()),

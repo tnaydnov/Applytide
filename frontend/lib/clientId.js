@@ -1,19 +1,11 @@
 // lib/clientId.js
 export function getClientId() {
-  // Only run in browser
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  
+  if (typeof window === 'undefined') return null;
+
   let id = localStorage.getItem('client_id');
   if (!id) {
-    // Generate a new client ID using crypto.randomUUID if available
-    if (crypto && crypto.randomUUID) {
-      id = crypto.randomUUID();
-    } else {
-      // Fallback for older browsers
-      id = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
+    const uuid = globalThis.crypto?.randomUUID?.();
+    id = uuid ?? ('client_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11));
     localStorage.setItem('client_id', id);
   }
   return id;

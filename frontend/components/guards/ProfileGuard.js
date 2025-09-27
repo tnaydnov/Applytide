@@ -1,40 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import api from '../lib/api';
+import api from '../../lib/api';
 
 const ProfileGuard = ({ children, redirectTo = '/ai-setup' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
   const router = useRouter();
-
   useEffect(() => {
-    checkProfileCompleteness();
-  }, []);
-
-  const checkProfileCompleteness = async () => {
-    try {
-      const completeness = await api.getProfileCompleteness();
-      
-      if (!completeness.is_complete) {
-        router.push(redirectTo);
-        return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.getProfileCompleteness(); // returns JSON no matter what
+        const isComplete = !!res?.is_complete;
+        if (!isComplete) {
+          router.replace(redirectTo);
+          return;
+        }
+        if (!cancelled) setIsComplete(true);
+      } catch (e) {
+        console.error('❌ Failed to check profile completeness:', e);
+        // If the API route is protected and we got blocked server-side, send to login
+        router.replace('/login');
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-      
-      setIsComplete(true);
-    } catch (error) {
-      console.error('❌ Failed to check profile completeness:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      
-      // If user is not authenticated, redirect to login
-      if (error.message.includes('401') || error.message.includes('Not authenticated')) {
-        router.push('/login');
-      } else {
-        router.push(redirectTo);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+  }, [redirectTo, router]);
 
   if (isLoading) {
     return (
