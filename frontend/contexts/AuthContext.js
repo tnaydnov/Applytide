@@ -87,11 +87,15 @@ export function AuthProvider({ children }) {
 
   // Check auth on mount + every 5 min on non-public (and home) pages
   useEffect(() => {
-    checkAuthStatus();
-
+    // Only check auth status if we're on a private route or the home page
     if (!isPublicRoute(router.pathname) || router.pathname === '/') {
+      checkAuthStatus();
       const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
       return () => clearInterval(interval);
+    } else {
+      // On public routes, just set loading to false without making API calls
+      setLoading(false);
+      setUser(null);
     }
   }, [router.pathname]);
 
