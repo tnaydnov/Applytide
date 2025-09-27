@@ -14,13 +14,13 @@ from ...api.schemas.preferences import PreferenceCreate, PreferenceUpdate, Prefe
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
 
 @router.get("", response_model=List[PreferenceOut])
-def get_user_preferences(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_user_preferences(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     stmt = select(models.UserPreferences).where(models.UserPreferences.user_id == current_user.id)
     preferences = db.execute(stmt).scalars().all()
     return [PreferenceOut(preference_key=p.preference_key, preference_value=p.preference_value) for p in preferences]
 
 @router.get("/{preference_key}", response_model=PreferenceOut)
-def get_user_preference(preference_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_user_preference(preference_key: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     stmt = select(models.UserPreferences).where(
         models.UserPreferences.user_id == current_user.id,
         models.UserPreferences.preference_key == preference_key
@@ -34,7 +34,7 @@ def get_user_preference(preference_key: str, db: Session = Depends(get_db), curr
 def create_or_update_preference(
     payload: PreferenceCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     stmt = select(models.UserPreferences).where(
         models.UserPreferences.user_id == current_user.id,
@@ -63,7 +63,7 @@ def update_preference(
     preference_key: str,
     payload: PreferenceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     stmt = select(models.UserPreferences).where(
         models.UserPreferences.user_id == current_user.id,
@@ -82,7 +82,7 @@ def update_preference(
 def delete_preference(
     preference_key: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     stmt = select(models.UserPreferences).where(
         models.UserPreferences.user_id == current_user.id,
