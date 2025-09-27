@@ -76,11 +76,11 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
     <div className={`relative w-full min-w-0 ${className}`} style={{ height }} role="img" aria-label="Bar chart">
       {/* Scroll only horizontally when needed; bottom gutter is fixed so labels never clip */}
       <div
-        className="absolute inset-y-0"
-        style={{ left: PAD_X, right: PAD_X, paddingBottom: GUTTER_BOTTOM }}
+        className="absolute inset-0"
+        style={{ left: PAD_X, right: PAD_X }}
       >
-        <div className="h-full overflow-x-auto">
-          <div className="flex items-end gap-4 sm:gap-6 w-max min-w-full" style={{ height: `${height}px` }}>
+        <div className="h-full overflow-x-auto overflow-y-hidden">
+          <div className="flex items-end gap-4 sm:gap-6 w-max min-w-full" style={{ height: `${height - PAD_X}px` }}>
             {items.map((item, index) => {
               const ratio = clamp01(values[index] / m);
               const barH = Math.max(4, Math.floor(ratio * innerHeight)); // Ensure minimum visible height
@@ -118,26 +118,33 @@ export function BarChart({ data, height = 400, className = "", barWidth }) {
 
               const textLines = smartWrap(labelText, bw);
 
+              // Calculate available space for bars (total height minus labels area)
+              const labelsHeight = GUTTER_BOTTOM - 8; // Leave some margin
+              const availableBarHeight = height - labelsHeight - 20; // 20px for padding
+              const maxBarHeight = Math.max(20, availableBarHeight); // Minimum space for bars
+              
+              // Recalculate bar height to fit within available space
+              const constrainedBarH = Math.max(4, Math.min(barH, maxBarHeight));
+
               return (
-                <div key={index} className="flex flex-col items-center" style={{ width: bw, minWidth: bw }}>
-                  {/* Spacer to push bar to bottom */}
-                  <div style={{ flex: '1 1 0', minHeight: '10px' }} />
+                <div key={index} className="flex flex-col items-center justify-end" style={{ width: bw, minWidth: bw, height: `${height - 16}px` }}>
                   
-                  {/* The actual bar */}
+                  {/* The actual bar - positioned at bottom */}
                   <div
                     className="rounded-t w-full"
                     style={{
-                      height: barH,
+                      height: constrainedBarH,
                       backgroundColor: palette[index % palette.length],
-                      minHeight: '4px' // Ensure it's always visible
+                      minHeight: '4px', // Ensure it's always visible
+                      marginBottom: '8px'
                     }}
                     title={`${item.label ?? ""}: ${values[index]}`}
                   />
                   
                   {/* Fixed baseline area for labels and values */}
-                  <div className="flex flex-col items-center mt-2" style={{ width: bw, height: GUTTER_BOTTOM - 16 }}>
+                  <div className="flex flex-col items-center" style={{ width: bw, height: labelsHeight }}>
                     <div
-                      className="text-[10px] sm:text-xs text-slate-400 select-none text-center leading-tight"
+                      className="text-[10px] sm:text-xs text-slate-400 select-none text-center leading-tight flex-1 flex flex-col justify-center"
                       title={labelText}
                       style={{ 
                         width: bw - 4, // Slight padding from edges
