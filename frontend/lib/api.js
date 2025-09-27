@@ -381,7 +381,6 @@ export const api = {
     apiFetch(`/applications/cards?status=${encodeURIComponent(status)}`).then((r) => r.json()),
   moveApp: (id, status) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }).then((r) => r.json()),
-  deleteApp: (id) => apiFetch(`/kanban/applications/${id}`, { method: "DELETE" }),
   updateApplication: (id, payload) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify(payload) }).then((r) => r.json()),
   getAppDetail: (id) => apiFetch(`/applications/${id}/detail`).then((r) => r.json()),
@@ -521,7 +520,6 @@ export const api = {
 export function connectWS(onMsg) {
   const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = `${wsProto}//${window.location.host}`;
-  const url = `${host}/api/ws/updates`; // cookie-based auth on the server side
 
   let socket;
   let isIntentionallyClosed = false;
@@ -529,72 +527,53 @@ export function connectWS(onMsg) {
   let heartbeatTimer;
   let retryCount = 0;
 
-  const getRetryDelay = (attempt) => {
-    // 1s * 2^attempt, capped at 30s
-    const base = 1000 * Math.pow(2, attempt);
-    return Math.min(base, 30000);
-  };
+  const getRetryDelay = (attempt) => Math.min(1000 * Math.pow(2, attempt), 30000);
 
-  const clearHeartbeat = () => {
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
-  };
-
+  const clearHeartbeat = () => { if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; } };
   const startHeartbeat = () => {
     clearHeartbeat();
     heartbeatTimer = setInterval(() => {
       try { socket?.readyState === WebSocket.OPEN && socket.send('ping'); } catch {}
-    }, 25000); // 25s
+    }, 25000);
   };
 
-  const tryConnect = () => {
+  const tryConnect = async () => {
     if (isIntentionallyClosed) return;
 
-    const ws = new WebSocket(url);
+    // 1) Get a short-lived WS ticket. apiFetch will auto-refresh cookies if needed.
+    let ticket = null;
+    try {
+      const resp = await apiFetch("/auth/ws-ticket", { method: "POST" });
+      if (resp.ok) {
+        const data = await resp.json();
+        ticket = data?.token || null;
+      }
+    } catch (_) {
+      // If this fails we fall back to cookie-only auth; WS may still succeed in dev.
+    }
+
+    // 2) Build URL (prefer explicit token)
+    const url = new URL(`${host}/api/ws/updates`);
+    if (ticket) url.searchParams.set("token", ticket);
+
+    const ws = new WebSocket(url.toString());
 
     // connection timeout (10s)
     connectionTimeout = setTimeout(() => {
-      if (ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
-      }
+      if (ws.readyState === WebSocket.CONNECTING) ws.close();
     }, 10000);
 
-    ws.onopen = () => {
-      clearTimeout(connectionTimeout);
-      retryCount = 0;
-      startHeartbeat();
-    };
-
-    ws.onmessage = (e) => {
-      try {
-        onMsg(JSON.parse(e.data));
-      } catch (err) {
-        // ignore non-JSON keepalives
-      }
-    };
-
-    ws.onerror = () => {
-      clearTimeout(connectionTimeout);
-    };
-
+    ws.onopen = () => { clearTimeout(connectionTimeout); retryCount = 0; startHeartbeat(); };
+    ws.onmessage = (e) => { try { onMsg(JSON.parse(e.data)); } catch {} };
+    ws.onerror = () => { clearTimeout(connectionTimeout); };
     ws.onclose = (evt) => {
       clearTimeout(connectionTimeout);
       clearHeartbeat();
-
       if (isIntentionallyClosed) return;
 
-      // retry indefinitely with backoff for transient codes
-      const transient = [1000, 1001, 1005, 1006];
-      if (transient.includes(evt.code)) {
-        const delay = getRetryDelay(retryCount++);
-        setTimeout(tryConnect, delay);
-      } else {
-        // hard failures: still retry, but with capped delay
-        const delay = getRetryDelay(retryCount++);
-        setTimeout(tryConnect, delay);
-      }
+      // If policy/auth (1008) or transient close, just backoff & retry (we'll fetch a fresh ticket next time)
+      const delay = getRetryDelay(retryCount++);
+      setTimeout(tryConnect, delay);
     };
 
     socket = ws;
@@ -618,34 +597,6 @@ export function connectWS(onMsg) {
 /* -----------------------------------
    IO (CSV)
 ----------------------------------- */
-
-export async function downloadApplicationsCSV() {
-  const r = await fetch(`${API_BASE}/io/export/applications.csv`, {
-    credentials: 'include',
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const blob = await r.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "applications.csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-export async function importApplicationsCSV(file) {
-  const form = new FormData();
-  form.append("file", file);
-  const r = await fetch(`${API_BASE}/io/import/applications`, {
-    method: "POST",
-    credentials: 'include',
-    body: form,
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
 
 async function uploadApplicationAttachment(appId, formData) {
   const r = await apiFetch(`/applications/${appId}/attachments`, {

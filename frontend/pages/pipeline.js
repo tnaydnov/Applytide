@@ -416,25 +416,6 @@ function StatCard({ label, value }) {
   );
 }
 
-function Chip({ active, label, onClick, icon }) {
-  return (
-    <button
-      onClick={onClick}
-      type="button"
-      className={[
-        "inline-flex items-center gap-1 px-3 py-1.5 rounded-full border transition-all",
-        active
-          ? "bg-indigo-600/70 text-white border-indigo-400/50"
-          : "bg-white/5 text-white/80 border-white/15 hover:bg-white/10",
-      ].join(" ")}
-      title={String(label)}
-    >
-      {icon ? <span className="text-xs">{icon}</span> : null}
-      <span className="text-sm">{label}</span>
-    </button>
-  );
-}
-
 function EmptyState() {
   return (
     <div className="text-center text-white/70 py-20">

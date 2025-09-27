@@ -32,7 +32,6 @@ from .io.router import router as io_router
 from .analytics.router import router as analytics_router
 from .documents.router import router as documents_router
 from .api.profile import router as profile_router
-from .api.kanban import router as kanban_router
 from .preferences.router import router as preferences_router
 from app.ai.router import router as ai_router
 from .feedback.router import router as feedback_router
@@ -111,7 +110,6 @@ app.include_router(io_router)
 app.include_router(analytics_router)
 app.include_router(documents_router)
 app.include_router(profile_router)
-app.include_router(kanban_router)
 app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)

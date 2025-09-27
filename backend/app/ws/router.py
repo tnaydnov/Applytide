@@ -60,37 +60,20 @@ async def get_user_from_token(token: str, db: Session) -> models.User:
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 @router.websocket("/updates")
-async def updates(
-    ws: WebSocket,
-    token: Optional[str] = Query(None, description="Access token (optional if cookie present)"),
-    db: Session = Depends(get_db),
-):
-    """WebSocket endpoint for real-time updates. Auth via ?token= or access_token cookie."""
+async def updates(ws: WebSocket, token: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    await ws.accept()  # accept first
     try:
         token = token or _cookie_access_token(ws)
         if not token:
-            await ws.close(code=1008, reason="Authentication failed")
-            return
-
+            await ws.close(code=1008, reason="Authentication failed"); return
         user = await _user_from_token_str(token, db)
-
-        await ws.accept()
         authenticated_clients[ws] = user.id
-        print(f"WebSocket connected for user {user.id}")
-
         try:
-            while True:
-                msg = await ws.receive_text()  # simple keepalive from client
-                # (Optional) allow re-auth messages if you implement FE token rotation over WS
-                # if msg.startswith('AUTH '):
-                #     new_token = msg.split(' ', 1)[1]
-                #     user = await _user_from_token_str(new_token, db)
-                #     authenticated_clients[ws] = user.id
+            while True: await ws.receive_text()
         except WebSocketDisconnect:
             pass
         finally:
             authenticated_clients.pop(ws, None)
-
     except HTTPException:
         await ws.close(code=1008, reason="Authentication failed")
     except Exception as e:
