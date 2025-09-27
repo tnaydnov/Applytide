@@ -92,7 +92,7 @@ export default function Privacy() {
             <h3 className="text-xl font-semibold text-white mt-6 mb-3">What We Access</h3>
             <ul className="list-disc pl-6 space-y-2 mb-4">
               <li><strong>Active tab content</strong>: Only when you click the extension button to extract job data</li>
-              <li><strong>Job listing information</strong>: Company names, job titles, descriptions, requirements, and salary information visible on the page</li>
+              <li><strong>Job listing information</strong>: Company names, job titles, descriptions, and requirements visible on the page</li>
               <li><strong>Page URL</strong>: To identify the job listing source and provide application links</li>
             </ul>
 

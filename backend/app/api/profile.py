@@ -31,8 +31,6 @@ class CareerRequest(BaseModel):
 
 class SkillsRequest(BaseModel):
     skills: List[str]
-    min_salary: Optional[int] = None
-    max_salary: Optional[int] = None
 
 class ProfileRequest(BaseModel):
     # Location data
@@ -53,21 +51,7 @@ class ProfileRequest(BaseModel):
     years_experience: Optional[str] = ""
     job_search_status: Optional[str] = ""
     availability: Optional[str] = ""
-    min_salary: Optional[int] = None
-    max_salary: Optional[int] = None
     currency: Optional[str] = ""
-    
-    @field_validator('min_salary', 'max_salary', mode='before')
-    @classmethod
-    def convert_empty_string_to_none(cls, v):
-        if v == '' or v is None:
-            return None
-        if isinstance(v, str):
-            try:
-                return int(v)
-            except ValueError:
-                return None
-        return v
     
     @field_validator('preferred_locations', 'target_roles', 'target_industries', 'career_goals', 'core_skills', 'learning_goals', mode='before')
     @classmethod
@@ -91,8 +75,6 @@ class ProfileResponse(BaseModel):
     target_industries: Optional[List[str]]
     experience_level: Optional[str]
     skills: Optional[List[str]]
-    min_salary: Optional[int]
-    max_salary: Optional[int]
     career_goals: Optional[List[str]]
     
     class Config:
@@ -118,9 +100,7 @@ async def get_user_profile(
             "target_industries": [],
             "experience_level": "",
             "career_goals": [],
-            "skills": [],
-            "min_salary": None,
-            "max_salary": None
+            "skills": []
         }
     
     return profile
@@ -168,8 +148,6 @@ async def update_user_profile(
         profile.target_industries = profile_data.target_industries
         profile.experience_level = profile_data.experience_level
         profile.skills = profile_data.core_skills  # Fix: core_skills -> skills
-        profile.min_salary = profile_data.min_salary
-        profile.max_salary = profile_data.max_salary
         profile.career_goals = profile_data.career_goals
         print("Profile fields updated")
     else:
@@ -184,8 +162,6 @@ async def update_user_profile(
             target_industries=profile_data.target_industries,
             experience_level=profile_data.experience_level,
             skills=profile_data.core_skills,  # Fix: core_skills -> skills
-            min_salary=profile_data.min_salary,
-            max_salary=profile_data.max_salary,
             career_goals=profile_data.career_goals
         )
         db.add(profile)
@@ -240,40 +216,6 @@ async def get_profile_completeness(
         "is_complete": is_complete,
         "completeness_percentage": int(completeness_percentage),
         "message": "Profile complete" if is_complete else "Please complete your profile setup"
-    }
-        
-    if profile.experience_level:
-        completed_fields += 1
-    else:
-        missing_fields.append("experience_level")
-        
-    if profile.skills:
-        completed_fields += 1
-    else:
-        missing_fields.append("skills")
-        
-    if profile.min_salary:
-        completed_fields += 1
-    else:
-        missing_fields.append("min_salary")
-        
-    if profile.max_salary:
-        completed_fields += 1
-    else:
-        missing_fields.append("max_salary")
-        
-    if profile.career_goals:
-        completed_fields += 1
-    else:
-        missing_fields.append("career_goals")
-    
-    completeness = int((completed_fields / total_fields) * 100)
-    
-    return {
-        "completeness": completeness,
-        "missing_fields": missing_fields,
-        "completed_fields": completed_fields,
-        "total_fields": total_fields
     }
 
 @router.get("/job-preferences")

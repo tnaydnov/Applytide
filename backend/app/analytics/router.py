@@ -311,7 +311,6 @@ def get_analytics(
         "interviews": calculate_interview_metrics(stages, applications),
         "companies": calculate_company_metrics(applications, db),
         "timeline": calculate_timeline_metrics(applications, stages),
-        "salary": calculate_salary_metrics(applications, db),
 
         # NEW: additional sections (all degrade gracefully)
         "activity": calculate_activity_metrics(applications),
@@ -659,81 +658,6 @@ def calculate_timeline_metrics(applications: List[models.Application], stages: L
         "weeklyApplicationTrends": weekly_data,
         "bottlenecks": bottlenecks,
         "totalProcesses": len(process_durations)
-    }
-
-def calculate_salary_metrics(applications: List[models.Application], db: Session) -> Dict[str, Any]:
-    """Calculate salary-related metrics"""
-    
-    salary_data = []
-    job_titles_with_salary = []
-    
-    for app in applications:
-        job = db.query(models.Job).filter(models.Job.id == app.job_id).first()
-        if job:
-            # Extract salary information (currently not stored in DB, so we skip this)
-            # TODO: Add salary fields to Job model when implementing salary tracking
-            salary_min = getattr(job, 'salary_min', None)
-            salary_max = getattr(job, 'salary_max', None)
-            
-            if salary_min or salary_max:
-                salary_info = {
-                    "title": job.title,
-                    "min_salary": salary_min or 0,
-                    "max_salary": salary_max or 0,
-                    "avg_salary": ((salary_min or 0) + (salary_max or 0)) / 2 if salary_min or salary_max else 0,
-                    "application_status": app.status
-                }
-                salary_data.append(salary_info)
-                job_titles_with_salary.append(job.title)
-    
-    # Calculate averages
-    if salary_data:
-        avg_min_salary = sum(s["min_salary"] for s in salary_data) / len(salary_data)
-        avg_max_salary = sum(s["max_salary"] for s in salary_data) / len(salary_data)
-        avg_salary_overall = sum(s["avg_salary"] for s in salary_data) / len(salary_data)
-    else:
-        avg_min_salary = avg_max_salary = avg_salary_overall = 0
-    
-    # Salary by job title
-    title_salaries = {}
-    for data in salary_data:
-        title = data["title"]
-        if title not in title_salaries:
-            title_salaries[title] = []
-        title_salaries[title].append(data["avg_salary"])
-    
-    salary_by_title = [
-        {
-            "title": title,
-            "avg_salary": round(sum(salaries) / len(salaries), 0),
-            "count": len(salaries)
-        }
-        for title, salaries in title_salaries.items()
-        if len(salaries) >= 1
-    ]
-    
-    # Salary ranges distribution
-    salary_ranges = [
-        {"range": "< $50k", "count": len([s for s in salary_data if s["avg_salary"] < 50000])},
-        {"range": "$50k - $75k", "count": len([s for s in salary_data if 50000 <= s["avg_salary"] < 75000])},
-        {"range": "$75k - $100k", "count": len([s for s in salary_data if 75000 <= s["avg_salary"] < 100000])},
-        {"range": "$100k - $150k", "count": len([s for s in salary_data if 100000 <= s["avg_salary"] < 150000])},
-        {"range": "$150k+", "count": len([s for s in salary_data if s["avg_salary"] >= 150000])}
-    ]
-    
-    # Remove empty ranges
-    salary_ranges = [r for r in salary_ranges if r["count"] > 0]
-    
-    return {
-        "avgSalaryOffered": round(avg_salary_overall, 0),
-        "salaryRange": {
-            "min": round(avg_min_salary, 0),
-            "max": round(avg_max_salary, 0)
-        },
-        "salaryByTitle": salary_by_title,
-        "salaryRangeDistribution": salary_ranges,
-        "applicationsWithSalary": len(salary_data),
-        "totalApplications": len(applications)
     }
 
 @router.get("/export/csv")

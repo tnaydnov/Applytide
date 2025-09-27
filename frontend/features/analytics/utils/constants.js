@@ -18,8 +18,7 @@ export const METRIC_CATEGORIES = Object.freeze([
   { id: "sources", label: "Sources", icon: "🧭" },
   { id: "habits", label: "Habits", icon: "🔥" },        // consistency + timing
   { id: "experiments", label: "Experiments", icon: "🧪" },
-  { id: "timeline", label: "Timeline", icon: "⏱️" },
-  // { id: "salary", label: "Salary", icon: "💰" }, // optional future
+  { id: "timeline", label: "Timeline", icon: "⏱️" }
 ]);
 
 export const DEFAULT_METRIC = "overview";

@@ -259,11 +259,7 @@ export default function PricingPage() {
                 title: 'Smart Job Matching',
                 description: 'Our AI finds jobs that perfectly match your skills and preferences, saving you hours of searching.'
               },
-              {
-                icon: '💰',
-                title: 'Salary Intelligence',
-                description: 'Know your worth with real-time salary data and negotiation tips to maximize your offers.'
-              },
+
               {
                 icon: '⚡',
                 title: 'Auto-Apply Technology',

@@ -27,9 +27,7 @@ class UserProfile(Base):
     target_industries = Column(JSON)    # ["Technology", "Fintech", "Healthcare"]
     experience_level = Column(String)   # "entry", "mid", "senior", "lead", "executive"
     
-    # Compensation Preferences
-    min_salary = Column(Integer)        # 120000
-    max_salary = Column(Integer)        # 180000
+
     
     # Skills and Career Goals
     skills = Column(JSON)               # ["JavaScript", "React", "Python", "AWS"]

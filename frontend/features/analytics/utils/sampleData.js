@@ -162,7 +162,6 @@ export function generateDemoAnalytics() {
       },
     },
     bestTime: { byWeekday, byHour, bestWindowText: "Tuesdays 9–11am look strongest" },
-    expectations: { medians: { response: 5, interview: 12, decision: 22 }, p75: { response: 10, interview: 20, decision: 35 } },
-    salary: { applicationsWithSalary: 0 }, // left empty by default
+    expectations: { medians: { response: 5, interview: 12, decision: 22 }, p75: { response: 10, interview: 20, decision: 35 } }
   };
 }

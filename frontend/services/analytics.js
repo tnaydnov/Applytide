@@ -101,7 +101,6 @@ export function normalizeAnalytics(raw) {
   const ex = r.experiments || {};
   const bt = r.bestTime || {};
   const expt = r.expectations || {};
-  const sa = r.salary || {};
 
   return {
     overview: {
@@ -186,15 +185,6 @@ export function normalizeAnalytics(raw) {
     expectations: {
       medians: safe(expt.medians, {}),
       p75: safe(expt.p75, {}),
-    },
-
-    salary: {
-      avgSalaryOffered: safe(sa.avgSalaryOffered, 0),
-      salaryRange: safe(sa.salaryRange, { min: 0, max: 0 }),
-      salaryRangeDistribution: safe(sa.salaryRangeDistribution, []),
-      salaryByTitle: safe(sa.salaryByTitle, []),
-      applicationsWithSalary: safe(sa.applicationsWithSalary, 0),
-      totalApplications: safe(sa.totalApplications, 0),
     },
   };
 }
