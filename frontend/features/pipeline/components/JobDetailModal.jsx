@@ -238,6 +238,7 @@ export default function JobDetailModal({ application, onClose }) {
             {/* Footer meta */}
             <div className="text-sm text-gray-500 pt-2">
               <p>Application ID: {appId}</p>
+              {application?.source && <p>Source: {application.source}</p>}
               {application?.created_at && <p>Created: {new Date(application.created_at).toLocaleString()}</p>}
               {application?.updated_at && <p>Last Updated: {new Date(application.updated_at).toLocaleString()}</p>}
             </div>

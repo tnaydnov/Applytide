@@ -31,7 +31,7 @@ def create_application(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    row = service.create_or_update_application(db, current_user, payload.job_id, payload.resume_id, payload.status)
+    row = service.create_or_update_application(db, current_user, payload.job_id, payload.resume_id, payload.status, payload.source)
     return row
 
 @router.get("", response_model=PaginatedResponse[ApplicationOut])

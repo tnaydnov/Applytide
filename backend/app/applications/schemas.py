@@ -8,12 +8,14 @@ class ApplicationCreate(BaseModel):
     job_id: uuid.UUID
     resume_id: Optional[uuid.UUID] = None
     status: str = Field(default="Applied")
+    source: Optional[str] = None
 
 class ApplicationOut(BaseModel):
     id: uuid.UUID
     job_id: uuid.UUID
     resume_id: Optional[uuid.UUID] = None
     status: str
+    source: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     class Config:
@@ -21,6 +23,7 @@ class ApplicationOut(BaseModel):
 
 class ApplicationUpdate(BaseModel):
     status: str
+    source: Optional[str] = None
 
 # ----- Cards / Detail view models -----
 class JobMini(BaseModel):
@@ -42,6 +45,7 @@ class ApplicationCard(BaseModel):
     status: str
     job: JobMini
     resume_id: Optional[uuid.UUID] = None
+    source: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

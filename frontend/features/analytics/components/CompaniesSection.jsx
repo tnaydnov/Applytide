@@ -1,5 +1,6 @@
 import KPICard from "./KPICard";
 import { DonutChart, BarChart } from "../../../components/charts";
+import { PremiumLock } from "../../../components/PremiumFeature";
 
 /**
  * CompaniesSection
@@ -7,8 +8,10 @@ import { DonutChart, BarChart } from "../../../components/charts";
  *
  * Props:
  * - analytics: full analytics payload; expects analytics.companies
+ * - isPremium: boolean (optional; for premium feature gating)
+ * - onPremiumRequired: (feature: string) => void (optional; callback when premium is required)
  */
-export default function CompaniesSection({ analytics }) {
+export default function CompaniesSection({ analytics, isPremium = false, onPremiumRequired }) {
   const companies = analytics?.companies || {};
 
   const topCompanies = Array.isArray(companies.topCompanies)
@@ -52,11 +55,17 @@ export default function CompaniesSection({ analytics }) {
 
   return (
     <section
-      className="space-y-6"
+      className="space-y-6 relative"
       id="panel-companies"
       role="tabpanel"
       aria-labelledby="tab-companies"
     >
+      {!isPremium && (
+        <PremiumLock 
+          onClick={() => onPremiumRequired?.("Company Analysis")} 
+          feature="company analytics and AI-powered insights"
+        />
+      )}
       {/* KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {kpis.map((kpi, idx) => (

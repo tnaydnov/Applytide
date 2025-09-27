@@ -3,6 +3,8 @@ import { Button } from "../components/ui";
 import { useMemo, useState } from "react";
 import PageContainer from "../components/layout/PageContainer";
 import PageHeader from "../components/layout/PageHeader";
+import { useAuth } from "../contexts/AuthContext";
+import { usePremiumFeature } from "../components/PremiumFeature";
 
 import useAnalytics from "../features/analytics/hooks/useAnalytics";
 import CategoryTabs from "../features/analytics/components/CategoryTabs";
@@ -68,6 +70,9 @@ function ExportMenu({ onExport }) {
 
 
 export default function AnalyticsPage() {
+  const { user } = useAuth();
+  const { checkPremium, PremiumModal } = usePremiumFeature({ isPremium: user?.is_premium });
+  
   const {
     analytics,
     loading,
@@ -111,7 +116,7 @@ export default function AnalyticsPage() {
       case "overview": return <OverviewSection analytics={data} />;
       case "applications": return <ApplicationsSection analytics={data} />;
       case "interviews": return <InterviewsSection analytics={data} />;
-      case "companies": return <CompaniesSection analytics={data} />;
+      case "companies": return <CompaniesSection analytics={data} isPremium={user?.is_premium} onPremiumRequired={checkPremium} />;
       case "sources": return <SourcesSection analytics={data} />;
       case "habits": return <BestTimeSection analytics={data} />;
       case "experiments": return <ExperimentsSection analytics={data} />;
@@ -154,8 +159,15 @@ export default function AnalyticsPage() {
         />
 
         {/* Tabs + Sections */}
-        <CategoryTabs selected={currentTab} onSelect={setSelectedMetric} />
+        <CategoryTabs 
+          selected={currentTab} 
+          onSelect={setSelectedMetric} 
+          isPremium={user?.is_premium}
+          onPremiumRequired={checkPremium}
+        />
         {renderSection()}
+        
+        <PremiumModal feature="company analytics and AI-powered insights" />
       </PageContainer>
     </>
   );

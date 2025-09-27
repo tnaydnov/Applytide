@@ -198,6 +198,15 @@ export default function ApplicationCard({
                                 </div>
                             </div>
                         )}
+
+                        {/* Source */}
+                        {application.source && (
+                            <div className={`${viewMode === "board" ? "text-center mb-2" : "mb-2"}`}>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50 ${viewMode === "board" ? "text-xs" : "text-xs"}`}>
+                                    🧭 {application.source}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Drag handle & mobile move */}

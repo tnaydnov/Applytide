@@ -38,7 +38,7 @@ def ensure_job_resume(db: Session, job_id: uuid.UUID, resume_id: Optional[uuid.U
 
 # ------- applications -------
 def create_or_update_application(
-    db: Session, user: User, job_id: uuid.UUID, resume_id: Optional[uuid.UUID], status: Optional[str]
+    db: Session, user: User, job_id: uuid.UUID, resume_id: Optional[uuid.UUID], status: Optional[str], source: Optional[str] = None
 ) -> models.Application:
     ensure_job_resume(db, job_id, resume_id)
 
@@ -53,13 +53,14 @@ def create_or_update_application(
     if existing:
         existing.status = status or "Applied"
         existing.resume_id = resume_id
+        existing.source = source
         existing.updated_at = now
         db.commit(); db.refresh(existing)
         return existing
 
     row = models.Application(
         user_id=user.id, job_id=job_id, resume_id=resume_id,
-        status=status or "Applied",
+        status=status or "Applied", source=source,
         created_at=now, updated_at=now
     )
     db.add(row); db.commit(); db.refresh(row)

@@ -1,5 +1,6 @@
 import { METRIC_CATEGORIES } from "../utils/constants";
 import { cn } from "../utils/formatters";
+import { PremiumBadge } from "../../../components/PremiumFeature";
 
 /**
  * Small local icon renderer that mirrors the original inline-SVG look
@@ -61,12 +62,16 @@ const renderIcon = (iconType) => {
  * - onSelect: (id: string) => void
  * - categories: array of { id, label, icon } (optional; defaults to metricCategories)
  * - className: string (optional)
+ * - isPremium: boolean (optional; for premium feature gating)
+ * - onPremiumRequired: (feature: string) => void (optional; callback when premium is required)
  */
 export default function CategoryTabs({
   selected,
   onSelect,
   categories = METRIC_CATEGORIES,
   className,
+  isPremium = false,
+  onPremiumRequired,
 }) {
   return (
     <div className={cn("mb-8 -mx-4 sm:mx-0", className)}>
@@ -77,24 +82,39 @@ export default function CategoryTabs({
       >
         {categories.map((cat) => {
           const active = selected === cat.id;
+          const isPremiumFeature = cat.id === "companies";
+          const isLocked = isPremiumFeature && !isPremium;
+          
           return (
             <button
               key={cat.id}
               role="tab"
               aria-selected={active}
               aria-controls={`panel-${cat.id}`}
-              onClick={() => onSelect?.(cat.id)}
+              onClick={() => {
+                if (isLocked) {
+                  onPremiumRequired?.("Company Analysis");
+                } else {
+                  onSelect?.(cat.id);
+                }
+              }}
               className={cn(
                 "flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors border backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60",
                 active
                   ? "bg-indigo-900/50 text-indigo-300 border-indigo-500/50"
-                  : "bg-slate-800/30 text-slate-300 border-slate-600 hover:bg-slate-700/50"
+                  : "bg-slate-800/30 text-slate-300 border-slate-600 hover:bg-slate-700/50",
+                isLocked && "opacity-75"
               )}
             >
               <span className="mr-2 inline-flex items-center justify-center">
                 {renderIcon(cat.icon)}
               </span>
               {cat.label}
+              {isPremiumFeature && (
+                <span className="ml-2">
+                  <PremiumBadge size="xs" />
+                </span>
+              )}
             </button>
           );
         })}

@@ -233,17 +233,42 @@ export function DonutChart({ data, height = 400, className = "" }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:block gap-x-4 gap-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-1 gap-y-2 min-w-0 max-w-xs">
           {items.length === 0 ? (
-            <div className="text-slate-400 col-span-2">No data</div>
+            <div className="text-slate-400">No data</div>
           ) : (
             items.map((item, index) => {
               const value = Math.max(0, safeNumber(item.value));
+              const labelText = String(item.label || "");
+              
+              // Smart wrapping for multi-word labels
+              const words = labelText.split(/\s+/);
+              const shouldWrap = words.length > 1 && labelText.length > 12;
+              
               return (
-                <div key={index} className="flex items-center gap-2 text-xs sm:text-sm">
-                  <span className="w-3.5 h-3.5 rounded" style={{ backgroundColor: palette[index % palette.length] }} />
-                  <span className="text-slate-300 truncate">{item.label}</span>
-                  <span className="ml-auto text-slate-500">{value} ({Math.round((value / total) * 100)}%)</span>
+                <div key={index} className="flex items-start gap-2 text-xs sm:text-sm min-w-0">
+                  <span 
+                    className="w-3.5 h-3.5 rounded flex-shrink-0 mt-0.5" 
+                    style={{ backgroundColor: palette[index % palette.length] }} 
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <span className="text-slate-300 break-words leading-tight">
+                        {shouldWrap ? (
+                          <div className="space-y-0">
+                            {words.map((word, i) => (
+                              <div key={i}>{word}</div>
+                            ))}
+                          </div>
+                        ) : (
+                          labelText
+                        )}
+                      </span>
+                      <span className="text-slate-500 flex-shrink-0 whitespace-nowrap text-right">
+                        {value} ({Math.round((value / total) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
             })

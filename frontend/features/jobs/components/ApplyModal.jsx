@@ -23,6 +23,19 @@ const TYPE_LABELS = {
   other: 'Other',
 };
 
+const SOURCE_OPTIONS = [
+  { value: 'LinkedIn', label: 'LinkedIn' },
+  { value: 'Indeed', label: 'Indeed' },
+  { value: 'Glassdoor', label: 'Glassdoor' },
+  { value: 'Company Website', label: 'Company Website' },
+  { value: 'Job Board', label: 'Job Board' },
+  { value: 'Recruiter', label: 'Recruiter' },
+  { value: 'Referral', label: 'Referral' },
+  { value: 'Job Fair', label: 'Job Fair' },
+  { value: 'AngelList', label: 'AngelList/Wellfound' },
+  { value: 'Other', label: 'Other' },
+];
+
 const typeLabel = (t) => TYPE_LABELS[t] || (t?.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Other');
 const docDisplayName = (d) => d?.name || d?.file_name || d?.filename || 'Untitled';
 
@@ -36,6 +49,7 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
   const [selectedDocIds, setSelectedDocIds] = useState(new Set());
   const [uploads, setUploads] = useState([]); // [{ file, type }]
   const [applying, setApplying] = useState(false);
+  const [source, setSource] = useState('');
 
   const getDocType = (d) =>
     String(d?.type ?? d?.document_type ?? '').toLowerCase() || 'other';
@@ -47,6 +61,7 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
     setSelectedDocIds(new Set());
     setUploads([]);
     setFilterType('');
+    setSource('');
 
     (async () => {
       try {
@@ -83,7 +98,11 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
     try {
       setApplying(true);
       // 1) Create application
-      const app = await api.createApp({ job_id: job.id, status: 'Applied' });
+      const app = await api.createApp({ 
+        job_id: job.id, 
+        status: 'Applied',
+        source: source || null
+      });
       const appId = app?.id;
       if (!appId) throw new Error('Application create did not return an id');
 
@@ -137,6 +156,25 @@ export default function ApplyModal({ isOpen, job, onClose, onApplied }) {
             </div>
           </div>
         )}
+
+        {/* Source Selection */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-slate-300">
+            How did you find this job? <span className="text-slate-500">(Optional)</span>
+          </label>
+          <Select 
+            value={source} 
+            onChange={(e) => setSource(e.target.value)}
+            className="w-full"
+          >
+            <option value="">Select source...</option>
+            {SOURCE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        </div>
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-3">
