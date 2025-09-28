@@ -44,6 +44,22 @@ async def get_extension_token(
     access_token = create_access_token(str(current_user.id))
     return schemas.ExtensionTokenOut(access_token=access_token)
 
+@router.post("/ws-ticket")
+def create_ws_ticket(
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Mint a short-lived access token for WebSocket auth.
+    Using get_current_user means if the access cookie is stale,
+    your frontend's apiFetch() will auto-refresh then retry this call.
+    """
+    try:
+        # If your helper supports expires_delta, prefer a short TTL:
+        token = create_access_token(str(current_user.id))  # or: expires_delta=timedelta(minutes=5)
+        return {"token": token}
+    except Exception:
+        raise HTTPException(status_code=401, detail="Unable to create WS ticket")
+
 def get_client_info(request: Request) -> tuple[str, str]:
     user_agent = request.headers.get("user-agent", "")[:500]
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
