@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 
 from ..deps_auth import get_current_user
-from ...db import models
+from ...api.schemas.auth import UserInfo as User
 from ...domain.reminders.service import ReminderService
 from ..deps import get_reminder_service
 
@@ -56,24 +56,24 @@ class ReminderUpdate(BaseModel):
 
 # ---------- Notes ----------
 @router.get("/reminders/{reminder_id}/notes", response_model=List[ReminderNoteOut])
-def list_notes(reminder_id: uuid.UUID, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+def list_notes(reminder_id: uuid.UUID, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     return svc.list_notes(user_id=user.id, reminder_id=reminder_id)
 
 @router.post("/reminders/{reminder_id}/notes", response_model=ReminderNoteOut)
-def create_note(reminder_id: uuid.UUID, payload: ReminderNoteCreate, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+def create_note(reminder_id: uuid.UUID, payload: ReminderNoteCreate, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     return svc.create_note(user_id=user.id, reminder_id=reminder_id, body=payload.body)
 
 @router.put("/reminder-notes/{note_id}", response_model=ReminderNoteOut)
-def update_note(note_id: uuid.UUID, payload: ReminderNoteCreate, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+def update_note(note_id: uuid.UUID, payload: ReminderNoteCreate, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     return svc.update_note(user_id=user.id, note_id=note_id, body=payload.body)
 
 @router.delete("/reminder-notes/{note_id}", status_code=204)
-def delete_note(note_id: uuid.UUID, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+def delete_note(note_id: uuid.UUID, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     svc.delete_note(user_id=user.id, note_id=note_id); return
 
 # ---------- Google helpers ----------
 @router.get("/google/check-connection", response_model=dict)
-async def check_google_connection(user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+async def check_google_connection(user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     return {"connected": await svc.google_connected(user_id=user.id)}
 
 @router.get("/google/events")
@@ -81,7 +81,7 @@ async def get_google_calendar_events(
     time_min: Optional[str] = None,
     time_max: Optional[str] = None,
     max_results: int = 100,
-    user: models.User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     svc: ReminderService = Depends(get_reminder_service),
 ):
     try:
@@ -93,7 +93,7 @@ async def get_google_calendar_events(
 async def import_google_event(
     google_event_id: str = Body(..., embed=True),
     application_id: uuid.UUID | None = Body(None, embed=True),
-    user: models.User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     svc: ReminderService = Depends(get_reminder_service),
 ):
     try:
@@ -103,7 +103,7 @@ async def import_google_event(
 
 # ---------- Reminders ----------
 @router.post("/reminders", response_model=ReminderResponse)
-async def create_reminder(reminder: ReminderCreate, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+async def create_reminder(reminder: ReminderCreate, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     try:
         return await svc.create_reminder(
             user_id=user.id,
@@ -120,14 +120,14 @@ async def create_reminder(reminder: ReminderCreate, user: models.User = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/reminders", response_model=List[ReminderResponse])
-async def get_reminders(skip: int = 0, limit: int = 100, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+async def get_reminders(skip: int = 0, limit: int = 100, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     return await svc.list_reminders(user_id=user.id, skip=skip, limit=limit)
 
 @router.patch("/reminders/{reminder_id}", response_model=ReminderResponse)
 async def update_reminder(
     reminder_id: uuid.UUID,
     patch: ReminderUpdate,
-    user: models.User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     svc: ReminderService = Depends(get_reminder_service),
 ):
     data = patch.model_dump(exclude_none=True)
@@ -135,5 +135,5 @@ async def update_reminder(
     return await svc.update_reminder(user_id=user.id, reminder_id=reminder_id, patch=data, timezone_str=tz)
 
 @router.delete("/reminders/{reminder_id}", status_code=204)
-async def delete_reminder(reminder_id: uuid.UUID, user: models.User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
+async def delete_reminder(reminder_id: uuid.UUID, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     await svc.delete_reminder(user_id=user.id, reminder_id=reminder_id); return
