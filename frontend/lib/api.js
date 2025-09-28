@@ -382,6 +382,8 @@ export const api = {
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }).then((r) => r.json()),
   updateApplication: (id, payload) =>
     apiFetch(`/applications/${id}`, { method: "PATCH", body: JSON.stringify(payload) }).then((r) => r.json()),
+  deleteApp: (id) =>
+    apiFetch(`/applications/${id}`, { method: "DELETE" }),
   getAppDetail: (id) => apiFetch(`/applications/${id}/detail`).then((r) => r.json()),
   addStage: (id, payload) =>
     apiFetch(`/applications/${id}/stages`, { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json()),
