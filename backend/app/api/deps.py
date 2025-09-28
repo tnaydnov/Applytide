@@ -50,8 +50,12 @@ async def get_document_service() -> AsyncGenerator[DocumentService, None]:
     try:
         yield svc
     finally:
-        # DocumentService handles AI service cleanup internally
-        pass
+        # Clean up AI service if it exists
+        if hasattr(svc, 'ai_cover_letter_service') and svc.ai_cover_letter_service:
+            try:
+                await svc.ai_cover_letter_service.aclose()
+            except Exception:
+                pass
 
 def get_application_service(
     db: Session = Depends(get_db),

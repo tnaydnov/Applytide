@@ -13,10 +13,10 @@ class GoogleCalendarGateway(ICalendarGateway):
         self._client = httpx.AsyncClient(timeout=http_timeout)
 
     async def _token(self, *, user_id: UUID, db) -> Optional[str]:
-        return await get_valid_google_token(db, user_id)  # expects Session in DI layer call-sites
+        return get_valid_google_token(db, user_id)  # expects Session in DI layer call-sites
 
     async def is_connected(self, *, user_id: UUID, db=None) -> bool:  # db is injected by DI provider via lambda
-        tok = await get_valid_google_token(db, user_id)
+        tok = get_valid_google_token(db, user_id)
         return bool(tok)
 
     async def create_event(self, *, user_id: UUID, title: str, description: str | None,
