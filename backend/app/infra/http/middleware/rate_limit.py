@@ -1,16 +1,14 @@
 """Global rate limiting middleware (async, sliding window, atomic via Lua)."""
 from __future__ import annotations
-import os, time, asyncio
-from typing import Callable, Iterable, Optional, Set, Tuple
-from starlette.requests import Request
+import time, asyncio
+from typing import Iterable, Optional, Set
 from starlette.responses import JSONResponse
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi import status
 
-# redis>=4.2
 from redis.asyncio import Redis
-from ...config import settings
+from ....config import settings
 
 RATE_LIMIT_LUA = """
 local key     = KEYS[1]
