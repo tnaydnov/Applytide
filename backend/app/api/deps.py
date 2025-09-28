@@ -25,6 +25,7 @@ from ..domain.documents.service import DocumentService
 from ..domain.documents.ports import CoverLetterProvider, TextExtractor, DocumentStore as DocumentStorePort
 from ..infra.external.ai_cover_letter_provider import AICoverLetterService
 from ..infra.extractors.pdf_extractor import PDFExtractor
+from ..infra.extractors.text_extractor import TextExtractor
 from ..infra.files.document_store import DocumentStore as FSDocumentStore
 from ..domain.reminders.service import ReminderService
 from ..infra.repositories.reminders_sqlalchemy import ReminderSQLARepository, ReminderNoteSQLARepository
@@ -43,7 +44,8 @@ def get_job_service(db: Session = Depends(get_db)) -> JobService:
     return JobService(jobs=jobs, companies=companies, search=search)
 
 async def get_document_service() -> AsyncGenerator[DocumentService, None]:
-    extractor: TextExtractor = PDFExtractor()   # or a CompositeTextExtractor
+    pdf_extractor = PDFExtractor()
+    extractor: TextExtractor = TextExtractor(pdf_extractor=pdf_extractor)
     store: DocumentStorePort = FSDocumentStore(root=Path("/app/uploads/documents"))
 
     svc = DocumentService(store=store, extractor=extractor)
