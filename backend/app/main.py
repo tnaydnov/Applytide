@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+
 
 # Try ProxyHeadersMiddleware from Starlette, then Uvicorn, else disable
 ProxyHeadersMiddleware = None
@@ -37,26 +39,27 @@ from .infra.cache.redis_client import get_redis
 from .api.routers.reminders import router as reminders_router
 from .api.routers.auth import router as auth_router
 from .api.routers.auth_sessions import router as auth_sessions_router
+from .config import settings
 
 app = FastAPI(title="Applytide API")
 
-def _split_env_list(value: str, default: list[str]) -> list[str]:
-    if not value:
-        return default
-    return [x.strip() for x in value.split(",") if x.strip()]
-
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 
-# --- Trust proxy headers if middleware available (nice-to-have, not required)
-if ProxyHeadersMiddleware is not None and os.getenv("TRUST_PROXY_HEADERS", "1") == "1":
-    app.add_middleware(ProxyHeadersMiddleware)
+# --- Rate limit (apply early)
+if settings.RATE_LIMIT_ENABLED:
+    app.add_middleware(
+        GlobalRateLimitMiddleware,
+        max_requests=settings.GLOBAL_RATE_LIMIT_REQUESTS,
+        window_seconds=settings.GLOBAL_RATE_LIMIT_WINDOW,
+        enabled=True,
+        key_prefix="grl",
+        exempt_paths={"/health", "/docs", "/redoc", "/openapi.json"},
+        identify_by="ip",  # set to "user_or_ip" once request.state.user_id is available
+    )
 
 # --- CORS
 if ENV == "production":
-    origins = _split_env_list(
-        os.getenv("ALLOWED_ORIGINS", "https://applytide.com,https://www.applytide.com"),
-        ["https://applytide.com", "https://www.applytide.com"],
-    )
+    origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "https://applytide.com,https://www.applytide.com").split(",") if x.strip()]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -65,16 +68,9 @@ if ENV == "production":
         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     )
 else:
-    origins = _split_env_list(
-        os.getenv("ALLOWED_ORIGINS", "http://localhost:3000"),
-        ["http://localhost:3000"],
-    )
+    origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if x.strip()]
     if os.getenv("CORS_DEBUG") == "1":
-        origins.extend([
-            "https://www.linkedin.com",
-            "https://www.indeed.com",
-            "https://www.glassdoor.com",
-        ])
+        origins += ["https://www.linkedin.com", "https://www.indeed.com", "https://www.glassdoor.com"]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -83,11 +79,8 @@ else:
         allow_headers=["*"],
     )
 
-# --- Trusted hosts
-allowed_hosts = _split_env_list(
-    os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1"),
-    ["localhost", "127.0.0.1"],
-)
+
+allowed_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 allowed_hosts += ["backend", "frontend"]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
@@ -105,11 +98,14 @@ app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
 app.include_router(reminders_router)
-# app.add_middleware(SecurityHeadersMiddleware)
-# app.add_middleware(GlobalRateLimitMiddleware,
-#                    max_requests=1000,
-#                    window_seconds=3600,
-#                    enabled=True)
+
+# --- Security headers (as late as possible)
+if settings.SECURITY_HEADERS_ENABLED:
+    app.add_middleware(SecurityHeadersMiddleware)
+
+# --- Proxy headers (outermost)
+if ProxyHeadersMiddleware is not None and os.getenv("TRUST_PROXY_HEADERS", "1") == "1":
+    app.add_middleware(ProxyHeadersMiddleware)
 
 @app.get("/health", tags=["monitoring"])
 async def health_check(db: AsyncSession = Depends(get_db)):
@@ -133,11 +129,29 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "version": "1.0.0",
     }
 
+log = logging.getLogger("uvicorn.error")
+
+
 @app.on_event("startup")
 async def startup_event():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(cleanup_expired_sessions, "interval", hours=24)
-    scheduler.start()
+    app.state.scheduler = BackgroundScheduler(daemon=True)
+    app.state.scheduler.add_job(cleanup_expired_sessions, "interval", hours=24)
+    app.state.scheduler.start()
+    log.info(
+        "Boot: SecurityHeaders=%s RateLimit=%s limit=%s window=%ss ENV=%s",
+        settings.SECURITY_HEADERS_ENABLED,
+        settings.RATE_LIMIT_ENABLED,
+        settings.GLOBAL_RATE_LIMIT_REQUESTS,
+        settings.GLOBAL_RATE_LIMIT_WINDOW,
+        os.getenv("ENVIRONMENT", "development").lower(),
+    )
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        app.state.scheduler.shutdown(wait=False)
+    except Exception:
+        pass
 
 @app.get("/")
 def root():

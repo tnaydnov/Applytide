@@ -71,6 +71,19 @@ class Settings:
     # Rate limiting
     GLOBAL_RATE_LIMIT_REQUESTS: int = int(os.getenv("GLOBAL_RATE_LIMIT_REQUESTS", "1000"))
     GLOBAL_RATE_LIMIT_WINDOW: int = int(os.getenv("GLOBAL_RATE_LIMIT_WINDOW", "3600"))
+
+    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true" if os.getenv("ENVIRONMENT","development")=="production" else "false").lower() == "true"
+    SECURITY_HEADERS_ENABLED: bool = os.getenv("SECURITY_HEADERS_ENABLED", "true").lower() == "true"
+
+    # Security Headers / CSP optional extras (comma-separated)
+    CSP_CONNECT_SRC_EXTRA: str = os.getenv("CSP_CONNECT_SRC_EXTRA", "")
+    CSP_IMG_SRC_EXTRA: str     = os.getenv("CSP_IMG_SRC_EXTRA", "")
+    CSP_SCRIPT_SRC_EXTRA: str  = os.getenv("CSP_SCRIPT_SRC_EXTRA", "")
+    CSP_STYLE_SRC_EXTRA: str   = os.getenv("CSP_STYLE_SRC_EXTRA", "")
+    CSP_FRAME_SRC_EXTRA: str   = os.getenv("CSP_FRAME_SRC_EXTRA", "")
+
+    # Cross-origin isolation (off by default; can break embeds)
+    ENABLE_CROSS_ORIGIN_ISOLATION: bool = os.getenv("ENABLE_CROSS_ORIGIN_ISOLATION", "false").lower() == "true"
     
     # Logging
     SECURITY_LOG_FILE: str = os.getenv("SECURITY_LOG_FILE", "/app/logs/security.log")
