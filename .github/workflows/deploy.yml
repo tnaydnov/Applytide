@@ -1,21 +1,86 @@
-name: Deploy to EC2
+name: Build & Deploy to EC2
 
 on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  deploy:
+  build_and_push:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to server
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # BACKEND API
+      - name: Build & Push backend api
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/applytide-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/applytide-backend:latest
+
+      # WORKER
+      - name: Build & Push worker
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/applytide-worker:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/applytide-worker:latest
+
+      # FRONTEND
+      - name: Build & Push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/applytide-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/applytide-frontend:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build_and_push
+    steps:
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             cd ~/Applytide
-            git pull
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --build
+
+            # Login to GHCR (skip if packages are public)
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin || true
+
+            # >>> add these two lines <<<
+            export GITHUB_OWNER=${{ github.repository_owner }}
+            export IMAGE_TAG=${{ github.sha }}
+            echo "GITHUB_OWNER=$GITHUB_OWNER  IMAGE_TAG=$IMAGE_TAG"
+
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+
+            docker image prune -a -f --filter "until=168h" || true
+            docker builder prune -af --filter "until=168h" || true

@@ -17,6 +17,10 @@ export default function MyApp({ Component, pageProps, router }) {
       <AuthProvider>
         <Head>
           <title>Applytide - Track Every Job Application Like a Pro</title>
+          <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+          <link rel="icon" type="image/svg+xml" href="/images/favicon.svg" />
+          <link rel="apple-touch-icon" href="/images/app-icon.svg" />
+          <meta name="theme-color" content="#6366f1" />
         </Head>
         <AppLayout className="flex flex-col">
           {isPublicPage && router.pathname !== '/' ? (

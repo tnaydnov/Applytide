@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+# Basic OS deps (keep light)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    netcat-traditional \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps
+COPY requirements.api.txt ./requirements.api.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.api.txt
+
+# App files
+COPY alembic.ini .
+COPY app ./app
+COPY entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "60"]

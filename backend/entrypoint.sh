@@ -7,7 +7,11 @@ while ! nc -z pg 5432; do
 done
 echo "PostgreSQL started"
 
-echo "Running database migrations..."
-alembic upgrade head
+if [ -z "$SKIP_MIGRATIONS" ]; then
+  echo "Running database migrations..."
+  alembic upgrade head
+else
+  echo "Skipping migrations (SKIP_MIGRATIONS=$SKIP_MIGRATIONS)"
+fi
 
 exec "$@"

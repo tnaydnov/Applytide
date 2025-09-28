@@ -2,67 +2,38 @@ fastapi>=0.104.1
 uvicorn[standard]>=0.24.0
 python-dotenv>=1.0.0
 redis>=5.0.0
-
 SQLAlchemy
 alembic
 psycopg2-binary
 passlib[bcrypt]>=1.7.4
 python-jose[cryptography]>=3.3.0
 email-validator>=1.1.3
-
 httpx==0.27.2
 beautifulsoup4
 lxml
 python-multipart
-
-# Browser automation for JavaScript-rendered content
-playwright>=1.40.0
-
-# PDF Processing (Enhanced)
 PyPDF2==3.0.1
 pdfplumber==0.10.3
 PyMuPDF==1.23.8
 pypdf
-
-# Document Processing
 python-docx
-
-# Text Processing & Analysis (Enhanced)
 nltk==3.8.1
 scikit-learn
 anyio
 faker>=20.0.0
-
-# AI/ML Dependencies for Success Prediction
 numpy>=1.24.0
 pandas>=2.0.0
 scipy>=1.10.0
-
-# OpenAI for Real AI Cover Letter Generation
 openai==1.40.0
-
-# HTML / Metadata extraction
 extruct>=0.16.0
 w3lib>=2.1.2
 readability-lxml>=0.8.1
 reportlab>=4.0.0
-
-# HTML to DOCX conversion
 html2docx>=1.1.0
-
-# HTML to PDF conversion 
-weasyprint>=60.1
-
-# For HTML processing
-beautifulsoup4>=4.12.2
-
 bcrypt==3.2.2
-
 apscheduler>=3.10.0
-
 gunicorn==21.2.0
-
-google-auth 
-google-auth-oauthlib 
-google-auth-httplib2 
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
 google-api-python-client
