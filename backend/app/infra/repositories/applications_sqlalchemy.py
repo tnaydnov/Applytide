@@ -135,9 +135,24 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
         a = self.db.get(models.Application, app_id)
         if not a or a.user_id != user_id:
             raise LookupError
+        
+        # Delete reminder notes first (they reference reminders)
+        self.db.execute(
+            delete(models.ReminderNote)
+            .where(models.ReminderNote.reminder_id.in_(
+                select(models.Reminder.id).where(models.Reminder.application_id == app_id)
+            ))
+        )
+        
+        # Delete reminders (they reference applications)
+        self.db.execute(delete(models.Reminder).where(models.Reminder.application_id == app_id))
+        
+        # Delete other application-related entities
         self.db.execute(delete(models.Note).where(models.Note.application_id == app_id))
         self.db.execute(delete(models.Stage).where(models.Stage.application_id == app_id))
         self.db.execute(delete(models.ApplicationAttachment).where(models.ApplicationAttachment.application_id == app_id))
+        
+        # Finally delete the application
         self.db.delete(a)
         self.db.commit()
 
