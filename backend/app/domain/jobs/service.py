@@ -69,7 +69,6 @@ class JobService:
             total = self.search.count(q, search_filters)
 
             items: List[JobDTO] = []
-            from datetime import datetime
             for d in docs:
                 created = d.get("created_at")
                 # search returns ISO string; keep as-is (Pydantic will coerce downstream)

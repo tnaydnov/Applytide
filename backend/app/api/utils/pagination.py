@@ -30,8 +30,6 @@ def paginate_query(query, params: PaginationParams, total_query=None, db_session
     page = max(1, params.page)
     page_size = min(100, max(1, params.page_size))  # cap at 100
 
-    from sqlalchemy.sql import Select
-
     # total count
     if total_query is not None:
         if isinstance(total_query, Query):

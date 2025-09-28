@@ -43,7 +43,7 @@ class DocumentService:
         # AI cover letter (optional)
         self.ai_cover_letter_service = None
         try:
-            from ...services.ai_cover_letter import AICoverLetterService
+            from ...infra.external.ai_cover_letter_provider import AICoverLetterService
             self.ai_cover_letter_service = AICoverLetterService()
         except Exception as e:
             print(f"[documents] AI cover letter unavailable: {e}")
