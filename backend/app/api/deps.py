@@ -43,24 +43,15 @@ def get_job_service(db: Session = Depends(get_db)) -> JobService:
     return JobService(jobs=jobs, companies=companies, search=search)
 
 async def get_document_service() -> AsyncGenerator[DocumentService, None]:
-    provider: CoverLetterProvider | None = None
-    try:
-        provider = AICoverLetterService()  # may raise if no API key (that's fine)
-    except Exception:
-        provider = None
-
     extractor: TextExtractor = PDFExtractor()   # or a CompositeTextExtractor
     store: DocumentStorePort = FSDocumentStore(root=Path("/app/uploads/documents"))
 
-    svc = DocumentService(store=store, extractor=extractor, cover_letter_provider=provider)
+    svc = DocumentService(store=store, extractor=extractor)
     try:
         yield svc
     finally:
-        if provider and hasattr(provider, "aclose"):
-            try:
-                await provider.aclose()  # close httpx client
-            except Exception:
-                pass
+        # DocumentService handles AI service cleanup internally
+        pass
 
 def get_application_service(
     db: Session = Depends(get_db),
