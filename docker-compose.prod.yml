@@ -44,7 +44,7 @@ services:
     build: ./backend
     container_name: applytide_worker
     env_file: .env.production
-    command: ["python", "-m", "app.worker.runner"]
+    command: ["python", "-m", "app.infra.workers.reminders_runner"]
     restart: always
     depends_on:
       - pg

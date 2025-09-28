@@ -71,7 +71,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_FROM: ${SMTP_FROM:-noreply@applytide.local}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
-    command: ["python", "-m", "app.worker.runner"]
+    command: ["python", "-m", "app.infra.workers.reminders_runner"]
     networks:
       - applytide_network
 
