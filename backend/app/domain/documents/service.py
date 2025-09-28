@@ -83,7 +83,7 @@ class DocumentService:
         file_path = self.store.save_bytes(file_content, filename)
 
         # extract text
-        text_content = self.extractor.extract_text(file_path)
+        text_content = self.extractor.extract_text(file_content)
         safe_label = sanitize_display_name(display_name or Path(filename).stem)
 
         row = models.Resume(
