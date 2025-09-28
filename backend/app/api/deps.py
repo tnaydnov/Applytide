@@ -2,6 +2,7 @@ from __future__ import annotations
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from typing import AsyncGenerator
+from pathlib import Path
 from ..db.session import get_db
 from typing import AsyncGenerator
 from ..domain.jobs.extraction.service import JobExtractionService
@@ -49,7 +50,7 @@ async def get_document_service() -> AsyncGenerator[DocumentService, None]:
         provider = None
 
     extractor: TextExtractor = PDFExtractor()   # or a CompositeTextExtractor
-    store: DocumentStorePort = FSDocumentStore(base_dir="/app/uploads/documents")
+    store: DocumentStorePort = FSDocumentStore(root=Path("/app/uploads/documents"))
 
     svc = DocumentService(store=store, extractor=extractor, cover_letter_provider=provider)
     try:
