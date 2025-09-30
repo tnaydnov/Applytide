@@ -1,15 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Applytide",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Save jobs to Applytide.",
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "windows"],
   "host_permissions": [
     "https://applytide.com/*",
-    "http://localhost/*",
-    "https://*.linkedin.com/*",
-    "https://*.indeed.com/*",
-    "https://*.glassdoor.com/*"
+    "http://localhost/*"
   ],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Applytide", "default_popup": "popup.html" },

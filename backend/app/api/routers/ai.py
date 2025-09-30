@@ -9,8 +9,14 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 class ExtractIn(BaseModel):
     url: str
-    html: str
+    html: str = ""
+    jsonld: Optional[List[Dict[str, Any]]] = None
+    metas: Optional[Dict[str, Any]] = None
+    readable: Optional[Dict[str, Any]] = None   # { title, byline, content (HTML), textContent, length, excerpt, siteName }
+    xhrLogs: Optional[List[Dict[str, Any]]] = None
     quick: Optional[Dict[str, Any]] = None
+    manual_text: Optional[str] = None              # NEW: user-provided text (selection/paste)
+    screenshot: Optional[str] = None               # NEW: data URL (data:image/png;base64,...)
 
 class JobOut(BaseModel):
     title: str = ""
@@ -28,8 +34,23 @@ class ExtractOut(BaseModel):
 
 @router.post("/extract", response_model=ExtractOut)
 def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_extraction_service)):
+    if payload.screenshot and not payload.screenshot.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Invalid screenshot format")
+
+    if payload.manual_text and len(payload.manual_text) > 200_000:
+        raise HTTPException(status_code=413, detail="Text too large")
     try:
-        job = svc.extract_job(url=payload.url, html=payload.html, hints=payload.quick)
+        job = svc.extract_job(
+            url=payload.url,
+            html=payload.html,
+            hints=payload.quick or {},
+            jsonld=payload.jsonld or [],
+            readable=payload.readable or {},
+            metas=payload.metas or {},
+            xhr_logs=payload.xhrLogs or [],
+            manual_text=payload.manual_text,
+            screenshot_data_url=payload.screenshot,
+        )
         return ExtractOut(job=JobOut(**job))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

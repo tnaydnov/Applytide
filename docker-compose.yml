@@ -1,24 +1,34 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   pg:
-    image: postgres:latest
+    image: postgres:16-alpine
     container_name: applytide_pg
+    env_file: .env
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: applytide_user
+      POSTGRES_DB: applytide_dev
+      # POSTGRES_PASSWORD comes from .env
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - applytide_network
+    restart: always
+    networks: [applytide_network]
+    logging: *default-logging
 
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     container_name: applytide_redis
-    command: redis-server --requirepass redis_password
+    env_file: .env
+    command: sh -c "redis-server --requirepass $$REDIS_PASSWORD"
     ports: ["6379:6379"]
-    networks:
-      - applytide_network
+    restart: always
+    networks: [applytide_network]
+    logging: *default-logging
 
   maildev:
     image: maildev/maildev:latest
@@ -30,21 +40,15 @@ services:
       - applytide_network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
     container_name: applytide_api
     env_file: .env
-    environment:
-      PORT: 8000
-      ALLOWED_ORIGINS: "http://localhost,https://www.linkedin.com,https://www.indeed.com,https://www.glassdoor.com"
-      DATABASE_URL: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@pg:5432/${DB_NAME}
-      REDIS_URL: redis://:redis_password@redis:6379/0
-      SMTP_HOST: ${SMTP_HOST:-maildev}
-      SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_FROM: ${SMTP_FROM:-noreply@applytide.local}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
-    networks:
-      - applytide_network
+    restart: always
+    depends_on: [pg, redis]
+    networks: [applytide_network]
+    logging: *default-logging
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic.ini:/app/alembic.ini
@@ -53,42 +57,43 @@ services:
     build: ./frontend
     container_name: applytide_web
     environment:
-      NEXT_PUBLIC_API_BASE: /api
-    networks:
-      - applytide_network
+      - NEXT_PUBLIC_API_BASE=/api
+    restart: always
+    networks: [applytide_network]
+    logging: *default-logging
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
 
   worker:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
     container_name: applytide_worker
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@pg:5432/${DB_NAME}
-      REDIS_URL: redis://:redis_password@redis:6379/0
-      SMTP_HOST: ${SMTP_HOST:-maildev}
-      SMTP_PORT: ${SMTP_PORT:-1025}
-      SMTP_FROM: ${SMTP_FROM:-noreply@applytide.local}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+    env_file: .env
     command: ["python", "-m", "app.infra.workers.reminders_runner"]
-    networks:
-      - applytide_network
+    restart: always
+    depends_on: [pg, redis]
+    networks: [applytide_network]
+    volumes:
+      - ./backend/alembic.ini:/app/alembic.ini
+    logging: *default-logging
+    environment:
+      SKIP_MIGRATIONS: "1"
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: applytide_nginx
-    environment:
-      - SERVER_NAME=${SERVER_NAME:-localhost}
     ports:
       - "80:80"
     volumes:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - applytide_network
+      - ./nginx/main.conf:/etc/nginx/nginx.conf
+    restart: always
+    depends_on: [frontend, backend]
+    networks: [applytide_network]
+    logging: *default-logging
 
 networks:
   applytide_network:

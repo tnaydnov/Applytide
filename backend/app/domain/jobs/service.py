@@ -23,8 +23,29 @@ class JobService:
         return self.jobs.create(user_id=user_id, company_id=company_id, payload=payload)
 
     def create_manual_job(self, *, user_id: UUID, payload: Dict) -> JobDTO:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Validate that job has meaningful content
+        title = (payload.get("title") or "").strip()
+        company_name = (payload.get("company_name") or "").strip()
+        description = (payload.get("description") or "").strip()
+        
+        if not title and not company_name:
+            logger.error(f"Job creation failed - no title or company: payload={payload}")
+            raise ValueError("Job must have at least a title or company name")
+        
+        if not title:
+            logger.warning(f"Job created without title: company='{company_name}'")
+        if not company_name:
+            logger.warning(f"Job created without company: title='{title}'")
+        if len(description) < 10:
+            logger.warning(f"Job created with very short description: {len(description)} chars")
+        
+        logger.info(f"Creating job: title='{title[:50]}...', company='{company_name}', desc_len={len(description)}")
+        
         company_id = self.companies.ensure_company(
-            name=payload["company_name"],
+            name=company_name,
             website=None,
             location=payload.get("location"),
         )

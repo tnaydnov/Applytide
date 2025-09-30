@@ -22,10 +22,10 @@ from ..infra.repositories.applications_sqlalchemy import (
 from ..infra.files.attachment_store import AttachmentStore
 from ..domain.applications.service import ApplicationService
 from ..domain.documents.service import DocumentService
-from ..domain.documents.ports import CoverLetterProvider, TextExtractor, DocumentStore as DocumentStorePort
+from ..domain.documents.ports import CoverLetterProvider, TextExtractor as TextExtractorPort, DocumentStore as DocumentStorePort
 from ..infra.external.ai_cover_letter_provider import AICoverLetterService
 from ..infra.extractors.pdf_extractor import PDFExtractor
-from ..infra.extractors.text_extractor import TextExtractor
+from ..infra.extractors.text_extractor import TextExtractor as TextExtractorImpl
 from ..infra.files.document_store import DocumentStore as FSDocumentStore
 from ..domain.reminders.service import ReminderService
 from ..infra.repositories.reminders_sqlalchemy import ReminderSQLARepository, ReminderNoteSQLARepository
@@ -45,7 +45,7 @@ def get_job_service(db: Session = Depends(get_db)) -> JobService:
 
 async def get_document_service() -> AsyncGenerator[DocumentService, None]:
     pdf_extractor = PDFExtractor()
-    extractor: TextExtractor = TextExtractor(pdf_extractor=pdf_extractor)
+    extractor: TextExtractorPort = TextExtractorImpl(pdf_extractor=pdf_extractor)
     store: DocumentStorePort = FSDocumentStore(root=Path("/app/uploads/documents"))
 
     svc = DocumentService(store=store, extractor=extractor)
@@ -75,15 +75,25 @@ def get_application_service(
 
 
 def get_job_extraction_service() -> JobExtractionService:
+    import logging
+    logger = logging.getLogger(__name__)
+    
     main = ReadabilityMainContent()
     struct = ExtructStructuredData()
     title_company = GenericTitleCompany()
     llm = None
+    
     if OpenAILLMExtractor:
         try:
             llm = OpenAILLMExtractor()  # may raise if no key
-        except Exception:
+            logger.info("OpenAI LLM extractor initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI LLM extractor: {str(e)}")
+            # Don't fail the whole service, just run without LLM
             llm = None
+    else:
+        logger.warning("OpenAI LLM extractor not available - running without LLM support")
+    
     return JobExtractionService(
         main_content=main,
         structured=struct,
