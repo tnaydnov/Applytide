@@ -41,6 +41,7 @@ function setProgress(phase, meta = {}) {
 function resetProgressBar() {
   progressBar.classList.remove('error');
   progressBar.style.width = '0%';
+  progressBar.style.background = ''
 }
 
 // Listen for streaming progress from background

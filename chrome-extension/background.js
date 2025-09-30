@@ -77,7 +77,7 @@ async function apiExtract(payload) {
     headers: authHeaders(),
     body: JSON.stringify(payload)
   });
-  
+
   if (!res.ok) {
     let errorMsg = `Request failed (${res.status})`;
     try {
@@ -89,7 +89,7 @@ async function apiExtract(payload) {
     }
     throw new Error(errorMsg);
   }
-  
+
   return res.json();
 }
 
@@ -100,7 +100,7 @@ async function apiSaveJob(jobPayload) {
     headers: authHeaders(),
     body: JSON.stringify(jobPayload)
   });
-  
+
   if (!res.ok) {
     let errorMsg = `Save failed (${res.status})`;
     try {
@@ -112,7 +112,7 @@ async function apiSaveJob(jobPayload) {
     }
     throw new Error(errorMsg);
   }
-  
+
   return res.json();
 }
 
@@ -195,7 +195,7 @@ async function getRenderedCapture(tabId, {
             nodeStack.push(...Array.from(el.children || []));
           }
         }
-        
+
         // Try multiple methods to get HTML content
         let base = '';
         try {
@@ -220,12 +220,12 @@ async function getRenderedCapture(tabId, {
             }
           }
         }
-        
+
         if (!base || base.trim().length === 0) {
           console.error('HTML capture resulted in empty content');
           base = `<html><head><title>${document.title || ''}</title></head><body>${document.body?.innerText || 'No content captured'}</body></html>`;
         }
-        
+
         return base + '\n<!-- INLINED SHADOW DOM -->\n' + chunks.join('\n');
       } catch (error) {
         console.error('HTML serialization failed completely:', error);
@@ -547,44 +547,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             notifyProgress('flow:begin', { url: tab.url });
 
-            // Clear any previous selection state
-            await chrome.storage.local.remove(['selectionState']);
-            
-            // Set up selection state
-            await chrome.storage.local.set({
-              selectionState: {
-                waiting: true,
-                timestamp: Date.now(),
-                tabUrl: tab.url
-              }
-            });
-            
-            // Inject the overlay
+            // Inject overlay in the ISOLATED world so chrome.* APIs are available
             await chrome.scripting.executeScript({
               target: { tabId: tab.id, allFrames: false },
+              world: 'ISOLATED',
               files: ['selector-overlay.js']
             });
-            
-            // Poll for selection result
+
+            // Wait for one-off message from the overlay
             const result = await new Promise((resolve, reject) => {
               const timeout = setTimeout(() => {
+                cleanup();
                 reject(new Error('Selection timed out - please try again'));
               }, 30000);
-              
-              const checkSelection = async () => {
-                try {
-                  const state = await chrome.storage.local.get(['selectionState']);
-                  if (state.selectionState?.completed) {
-                    clearTimeout(timeout);
-                    clearInterval(interval);
-                    resolve(state.selectionState);
-                  }
-                } catch (e) {
-                  console.error('Error checking selection state:', e);
+
+              const listener = (msg, sender) => {
+                if (msg?.type === 'APPLYTIDE_SELECTION_DONE' && sender?.tab?.id === tab.id) {
+                  cleanup();
+                  resolve(msg); // { text, url }
                 }
               };
-              
-              const interval = setInterval(checkSelection, 500);
+
+              const cleanup = () => {
+                clearTimeout(timeout);
+                chrome.runtime.onMessage.removeListener(listener);
+              };
+
+              chrome.runtime.onMessage.addListener(listener);
             });
 
             if (!result.text || result.text.length < 10) {
@@ -596,22 +585,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               manual_text: result.text
             });
+
+            // Guard: refuse to save if the extraction is basically empty
+            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+              !((job?.description || '').trim().length >= 30)) {
+              notifyProgress('backend:error');
+              throw new Error('Could not extract meaningful job details. Try selecting more text or use screenshot.');
+            }
+
             notifyProgress('backend:save');
             const saved = await apiSaveJob(job);
             notifyProgress('flow:done', { savedId: saved?.id });
             sendResponse({ ok: true, saved });
-            
+
           } catch (error) {
             notifyProgress('flow:error');
             const errorMsg = error?.message || String(error);
             console.error('Selection extraction failed:', error);
             sendResponse({ ok: false, error: errorMsg });
-          } finally {
-            // Clean up selection state
-            await chrome.storage.local.remove(['selectionState']);
           }
           break;
         }
+
 
 
         // Assisted Mode: pasted text → LLM
@@ -628,6 +623,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             notifyProgress('flow:begin', { url });
             notifyProgress('backend:extract');
             const { job } = await apiExtract({ url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {}, manual_text: text });
+
+            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+              !((job?.description || '').trim().length >= 30)) {
+              notifyProgress('backend:error');
+              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+            }
+
             notifyProgress('backend:save');
             const saved = await apiSaveJob(job);
             notifyProgress('flow:done', { savedId: saved?.id });
@@ -648,7 +650,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab?.id) throw new Error('No active tab');
             notifyProgress('flow:begin', { url: tab.url });
-            
+
             let dataUrl;
             try {
               dataUrl = await captureScreenshot();
@@ -656,16 +658,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               notifyProgress('screenshot:failed', { error: String(e?.message || e) });
               throw new Error('Failed to capture screenshot - please try text selection instead');
             }
-            
+
             if (!dataUrl || !dataUrl.startsWith('data:image/')) {
               throw new Error('Invalid screenshot captured - please try again');
             }
-            
+
             notifyProgress('backend:extract');
             const { job } = await apiExtract({
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               screenshot: dataUrl
             });
+            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+              !((job?.description || '').trim().length >= 30)) {
+              notifyProgress('backend:error');
+              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+            }
+
             notifyProgress('backend:save');
             const saved = await apiSaveJob(job);
             notifyProgress('flow:done', { savedId: saved?.id });
@@ -723,6 +731,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (cached && (Date.now() - cached.ts) < CAPTURE_TTL_MS) {
               notifyProgress('capture:cache_hit', { url });
               const { job } = await apiExtract({ url, ...cached.capture, quick: {} });
+              if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+                !((job?.description || '').trim().length >= 30)) {
+                notifyProgress('backend:error');
+                throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+              }
+
               notifyProgress('backend:save');
               const saved = await apiSaveJob(job);
               notifyProgress('flow:done', { savedId: saved?.id });
@@ -736,6 +750,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             notifyProgress('backend:extract');
             const { job } = await apiExtract({ url, ...capture, quick: {} });
+            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+              !((job?.description || '').trim().length >= 30)) {
+              notifyProgress('backend:error');
+              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+            }
+
 
             notifyProgress('backend:save');
             const saved = await apiSaveJob(job);
@@ -777,6 +797,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             notifyProgress('backend:extract');
             const { job } = await apiExtract({ url, ...capture, quick: {} });
+            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+              !((job?.description || '').trim().length >= 30)) {
+              notifyProgress('backend:error');
+              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+            }
+
             notifyProgress('flow:ready_for_confirm', { title: job?.title, company: job?.company_name });
             sendResponse({ ok: true, job });
           } finally {

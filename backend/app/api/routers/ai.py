@@ -64,6 +64,13 @@ def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_
             manual_text=payload.manual_text,
             screenshot_data_url=payload.screenshot,
         )
+        # Reject results with no meaningful content (prevents saving blank jobs)
+        title_ok = bool((job.get("title") or "").strip())
+        company_ok = bool((job.get("company_name") or "").strip())
+        desc_ok = len((job.get("description") or "").strip()) >= 30
+        if not (title_ok or company_ok or desc_ok):
+            raise HTTPException(status_code=400, detail="Extraction produced too little content. Try text selection or screenshot.")
+
         return ExtractOut(job=JobOut(**job))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
