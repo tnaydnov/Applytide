@@ -21,17 +21,27 @@ class OpenAILLMExtractor(LLMExtractor):
         self.model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
 
     def extract_job(self, url: str, text: str, hints=None) -> dict:
+        print("\n=== OPENAI LLM EXTRACTOR START ===")
         hints = hints or {}
         text_len = len(text)
-        logger.info(f"Starting OpenAI job extraction: text_len={text_len}, model={self.model}")
+        print(f"OpenAI Extractor: Starting extraction")
+        print(f"OpenAI Extractor: text_len = {text_len}")
+        print(f"OpenAI Extractor: model = {self.model}")
+        print(f"OpenAI Extractor: url = {url}")
+        print(f"OpenAI Extractor: hints = {hints}")
+        print(f"OpenAI Extractor: text preview = {repr(text[:300])}")
         
         if text_len < 50:
+            print(f"OpenAI Extractor ERROR: Text too short: {text_len} characters")
             raise ValueError(f"Text too short for extraction: {text_len} characters")
         
         messages = [{"role":"system","content":_EXTRACT_SYSTEM}]
         if hints:
             messages.append({"role":"user","content":f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
         messages.append({"role":"user","content":f"Source URL: {url}\n\nTEXT:\n{text[:60000]}"})
+        
+        print(f"OpenAI Extractor: Prepared {len(messages)} messages for API call")
+        print(f"OpenAI Extractor: Making API call to OpenAI...")
         
         try:
             resp = self.client.chat.completions.create(
@@ -41,12 +51,22 @@ class OpenAILLMExtractor(LLMExtractor):
                 messages=messages,
                 max_tokens=2500
             )
+            print(f"OpenAI Extractor: API call successful")
             
             if not resp.choices or not resp.choices[0].message.content:
+                print("OpenAI Extractor ERROR: OpenAI returned empty response")
                 raise ValueError("OpenAI returned empty response")
+            
+            print(f"OpenAI Extractor: Parsing JSON response...")
+            print(f"OpenAI Extractor: Raw response preview = {resp.choices[0].message.content[:200]}")
             
             data = json.loads(resp.choices[0].message.content)
             job = data.get("job") or data
+            
+            print(f"OpenAI Extractor: JSON parsing successful")
+            print(f"OpenAI Extractor: Extracted title = '{job.get('title', '')[:50]}'")
+            print(f"OpenAI Extractor: Extracted company = '{job.get('company_name', '')}'")
+            print(f"OpenAI Extractor: Extracted description length = {len(job.get('description', ''))}")
             
             # Clean and validate response
             job["description"] = (job.get("description") or "").strip()
@@ -54,14 +74,17 @@ class OpenAILLMExtractor(LLMExtractor):
             job["skills"] = [x.strip() for x in (job.get("skills") or []) if x and x.strip()]
             if not job.get("source_url"): job["source_url"] = url
             
-            logger.info(f"OpenAI extraction successful: title='{job.get('title', '')[:50]}...', company='{job.get('company_name', '')}'")
+            print(f"OpenAI Extractor: Extraction completed successfully")
+            print("=== OPENAI EXTRACTOR SUCCESS ===")
             return job
             
         except json.JSONDecodeError as e:
-            logger.error(f"OpenAI returned invalid JSON: {str(e)}")
+            print(f"OpenAI Extractor ERROR: Invalid JSON response: {str(e)}")
             raise ValueError(f"OpenAI returned invalid JSON response: {str(e)}")
         except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
+            print(f"OpenAI Extractor ERROR: API error: {str(e)}")
+            print(f"OpenAI Extractor ERROR: Error type: {type(e).__name__}")
+            print("=== OPENAI EXTRACTOR ERROR ===")
             if "rate limit" in str(e).lower():
                 raise ValueError("OpenAI API rate limit exceeded - please try again later")
             elif "insufficient quota" in str(e).lower():

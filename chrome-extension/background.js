@@ -71,24 +71,47 @@ async function ensureAccessToken() {
 
 // -------- API calls needed for Flow 1 --------
 async function apiExtract(payload) {
+  console.log('[bg] apiExtract - Step 4: Making API call');
+  console.log('[bg] DEBUG: API_HOST=', API_HOST);
+  console.log('[bg] DEBUG: payload keys=', Object.keys(payload));
+  console.log('[bg] DEBUG: payload summary=', {
+    url: payload.url,
+    html_len: (payload.html || '').length,
+    manual_text_len: (payload.manual_text || '').length,
+    screenshot_len: (payload.screenshot || '').length,
+    jsonld_count: (payload.jsonld || []).length
+  });
+  
   await ensureAccessToken();
   const res = await fetch(`${API_HOST}/ai/extract`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload)
   });
+  
+  console.log('[bg] DEBUG: API response status=', res.status);
 
   if (!res.ok) {
+    console.log('[bg] ERROR: API request failed, status=', res.status);
     let errorMsg = `Request failed (${res.status})`;
     try {
       const errorData = await res.json();
+      console.log('[bg] DEBUG: Error response data=', errorData);
       errorMsg = errorData?.detail || errorMsg;
-    } catch {
+      
+      // Check if it's debug info from backend
+      if (errorMsg.includes('DEBUG_INFO:')) {
+        console.log('[bg] BACKEND DEBUG INFO RECEIVED:', errorMsg);
+      }
+    } catch (e) {
+      console.log('[bg] ERROR: Failed to parse error response:', e);
       // Fallback to status text if JSON parsing fails
       errorMsg = res.statusText || errorMsg;
     }
     throw new Error(errorMsg);
   }
+  
+  console.log('[bg] DEBUG: API request successful, parsing response');
 
   return res.json();
 }
@@ -112,8 +135,16 @@ async function apiSaveJob(jobPayload) {
     }
     throw new Error(errorMsg);
   }
-
-  return res.json();
+  
+  console.log('[bg] DEBUG: API request successful, parsing response');
+  const result = await res.json();
+  console.log('[bg] DEBUG: API response parsed successfully');
+  console.log('[bg] DEBUG: Response job summary=', {
+    title: result.job?.title || 'None',
+    company: result.job?.company_name || 'None',
+    desc_len: (result.job?.description || '').length
+  });
+  return result;
 }
 
 // -------- HTML capture from the active tab --------
@@ -581,11 +612,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             notifyProgress('backend:extract');
-            console.log('[bg] selection received len=', (result.text || '').length);
-            const { job } = await apiExtract({
+            console.log('[bg] SELECTION - Step 3: Received selection from content script');
+            console.log('[bg] DEBUG: selection length=', (result.text || '').length);
+            console.log('[bg] DEBUG: url=', tab.url);
+            console.log('[bg] DEBUG: selection preview=', (result.text || '').substring(0, 200));
+            
+            const payload = {
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               manual_text: result.text
-            });
+            };
+            console.log('[bg] DEBUG: Selection API payload=', JSON.stringify({...payload, manual_text: payload.manual_text.substring(0, 100) + '...'}));
+            
+            const { job } = await apiExtract(payload);
 
             // Guard: refuse to save if the extraction is basically empty
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
@@ -615,16 +653,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try {
             await ensureAccessToken();
             const { url, text } = message;
-            console.log('[bg] APPLYTIDE_USE_PASTED len=', (text || '').length);
+            console.log('[bg] APPLYTIDE_USE_PASTED - Step 1: Received text');
+            console.log('[bg] DEBUG: text length=', (text || '').length);
+            console.log('[bg] DEBUG: url=', url);
+            console.log('[bg] DEBUG: text preview=', (text || '').substring(0, 200));
+            
             if (!text || !text.trim()) {
+              console.log('[bg] ERROR: No text provided');
               throw new Error('Please paste some text first');
             }
             if (text.trim().length < 20) {
+              console.log('[bg] ERROR: Text too short, length=', text.trim().length);
               throw new Error('Please paste more text including job title, company, and description');
             }
+            
+            console.log('[bg] Step 2: Validation passed, calling API');
             notifyProgress('flow:begin', { url });
             notifyProgress('backend:extract');
-            const { job } = await apiExtract({ url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {}, manual_text: text });
+            
+            const payload = { url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {}, manual_text: text };
+            console.log('[bg] DEBUG: API payload=', JSON.stringify({...payload, manual_text: payload.manual_text.substring(0, 100) + '...'}));
+            
+            const { job } = await apiExtract(payload);
 
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
@@ -666,11 +716,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             notifyProgress('backend:extract');
-            console.log('[bg] screenshot dataUrl startsWith?', (dataUrl || '').slice(0, 22));
-            const { job } = await apiExtract({
+            console.log('[bg] SCREENSHOT - Step 3: Screenshot captured successfully');
+            console.log('[bg] DEBUG: screenshot data length=', (dataUrl || '').length);
+            console.log('[bg] DEBUG: url=', tab.url);
+            console.log('[bg] DEBUG: screenshot preview=', (dataUrl || '').slice(0, 100));
+            
+            const payload = {
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               screenshot: dataUrl
-            });
+            };
+            console.log('[bg] DEBUG: Screenshot API payload=', JSON.stringify({...payload, screenshot: payload.screenshot.substring(0, 100) + '...'}));
+            
+            const { job } = await apiExtract(payload);
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
@@ -711,12 +768,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Flow 1: Save job only
         case 'APPLYTIDE_RUN_FLOW1': {
+          console.log('[bg] APPLYTIDE_RUN_FLOW1 - Step 1: Starting regular extraction');
           await ensureAccessToken();
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tab?.id) throw new Error('No active tab');
 
           const url = tab.url;
+          console.log('[bg] DEBUG: Regular flow URL=', url);
+          console.log('[bg] DEBUG: Page classification=', classifyPage(url));
+          
           if (classifyPage(url) !== 'allowed') {
+            console.log('[bg] ERROR: Page not allowed for auto-save');
             sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use selection, paste, or screenshot.' });
             break;
           }
@@ -732,8 +794,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // short-term cache
             const cached = CAPTURE_CACHE.get(url);
             if (cached && (Date.now() - cached.ts) < CAPTURE_TTL_MS) {
+              console.log('[bg] DEBUG: Using cached capture data');
               notifyProgress('capture:cache_hit', { url });
-              const { job } = await apiExtract({ url, ...cached.capture, quick: {} });
+              const payload = { url, ...cached.capture, quick: {} };
+              console.log('[bg] DEBUG: Cached payload summary=', {
+                html_len: (payload.html || '').length,
+                jsonld_count: (payload.jsonld || []).length,
+                readable: !!payload.readable
+              });
+              const { job } = await apiExtract(payload);
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
                 notifyProgress('backend:error');
@@ -747,12 +816,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               break;
             }
 
+            console.log('[bg] DEBUG: No cache, capturing page content');
             notifyProgress('capture:run');
             const capture = await getRenderedCapture(tab.id);
             CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
 
+            console.log('[bg] DEBUG: Page capture completed');
+            console.log('[bg] DEBUG: Capture summary=', {
+              html_len: (capture.html || '').length,
+              jsonld_count: (capture.jsonld || []).length,
+              readable: !!capture.readable,
+              textLen: capture.textLen || 0
+            });
+
             notifyProgress('backend:extract');
-            const { job } = await apiExtract({ url, ...capture, quick: {} });
+            const payload = { url, ...capture, quick: {} };
+            console.log('[bg] DEBUG: Regular extraction payload summary=', {
+              html_len: (payload.html || '').length,
+              jsonld_count: (payload.jsonld || []).length,
+              readable: !!payload.readable
+            });
+            const { job } = await apiExtract(payload);
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');

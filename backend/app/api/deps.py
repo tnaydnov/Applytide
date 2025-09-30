@@ -75,6 +75,7 @@ def get_application_service(
 
 
 def get_job_extraction_service() -> JobExtractionService:
+    print("\n=== INITIALIZING JOB EXTRACTION SERVICE ===")
     import logging
     logger = logging.getLogger(__name__)
     
@@ -83,16 +84,24 @@ def get_job_extraction_service() -> JobExtractionService:
     title_company = GenericTitleCompany()
     llm = None
     
+    print(f"Deps: OpenAILLMExtractor available = {OpenAILLMExtractor is not None}")
+    
     if OpenAILLMExtractor:
         try:
+            print("Deps: Attempting to initialize OpenAI LLM extractor...")
             llm = OpenAILLMExtractor()  # may raise if no key
+            print("Deps: OpenAI LLM extractor initialized successfully")
             logger.info("OpenAI LLM extractor initialized successfully")
         except Exception as e:
+            print(f"Deps ERROR: Failed to initialize OpenAI LLM extractor: {str(e)}")
             logger.error(f"Failed to initialize OpenAI LLM extractor: {str(e)}")
             # Don't fail the whole service, just run without LLM
             llm = None
     else:
+        print("Deps: OpenAI LLM extractor not available - running without LLM support")
         logger.warning("OpenAI LLM extractor not available - running without LLM support")
+    
+    print(f"Deps: Final LLM state = {llm is not None}")
     
     return JobExtractionService(
         main_content=main,

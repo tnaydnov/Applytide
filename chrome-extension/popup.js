@@ -182,12 +182,15 @@ googleBtn.onclick = async () => {
 };
 
 saveJobBtn.onclick = async () => {
+  console.log('[popup] SAVE JOB BUTTON CLICKED - Starting regular extraction');
   resetProgressBar()
   setStatus('Saving job…');
   progressWrap.style.display = 'block';
   progressBar.style.width = '10%';
   resultEl.textContent = '';
+  console.log('[popup] DEBUG: Sending APPLYTIDE_RUN_FLOW1 message');
   const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
+  console.log('[popup] DEBUG: Regular extraction response=', resp);
   if (resp?.ok) {
     setStatus('Saved!', 'ok');
     resultEl.textContent = `Job saved (id: ${resp?.saved?.id || 'unknown'})`;
@@ -266,21 +269,33 @@ screenshotBtn.onclick = async () => {
 };
 
 usePastedBtn.onclick = async () => {
+  console.log('[popup] PASTE BUTTON CLICKED - Starting paste flow');
   resetProgressBar()
   const text = pasteBox.value;
-  if (!text.trim()) { setStatus('Paste some text first', 'err'); return; }
+  console.log('[popup] DEBUG: Paste text length=', text.length);
+  console.log('[popup] DEBUG: Paste text preview=', text.substring(0, 200));
+  
+  if (!text.trim()) { 
+    console.log('[popup] ERROR: No text in paste box');
+    setStatus('Paste some text first', 'err'); 
+    return; 
+  }
+  
   setStatus('Processing pasted text…');
   progressWrap.style.display = 'block'; progressBar.style.width = '10%';
   
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const url = tab?.url || '';
+    console.log('[popup] DEBUG: Current tab URL=', url);
     
     let resp;
     try {
+      console.log('[popup] DEBUG: Sending message to background script');
       resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_USE_PASTED', text, url });
+      console.log('[popup] DEBUG: Background script response=', resp);
     } catch (error) {
-      console.error('Background script message failed:', error);
+      console.error('[popup] ERROR: Background script message failed:', error);
       setStatus('Extension connection lost', 'err');
       resultEl.textContent = 'Extension context became invalid. Please reload the extension.';
       return;

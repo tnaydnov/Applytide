@@ -180,7 +180,105 @@ class JobExtractionService:
         manual_text: Optional[str] = None,
         screenshot_data_url: Optional[str] = None,
     ) -> Dict[str, Any]:
+        print("\n=== EXTRACTION SERVICE START ===")
+        print(f"Extraction Service: URL = {url[:100] if url else 'None'}")
+        print(f"Extraction Service: html_len = {len(html or '')}")
+        print(f"Extraction Service: manual_text_len = {len(manual_text or '')}")
+        print(f"Extraction Service: screenshot_len = {len(screenshot_data_url or '')}")
+        print(f"Extraction Service: jsonld_items = {len(jsonld or [])}")
+        print(f"Extraction Service: has_readable = {bool(readable)}")
+        print(f"Extraction Service: has_hints = {list(hints.keys()) if hints else []}")
+        print(f"Extraction Service: LLM available = {self.llm is not None}")
+        
         hints = hints or {}
+        
+        # Check each path explicitly
+        print("\n--- PATH DETECTION ---")
+        print(f"manual_text is not None: {manual_text is not None}")
+        if manual_text is not None:
+            print(f"manual_text length: {len(manual_text)}")
+            print(f"manual_text.strip() length: {len(manual_text.strip())}")
+            print(f"manual_text preview: {repr(manual_text[:200])}")
+        
+        print(f"screenshot_data_url is not None: {screenshot_data_url is not None}")
+        if screenshot_data_url is not None:
+            print(f"screenshot_data_url length: {len(screenshot_data_url)}")
+            print(f"screenshot preview: {screenshot_data_url[:100]}")
+        
+        # Manual text path
+        if manual_text and manual_text.strip():
+            print("\n*** TAKING MANUAL TEXT PATH ***")
+            print(f"Manual text length after strip: {len(manual_text.strip())}")
+            
+            if not self.llm:
+                print("ERROR: LLM service is not available for manual text")
+                raise ValueError("LLM service is not available - cannot extract job from text")
+            
+            print("Manual text LLM extraction starting...")
+            try:
+                text = self._clean_text(manual_text)
+                print(f"Cleaned text length: {len(text)}")
+                job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
+                print(f"LLM extraction completed successfully")
+                print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'")
+                
+                result = {
+                    "title": (job.get("title") or hints.get("title") or "").strip(),
+                    "company_name": (job.get("company_name") or hints.get("company_name") or "").strip(),
+                    "source_url": url,
+                    "location": (job.get("location") or "").strip(),
+                    "remote_type": (job.get("remote_type") or "").strip(),
+                    "job_type": (job.get("job_type") or "").strip(),
+                    "description": self._clean_text(job.get("description") or text),
+                    "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
+                    "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
+                }
+                print(f"Manual text extraction completed successfully")
+                return result
+            except Exception as e:
+                print(f"ERROR in manual text extraction: {str(e)}")
+                raise ValueError(f"Failed to extract job from text: {str(e)}")
+        
+        # Screenshot path
+        elif screenshot_data_url:
+            print("\n*** TAKING SCREENSHOT PATH ***")
+            if not self.llm:
+                print("ERROR: LLM service is not available for screenshot")
+                raise ValueError("LLM service is not available - cannot extract job from screenshot")
+            
+            print("Screenshot LLM extraction starting...")
+            try:
+                job = self.llm.extract_job_from_image(url=url, data_url=screenshot_data_url, hints=hints) or {}
+                print(f"Screenshot LLM extraction completed successfully")
+                
+                result = {
+                    "title": (job.get("title") or "").strip(),
+                    "company_name": (job.get("company_name") or "").strip(),
+                    "source_url": url,
+                    "location": (job.get("location") or "").strip(),
+                    "remote_type": (job.get("remote_type") or "").strip(),
+                    "job_type": (job.get("job_type") or "").strip(),
+                    "description": self._clean_text(job.get("description") or ""),
+                    "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
+                    "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
+                }
+                print(f"Screenshot extraction completed successfully")
+                return result
+            except Exception as e:
+                print(f"ERROR in screenshot extraction: {str(e)}")
+                raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
+        
+        # Regular HTML processing path
+        else:
+            print("\n*** TAKING HTML PROCESSING PATH ***")
+            print(f"HTML length: {len(html or '')}")
+            
+            if not html or len(html.strip()) < 50:
+                print(f"ERROR: Empty or minimal HTML provided: {len(html or '')} chars")
+                raise ValueError("No content available for extraction - please try text selection or screenshot instead")
+            
+            print("Proceeding with HTML extraction...")
+            # Continue with existing HTML processing logic...
         
         # Debug logging to track all inputs
         logger.info(f"JobExtractionService.extract_job called with:")
