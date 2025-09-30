@@ -182,7 +182,7 @@ class JobExtractionService:
     ) -> Dict[str, Any]:
         hints = hints or {}
 
-        # Assisted modes take precedence
+        # Assisted modes take precedence - skip all HTML processing
         if manual_text and manual_text.strip():
             text = self._clean_text(manual_text)
             logger.info(f"Processing manual text extraction: {len(text)} chars")
@@ -244,6 +244,11 @@ class JobExtractionService:
                 logger.error(f"LLM extraction failed for screenshot: {str(e)}")
                 raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
 
+        # Regular extraction mode - only process HTML if we have meaningful content
+        if not html or len(html.strip()) < 50:
+            logger.warning(f"Empty or minimal HTML provided for regular extraction: {len(html or '')} chars")
+            raise ValueError("No content available for extraction - please try text selection or screenshot instead")
+
         # 0) Quick DOM hints
         t_c = {}
         try:
@@ -278,7 +283,8 @@ class JobExtractionService:
                     main_text = self._clean_text(re.sub(r"<[^>]+>", "", readable['content']))
             else:
                 main_text = self.main_content.extract(html)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to extract main content from HTML: {str(e)}")
             main_text = ""
 
             

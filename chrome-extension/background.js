@@ -175,28 +175,62 @@ async function getRenderedCapture(tabId, {
 
     // 3) Shadow DOM serialization (open roots only)
     function serializeWithShadow(root) {
-      const chunks = [];
-      // Walk DOM and inline shadow roots we can access
-      const nodeStack = [root];
-      while (nodeStack.length) {
-        const node = nodeStack.pop();
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node;
-          if (el.shadowRoot) {
-            // Inline a marker + shadow DOM HTML
-            try {
-              chunks.push(`<!--SHADOW-START ${el.tagName}-->`);
-              chunks.push(el.shadowRoot.innerHTML || '');
-              chunks.push(`<!--SHADOW-END ${el.tagName}-->`);
-            } catch { }
+      try {
+        const chunks = [];
+        // Walk DOM and inline shadow roots we can access
+        const nodeStack = [root];
+        while (nodeStack.length) {
+          const node = nodeStack.pop();
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node;
+            if (el.shadowRoot) {
+              // Inline a marker + shadow DOM HTML
+              try {
+                chunks.push(`<!--SHADOW-START ${el.tagName}-->`);
+                chunks.push(el.shadowRoot.innerHTML || '');
+                chunks.push(`<!--SHADOW-END ${el.tagName}-->`);
+              } catch { }
+            }
+            // Continue traversal
+            nodeStack.push(...Array.from(el.children || []));
           }
-          // Continue traversal
-          nodeStack.push(...Array.from(el.children || []));
         }
+        
+        // Try multiple methods to get HTML content
+        let base = '';
+        try {
+          base = document.documentElement.outerHTML;
+        } catch (e) {
+          console.warn('Failed to get outerHTML:', e);
+          try {
+            base = document.documentElement.innerHTML;
+            if (base) {
+              base = `<html>${base}</html>`;
+            }
+          } catch (e2) {
+            console.warn('Failed to get innerHTML:', e2);
+            try {
+              base = document.body ? document.body.outerHTML : '';
+              if (base) {
+                base = `<html><head><title>${document.title || ''}</title></head>${base}</html>`;
+              }
+            } catch (e3) {
+              console.error('All HTML capture methods failed:', e3);
+              base = `<html><head><title>${document.title || ''}</title></head><body>${document.body?.innerText || 'No content captured'}</body></html>`;
+            }
+          }
+        }
+        
+        if (!base || base.trim().length === 0) {
+          console.error('HTML capture resulted in empty content');
+          base = `<html><head><title>${document.title || ''}</title></head><body>${document.body?.innerText || 'No content captured'}</body></html>`;
+        }
+        
+        return base + '\n<!-- INLINED SHADOW DOM -->\n' + chunks.join('\n');
+      } catch (error) {
+        console.error('HTML serialization failed completely:', error);
+        return `<html><head><title>${document.title || ''}</title></head><body>${document.body?.innerText || 'Serialization failed'}</body></html>`;
       }
-      // Base HTML
-      const base = document.documentElement.outerHTML;
-      return base + '\n<!-- INLINED SHADOW DOM -->\n' + chunks.join('\n');
     }
 
     // 4) JSON-LD (JobPosting & friends)

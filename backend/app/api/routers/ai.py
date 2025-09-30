@@ -34,6 +34,19 @@ class ExtractOut(BaseModel):
 
 @router.post("/extract", response_model=ExtractOut)
 def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_extraction_service)):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Debug logging for empty content issues
+    html_len = len(payload.html or "")
+    manual_text_len = len(payload.manual_text or "")
+    screenshot_len = len(payload.screenshot or "")
+    
+    logger.info(f"Extract request: url={payload.url}, html_len={html_len}, manual_text_len={manual_text_len}, screenshot_len={screenshot_len}")
+    
+    if html_len == 0 and manual_text_len == 0 and screenshot_len == 0:
+        logger.warning(f"All content sources are empty for URL: {payload.url}")
+    
     if payload.screenshot and not payload.screenshot.startswith("data:image/"):
         raise HTTPException(status_code=400, detail="Invalid screenshot format")
 
