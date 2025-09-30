@@ -6,14 +6,27 @@ from ...domain.jobs.extraction.ports import MainContentExtractor
 
 class ReadabilityMainContent(MainContentExtractor):
     def extract(self, html: str) -> str:
+        # Handle empty or minimal HTML content
+        if not html or len(html.strip()) < 10:
+            return ""
+        
         try:
             doc = Document(html)
             summary_html = doc.summary(html_partial=True)
             soup = BeautifulSoup(summary_html, "lxml")
             text = soup.get_text("\n")
-        except Exception:
-            soup = BeautifulSoup(html, "lxml")
-            text = soup.get_text("\n")
+        except Exception as e:
+            # Log the specific error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Readability extraction failed: {str(e)}, falling back to BeautifulSoup")
+            try:
+                soup = BeautifulSoup(html, "lxml")
+                text = soup.get_text("\n")
+            except Exception as e2:
+                logger.error(f"BeautifulSoup extraction also failed: {str(e2)}")
+                return ""
+        
         text = text.replace("\u00A0", " ")
         text = re.sub(r"[ \t]+\n", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text)

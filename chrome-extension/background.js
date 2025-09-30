@@ -581,6 +581,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             notifyProgress('backend:extract');
+            console.log('[bg] selection received len=', (result.text || '').length);
             const { job } = await apiExtract({
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               manual_text: result.text
@@ -614,6 +615,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try {
             await ensureAccessToken();
             const { url, text } = message;
+            console.log('[bg] APPLYTIDE_USE_PASTED len=', (text || '').length);
             if (!text || !text.trim()) {
               throw new Error('Please paste some text first');
             }
@@ -664,6 +666,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
 
             notifyProgress('backend:extract');
+            console.log('[bg] screenshot dataUrl startsWith?', (dataUrl || '').slice(0, 22));
             const { job } = await apiExtract({
               url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
               screenshot: dataUrl

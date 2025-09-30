@@ -181,19 +181,31 @@ class JobExtractionService:
         screenshot_data_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         hints = hints or {}
+        
+        # Debug logging to track all inputs
+        logger.info(f"JobExtractionService.extract_job called with:")
+        logger.info(f"  url={url}")
+        logger.info(f"  html_len={len(html or '')}")
+        logger.info(f"  manual_text_len={len(manual_text or '')}")
+        logger.info(f"  screenshot_data_url_len={len(screenshot_data_url or '')}")
+        logger.info(f"  jsonld items={len(jsonld or [])}")
+        logger.info(f"  hints={list(hints.keys()) if hints else 'None'}")
 
         # Assisted modes take precedence - skip all HTML processing
         if manual_text and manual_text.strip():
+            logger.info(f"MANUAL TEXT PATH: manual_text provided, length={len(manual_text)}")
             text = self._clean_text(manual_text)
             logger.info(f"Processing manual text extraction: {len(text)} chars")
             
             if not self.llm:
+                logger.error("LLM service is not available for manual text extraction")
                 raise ValueError("LLM service is not available - cannot extract job from text")
             
             llm_job = {}
             try:
+                logger.info(f"Calling LLM extractor for manual text of {len(text)} chars")
                 llm_job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
-                logger.info(f"LLM extraction completed for manual text")
+                logger.info(f"LLM extraction completed for manual text successfully")
             except Exception as e:
                 logger.error(f"LLM extraction failed for manual text: {str(e)}")
                 raise ValueError(f"Failed to extract job from text: {str(e)}")
@@ -210,7 +222,9 @@ class JobExtractionService:
                 "skills": [x.strip() for x in (llm_job.get("skills") or []) if x and x.strip()],
             }
             
+            logger.info(f"Manual text extraction completed, validating job content")
             self._validate_job_content(job_result, "manual text")
+            logger.info(f"Manual text extraction validation passed, returning result")
             return job_result
 
         if screenshot_data_url:
@@ -245,6 +259,7 @@ class JobExtractionService:
                 raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
 
         # Regular extraction mode - only process HTML if we have meaningful content
+        logger.info(f"HTML PROCESSING PATH: manual_text was empty or None, proceeding with HTML processing")
         if not html or len(html.strip()) < 50:
             logger.warning(f"Empty or minimal HTML provided for regular extraction: {len(html or '')} chars")
             raise ValueError("No content available for extraction - please try text selection or screenshot instead")
