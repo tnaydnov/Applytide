@@ -205,22 +205,22 @@ class JobExtractionService:
             print(f"screenshot_data_url length: {len(screenshot_data_url)}")
             print(f"screenshot preview: {screenshot_data_url[:100]}")
         
-        # Manual text path
+        # Manual text path - Early return to avoid duplicate processing
         if manual_text and manual_text.strip():
-            print("\n*** TAKING MANUAL TEXT PATH ***")
-            print(f"Manual text length after strip: {len(manual_text.strip())}")
+            print("\n*** TAKING MANUAL TEXT PATH ***", flush=True)
+            print(f"Manual text length after strip: {len(manual_text.strip())}", flush=True)
             
             if not self.llm:
-                print("ERROR: LLM service is not available for manual text")
+                print("ERROR: LLM service is not available for manual text", flush=True)
                 raise ValueError("LLM service is not available - cannot extract job from text")
             
-            print("Manual text LLM extraction starting...")
+            print("Manual text LLM extraction starting...", flush=True)
             try:
                 text = self._clean_text(manual_text)
-                print(f"Cleaned text length: {len(text)}")
+                print(f"Cleaned text length: {len(text)}", flush=True)
                 job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
-                print(f"LLM extraction completed successfully")
-                print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'")
+                print(f"LLM extraction completed successfully", flush=True)
+                print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'", flush=True)
                 
                 result = {
                     "title": (job.get("title") or hints.get("title") or "").strip(),
@@ -233,23 +233,25 @@ class JobExtractionService:
                     "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
                     "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
                 }
-                print(f"Manual text extraction completed successfully")
+                print(f"Manual text extraction completed successfully", flush=True)
+                print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
                 return result
             except Exception as e:
-                print(f"ERROR in manual text extraction: {str(e)}")
+                print(f"ERROR in manual text extraction: {str(e)}", flush=True)
+                print("=== EXTRACTION SERVICE ERROR ===", flush=True)
                 raise ValueError(f"Failed to extract job from text: {str(e)}")
         
-        # Screenshot path
-        elif screenshot_data_url:
-            print("\n*** TAKING SCREENSHOT PATH ***")
+        # Screenshot path - Early return
+        if screenshot_data_url:
+            print("\n*** TAKING SCREENSHOT PATH ***", flush=True)
             if not self.llm:
-                print("ERROR: LLM service is not available for screenshot")
+                print("ERROR: LLM service is not available for screenshot", flush=True)
                 raise ValueError("LLM service is not available - cannot extract job from screenshot")
             
-            print("Screenshot LLM extraction starting...")
+            print("Screenshot LLM extraction starting...", flush=True)
             try:
                 job = self.llm.extract_job_from_image(url=url, data_url=screenshot_data_url, hints=hints) or {}
-                print(f"Screenshot LLM extraction completed successfully")
+                print(f"Screenshot LLM extraction completed successfully", flush=True)
                 
                 result = {
                     "title": (job.get("title") or "").strip(),
@@ -262,105 +264,22 @@ class JobExtractionService:
                     "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
                     "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
                 }
-                print(f"Screenshot extraction completed successfully")
+                print(f"Screenshot extraction completed successfully", flush=True)
+                print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
                 return result
             except Exception as e:
-                print(f"ERROR in screenshot extraction: {str(e)}")
+                print(f"ERROR in screenshot extraction: {str(e)}", flush=True)
+                print("=== EXTRACTION SERVICE ERROR ===", flush=True)
                 raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
         
-        # Regular HTML processing path
-        else:
-            print("\n*** TAKING HTML PROCESSING PATH ***")
-            print(f"HTML length: {len(html or '')}")
-            
-            if not html or len(html.strip()) < 50:
-                print(f"ERROR: Empty or minimal HTML provided: {len(html or '')} chars")
-                raise ValueError("No content available for extraction - please try text selection or screenshot instead")
-            
-            print("Proceeding with HTML extraction...")
-            # Continue with existing HTML processing logic...
+        # Regular HTML processing path - Only if no manual_text or screenshot
+        print("\n*** TAKING HTML PROCESSING PATH ***", flush=True)
+        print(f"HTML length: {len(html or '')}", flush=True)
         
-        # Debug logging to track all inputs
-        logger.info(f"JobExtractionService.extract_job called with:")
-        logger.info(f"  url={url}")
-        logger.info(f"  html_len={len(html or '')}")
-        logger.info(f"  manual_text_len={len(manual_text or '')}")
-        logger.info(f"  screenshot_data_url_len={len(screenshot_data_url or '')}")
-        logger.info(f"  jsonld items={len(jsonld or [])}")
-        logger.info(f"  hints={list(hints.keys()) if hints else 'None'}")
-
-        # Assisted modes take precedence - skip all HTML processing
-        if manual_text and manual_text.strip():
-            logger.info(f"MANUAL TEXT PATH: manual_text provided, length={len(manual_text)}")
-            text = self._clean_text(manual_text)
-            logger.info(f"Processing manual text extraction: {len(text)} chars")
-            
-            if not self.llm:
-                logger.error("LLM service is not available for manual text extraction")
-                raise ValueError("LLM service is not available - cannot extract job from text")
-            
-            llm_job = {}
-            try:
-                logger.info(f"Calling LLM extractor for manual text of {len(text)} chars")
-                llm_job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
-                logger.info(f"LLM extraction completed for manual text successfully")
-            except Exception as e:
-                logger.error(f"LLM extraction failed for manual text: {str(e)}")
-                raise ValueError(f"Failed to extract job from text: {str(e)}")
-            
-            job_result = {
-                "title": (llm_job.get("title") or hints.get("title") or "").strip(),
-                "company_name": (llm_job.get("company_name") or hints.get("company_name") or "").strip(),
-                "source_url": url,
-                "location": (llm_job.get("location") or "").strip(),
-                "remote_type": (llm_job.get("remote_type") or "").strip(),
-                "job_type": (llm_job.get("job_type") or "").strip(),
-                "description": self._clean_text(llm_job.get("description") or text),
-                "requirements": [x.strip() for x in (llm_job.get("requirements") or []) if x and x.strip()],
-                "skills": [x.strip() for x in (llm_job.get("skills") or []) if x and x.strip()],
-            }
-            
-            logger.info(f"Manual text extraction completed, validating job content")
-            self._validate_job_content(job_result, "manual text")
-            logger.info(f"Manual text extraction validation passed, returning result")
-            return job_result
-
-        if screenshot_data_url:
-            logger.info(f"Processing screenshot extraction")
-            
-            if not self.llm:
-                raise ValueError("LLM service is not available - cannot extract job from screenshot")
-            
-            # Let the LLM do OCR+extraction from the image in one pass
-            try:
-                llm_job = self.llm.extract_job_from_image(url=url, data_url=screenshot_data_url, hints=hints) or {}
-                logger.info(f"LLM extraction completed for screenshot")
-                
-                job_result = {
-                    "title": (llm_job.get("title") or "").strip(),
-                    "company_name": (llm_job.get("company_name") or "").strip(),
-                    "source_url": url,
-                    "location": (llm_job.get("location") or "").strip(),
-                    "remote_type": (llm_job.get("remote_type") or "").strip(),
-                    "job_type": (llm_job.get("job_type") or "").strip(),
-                    "description": self._clean_text(llm_job.get("description") or ""),
-                    "requirements": [x.strip() for x in (llm_job.get("requirements") or []) if x and x.strip()],
-                    "skills": [x.strip() for x in (llm_job.get("skills") or []) if x and x.strip()],
-                }
-                
-                self._validate_job_content(job_result, "screenshot")
-                return job_result
-            except ValueError:
-                raise  # Re-raise validation errors
-            except Exception as e:
-                logger.error(f"LLM extraction failed for screenshot: {str(e)}")
-                raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
-
-        # Regular extraction mode - only process HTML if we have meaningful content
-        logger.info(f"HTML PROCESSING PATH: manual_text was empty or None, proceeding with HTML processing")
         if not html or len(html.strip()) < 50:
-            logger.warning(f"Empty or minimal HTML provided for regular extraction: {len(html or '')} chars")
+            print(f"ERROR: Empty or minimal HTML provided: {len(html or '')} chars", flush=True)
             raise ValueError("No content available for extraction - please try text selection or screenshot instead")
+        print("Proceeding with HTML extraction...", flush=True)
 
         # 0) Quick DOM hints
         t_c = {}
