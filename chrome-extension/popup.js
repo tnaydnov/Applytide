@@ -12,7 +12,7 @@ const progressWrap = document.getElementById('progressWrap');
 const progressBar = document.getElementById('progressBar');
 const modeNotice = document.getElementById('modeNotice');
 const assistedCard = document.getElementById('assistedCard');
-const useSelectionBtn = document.getElementById('useSelectionBtn');
+// Selection functionality removed - keeping only screenshot and paste
 const screenshotBtn = document.getElementById('screenshotBtn');
 const pasteBox = document.getElementById('pasteBox');
 const usePastedBtn = document.getElementById('usePastedBtn');
@@ -63,7 +63,7 @@ if (!window.__APPLYTIDE_PROGRESS_BOUND__) {
     }
     if (phase === 'screenshot:failed') {
       progressBar.style.background = '#f59e0b'; // Warning orange
-      statusEl.textContent = 'Screenshot failed. Try text selection instead.';
+      statusEl.textContent = 'Screenshot failed. Try paste text instead.';
     }
     if (phase === 'flow:done') {
       setTimeout(() => {
@@ -204,39 +204,7 @@ saveJobBtn.onclick = async () => {
   }
 };
 
-useSelectionBtn.onclick = async () => {
-  resetProgressBar()
-  setStatus('Starting selection…');
-  progressWrap.style.display = 'block'; progressBar.style.width = '10%';
-  
-  try {
-    // Clear any previous selection state
-    await chrome.storage.local.remove(['selectionState']);
-    
-    // Try to send message to background script
-    let resp;
-    try {
-      resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_USE_SELECTION' });
-    } catch (error) {
-      console.error('Background script message failed:', error);
-      setStatus('Extension connection lost', 'err');
-      resultEl.textContent = 'Extension context became invalid. Please reload the extension.';
-      return;
-    }
-    
-    if (resp?.ok) { 
-      setStatus('Saved!', 'ok'); 
-      resultEl.textContent = `Job saved (id: ${resp?.saved?.id || 'unknown'})`; 
-    } else { 
-      setStatus('Failed.', 'err'); 
-      resultEl.textContent = resp?.error || 'Something went wrong.'; 
-    }
-  } catch (error) {
-    console.error('Selection process failed:', error);
-    setStatus('Selection failed.', 'err');
-    resultEl.textContent = error.message || 'Unexpected error occurred';
-  }
-};
+// Selection functionality removed - now only supporting screenshot and paste methods
 
 screenshotBtn.onclick = async () => {
   resetProgressBar()

@@ -7,14 +7,15 @@
   <style>
     body {
       margin: 0;
-      font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: #e5e7eb;
       background: #0f172a;
-      min-width: 320px;
+      width: 420px;
+      min-height: 500px;
     }
 
     .wrap {
-      padding: 14px;
+      padding: 20px;
     }
 
     h1 {
@@ -112,6 +113,33 @@
       background: #ef4444;
       /* Tailwind's red-500 */
     }
+
+    /* Extraction option cards */
+    .extraction-option {
+      transition: all 0.2s ease;
+    }
+
+    .extraction-option:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Better button spacing */
+    .btn.block {
+      margin-top: 8px;
+    }
+
+    /* Improved textarea */
+    textarea {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    /* Better visual hierarchy */
+    h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 
@@ -143,23 +171,46 @@
           <div class="hr"></div>
 
           <div id="assistedCard" style="display:none;">
-            <div class="muted" style="margin-bottom:6px;">This site restricts automated scraping. Use one of the
-              assisted options:</div>
-            <div class="row" style="margin-bottom:8px;">
-              <button id="useSelectionBtn" class="btn">Use my selection</button>
-              <button id="screenshotBtn" class="btn">Screenshot page</button>
-            </div>
-            <label>Or paste job text here</label>
-            <textarea id="pasteBox" rows="6"
-              style="width:100%; padding:8px; border-radius:10px; border:1px solid rgba(148,163,184,.3); background:#0b1220; color:#e5e7eb;"></textarea>
-            <div class="right" style="margin-top:8px;">
-              <button id="usePastedBtn" class="btn primary">Create job from pasted text</button>
-            </div>
-            <div class="muted" style="margin:6px 0 10px;">
-              Tip: On selection mode, highlight <b>all</b> the job text (title, company, location, description,
-              requirements).
+            <div style="text-align: center; margin-bottom: 16px;">
+              <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">⚠️ Manual Extraction Required</div>
+              <div class="muted">This site blocks automatic job scraping. Choose your preferred method:</div>
             </div>
 
+            <!-- Screenshot Option -->
+            <div class="extraction-option" style="border: 1px solid rgba(79, 70, 229, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: rgba(79, 70, 229, 0.05);">
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 20px; margin-right: 8px;">📷</span>
+                <span style="font-weight: 600; color: #4f46e5;">Screenshot Method</span>
+              </div>
+              <div class="muted" style="margin-bottom: 12px; line-height: 1.5;">
+                • <strong>Best for most jobs</strong> - AI reads the entire page<br>
+                • Make sure the full job posting is visible on screen<br>
+                • Zoom out if needed to fit everything in view<br>
+                • Works great with LinkedIn, Indeed, Glassdoor
+              </div>
+              <button id="screenshotBtn" class="btn primary block">📷 Take Screenshot & Extract Job</button>
+            </div>
+
+            <!-- Paste Text Option -->
+            <div class="extraction-option" style="border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 16px; background: rgba(16, 185, 129, 0.05);">
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 20px; margin-right: 8px;">📝</span>
+                <span style="font-weight: 600; color: #10b981;">Copy & Paste Method</span>
+              </div>
+              <div class="muted" style="margin-bottom: 12px; line-height: 1.5;">
+                • Select ALL job text (don't worry about extra content)<br>
+                • Copy everything: title, company, description, requirements<br>
+                • Perfect for complex layouts or when screenshot isn't clear
+              </div>
+              <label style="margin-bottom: 8px; display: block; font-weight: 500;">Paste the complete job posting text:</label>
+              <textarea id="pasteBox" rows="8" placeholder="Paste the job title, company, location, description, requirements, and any other job details here..."
+                style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(148,163,184,.3); background: #0b1220; color: #e5e7eb; font-size: 13px; line-height: 1.4; resize: vertical;"></textarea>
+              <button id="usePastedBtn" class="btn primary block" style="margin-top: 12px;">📝 Extract Job from Text</button>
+            </div>
+
+            <div class="muted" style="text-align: center; margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+              💡 <strong>Pro Tip:</strong> Both methods use AI to clean up the text and extract only the relevant job information.
+            </div>
           </div>
 
           <div class="right" style="flex:1;">
@@ -175,8 +226,11 @@
       </div>
     </div>
 
-    <div class="center" style="margin-top:10px;">
-      <small class="muted">Make sure the active tab is on a job page (LinkedIn, Indeed, Glassdoor, etc.).</small>
+    <div class="center" style="margin-top:16px; padding: 12px; background: rgba(148, 163, 184, 0.1); border-radius: 8px;">
+      <small class="muted" style="line-height: 1.4;">
+        <strong>🎯 Best Results:</strong> Navigate to the full job posting page first<br>
+        Works with LinkedIn, Indeed, Glassdoor, company career pages & more
+      </small>
     </div>
   </div>
 

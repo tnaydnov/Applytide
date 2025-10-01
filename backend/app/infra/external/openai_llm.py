@@ -14,8 +14,9 @@ Rules:
 - requirements[]: List concrete qualifications (years, degrees, certifications, must-have / nice-to-have). One item per bullet/line. De-duplicate.
 - skills[]: Technologies/tools/frameworks/languages (canonical names, e.g., "Node.js", "JavaScript", "AWS"). De-duplicate.
 - remove_lines[]: Integers referencing the exact line numbers (1-based) of the description to remove because they are:
-  (a) requirement/qualification bullet lines under headers like “Requirements/Qualifications”, OR
-  (b) irrelevant UI chrome or page scaffolding (e.g., “Easy Apply”, “Save”, “Share”, “Show more options”, “Promoted by hirer”, “Your AI-powered job assessment”, “Meet the hiring team”, “Message”, pagination, counters like “89 applicants”, etc.).
+  (a) standalone section headers like "Requirements", "Qualifications", "Skills", "Advantages", "Benefits", "Work Environment", etc., OR
+  (b) requirement/qualification bullet lines under those headers, OR
+  (c) irrelevant UI chrome or page scaffolding (e.g., "Easy Apply", "Save", "Share", "Show more options", "Promoted by hirer", "Your AI-powered job assessment", "Meet the hiring team", "Message", pagination, counters like "89 applicants", etc.).
 - section_headers[]: Strings of major section titles present in the description (e.g., "Company Overview", "Key Responsibilities", "Work Environment", "Qualifications", "Benefits"). Leave empty if unsure.
 
 Standards:
@@ -235,13 +236,22 @@ class OpenAILLMExtractor(LLMExtractor):
                 temperature=0.1,
                 response_format={"type": "json_object"},
                 messages=messages,
-                max_tokens=2500
+                max_tokens=8000  # High limit for complex screenshots - gpt-4o-mini supports up to 16k output tokens
             )
             
             if not resp.choices or not resp.choices[0].message.content:
                 raise ValueError("OpenAI returned empty response for image")
             
-            data = json.loads(resp.choices[0].message.content)
+            raw_content = resp.choices[0].message.content
+            logger.debug(f"Raw OpenAI response length: {len(raw_content)}")
+            
+            # Check if response appears truncated (common issue with complex screenshots)
+            if raw_content.strip() and not raw_content.strip().endswith('}'):
+                logger.warning("OpenAI response appears truncated - attempting to fix JSON")
+                # Try to close any unclosed JSON objects
+                raw_content = raw_content.rstrip() + '}'
+            
+            data = json.loads(raw_content)
             job = data.get("job") or data
             
             # Clean and validate response
@@ -255,7 +265,12 @@ class OpenAILLMExtractor(LLMExtractor):
             
         except json.JSONDecodeError as e:
             logger.error(f"OpenAI returned invalid JSON for image: {str(e)}")
-            raise ValueError(f"OpenAI returned invalid JSON response for image: {str(e)}")
+            logger.error(f"Raw response content: {resp.choices[0].message.content if resp and resp.choices else 'No response'}")
+            # Check if response was truncated due to token limit
+            if resp and resp.choices and len(resp.choices[0].message.content) > 3500:
+                raise ValueError(f"OpenAI response appears truncated (likely hit token limit). Try using a shorter screenshot or increase max_tokens. JSON error: {str(e)}")
+            else:
+                raise ValueError(f"OpenAI returned invalid JSON response for image: {str(e)}")
         except Exception as e:
             logger.error(f"OpenAI image API error: {str(e)}")
             if "rate limit" in str(e).lower():

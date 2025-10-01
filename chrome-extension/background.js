@@ -535,14 +535,7 @@ function classifyPage(urlStr) {
   } catch { return 'restricted'; }
 }
 
-// Small helper to read current selection as text (user-initiated)
-async function getSelectionText(tabId) {
-  const [{ result }] = await chrome.scripting.executeScript({
-    target: { tabId }, world: 'MAIN',
-    func: () => (window.getSelection?.().toString() || '').trim()
-  });
-  return result || '';
-}
+// getSelectionText function removed - selection functionality no longer supported
 
 // Screenshot of the visible area (user-initiated, requires activeTab/tabs)
 async function captureScreenshot() {
@@ -569,85 +562,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
-        // Assisted Mode: selection → LLM
-        case 'APPLYTIDE_USE_SELECTION': {
-          try {
-            await ensureAccessToken();
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab?.id) throw new Error('No active tab');
-
-            notifyProgress('flow:begin', { url: tab.url });
-
-            // Inject overlay in the ISOLATED world so chrome.* APIs are available
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id, allFrames: false },
-              world: 'ISOLATED',
-              files: ['selector-overlay.js']
-            });
-
-            // Wait for one-off message from the overlay
-            const result = await new Promise((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error('Selection timed out - please try again'));
-              }, 90000);
-
-              const listener = (msg) => {
-                // Trust our overlay marker instead of fragile sender.tab checks
-                if (msg?.type === 'APPLYTIDE_SELECTION_DONE' && msg?.origin === 'applytide_selector') {
-                  cleanup();
-                  resolve(msg); // { text, url }
-                }
-              };
-
-              const cleanup = () => {
-                clearTimeout(timeout);
-                chrome.runtime.onMessage.removeListener(listener);
-              };
-
-              chrome.runtime.onMessage.addListener(listener);
-            });
-
-            if (!result.text || result.text.length < 10) {
-              throw new Error('Please select more text including job title, company, and description');
-            }
-
-            notifyProgress('backend:extract');
-            console.log('[bg] SELECTION - Step 3: Received selection from content script');
-            console.log('[bg] DEBUG: selection length=', (result.text || '').length);
-            console.log('[bg] DEBUG: url=', tab.url);
-            console.log('[bg] DEBUG: selection preview=', (result.text || '').substring(0, 200));
-            
-            const payload = {
-              url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
-              manual_text: result.text
-            };
-            console.log('[bg] DEBUG: Selection API payload=', JSON.stringify({...payload, manual_text: payload.manual_text.substring(0, 100) + '...'}));
-            
-            const { job } = await apiExtract(payload);
-
-            // Guard: refuse to save if the extraction is basically empty
-            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
-              !((job?.description || '').trim().length >= 30)) {
-              notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try selecting more text or use screenshot.');
-            }
-
-            notifyProgress('backend:save');
-            const saved = await apiSaveJob(job);
-            notifyProgress('flow:done', { savedId: saved?.id });
-            sendResponse({ ok: true, saved });
-
-          } catch (error) {
-            notifyProgress('flow:error');
-            const errorMsg = error?.message || String(error);
-            console.error('Selection extraction failed:', error);
-            sendResponse({ ok: false, error: errorMsg });
-          }
-          break;
-        }
-
-
+        // Selection mode removed - keeping only screenshot and paste methods
 
         // Assisted Mode: pasted text → LLM
         case 'APPLYTIDE_USE_PASTED': {
@@ -680,7 +595,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
             }
 
             notifyProgress('backend:save');
@@ -709,7 +624,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               dataUrl = await captureScreenshot();
             } catch (e) {
               notifyProgress('screenshot:failed', { error: String(e?.message || e) });
-              throw new Error('Failed to capture screenshot - please try text selection instead');
+              throw new Error('Failed to capture screenshot - please try paste text instead');
             }
 
             if (!dataUrl || !dataUrl.startsWith('data:image/')) {
@@ -732,7 +647,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
             }
 
             notifyProgress('backend:save');
@@ -780,7 +695,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           
           if (classifyPage(url) !== 'allowed') {
             console.log('[bg] ERROR: Page not allowed for auto-save');
-            sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use selection, paste, or screenshot.' });
+            sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste or screenshot instead.' });
             break;
           }
           if (RUNNING_BY_TAB.get(tab.id)) {
@@ -807,7 +722,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
                 notifyProgress('backend:error');
-                throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+                throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
               }
 
               notifyProgress('backend:save');
@@ -841,7 +756,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
             }
 
 
@@ -888,7 +803,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try assisted options (selection/screenshot/paste).');
+              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
             }
 
             notifyProgress('flow:ready_for_confirm', { title: job?.title, company: job?.company_name });
