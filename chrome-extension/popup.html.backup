@@ -138,6 +138,51 @@
       color: #f1f5f9;
     }
 
+    /* Method selection cards */
+    .method-card {
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #1f2937;
+    }
+
+    .method-card:hover {
+      border-color: #4f46e5;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .method-card.selected {
+      border-color: #4f46e5;
+      background: rgba(79, 70, 229, 0.1);
+    }
+
+    .method-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .method-icon {
+      font-size: 24px;
+      margin-right: 12px;
+    }
+
+    .method-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #f8fafc;
+    }
+
+    .method-desc {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
     /* Loading spinner */
     .spinner {
       display: inline-block;
@@ -286,22 +331,32 @@
       <!-- Manual extraction needed -->
       <div id="manualCard" class="card" style="display: none;">
         <div style="text-align: center; margin-bottom: 16px;">
-          <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
-            ⚠️ Terms of Service Restriction
+          <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 4px;">
+            Manual Extraction Required
           </div>
-          <div class="muted" style="line-height: 1.6;">
-            This site doesn't allow automated scraping per their Terms of Service.
-            <br><br>
-            <strong>Please copy and paste the job posting manually:</strong>
-          </div>
+          <div class="muted">Choose your preferred method:</div>
         </div>
 
-        <textarea id="pasteBox" rows="6"
-          placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
+        <div id="methodSelection">
+          <!-- Copy & Paste Method - RECOMMENDED -->
+          <div class="method-card" data-method="paste"
+            style="border-color: #10b981; background: rgba(16, 185, 129, 0.1); position: relative;">
+            <div
+              style="position: absolute; top: -8px; right: 12px; background: #10b981; color: #0f172a; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 12px;">
+              RECOMMENDED</div>
+            <div class="method-header">
+              <span class="method-icon">�</span>
+              <span class="method-title" style="color: #10b981;">Copy & Paste</span>
+            </div>
+            <div class="method-desc">
+              ⭐ Most accurate results - works on any site, any layout
+            </div>
+          </div>
 
-        <button id="usePastedBtn" class="btn primary block" style="margin-top: 12px;">
-          ✨ Extract Job
-        </button>
+          <button id="continueBtn" class="btn primary block" disabled>
+            Continue
+          </button>
+        </div>
       </div>
 
       <!-- User info and logout -->
@@ -309,6 +364,31 @@
         <button id="logoutBtn" class="btn" style="font-size: 12px; padding: 6px 12px;">
           Sign Out
         </button>
+      </div>
+    </div>
+
+    <!-- Paste Text Execution -->
+    <div id="pasteSection" class="section">
+      <div class="card">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📝</div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Copy & Paste Method</div>
+          <div class="muted">
+            Copy the entire job posting and paste it below
+          </div>
+        </div>
+
+        <textarea id="pasteBox" rows="6"
+          placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
+
+        <div class="btn-row">
+          <button id="backFromPaste" class="btn">
+            ← Back
+          </button>
+          <button id="usePastedBtn" class="btn primary">
+            ✨ Extract Job
+          </button>
+        </div>
       </div>
     </div>
 
@@ -320,7 +400,7 @@
             <span class="spinner large"></span>
           </div>
           <div style="font-weight: 600; margin-bottom: 8px;">Processing Job...</div>
-          <div id="processingStatus" class="muted">Starting extraction process...</div>
+          <div id="processingStatus" class="muted">Starting capture process...</div>
 
           <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>

@@ -83,144 +83,6 @@ class JobExtractionService:
                     return ln.strip(" .,")
         return ""
     
-
-    def extract_job_from_multiple_screenshots(self, url: str, data_urls: list[str], hints=None) -> dict:
-        """Process multiple screenshots and combine the results."""
-        print(f"JobExtraction: Processing {len(data_urls)} screenshots for URL: {url}")
-        
-        if not data_urls:
-            raise ValueError("No screenshots provided")
-        
-        # Process the first screenshot to get base job data
-        hints = hints or {}
-        base_job = self.llm.extract_job_from_image(url, data_urls[0], hints)
-        
-        # If only one screenshot, return immediately
-        if len(data_urls) == 1:
-            return base_job
-        
-        # For multiple screenshots, process each one and combine results
-        combined_job = {
-            "title": base_job.get("title", ""),
-            "company_name": base_job.get("company_name", ""),
-            "source_url": url,
-            "location": base_job.get("location", ""),
-            "remote_type": base_job.get("remote_type", ""),
-            "job_type": base_job.get("job_type", ""),
-            "description": base_job.get("description", ""),
-            "requirements": base_job.get("requirements", []),
-            "skills": base_job.get("skills", [])
-        }
-        
-        # Process remaining screenshots and combine results
-        for i, data_url in enumerate(data_urls[1:], 1):
-            print(f"JobExtraction: Processing screenshot {i+1}/{len(data_urls)}")
-            
-            # Add section index to hints
-            section_hints = {
-                **(hints or {}),
-                "screenshot_index": i,
-                "screenshot_total": len(data_urls)
-            }
-            
-            try:
-                section_job = self.llm.extract_job_from_image(url, data_url, section_hints)
-                # Combine with our accumulating results
-                self._combine_job_results(combined_job, section_job)
-            except Exception as e:
-                print(f"JobExtraction WARNING: Error processing screenshot {i+1}: {str(e)}")
-                # Continue processing other screenshots even if one fails
-        
-        # Final cleanup and deduplication
-        combined_job["requirements"] = self._deduplicate_list(combined_job["requirements"])
-        combined_job["skills"] = self._deduplicate_list(combined_job["skills"])
-        
-        print(f"JobExtraction: Combined {len(data_urls)} screenshots successfully")
-        print(f"JobExtraction: Final description length: {len(combined_job['description'])}")
-        print(f"JobExtraction: Final requirements count: {len(combined_job['requirements'])}")
-        print(f"JobExtraction: Final skills count: {len(combined_job['skills'])}")
-        
-        return combined_job
-
-    def _combine_job_results(self, target_job, source_job):
-        """Intelligently combine job data from multiple sources."""
-        # For single-value fields, prefer first non-empty value
-        if not target_job["title"] and source_job.get("title"):
-            target_job["title"] = source_job["title"]
-        
-        if not target_job["company_name"] and source_job.get("company_name"):
-            target_job["company_name"] = source_job["company_name"]
-        
-        if not target_job["location"] and source_job.get("location"):
-            target_job["location"] = source_job["location"]
-        
-        if not target_job["remote_type"] and source_job.get("remote_type"):
-            target_job["remote_type"] = source_job["remote_type"]
-        
-        if not target_job["job_type"] and source_job.get("job_type"):
-            target_job["job_type"] = source_job["job_type"]
-        
-        # For description, append non-duplicate paragraphs
-        if source_job.get("description"):
-            source_paragraphs = source_job["description"].split("\n\n")
-            target_paragraphs = target_job["description"].split("\n\n") if target_job["description"] else []
-            
-            # Convert to lowercase for comparison but keep original for adding
-            target_paragraphs_lower = [p.lower() for p in target_paragraphs]
-            
-            for paragraph in source_paragraphs:
-                # Skip empty paragraphs
-                if not paragraph.strip():
-                    continue
-                    
-                # Check if this paragraph or very similar content is already included
-                if not any(self._is_similar_paragraph(paragraph.lower(), existing) for existing in target_paragraphs_lower):
-                    target_paragraphs.append(paragraph)
-                    target_paragraphs_lower.append(paragraph.lower())
-            
-            target_job["description"] = "\n\n".join(target_paragraphs)
-        
-        # For arrays, extend and deduplicate later
-        if source_job.get("requirements"):
-            target_job["requirements"].extend(source_job["requirements"])
-        
-        if source_job.get("skills"):
-            target_job["skills"].extend(source_job["skills"])
-
-    def _is_similar_paragraph(self, p1, p2):
-        """Check if paragraphs are similar to avoid duplication."""
-        # Simple containment check
-        if p1 in p2 or p2 in p1:
-            return True
-        
-        # Check if they share a significant number of words
-        words1 = set(p1.split())
-        words2 = set(p2.split())
-        
-        if not words1 or not words2:
-            return False
-        
-        # Calculate Jaccard similarity
-        intersection = words1.intersection(words2)
-        union = words1.union(words2)
-        
-        # If they share more than 70% of words, consider them similar
-        similarity = len(intersection) / len(union)
-        return similarity > 0.7
-
-    def _deduplicate_list(self, items):
-        """Remove duplicates while preserving order."""
-        seen = set()
-        result = []
-        
-        for item in items:
-            item_lower = item.lower()
-            if item_lower not in seen:
-                seen.add(item_lower)
-                result.append(item)
-                
-        return result
-    
     def _preclean_noise(self, text: str) -> str:
         """
         Remove obvious non-job UI chrome commonly copied from LinkedIn/ATS pages.
@@ -422,13 +284,11 @@ class JobExtractionService:
         metas: Optional[Dict[str, Any]] = None,
         xhr_logs: Optional[List[Dict[str, Any]]] = None,
         manual_text: Optional[str] = None,
-        screenshot_data_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         print("\n=== EXTRACTION SERVICE START ===")
         print(f"Extraction Service: URL = {url[:100] if url else 'None'}")
         print(f"Extraction Service: html_len = {len(html or '')}")
         print(f"Extraction Service: manual_text_len = {len(manual_text or '')}")
-        print(f"Extraction Service: screenshot_len = {len(screenshot_data_url or '')}")
         print(f"Extraction Service: jsonld_items = {len(jsonld or [])}")
         print(f"Extraction Service: has_readable = {bool(readable)}")
         print(f"Extraction Service: has_hints = {list(hints.keys()) if hints else []}")
@@ -443,11 +303,6 @@ class JobExtractionService:
             print(f"manual_text length: {len(manual_text)}")
             print(f"manual_text.strip() length: {len(manual_text.strip())}")
             print(f"manual_text preview: {repr(manual_text[:200])}")
-        
-        print(f"screenshot_data_url is not None: {screenshot_data_url is not None}")
-        if screenshot_data_url is not None:
-            print(f"screenshot_data_url length: {len(screenshot_data_url)}")
-            print(f"screenshot preview: {screenshot_data_url[:100]}")
         
         # Manual text path - Early return to avoid duplicate processing
         if manual_text and manual_text.strip():
@@ -509,56 +364,13 @@ class JobExtractionService:
                 print("=== EXTRACTION SERVICE ERROR ===", flush=True)
                 raise ValueError(f"Failed to extract job from text: {str(e)}")
         
-        # Screenshot path - Early return
-        if screenshot_data_url:
-            print("\n*** TAKING SCREENSHOT PATH ***", flush=True)
-            if not self.llm:
-                print("ERROR: LLM service is not available for screenshot", flush=True)
-                raise ValueError("LLM service is not available - cannot extract job from screenshot")
-            
-            print("Screenshot LLM extraction starting...", flush=True)
-            try:
-                job = self.llm.extract_job_from_image(url=url, data_url=screenshot_data_url, hints=hints) or {}
-                print(f"Screenshot LLM extraction completed successfully", flush=True)
-                
-                result = {
-                    "title": (job.get("title") or "").strip(),
-                    "company_name": (job.get("company_name") or "").strip(),
-                    "source_url": url,
-                    "location": (job.get("location") or "").strip(),
-                    "remote_type": (job.get("remote_type") or "").strip(),
-                    "job_type": (job.get("job_type") or "").strip(),
-                    "description": self._clean_text(job.get("description") or ""),
-                    "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
-                    "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
-                }
-                # Backstop stripper (no remove_lines for images)
-                try:
-                    desc_clean, extra_reqs = self.req_splitter.split(result["description"], result.get("requirements") or [])
-                    merged_reqs = list(dict.fromkeys((result.get("requirements") or []) + (extra_reqs or [])))
-                    req_set = {r.strip() for r in merged_reqs}
-                    if desc_clean:
-                        desc_clean = "\n".join([ln for ln in desc_clean.split("\n") if ln.strip() not in req_set])
-
-                    result["description"] = self._clean_text(desc_clean)
-                    result["requirements"] = [x.strip() for x in merged_reqs if x and x.strip()]
-                except Exception:
-                    pass
-                print(f"Screenshot extraction completed successfully", flush=True)
-                print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
-                return result
-            except Exception as e:
-                print(f"ERROR in screenshot extraction: {str(e)}", flush=True)
-                print("=== EXTRACTION SERVICE ERROR ===", flush=True)
-                raise ValueError(f"Failed to extract job from screenshot: {str(e)}")
-        
-        # Regular HTML processing path - Only if no manual_text or screenshot
+        # Regular HTML processing path - Only if no manual_text
         print("\n*** TAKING HTML PROCESSING PATH ***", flush=True)
         print(f"HTML length: {len(html or '')}", flush=True)
         
         if not html or len(html.strip()) < 50:
             print(f"ERROR: Empty or minimal HTML provided: {len(html or '')} chars", flush=True)
-            raise ValueError("No content available for extraction - please try text selection or screenshot instead")
+            raise ValueError("No content available for extraction - please try text selection instead")
         print("Proceeding with HTML extraction...", flush=True)
 
         # 0) Quick DOM hints

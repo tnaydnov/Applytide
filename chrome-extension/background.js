@@ -78,7 +78,6 @@ async function apiExtract(payload) {
     url: payload.url,
     html_len: (payload.html || '').length,
     manual_text_len: (payload.manual_text || '').length,
-    screenshot_len: (payload.screenshot || '').length,
     jsonld_count: (payload.jsonld || []).length
   });
 
@@ -535,279 +534,6 @@ function classifyPage(urlStr) {
   } catch { return 'restricted'; }
 }
 
-// getSelectionText function removed - selection functionality no longer supported
-
-// Screenshot of the visible area (user-initiated, requires activeTab/tabs)
-async function captureScreenshot() {
-  return new Promise((resolve, reject) => {
-    // Use JPEG with quality to reduce file size and visual noise for AI processing
-    chrome.tabs.captureVisibleTab({
-      format: 'jpeg',
-      quality: 100  // Lower quality to reduce file size for better AI processing
-    }, (dataUrl) => {
-      if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
-
-      // Return the JPEG directly - the quality setting above already optimizes it
-      resolve(dataUrl);
-    });
-  });
-}
-
-async function captureFullPageScreenshot(tabId) {
-  console.log("[bg] Starting full-page screenshot capture");
-
-  // Step 1: Get page dimensions and identify scrollable elements
-  const [dimensionsResult] = await chrome.scripting.executeScript({
-    target: { tabId },
-    function: () => {
-      // Find scrollable elements (including LinkedIn's hidden scrollers)
-      function findScrollableElements() {
-        const elements = [];
-        // Common selectors for job description containers
-        const selectors = [
-          '.jobs-description-content',
-          '.jobs-box__html-content',
-          '.jobs-details__main-content',
-          '.jobs-search__job-details--wrapper',
-          '.jobs-search__job-details--container',
-          '.jobs-details',
-          // Generic selectors
-          'div[role="region"]',
-          'div[style*="overflow"]',
-          'div[style*="scroll"]'
-        ];
-
-        setTimeout(() => { }, 300);
-
-        for (const selector of selectors) {
-          const found = document.querySelectorAll(selector);
-          found.forEach(el => {
-            // Lower the threshold to catch more elements
-            if (el.scrollHeight > el.clientHeight + 20) {
-              elements.push({
-                selector,
-                scrollHeight: el.scrollHeight,
-                clientHeight: el.clientHeight,
-                overflow: el.scrollHeight - el.clientHeight
-              });
-              console.log(`Found scrollable: ${selector}, overflow=${el.scrollHeight - el.clientHeight}`);
-            }
-          });
-        }
-        return elements;
-      }
-
-      // Main document dimensions
-      const docDimensions = {
-        scrollHeight: document.body.scrollHeight,
-        viewportHeight: window.innerHeight,
-        scrollWidth: document.body.scrollWidth,
-        viewportWidth: window.innerWidth
-      };
-
-      // Also find scrollable containers (LinkedIn uses these)
-      const scrollableElements = findScrollableElements();
-
-      return {
-        document: docDimensions,
-        scrollableElements
-      };
-    }
-  });
-
-  if (!dimensionsResult) {
-    console.error("[bg] Failed to get page dimensions");
-    throw new Error("Failed to get page dimensions");
-  }
-
-  const { document: docDimensions, scrollableElements } = dimensionsResult.result;
-  console.log(`[bg] Page dimensions: documentScrollHeight=${docDimensions.scrollHeight}, viewportHeight=${docDimensions.viewportHeight}`);
-  console.log(`[bg] Found ${scrollableElements.length} scrollable elements:`, scrollableElements);
-
-  // If we found scrollable elements, use those for scrolling
-  if (scrollableElements.length > 0) {
-    return await captureScrollableElementScreenshots(tabId, scrollableElements);
-  }
-
-  // If no scrollable elements found, use traditional page scrolling
-  const { scrollHeight, viewportHeight } = docDimensions;
-
-  // If page isn't scrollable, just take one screenshot
-  if (scrollHeight <= viewportHeight || Math.abs(scrollHeight - viewportHeight) < 50) {
-    console.log("[bg] Page not scrollable, taking single screenshot");
-    try {
-      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
-        format: 'jpeg',
-        quality: 85
-      });
-      return [dataUrl];
-    } catch (error) {
-      console.error("[bg] Error capturing screenshot:", error);
-      throw error;
-    }
-  }
-
-  // Calculate sections needed (add overlap to ensure nothing is missed)
-  const overlap = Math.min(200, viewportHeight * 0.1); // 10% overlap, max 200px
-  const effectiveViewportHeight = viewportHeight - overlap;
-  const sectionsNeeded = Math.ceil(scrollHeight / effectiveViewportHeight);
-  console.log(`[bg] Sections needed: ${sectionsNeeded} (with ${overlap}px overlap)`);
-
-  const maxSections = 10; // Limit to avoid overwhelming the API
-  const screenshots = [];
-
-  // Step 2: Scroll and capture each section
-  for (let i = 0; i < Math.min(sectionsNeeded, maxSections); i++) {
-    // Calculate scroll position (with overlap)
-    const scrollPosition = i * effectiveViewportHeight;
-
-    // Scroll to position
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      function: (position) => {
-        window.scrollTo(0, position);
-      },
-      args: [scrollPosition]
-    });
-
-    // Wait for any lazy-loaded content and for the page to stabilize
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    try {
-      // Capture visible portion
-      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
-        format: 'jpeg',
-        quality: 85  // Good balance between quality and size
-      });
-
-      screenshots.push(dataUrl);
-
-      notifyProgress('capture:scroll', {
-        current: i + 1,
-        total: Math.min(sectionsNeeded, maxSections)
-      });
-    } catch (error) {
-      console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
-      // Continue with other screenshots even if one fails
-    }
-  }
-
-  // Return to the top of the page
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    function: () => {
-      window.scrollTo(0, 0);
-    }
-  });
-
-  console.log(`[bg] Captured ${screenshots.length} screenshots`);
-  return screenshots;
-}
-
-// Replace the captureScrollableElementScreenshots function with this version:
-async function captureScrollableElementScreenshots(tabId, scrollableElements) {
-  console.log("[bg] Using scrollable elements capture strategy");
-
-  // Find the largest scrollable element (likely the job container)
-  const targetElement = scrollableElements.sort((a, b) => b.overflow - a.overflow)[0];
-  console.log("[bg] Target scrollable element:", targetElement);
-
-  const screenshots = [];
-  const scrollHeight = targetElement.scrollHeight;
-  const clientHeight = targetElement.clientHeight;
-  const scrollSteps = Math.min(Math.ceil(scrollHeight / clientHeight) + 1, 5); // Limit to 5 screenshots
-
-  console.log(`[bg] Will capture ${scrollSteps} screenshots of scrollable content (${scrollHeight}px in ${clientHeight}px container)`);
-
-  // Add rate limiting - only 2 captures per second allowed
-  for (let i = 0; i < scrollSteps; i++) {
-    // Calculate scroll position as percentage of total scroll
-    const scrollPercentage = i / Math.max(1, scrollSteps - 1);
-    const scrollPosition = Math.floor(scrollPercentage * Math.max(0, scrollHeight - clientHeight));
-
-    // Execute scroll on the element
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      function: (selector, scrollPosition) => {
-        const elements = document.querySelectorAll(selector);
-        if (elements && elements.length > 0) {
-          // Find the one with the highest overflow
-          let target = elements[0];
-          let maxOverflow = 0;
-
-          for (const el of elements) {
-            const overflow = el.scrollHeight - el.clientHeight;
-            if (overflow > maxOverflow) {
-              maxOverflow = overflow;
-              target = el;
-            }
-          }
-
-          // Scroll the target element
-          target.scrollTop = scrollPosition;
-          console.log(`Scrolled element to position ${scrollPosition}/${target.scrollHeight}`);
-          return true;
-        }
-        return false;
-      },
-      args: [targetElement.selector, scrollPosition]
-    });
-
-    // Wait for content to load after scroll - longer wait (500ms)
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    try {
-      // Capture visible portion
-      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
-        format: 'jpeg',
-        quality: 85
-      });
-
-      screenshots.push(dataUrl);
-
-      notifyProgress('capture:scroll', {
-        current: i + 1,
-        total: scrollSteps
-      });
-
-      // IMPORTANT: Wait 750ms between captures to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 750));
-
-    } catch (error) {
-      console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
-      // Wait even longer after an error (might be rate limiting)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-  }
-
-  // Reset scroll position
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    function: (selector) => {
-      const elements = document.querySelectorAll(selector);
-      if (elements && elements.length > 0) {
-        // Find the one with the highest overflow
-        let target = elements[0];
-        let maxOverflow = 0;
-
-        for (const el of elements) {
-          const overflow = el.scrollHeight - el.clientHeight;
-          if (overflow > maxOverflow) {
-            maxOverflow = overflow;
-            target = el;
-          }
-        }
-
-        target.scrollTop = 0;
-      }
-    },
-    args: [targetElement.selector]
-  });
-
-  console.log(`[bg] Captured ${screenshots.length} screenshots from scrollable element`);
-  return screenshots;
-}
-
 // -------- Message bus for popup --------
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Return true to keep message channel open for async response
@@ -823,7 +549,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
-        // Selection mode removed - keeping only screenshot and paste methods
+        // Selection mode and screenshot removed - keeping only paste method
 
         // Assisted Mode: pasted text → LLM
         case 'APPLYTIDE_USE_PASTED': {
@@ -856,7 +582,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
+              throw new Error('Could not extract meaningful job details. Try paste text instead.');
             }
 
             notifyProgress('backend:save');
@@ -867,78 +593,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             notifyProgress('flow:error');
             const errorMsg = error?.message || String(error);
             console.error('Pasted text extraction failed:', error);
-            sendResponse({ ok: false, error: errorMsg });
-          }
-          break;
-        }
-
-        // Assisted Mode: screenshot → OCR/LLM
-        case 'APPLYTIDE_USE_SCREENSHOT': {
-          try {
-            await ensureAccessToken();
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab?.id) throw new Error('No active tab');
-            notifyProgress('flow:begin', { url: tab.url });
-
-            try {
-              notifyProgress('capture:start', { url: tab.url });
-
-              // Use our scrolling capture function
-              const screenshots = await captureFullPageScreenshot(tab.id);
-
-              if (!screenshots || !screenshots.length) {
-                throw new Error('Failed to capture screenshots');
-              }
-
-              notifyProgress('capture:done', { count: screenshots.length });
-              console.log(`[bg] Captured ${screenshots.length} screenshots successfully`);
-
-              // Extra validation to ensure we have proper data URLs
-              for (let i = 0; i < screenshots.length; i++) {
-                if (typeof screenshots[i] !== 'string' || !screenshots[i].startsWith('data:image/')) {
-                  console.error(`[bg] Invalid screenshot format at index ${i}`);
-                  throw new Error('Invalid screenshot format detected');
-                }
-              }
-
-              // Send screenshots to backend - ensure we're sending strings
-              notifyProgress('backend:extract');
-              const payload = {
-                url: tab.url,
-                html: '',
-                jsonld: [],
-                metas: {},
-                readable: {},
-                xhrLogs: [],
-                quick: { source: 'screenshot', sections: screenshots.length },
-                screenshots: screenshots // These should be strings already
-              };
-
-              // Log payload structure before sending
-              console.log(`[bg] Payload screenshots count: ${payload.screenshots.length}`);
-              console.log(`[bg] First screenshot type: ${typeof payload.screenshots[0]}`);
-              console.log(`[bg] First screenshot preview: ${payload.screenshots[0].substring(0, 50)}...`);
-
-              const { job } = await apiExtract(payload);
-
-              if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
-                !((job?.description || '').trim().length >= 30)) {
-                notifyProgress('backend:error');
-                throw new Error('Could not extract meaningful job details');
-              }
-
-              notifyProgress('backend:save');
-              const saved = await apiSaveJob(job);
-              notifyProgress('flow:done', { savedId: saved?.id });
-              sendResponse({ ok: true, saved });
-            } catch (e) {
-              notifyProgress('screenshot:failed', { error: String(e?.message || e) });
-              throw e;
-            }
-          } catch (error) {
-            notifyProgress('flow:error');
-            const errorMsg = error?.message || String(error);
-            console.error('Screenshot extraction failed:', error);
             sendResponse({ ok: false, error: errorMsg });
           }
           break;
@@ -976,7 +630,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           if (classifyPage(url) !== 'allowed') {
             console.log('[bg] ERROR: Page not allowed for auto-save');
-            sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste or screenshot instead.' });
+            sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste instead.' });
             break;
           }
           if (RUNNING_BY_TAB.get(tab.id)) {
@@ -1003,7 +657,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
                 notifyProgress('backend:error');
-                throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
+                throw new Error('Could not extract meaningful job details. Try paste text instead.');
               }
 
               notifyProgress('backend:save');
@@ -1037,7 +691,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
+              throw new Error('Could not extract meaningful job details. Try paste text instead.');
             }
 
 
@@ -1084,7 +738,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
               !((job?.description || '').trim().length >= 30)) {
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
+              throw new Error('Could not extract meaningful job details. Try paste text instead.');
             }
 
             notifyProgress('flow:ready_for_confirm', { title: job?.title, company: job?.company_name });
