@@ -543,37 +543,12 @@ async function captureScreenshot() {
     // Use JPEG with quality to reduce file size and visual noise for AI processing
     chrome.tabs.captureVisibleTab({ 
       format: 'jpeg',
-      quality: 85  // Good balance between quality and file size
+      quality: 70  // Lower quality to reduce file size for better AI processing
     }, (dataUrl) => {
       if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
       
-      // Further optimize the image by scaling it down if it's too large
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Scale down if image is very large (reduce detail for AI processing)
-        const maxWidth = 1200;  // Reasonable size for job posting screenshots
-        const maxHeight = 1600;
-        
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width *= ratio;
-          height *= ratio;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert back to data URL with optimized settings
-        const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        resolve(optimizedDataUrl);
-      };
-      img.onerror = () => reject(new Error('Failed to process screenshot'));
-      img.src = dataUrl;
+      // Return the JPEG directly - the quality setting above already optimizes it
+      resolve(dataUrl);
     });
   });
 }
