@@ -135,13 +135,13 @@ if (!window.__APPLYTIDE_PROGRESS_BOUND__) {
 async function checkAuth() {
   try {
     setStatus('loading', 'Checking session...');
-    const response = await bg.sendMessage({ type: 'APPLYTIDE_CHECK_AUTH' });
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_GET_STATUS' });
     
-    if (response.success && response.user) {
-      currentUser = response.user;
-      setStatus('success', `Signed in as ${response.user.email}`);
+    if (response?.ok && response?.authenticated) {
+      currentUser = { email: response.email || 'User' };
+      setStatus('success', 'Ready');
       showSection('main');
-      checkModeAndShow();
+      checkModeAndShow(response.mode);
     } else {
       setStatus('error', 'Not signed in');
       showSection('auth');
@@ -172,13 +172,13 @@ async function login() {
       password
     });
     
-    if (response.success) {
-      currentUser = response.user;
-      setStatus('success', `Signed in as ${response.user.email}`);
+    if (response?.ok) {
+      currentUser = { email };
+      setStatus('success', 'Ready');
       showSection('main');
-      checkModeAndShow();
+      checkModeAndShow(response.mode);
     } else {
-      setStatus('error', response.error || 'Login failed');
+      setStatus('error', response?.error || 'Login failed');
     }
   } catch (error) {
     console.error('Login failed:', error);
@@ -195,13 +195,13 @@ async function loginWithGoogle() {
     
     const response = await bg.sendMessage({ type: 'APPLYTIDE_GOOGLE_LOGIN' });
     
-    if (response.success) {
-      currentUser = response.user;
-      setStatus('success', `Signed in as ${response.user.email}`);
+    if (response?.ok) {
+      currentUser = { email: response.email || 'User' };
+      setStatus('success', 'Ready');
       showSection('main');
-      checkModeAndShow();
+      checkModeAndShow(response.mode);
     } else {
-      setStatus('error', response.error || 'Google login failed');
+      setStatus('error', response?.error || 'Google login failed');
     }
   } catch (error) {
     console.error('Google login failed:', error);
@@ -213,34 +213,32 @@ async function loginWithGoogle() {
 
 async function logout() {
   try {
-    await bg.sendMessage({ type: 'APPLYTIDE_LOGOUT' });
-    currentUser = null;
-    setStatus('error', 'Signed out');
-    showSection('auth');
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_LOGOUT' });
+    if (response?.ok) {
+      currentUser = null;
+      setStatus('error', 'Signed out');
+      showSection('auth');
+    } else {
+      setStatus('error', response?.error || 'Sign-out failed');
+    }
   } catch (error) {
     console.error('Logout failed:', error);
+    setStatus('error', 'Logout failed');
   }
 }
 
 // Mode detection and UI setup
-async function checkModeAndShow() {
-  try {
-    const response = await bg.sendMessage({ type: 'APPLYTIDE_CHECK_MODE' });
-    
-    if (response.mode === 'auto') {
-      // Show quick save option
-      quickSaveCard.style.display = 'block';
-      manualCard.style.display = 'none';
-      userInfo.style.display = 'block';
-    } else {
-      // Show manual extraction options
-      quickSaveCard.style.display = 'none';
-      manualCard.style.display = 'block';
-      userInfo.style.display = 'block';
-    }
-  } catch (error) {
-    console.error('Mode check failed:', error);
-    // Default to manual mode
+function checkModeAndShow(mode) {
+  // Use the mode passed from the status check, or default to 'restricted'
+  const currentMode = mode || 'restricted';
+  
+  if (currentMode === 'allowed') {
+    // Show quick save option
+    quickSaveCard.style.display = 'block';
+    manualCard.style.display = 'none';
+    userInfo.style.display = 'block';
+  } else {
+    // Show manual extraction options
     quickSaveCard.style.display = 'none';
     manualCard.style.display = 'block';
     userInfo.style.display = 'block';
@@ -256,11 +254,11 @@ async function saveCurrentJob() {
     
     const response = await bg.sendMessage({ type: 'APPLYTIDE_SAVE_JOB' });
     
-    if (response.success) {
+    if (response?.ok) {
       setProgress('flow:done', 'Job saved successfully!');
-      showResult(true, 'Job saved successfully!', response.job);
+      showResult(true, 'Job saved successfully!', response.saved);
     } else {
-      showResult(false, response.error || 'Failed to save job');
+      showResult(false, response?.error || 'Failed to save job');
     }
   } catch (error) {
     console.error('Save job failed:', error);
@@ -276,13 +274,16 @@ async function takeScreenshot() {
     
     screenshotBtn.disabled = true;
     
-    const response = await bg.sendMessage({ type: 'APPLYTIDE_SCREENSHOT' });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab?.url || '';
     
-    if (response.success) {
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_USE_SCREENSHOT', url });
+    
+    if (response?.ok) {
       setProgress('flow:done', 'Job extracted successfully!');
-      showResult(true, 'Job extracted from screenshot!', response.job);
+      showResult(true, 'Job extracted from screenshot!', response.saved);
     } else {
-      showResult(false, response.error || 'Screenshot extraction failed');
+      showResult(false, response?.error || 'Screenshot extraction failed');
     }
   } catch (error) {
     console.error('Screenshot failed:', error);
@@ -312,16 +313,20 @@ async function extractFromText() {
     
     usePastedBtn.disabled = true;
     
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab?.url || '';
+    
     const response = await bg.sendMessage({
-      type: 'APPLYTIDE_PASTE',
-      text: text
+      type: 'APPLYTIDE_USE_PASTED',
+      text: text,
+      url: url
     });
     
-    if (response.success) {
+    if (response?.ok) {
       setProgress('flow:done', 'Job extracted successfully!');
-      showResult(true, 'Job extracted from text!', response.job);
+      showResult(true, 'Job extracted from text!', response.saved);
     } else {
-      showResult(false, response.error || 'Text extraction failed');
+      showResult(false, response?.error || 'Text extraction failed');
     }
   } catch (error) {
     console.error('Text extraction failed:', error);
@@ -345,10 +350,10 @@ function showResult(success, message, jobData = null) {
     
     if (jobData) {
       html += `<div class="result-details">
+        <strong>ID:</strong> ${jobData.id || 'N/A'}<br>
         <strong>Title:</strong> ${jobData.title || 'N/A'}<br>
         <strong>Company:</strong> ${jobData.company_name || 'N/A'}<br>
-        <strong>Location:</strong> ${jobData.location || 'N/A'}<br>
-        <strong>Type:</strong> ${jobData.job_type || 'N/A'}
+        <strong>Location:</strong> ${jobData.location || 'N/A'}
       </div>`;
     }
   } else {
