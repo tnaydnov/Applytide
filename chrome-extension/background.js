@@ -704,7 +704,7 @@ async function captureFullPageScreenshot(tabId) {
   return screenshots;
 }
 
-// Add this helper function to capture scrollable elements
+// Replace the captureScrollableElementScreenshots function with this version:
 async function captureScrollableElementScreenshots(tabId, scrollableElements) {
   console.log("[bg] Using scrollable elements capture strategy");
 
@@ -719,10 +719,11 @@ async function captureScrollableElementScreenshots(tabId, scrollableElements) {
 
   console.log(`[bg] Will capture ${scrollSteps} screenshots of scrollable content (${scrollHeight}px in ${clientHeight}px container)`);
 
+  // Add rate limiting - only 2 captures per second allowed
   for (let i = 0; i < scrollSteps; i++) {
     // Calculate scroll position as percentage of total scroll
-    const scrollPercentage = i / (scrollSteps - 1);
-    const scrollPosition = Math.floor(scrollPercentage * (scrollHeight - clientHeight));
+    const scrollPercentage = i / Math.max(1, scrollSteps - 1);
+    const scrollPosition = Math.floor(scrollPercentage * Math.max(0, scrollHeight - clientHeight));
 
     // Execute scroll on the element
     await chrome.scripting.executeScript({
@@ -752,8 +753,8 @@ async function captureScrollableElementScreenshots(tabId, scrollableElements) {
       args: [targetElement.selector, scrollPosition]
     });
 
-    // Wait for content to load after scroll
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Wait for content to load after scroll - longer wait (500ms)
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
       // Capture visible portion
@@ -768,8 +769,14 @@ async function captureScrollableElementScreenshots(tabId, scrollableElements) {
         current: i + 1,
         total: scrollSteps
       });
+
+      // IMPORTANT: Wait 750ms between captures to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 750));
+
     } catch (error) {
       console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
+      // Wait even longer after an error (might be rate limiting)
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }
 
@@ -875,9 +882,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             try {
               notifyProgress('capture:start', { url: tab.url });
-              console.log('[bg] Starting full-page screenshot capture');
 
-              // Use our new scrolling capture function
+              // Use our scrolling capture function
               const screenshots = await captureFullPageScreenshot(tab.id);
 
               if (!screenshots || !screenshots.length) {
@@ -887,7 +893,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               notifyProgress('capture:done', { count: screenshots.length });
               console.log(`[bg] Captured ${screenshots.length} screenshots successfully`);
 
-              // Send all screenshots to backend
+              // Extra validation to ensure we have proper data URLs
+              for (let i = 0; i < screenshots.length; i++) {
+                if (typeof screenshots[i] !== 'string' || !screenshots[i].startsWith('data:image/')) {
+                  console.error(`[bg] Invalid screenshot format at index ${i}`);
+                  throw new Error('Invalid screenshot format detected');
+                }
+              }
+
+              // Send screenshots to backend - ensure we're sending strings
               notifyProgress('backend:extract');
               const payload = {
                 url: tab.url,
@@ -897,8 +911,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 readable: {},
                 xhrLogs: [],
                 quick: { source: 'screenshot', sections: screenshots.length },
-                screenshots: screenshots.map(s => s.dataUrl)  // Extract just the dataUrl strings
+                screenshots: screenshots // These should be strings already
               };
+
+              // Log payload structure before sending
+              console.log(`[bg] Payload screenshots count: ${payload.screenshots.length}`);
+              console.log(`[bg] First screenshot type: ${typeof payload.screenshots[0]}`);
+              console.log(`[bg] First screenshot preview: ${payload.screenshots[0].substring(0, 50)}...`);
 
               const { job } = await apiExtract(payload);
 
