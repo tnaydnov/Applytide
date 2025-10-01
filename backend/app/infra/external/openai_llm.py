@@ -5,7 +5,8 @@ from ...domain.jobs.extraction.ports import LLMExtractor
 
 logger = logging.getLogger(__name__)
 
-_EXTRACT_SYSTEM = """
+# System prompt for TEXT-based extraction (when user pastes text)
+_EXTRACT_TEXT_SYSTEM = """
 Return STRICT JSON with keys:
 title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
 
@@ -29,6 +30,36 @@ Approach:
 - Identify requirement/qualification AND irrelevant UI lines and list their line numbers in remove_lines[].
 - Extract requirements[] and skills[] normally.
 - De-duplicate arrays.
+"""
+
+# System prompt for IMAGE-based extraction (when user takes screenshot)
+_EXTRACT_IMAGE_SYSTEM = """
+Return STRICT JSON with keys:
+title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
+
+FOCUS: Read the job posting from the screenshot and extract ONLY the core job information. IGNORE all website navigation, UI elements, sidebars, comments, and page scaffolding.
+
+Rules:
+- description: Create a CLEAN, CONCISE job description from the main job content. Write 2-4 focused paragraphs covering: company overview, role responsibilities, and work environment. EXCLUDE all section headers, requirements lists, and UI text.
+- requirements[]: List concrete qualifications from requirements/qualifications sections (years, degrees, certifications, must-have / nice-to-have). One item per bullet. De-duplicate.
+- skills[]: Extract technical skills/tools/frameworks/languages from the posting (canonical names, e.g., "Node.js", "JavaScript", "AWS"). De-duplicate.
+- remove_lines[]: ALWAYS empty [] for images.
+- section_headers[]: List major section titles from the job posting (e.g., "About the Company", "Key Responsibilities", "Requirements", "Qualifications", "Benefits", "Work Environment"). Extract these even though they won't appear in the description.
+
+Standards:
+- remote_type: exactly "Remote", "Hybrid", "On-site", or "".
+- job_type: exactly "Full-time", "Part-time", "Contract", "Internship", or "".
+- Unknown fields: empty string "" (or [] for arrays).
+
+IGNORE completely:
+- Website navigation, headers, footers, sidebars
+- "Easy Apply", "Save", "Share", "Message" buttons
+- User comments, "89 applicants", pagination
+- "Meet the hiring team", "Message", social elements
+- "Your AI-powered job assessment"
+- Cookie banners, ads, unrelated content
+
+Focus ONLY on the actual job posting content in the center/main area of the screenshot.
 """
 
 
@@ -124,7 +155,7 @@ class OpenAILLMExtractor(LLMExtractor):
         lines = (text or "").splitlines()
         numbered = "\n".join(f"{i+1:05d} {ln}" for i, ln in enumerate(lines))
 
-        messages = [{"role": "system", "content": _EXTRACT_SYSTEM}]
+        messages = [{"role": "system", "content": _EXTRACT_TEXT_SYSTEM}]
         if hints:
             messages.append({"role": "user", "content": f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
         messages.append({
@@ -209,17 +240,22 @@ class OpenAILLMExtractor(LLMExtractor):
         data_url: "data:image/png;base64,...."
         Uses a vision-capable model to read the screenshot and extract the same fields.
         """
+        print("\n=== OPENAI IMAGE EXTRACTOR START ===")
         hints = hints or {}
-        logger.info(f"Starting OpenAI image extraction: model={self.model}")
+        print(f"OpenAI Image Extractor: Starting extraction")
+        print(f"OpenAI Image Extractor: model = {self.model}")
+        print(f"OpenAI Image Extractor: url = {url}")
+        print(f"OpenAI Image Extractor: image data length = {len(data_url) if data_url else 0}")
+        print(f"OpenAI Image Extractor: hints = {hints}")
         
         if not data_url or not data_url.startswith("data:image/"):
             raise ValueError("Invalid image data URL format")
         
         # Check if model supports vision
         if "gpt-4" not in self.model.lower() and "vision" not in self.model.lower():
-            logger.warning(f"Model {self.model} may not support vision - proceeding anyway")
+            print(f"OpenAI Image Extractor WARNING: Model {self.model} may not support vision - proceeding anyway")
         
-        messages = [{"role": "system", "content": _EXTRACT_SYSTEM}]
+        messages = [{"role": "system", "content": _EXTRACT_IMAGE_SYSTEM}]
         if hints:
             messages.append({"role": "user", "content": f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
         messages.append({
@@ -230,13 +266,17 @@ class OpenAILLMExtractor(LLMExtractor):
             ]
         })
         
+        print(f"OpenAI Image Extractor: Prepared {len(messages)} messages for API call")
+        print(f"OpenAI Image Extractor: System prompt length = {len(_EXTRACT_IMAGE_SYSTEM)}")
+        print(f"OpenAI Image Extractor: Making API call to OpenAI...")
+        
         try:
             resp = self.client.chat.completions.create(
                 model=self.model,  # ensure this is vision-capable (e.g., gpt-4o-mini)
                 temperature=0.1,
                 response_format={"type": "json_object"},
                 messages=messages,
-                max_tokens=8000  # High limit for complex screenshots - gpt-4o-mini supports up to 16k output tokens
+                max_tokens=4000  # Focused output for clean job extraction from screenshots
             )
             
             if not resp.choices or not resp.choices[0].message.content:
@@ -260,7 +300,18 @@ class OpenAILLMExtractor(LLMExtractor):
             job["skills"] = self._clean_skills_array(job.get("skills") or [])
             if not job.get("source_url"): job["source_url"] = url
             
-            logger.info(f"OpenAI image extraction successful: title='{job.get('title', '')[:50]}...', company='{job.get('company_name', '')}'")
+            # For images, ensure remove_lines is always empty (no line removal for generated content)
+            job["remove_lines"] = []
+            # Keep section_headers as extracted by the LLM for images
+            
+            print(f"OpenAI Image Extractor: API call successful")
+            print(f"OpenAI Image Extractor: Extracted title = '{job.get('title', '')}'")
+            print(f"OpenAI Image Extractor: Extracted company = '{job.get('company_name', '')}'")
+            print(f"OpenAI Image Extractor: Description length = {len(job.get('description', ''))}")
+            print(f"OpenAI Image Extractor: Requirements count = {len(job.get('requirements', []))}")
+            print(f"OpenAI Image Extractor: Skills count = {len(job.get('skills', []))}")
+            print(f"OpenAI Image Extractor: remove_lines = {job.get('remove_lines', [])}")
+            print("=== OPENAI IMAGE EXTRACTOR SUCCESS ===")
             return job
             
         except json.JSONDecodeError as e:

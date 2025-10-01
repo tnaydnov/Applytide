@@ -1,297 +1,381 @@
 const bg = chrome.runtime;
 
+// DOM Elements
 const statusEl = document.getElementById('status');
-const signedOut = document.getElementById('signedOut');
-const signedIn = document.getElementById('signedIn');
+const authSection = document.getElementById('authSection');
+const mainSection = document.getElementById('mainSection');
+const screenshotSection = document.getElementById('screenshotSection');
+const pasteSection = document.getElementById('pasteSection');
+const processingSection = document.getElementById('processingSection');
+const resultSection = document.getElementById('resultSection');
+
+const quickSaveCard = document.getElementById('quickSaveCard');
+const manualCard = document.getElementById('manualCard');
+const userInfo = document.getElementById('userInfo');
+
 const loginBtn = document.getElementById('loginBtn');
 const googleBtn = document.getElementById('googleBtn');
 const saveJobBtn = document.getElementById('saveJobBtn');
 const logoutBtn = document.getElementById('logoutBtn');
-const resultEl = document.getElementById('result');
-const progressWrap = document.getElementById('progressWrap');
-const progressBar = document.getElementById('progressBar');
-const modeNotice = document.getElementById('modeNotice');
-const assistedCard = document.getElementById('assistedCard');
-// Selection functionality removed - keeping only screenshot and paste
+
+const methodCards = document.querySelectorAll('.method-card');
+const continueBtn = document.getElementById('continueBtn');
 const screenshotBtn = document.getElementById('screenshotBtn');
 const pasteBox = document.getElementById('pasteBox');
 const usePastedBtn = document.getElementById('usePastedBtn');
 
+const backFromScreenshot = document.getElementById('backFromScreenshot');
+const backFromPaste = document.getElementById('backFromPaste');
+const extractAnotherBtn = document.getElementById('extractAnotherBtn');
+
+const processingStatus = document.getElementById('processingStatus');
+const progressBar = document.getElementById('progressBar');
+const resultContent = document.getElementById('resultContent');
+
+// State
+let selectedMethod = null;
+let currentUser = null;
+
+// Progress tracking
 const progressSteps = {
   'flow:begin': 10,
-  'capture:start': 15,
-  'capture:run': 30,
-  'capture:pass': 45,      // multiple passes will keep nudging this
+  'capture:start': 20,
+  'capture:run': 40,
   'capture:done': 60,
-  'backend:extract': 75,
-  'backend:save': 90,
+  'backend:extract': 80,
+  'backend:save': 95,
   'flow:done': 100
 };
 
-function setProgress(phase, meta = {}) {
+// UI Navigation
+function showSection(sectionName) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(sectionName + 'Section').classList.add('active');
+}
+
+function setStatus(type, message) {
+  statusEl.className = `status ${type}`;
+  statusEl.innerHTML = type === 'loading' ? 
+    `<span class="spinner"></span> ${message}` : message;
+}
+
+function setProgress(phase, message = null) {
   const pct = Math.max(0, Math.min(100, progressSteps[phase] ?? 0));
-  progressWrap.style.display = 'block';
   progressBar.style.width = pct + '%';
+  
+  if (message) {
+    processingStatus.textContent = message;
+  }
+  
   if (pct >= 100) {
-    // let the user see "done" before hiding
-    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 900);
+    setTimeout(() => {
+      progressBar.style.width = '0%';
+    }, 1000);
   }
 }
 
 function resetProgressBar() {
   progressBar.classList.remove('error');
   progressBar.style.width = '0%';
-  progressBar.style.background = ''
 }
 
-// Listen for streaming progress from background
+// Method selection
+methodCards.forEach(card => {
+  card.addEventListener('click', () => {
+    methodCards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedMethod = card.dataset.method;
+    continueBtn.disabled = false;
+  });
+});
+
+// Navigation handlers
+continueBtn.addEventListener('click', () => {
+  if (selectedMethod === 'screenshot') {
+    showSection('screenshot');
+  } else if (selectedMethod === 'paste') {
+    showSection('paste');
+  }
+});
+
+backFromScreenshot.addEventListener('click', () => {
+  showSection('main');
+});
+
+backFromPaste.addEventListener('click', () => {
+  showSection('main');
+});
+
+extractAnotherBtn.addEventListener('click', () => {
+  // Reset state
+  selectedMethod = null;
+  methodCards.forEach(c => c.classList.remove('selected'));
+  continueBtn.disabled = true;
+  pasteBox.value = '';
+  resetProgressBar();
+  
+  // Check mode and show appropriate section
+  checkModeAndShow();
+});
+
+// Progress updates from background
 if (!window.__APPLYTIDE_PROGRESS_BOUND__) {
   window.__APPLYTIDE_PROGRESS_BOUND__ = true;
-
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type !== 'APPLYTIDE_PROGRESS') return;
-    const { phase, meta } = msg;
-
-    // progress %
-    if (typeof setProgress === 'function') setProgress(phase, meta);
-
-    // error coloring
-    if (phase === 'flow:error' || phase === 'backend:error' || phase === 'capture:error') {
-      progressWrap.style.display = 'block';
-      progressBar.classList.add('error');
-      progressBar.style.width = '100%';
+  
+  bg.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'APPLYTIDE_PROGRESS') {
+      const { phase, status } = message;
+      console.log(`[popup] Progress update: ${phase} - ${status}`);
+      setProgress(phase, status);
     }
-    if (phase === 'screenshot:failed') {
-      progressBar.style.background = '#f59e0b'; // Warning orange
-      statusEl.textContent = 'Screenshot failed. Try paste text instead.';
-    }
-    if (phase === 'flow:done') {
-      setTimeout(() => {
-        progressWrap.style.display = 'none';
-        progressBar.style.width = '0%';
-        progressBar.classList.remove('error');
-      }, 900);
-    }
-
-    const pretty = {
-      'flow:begin': () => `Preparing…`,
-      'capture:start': () => `Starting capture…`,
-      'capture:run': () => `Capturing page…`,
-      'capture:pass': () => `Scanning… text=${meta?.textLen ?? 0}${meta?.jsonld ? `, JSON-LD=${meta.jsonld}` : ''}`,
-      'capture:cache_hit': () => `Using recent capture`,
-      'capture:done': () => `Capture done (${meta?.textLen ?? 0} chars)`,
-      'backend:extract': () => `Extracting job with AI…`,
-      'backend:save': () => `Saving…`,
-      'flow:ready_for_confirm': () => `Extracted: ${(meta?.title || 'Untitled')} @ ${(meta?.company || 'Unknown')}`,
-      'flow:done': () => `Saved! id=${meta?.savedId || '—'}`
-    }[phase];
-
-    if (pretty) setStatus(pretty(), 'muted');
   });
-
 }
 
-async function showDomainHint() {
+// Authentication
+async function checkAuth() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = new URL(tab?.url || 'https://');
-    const host = url.hostname.replace(/^www\./, '');
-    const risky = ['linkedin.com', 'glassdoor.com'];
-    if (risky.some(d => host.endsWith(d))) {
-      modeNotice.innerHTML = `
-        <div style="color:#ef4444; font-weight:600;">⚠️ Compliance Mode Active</div>
-        <div class="muted">This site's ToS restricts automated scraping. Using assisted methods only.</div>
-      `;
-    }
-  } catch { }
-}
-
-
-function setStatus(text, cls) {
-  statusEl.textContent = text || '';
-  statusEl.className = cls ? cls : 'muted';
-}
-
-async function refreshSessionState() {
-  setStatus('Checking session…', 'muted');
-  
-  try {
-    let resp;
-    try {
-      resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_GET_STATUS' });
-    } catch (error) {
-      console.error('Failed to get session status:', error);
-      setStatus('Extension connection lost', 'err');
-      signedOut.style.display = '';
-      signedIn.style.display = 'none';
-      return;
-    }
+    setStatus('loading', 'Checking session...');
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_CHECK_AUTH' });
     
-    if (resp?.ok && resp?.authenticated) {
-      signedOut.style.display = 'none';
-      signedIn.style.display = '';
-      setStatus('Ready.');
-      const mode = resp.mode || 'restricted';
-      if (mode === 'allowed') {
-        saveJobBtn.style.display = '';
-        assistedCard.style.display = 'none';
-        modeNotice.textContent = 'Auto-save is available on this page.';
-      } else {
-        saveJobBtn.style.display = 'none';
-        assistedCard.style.display = '';
-        modeNotice.textContent = 'Auto-save is disabled on this site. Use assisted options instead.';
-      }
+    if (response.success && response.user) {
+      currentUser = response.user;
+      setStatus('success', `Signed in as ${response.user.email}`);
+      showSection('main');
+      checkModeAndShow();
     } else {
-      signedOut.style.display = '';
-      signedIn.style.display = 'none';
-      setStatus('Not signed in.');
+      setStatus('error', 'Not signed in');
+      showSection('auth');
     }
   } catch (error) {
-    console.error('Session refresh failed:', error);
-    setStatus('Connection error', 'err');
-    signedOut.style.display = '';
-    signedIn.style.display = 'none';
+    console.error('Auth check failed:', error);
+    setStatus('error', 'Connection failed');
+    showSection('auth');
   }
-  
-  await showDomainHint();
 }
 
-loginBtn.onclick = async () => {
-  setStatus('Signing in…');
+async function login() {
   const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_LOGIN_EMAIL', email, password, remember: true });
-  if (resp?.ok) {
-    setStatus('Signed in.', 'ok');
-    await refreshSessionState();
-    await showDomainHint();
-  } else {
-    setStatus(resp?.error || 'Sign-in failed.', 'err');
+  const password = document.getElementById('password').value.trim();
+  
+  if (!email || !password) {
+    setStatus('error', 'Please enter email and password');
+    return;
   }
-};
-
-googleBtn.onclick = async () => {
-  setStatus('Opening Google sign-in…');
-  const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_LOGIN_GOOGLE' });
-  if (resp?.ok) {
-    setStatus('Signed in.', 'ok');
-    await refreshSessionState();
-  } else {
-    setStatus(resp?.error || 'Google sign-in failed.', 'err');
-  }
-};
-
-saveJobBtn.onclick = async () => {
-  console.log('[popup] SAVE JOB BUTTON CLICKED - Starting regular extraction');
-  resetProgressBar()
-  setStatus('Saving job…');
-  progressWrap.style.display = 'block';
-  progressBar.style.width = '10%';
-  resultEl.textContent = '';
-  console.log('[popup] DEBUG: Sending APPLYTIDE_RUN_FLOW1 message');
-  const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
-  console.log('[popup] DEBUG: Regular extraction response=', resp);
-  if (resp?.ok) {
-    setStatus('Saved!', 'ok');
-    resultEl.textContent = `Job saved (id: ${resp?.saved?.id || 'unknown'})`;
-  } else {
-    setStatus('Save failed.', 'err');
-    resultEl.textContent = resp?.error || 'Something went wrong.';
-    // show error state on bar
-    progressWrap.style.display = 'block';
-    progressBar.classList.add('error');
-    progressBar.style.width = '100%';
-  }
-};
-
-// Selection functionality removed - now only supporting screenshot and paste methods
-
-screenshotBtn.onclick = async () => {
-  resetProgressBar()
-  setStatus('Capturing screenshot…');
-  progressWrap.style.display = 'block'; progressBar.style.width = '10%';
   
   try {
-    let resp;
-    try {
-      resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_USE_SCREENSHOT' });
-    } catch (error) {
-      console.error('Background script message failed:', error);
-      setStatus('Extension connection lost', 'err');
-      resultEl.textContent = 'Extension context became invalid. Please reload the extension.';
-      return;
-    }
+    setStatus('loading', 'Signing in...');
+    loginBtn.disabled = true;
     
-    if (resp?.ok) { 
-      setStatus('Saved!', 'ok'); 
-      resultEl.textContent = `Job saved (id: ${resp?.saved?.id || 'unknown'})`; 
-    } else { 
-      setStatus('Failed.', 'err'); 
-      resultEl.textContent = resp?.error || 'Something went wrong.'; 
+    const response = await bg.sendMessage({
+      type: 'APPLYTIDE_LOGIN',
+      email,
+      password
+    });
+    
+    if (response.success) {
+      currentUser = response.user;
+      setStatus('success', `Signed in as ${response.user.email}`);
+      showSection('main');
+      checkModeAndShow();
+    } else {
+      setStatus('error', response.error || 'Login failed');
     }
   } catch (error) {
-    console.error('Screenshot process failed:', error);
-    setStatus('Screenshot failed.', 'err');
-    resultEl.textContent = error.message || 'Unexpected error occurred';
+    console.error('Login failed:', error);
+    setStatus('error', 'Login failed');
+  } finally {
+    loginBtn.disabled = false;
   }
-};
+}
 
-usePastedBtn.onclick = async () => {
-  console.log('[popup] PASTE BUTTON CLICKED - Starting paste flow');
-  resetProgressBar()
-  const text = pasteBox.value;
-  console.log('[popup] DEBUG: Paste text length=', text.length);
-  console.log('[popup] DEBUG: Paste text preview=', text.substring(0, 200));
+async function loginWithGoogle() {
+  try {
+    setStatus('loading', 'Signing in with Google...');
+    googleBtn.disabled = true;
+    
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_GOOGLE_LOGIN' });
+    
+    if (response.success) {
+      currentUser = response.user;
+      setStatus('success', `Signed in as ${response.user.email}`);
+      showSection('main');
+      checkModeAndShow();
+    } else {
+      setStatus('error', response.error || 'Google login failed');
+    }
+  } catch (error) {
+    console.error('Google login failed:', error);
+    setStatus('error', 'Google login failed');
+  } finally {
+    googleBtn.disabled = false;
+  }
+}
+
+async function logout() {
+  try {
+    await bg.sendMessage({ type: 'APPLYTIDE_LOGOUT' });
+    currentUser = null;
+    setStatus('error', 'Signed out');
+    showSection('auth');
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+}
+
+// Mode detection and UI setup
+async function checkModeAndShow() {
+  try {
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_CHECK_MODE' });
+    
+    if (response.mode === 'auto') {
+      // Show quick save option
+      quickSaveCard.style.display = 'block';
+      manualCard.style.display = 'none';
+      userInfo.style.display = 'block';
+    } else {
+      // Show manual extraction options
+      quickSaveCard.style.display = 'none';
+      manualCard.style.display = 'block';
+      userInfo.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Mode check failed:', error);
+    // Default to manual mode
+    quickSaveCard.style.display = 'none';
+    manualCard.style.display = 'block';
+    userInfo.style.display = 'block';
+  }
+}
+
+// Job extraction methods
+async function saveCurrentJob() {
+  try {
+    showSection('processing');
+    setProgress('flow:begin', 'Starting job extraction...');
+    resetProgressBar();
+    
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_SAVE_JOB' });
+    
+    if (response.success) {
+      setProgress('flow:done', 'Job saved successfully!');
+      showResult(true, 'Job saved successfully!', response.job);
+    } else {
+      showResult(false, response.error || 'Failed to save job');
+    }
+  } catch (error) {
+    console.error('Save job failed:', error);
+    showResult(false, 'Failed to save job');
+  }
+}
+
+async function takeScreenshot() {
+  try {
+    showSection('processing');
+    setProgress('flow:begin', 'Preparing screenshot...');
+    resetProgressBar();
+    
+    screenshotBtn.disabled = true;
+    
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_SCREENSHOT' });
+    
+    if (response.success) {
+      setProgress('flow:done', 'Job extracted successfully!');
+      showResult(true, 'Job extracted from screenshot!', response.job);
+    } else {
+      showResult(false, response.error || 'Screenshot extraction failed');
+    }
+  } catch (error) {
+    console.error('Screenshot failed:', error);
+    showResult(false, 'Screenshot extraction failed');
+  } finally {
+    screenshotBtn.disabled = false;
+  }
+}
+
+async function extractFromText() {
+  const text = pasteBox.value.trim();
   
-  if (!text.trim()) { 
-    console.log('[popup] ERROR: No text in paste box');
-    setStatus('Paste some text first', 'err'); 
-    return; 
+  if (!text) {
+    setStatus('error', 'Please paste some job text first');
+    return;
   }
   
-  setStatus('Processing pasted text…');
-  progressWrap.style.display = 'block'; progressBar.style.width = '10%';
+  if (text.length < 100) {
+    setStatus('error', 'Please paste more job details');
+    return;
+  }
   
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab?.url || '';
-    console.log('[popup] DEBUG: Current tab URL=', url);
+    showSection('processing');
+    setProgress('flow:begin', 'Processing pasted text...');
+    resetProgressBar();
     
-    let resp;
-    try {
-      console.log('[popup] DEBUG: Sending message to background script');
-      resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_USE_PASTED', text, url });
-      console.log('[popup] DEBUG: Background script response=', resp);
-    } catch (error) {
-      console.error('[popup] ERROR: Background script message failed:', error);
-      setStatus('Extension connection lost', 'err');
-      resultEl.textContent = 'Extension context became invalid. Please reload the extension.';
-      return;
-    }
+    usePastedBtn.disabled = true;
     
-    if (resp?.ok) { 
-      setStatus('Saved!', 'ok'); 
-      resultEl.textContent = `Job saved (id: ${resp?.saved?.id || 'unknown'})`; 
-    } else { 
-      setStatus('Failed.', 'err'); 
-      resultEl.textContent = resp?.error || 'Something went wrong.'; 
+    const response = await bg.sendMessage({
+      type: 'APPLYTIDE_PASTE',
+      text: text
+    });
+    
+    if (response.success) {
+      setProgress('flow:done', 'Job extracted successfully!');
+      showResult(true, 'Job extracted from text!', response.job);
+    } else {
+      showResult(false, response.error || 'Text extraction failed');
     }
   } catch (error) {
-    console.error('Paste process failed:', error);
-    setStatus('Paste failed.', 'err');
-    resultEl.textContent = error.message || 'Unexpected error occurred';
+    console.error('Text extraction failed:', error);
+    showResult(false, 'Text extraction failed');
+  } finally {
+    usePastedBtn.disabled = false;
   }
-};
+}
 
-
-logoutBtn.onclick = async () => {
-  setStatus('Signing out…');
-  const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_LOGOUT' });
-  if (resp?.ok) {
-    await refreshSessionState();
+// Result display
+function showResult(success, message, jobData = null) {
+  showSection('result');
+  
+  let html = '';
+  
+  if (success) {
+    html += `<div class="result-success">
+      <div style="font-size: 24px; margin-bottom: 12px;">✅</div>
+      <div style="font-weight: 600; margin-bottom: 8px;">${message}</div>
+    </div>`;
+    
+    if (jobData) {
+      html += `<div class="result-details">
+        <strong>Title:</strong> ${jobData.title || 'N/A'}<br>
+        <strong>Company:</strong> ${jobData.company_name || 'N/A'}<br>
+        <strong>Location:</strong> ${jobData.location || 'N/A'}<br>
+        <strong>Type:</strong> ${jobData.job_type || 'N/A'}
+      </div>`;
+    }
   } else {
-    setStatus(resp?.error || 'Sign-out failed', 'err');
+    html += `<div class="result-error">
+      <div style="font-size: 24px; margin-bottom: 12px;">❌</div>
+      <div style="font-weight: 600; margin-bottom: 8px;">Extraction Failed</div>
+      <div class="result-details">${message}</div>
+    </div>`;
   }
-};
+  
+  resultContent.innerHTML = html;
+}
 
-refreshSessionState();
+// Event listeners
+loginBtn.addEventListener('click', login);
+googleBtn.addEventListener('click', loginWithGoogle);
+logoutBtn.addEventListener('click', logout);
+saveJobBtn.addEventListener('click', saveCurrentJob);
+screenshotBtn.addEventListener('click', takeScreenshot);
+usePastedBtn.addEventListener('click', extractFromText);
+
+// Handle Enter key in password field
+document.getElementById('password').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    login();
+  }
+});
+
+// Initialize
+checkAuth();

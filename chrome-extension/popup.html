@@ -10,39 +10,49 @@
       font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       color: #e5e7eb;
       background: #0f172a;
-      width: 420px;
-      min-height: 500px;
+      width: 360px;
+      min-height: 400px;
+      overflow: hidden;
     }
 
     .wrap {
-      padding: 20px;
+      padding: 16px;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: 16px;
+      margin: 0 0 16px;
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+      color: #4f46e5;
     }
 
     .card {
       border: 1px solid rgba(255, 255, 255, .12);
       border-radius: 12px;
-      padding: 12px;
+      padding: 16px;
       background: #111827;
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
+      margin-bottom: 12px;
     }
 
     .btn {
       border: 1px solid rgba(148, 163, 184, .3);
       background: #1f2937;
       color: #fff;
-      padding: 8px 10px;
-      border-radius: 10px;
+      padding: 12px 16px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #374151;
+      transform: translateY(-1px);
     }
 
     .btn.primary {
@@ -50,187 +60,385 @@
       border-color: #4338ca;
     }
 
+    .btn.primary:hover {
+      background: #4338ca;
+    }
+
     .btn.block {
       width: 100%;
-      text-align: center;
+      justify-content: center;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
     }
 
     .muted {
       color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status {
       font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .status.loading {
+      background: rgba(79, 70, 229, 0.1);
+      color: #a5b4fc;
+      border: 1px solid rgba(79, 70, 229, 0.2);
+    }
+
+    .status.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    /* Input styles */
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, .3);
+      background: #0b1220;
+      color: #e5e7eb;
+      font-size: 14px;
+      transition: border-color 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #4f46e5;
     }
 
     label {
       display: block;
-      margin: 8px 0 4px;
+      margin: 0 0 6px;
+      font-weight: 500;
+      color: #f1f5f9;
     }
 
-    input {
-      width: 100%;
-      padding: 8px;
-      border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, .3);
-      background: #0b1220;
-      color: #e5e7eb;
-    }
-
-    .hr {
-      height: 1px;
-      background: rgba(255, 255, 255, .08);
-      margin: 12px 0;
-    }
-
-    .right {
-      text-align: right;
-    }
-
-    .ok {
-      color: #10b981
-    }
-
-    .err {
-      color: #ef4444
-    }
-
-    .center {
-      text-align: center;
-    }
-
-    /* Smooth progress updates */
-    #progressBar {
-      transition: width 0.3s ease-out;
-    }
-
-    /* Respect users who prefer less motion */
-    @media (prefers-reduced-motion: reduce) {
-      #progressBar {
-        transition: none;
-      }
-    }
-
-    /* Error color (see §2) */
-    #progressBar.error {
-      background: #ef4444;
-      /* Tailwind's red-500 */
-    }
-
-    /* Extraction option cards */
-    .extraction-option {
-      transition: all 0.2s ease;
-    }
-
-    .extraction-option:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    /* Better button spacing */
-    .btn.block {
-      margin-top: 8px;
-    }
-
-    /* Improved textarea */
-    textarea {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-
-    /* Better visual hierarchy */
-    h1 {
-      font-size: 18px;
-      font-weight: 700;
+    /* Method selection cards */
+    .method-card {
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 16px;
       margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #1f2937;
+    }
+
+    .method-card:hover {
+      border-color: #4f46e5;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .method-card.selected {
+      border-color: #4f46e5;
+      background: rgba(79, 70, 229, 0.1);
+    }
+
+    .method-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .method-icon {
+      font-size: 24px;
+      margin-right: 12px;
+    }
+
+    .method-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #f8fafc;
+    }
+
+    .method-desc {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #4f46e5;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    .spinner.large {
+      width: 24px;
+      height: 24px;
+      border-width: 3px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Hide/show sections */
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Progress bar */
+    .progress-container {
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 6px;
+      height: 6px;
+      margin: 16px 0;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      border-radius: 6px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-bar.error {
+      background: #ef4444;
+    }
+
+    /* Compact layout */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-row .btn {
+      flex: 1;
+    }
+
+    /* Success/error results */
+    .result-success {
+      text-align: center;
+      color: #10b981;
+    }
+
+    .result-error {
+      text-align: center;
+      color: #ef4444;
+    }
+
+    .result-details {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(148, 163, 184, 0.1);
+      border-radius: 6px;
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <h1>Applytide</h1>
-    <div id="status" class="muted">Checking session…</div>
+    <h1>🎯 Applytide</h1>
+    
+    <!-- Status indicator -->
+    <div id="status" class="status loading">
+      <span class="spinner"></span>
+      Checking session...
+    </div>
 
-    <div id="authCard" class="card" style="margin-top:8px;">
-      <div id="signedOut">
-        <div class="muted">Sign in to save jobs directly from any job page.</div>
+    <!-- Authentication Section -->
+    <div id="authSection" class="section">
+      <div class="card">
+        <div class="muted" style="text-align: center; margin-bottom: 16px;">
+          Sign in to save jobs from any job posting page
+        </div>
+        
         <label>Email</label>
         <input id="email" type="email" placeholder="you@example.com" />
+        
         <label>Password</label>
-        <input id="password" type="password" placeholder="********" />
-        <div style="margin-top:8px;" class="row">
-          <button id="loginBtn" class="btn primary">Sign in</button>
-          <button id="googleBtn" class="btn">Sign in with Google</button>
+        <input id="password" type="password" placeholder="Enter your password" />
+        
+        <div class="btn-row">
+          <button id="loginBtn" class="btn primary">
+            Sign In
+          </button>
+          <button id="googleBtn" class="btn">
+            🔐 Google
+          </button>
         </div>
-        <div class="muted" style="margin-top:8px;">Your session persists; you won’t need to sign in every time.</div>
-      </div>
-
-      <div id="signedIn" style="display:none;">
-        <div class="muted">You’re signed in.</div>
-        <div class="hr"></div>
-        <div class="row">
-          <button id="saveJobBtn" class="btn primary">Save current job</button>
-          <div id="modeNotice" class="muted" style="margin:8px 0 0;" aria-live="polite"></div>
-          <div class="hr"></div>
-
-          <div id="assistedCard" style="display:none;">
-            <div style="text-align: center; margin-bottom: 16px;">
-              <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">⚠️ Manual Extraction Required</div>
-              <div class="muted">This site blocks automatic job scraping. Choose your preferred method:</div>
-            </div>
-
-            <!-- Screenshot Option -->
-            <div class="extraction-option" style="border: 1px solid rgba(79, 70, 229, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: rgba(79, 70, 229, 0.05);">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 20px; margin-right: 8px;">📷</span>
-                <span style="font-weight: 600; color: #4f46e5;">Screenshot Method</span>
-              </div>
-              <div class="muted" style="margin-bottom: 12px; line-height: 1.5;">
-                • <strong>Best for most jobs</strong> - AI reads the entire page<br>
-                • Make sure the full job posting is visible on screen<br>
-                • Zoom out if needed to fit everything in view<br>
-                • Works great with LinkedIn, Indeed, Glassdoor
-              </div>
-              <button id="screenshotBtn" class="btn primary block">📷 Take Screenshot & Extract Job</button>
-            </div>
-
-            <!-- Paste Text Option -->
-            <div class="extraction-option" style="border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 16px; background: rgba(16, 185, 129, 0.05);">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 20px; margin-right: 8px;">📝</span>
-                <span style="font-weight: 600; color: #10b981;">Copy & Paste Method</span>
-              </div>
-              <div class="muted" style="margin-bottom: 12px; line-height: 1.5;">
-                • Select ALL job text (don't worry about extra content)<br>
-                • Copy everything: title, company, description, requirements<br>
-                • Perfect for complex layouts or when screenshot isn't clear
-              </div>
-              <label style="margin-bottom: 8px; display: block; font-weight: 500;">Paste the complete job posting text:</label>
-              <textarea id="pasteBox" rows="8" placeholder="Paste the job title, company, location, description, requirements, and any other job details here..."
-                style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(148,163,184,.3); background: #0b1220; color: #e5e7eb; font-size: 13px; line-height: 1.4; resize: vertical;"></textarea>
-              <button id="usePastedBtn" class="btn primary block" style="margin-top: 12px;">📝 Extract Job from Text</button>
-            </div>
-
-            <div class="muted" style="text-align: center; margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
-              💡 <strong>Pro Tip:</strong> Both methods use AI to clean up the text and extract only the relevant job information.
-            </div>
-          </div>
-
-          <div class="right" style="flex:1;">
-            <button id="logoutBtn" class="btn">Sign out</button>
-          </div>
-        </div>
-        <div id="progressWrap" style="display:none; margin-top:8px;">
-          <div style="height:6px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden;">
-            <div id="progressBar" style="height:6px; width:0%; background:#4f46e5;"></div>
-          </div>
-        </div>
-        <div id="result" class="muted" style="margin-top:8px;"></div>
       </div>
     </div>
 
-    <div class="center" style="margin-top:16px; padding: 12px; background: rgba(148, 163, 184, 0.1); border-radius: 8px;">
-      <small class="muted" style="line-height: 1.4;">
-        <strong>🎯 Best Results:</strong> Navigate to the full job posting page first<br>
-        Works with LinkedIn, Indeed, Glassdoor, company career pages & more
-      </small>
+    <!-- Main Action Section -->
+    <div id="mainSection" class="section">
+      <!-- Quick save for supported sites -->
+      <div id="quickSaveCard" class="card" style="display: none;">
+        <div style="text-align: center;">
+          <button id="saveJobBtn" class="btn primary block">
+            💾 Save Current Job
+          </button>
+          <div class="muted" style="margin-top: 8px;">Automatic extraction available</div>
+        </div>
+      </div>
+
+      <!-- Manual extraction needed -->
+      <div id="manualCard" class="card" style="display: none;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 4px;">
+            Manual Extraction Required
+          </div>
+          <div class="muted">Choose your preferred method:</div>
+        </div>
+
+        <div id="methodSelection">
+          <!-- Screenshot Method -->
+          <div class="method-card" data-method="screenshot">
+            <div class="method-header">
+              <span class="method-icon">📷</span>
+              <span class="method-title">Screenshot</span>
+            </div>
+            <div class="method-desc">
+              AI reads the entire page - best for most jobs
+            </div>
+          </div>
+
+          <!-- Paste Method -->
+          <div class="method-card" data-method="paste">
+            <div class="method-header">
+              <span class="method-icon">📝</span>
+              <span class="method-title">Copy & Paste</span>
+            </div>
+            <div class="method-desc">
+              Perfect for complex layouts or mobile
+            </div>
+          </div>
+
+          <button id="continueBtn" class="btn primary block" disabled>
+            Continue
+          </button>
+        </div>
+      </div>
+
+      <!-- User info and logout -->
+      <div id="userInfo" style="display: none; text-align: center; margin-top: 12px;">
+        <button id="logoutBtn" class="btn" style="font-size: 12px; padding: 6px 12px;">
+          Sign Out
+        </button>
+      </div>
+    </div>
+
+    <!-- Screenshot Execution -->
+    <div id="screenshotSection" class="section">
+      <div class="card">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📷</div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Screenshot Method</div>
+          <div class="muted">
+            Make sure the job posting is fully visible, then click capture
+          </div>
+        </div>
+
+        <button id="screenshotBtn" class="btn primary block">
+          📷 Capture & Extract Job
+        </button>
+
+        <button id="backFromScreenshot" class="btn block" style="margin-top: 8px;">
+          ← Back to Methods
+        </button>
+      </div>
+    </div>
+
+    <!-- Paste Text Execution -->
+    <div id="pasteSection" class="section">
+      <div class="card">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📝</div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Copy & Paste Method</div>
+          <div class="muted">
+            Copy the entire job posting and paste it below
+          </div>
+        </div>
+
+        <textarea id="pasteBox" rows="6" 
+          placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
+
+        <div class="btn-row">
+          <button id="backFromPaste" class="btn">
+            ← Back
+          </button>
+          <button id="usePastedBtn" class="btn primary">
+            ✨ Extract Job
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Processing Section -->
+    <div id="processingSection" class="section">
+      <div class="card">
+        <div style="text-align: center;">
+          <div style="margin-bottom: 16px;">
+            <span class="spinner large"></span>
+          </div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Processing Job...</div>
+          <div id="processingStatus" class="muted">Analyzing content with AI</div>
+          
+          <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="resultSection" class="section">
+      <div class="card">
+        <div id="resultContent"></div>
+        <button id="extractAnotherBtn" class="btn primary block" style="margin-top: 16px;">
+          Extract Another Job
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer tip -->
+    <div class="muted" style="text-align: center; margin-top: 12px; font-size: 12px; line-height: 1.4;">
+      💡 Works with LinkedIn, Indeed, Glassdoor & more
     </div>
   </div>
 
