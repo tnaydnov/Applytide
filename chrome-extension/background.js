@@ -740,7 +740,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 readable: {},
                 xhrLogs: [],
                 quick: { source: 'screenshot', sections: screenshots.length },
-                screenshots: screenshots
+                screenshots: screenshots.map(s => s.dataUrl)  // Extract just the dataUrl strings
               };
 
               const { job } = await apiExtract(payload);
