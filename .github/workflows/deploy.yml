@@ -57,7 +57,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/applytide-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/applytide-frontend:latest
 
-  deploy:
+    deploy:
     runs-on: ubuntu-latest
     needs: build_and_push
     steps:
@@ -68,19 +68,29 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd ~/Applytide
 
-            # Login to GHCR (skip if packages are public)
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin || true
+            # 1) Make sure the repo is up to date for bind mounts (nginx, alembic.ini, etc.)
+            git fetch --all
+            git reset --hard origin/main
 
-            # >>> add these two lines <<<
+            # 2) Login to GHCR if needed (skip if public)
+            if [ -n "${{ secrets.GHCR_PAT }}" ]; then
+              echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            fi
+
+            # 3) Pull & run the images for this commit
             export GITHUB_OWNER=${{ github.repository_owner }}
             export IMAGE_TAG=${{ github.sha }}
-            echo "GITHUB_OWNER=$GITHUB_OWNER  IMAGE_TAG=$IMAGE_TAG"
+            echo "Deploying OWNER=$GITHUB_OWNER TAG=$IMAGE_TAG"
 
+            GITHUB_OWNER="$GITHUB_OWNER" IMAGE_TAG="$IMAGE_TAG" \
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
 
+            GITHUB_OWNER="$GITHUB_OWNER" IMAGE_TAG="$IMAGE_TAG" \
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # 4) Housekeeping
             docker image prune -a -f --filter "until=168h" || true
             docker builder prune -af --filter "until=168h" || true
