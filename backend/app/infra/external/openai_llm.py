@@ -6,14 +6,17 @@ from ...domain.jobs.extraction.ports import LLMExtractor
 logger = logging.getLogger(__name__)
 
 _EXTRACT_SYSTEM = """
-You are a precise extractor for job postings. Return STRICT JSON with keys:
-title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[].
+Return STRICT JSON with keys:
+title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
 
 Rules:
 - description: COPY the job text exactly as provided (same paragraphs & line breaks). DO NOT rewrite or remove anything.
 - requirements[]: List concrete qualifications (years, degrees, certifications, must-have / nice-to-have). One item per bullet/line. De-duplicate.
 - skills[]: Technologies/tools/frameworks/languages (canonical names, e.g., "Node.js", "JavaScript", "AWS"). De-duplicate.
-- remove_lines[]: Integers referencing the exact line numbers (1-based) of the description to remove because they are requirement/qualification lines (or clear bullets under such headers). Return only lines that correspond to requirements/qualifications — not narrative description.
+- remove_lines[]: Integers referencing the exact line numbers (1-based) of the description to remove because they are:
+  (a) requirement/qualification bullet lines under headers like “Requirements/Qualifications”, OR
+  (b) irrelevant UI chrome or page scaffolding (e.g., “Easy Apply”, “Save”, “Share”, “Show more options”, “Promoted by hirer”, “Your AI-powered job assessment”, “Meet the hiring team”, “Message”, pagination, counters like “89 applicants”, etc.).
+- section_headers[]: Strings of major section titles present in the description (e.g., "Company Overview", "Key Responsibilities", "Work Environment", "Qualifications", "Benefits"). Leave empty if unsure.
 
 Standards:
 - remote_type: exactly "Remote", "Hybrid", "On-site", or "".
@@ -22,10 +25,11 @@ Standards:
 
 Approach:
 - Do NOT alter description text.
-- Identify requirement/qualification lines and list their line numbers in remove_lines[].
+- Identify requirement/qualification AND irrelevant UI lines and list their line numbers in remove_lines[].
 - Extract requirements[] and skills[] normally.
 - De-duplicate arrays.
 """
+
 
 class OpenAILLMExtractor(LLMExtractor):
     def __init__(self, model: str | None = None):

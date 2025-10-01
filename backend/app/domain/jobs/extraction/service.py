@@ -82,6 +82,69 @@ class JobExtractionService:
                     ln = re.sub(r"\s*\((?:Remote|Hybrid|On-?site)\)\s*$", "", ln, flags=re.I)
                     return ln.strip(" .,")
         return ""
+    
+    def _preclean_noise(self, text: str) -> str:
+        """
+        Remove obvious non-job UI chrome commonly copied from LinkedIn/ATS pages.
+        Keeps everything from 'About the job' / 'Job Description' onward if present.
+        Also drops frequent UI lines anywhere in the text.
+        """
+        if not text:
+            return ""
+
+        s = text
+
+        # If there's a clear starting anchor, keep from there forward.
+        anchors = [
+            r"^\s*About the job\s*$",
+            r"^\s*Job Description\s*$",
+            r"^\s*Description\s*$",
+            r"^\s*About the role\s*$",
+            r"^\s*Role Summary\s*$",
+        ]
+        for pat in anchors:
+            m = re.search(pat, s, flags=re.I | re.M)
+            if m:
+                s = s[m.start():]
+                break
+
+        # Drop common UI/noise lines anywhere
+        drop_line_res = [
+            r"^\s*Back\s*line\s*AI logo\s*$",
+            r"^\s*Share\s*$",
+            r"^\s*Show more options\s*$",
+            r"^\s*Easy Apply\s*$",
+            r"^\s*Save(\s+.+)?$",
+            r"^\s*Promoted by hirer.*$",
+            r"^\s*Actively reviewing applicants.*$",
+            r"^\s*\d+\s+applicants\s*$",
+            r"^\s*Your AI-powered job assessment\s*$",
+            r"^\s*Am I a good match\??\s*$",
+            r"^\s*Tailor my resume\s*$",
+            r"^\s*Meet the hiring team\s*$",
+            r"^\s*Message\s*$",
+            r"^\s*Show more\s*$",
+            r"^\s*Hide\s*$",
+            r"^\s*2nd\s*$",
+            r"^\s*Job poster.*$",
+            r"^\s*\d+\s+mutual connections\s*$",
+            r"^\s*—\s*$",
+            r"^\s*Matches your job preferences.*$",
+            r"^\s*workplace type is.*$",
+            r"^\s*job type is.*$",
+        ]
+
+        lines = s.splitlines()
+        kept = []
+        for ln in lines:
+            if any(re.match(p, ln.strip(), flags=re.I) for p in drop_line_res):
+                continue
+            kept.append(ln)
+
+        s = "\n".join(kept)
+        s = self._clean_text(s)
+        return s
+
 
     def _iter_jsonld_items(self, arr: List[Dict[str, Any]]):
         # Flatten top-level objects and @graph arrays
@@ -228,7 +291,7 @@ class JobExtractionService:
             
             print("Manual text LLM extraction starting...", flush=True)
             try:
-                text = self._clean_text(manual_text)
+                text = self._preclean_noise(self._clean_text(manual_text))
                 print(f"Cleaned text length: {len(text)}", flush=True)
                 job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
                 print(f"LLM extraction completed successfully", flush=True)
@@ -398,7 +461,8 @@ class JobExtractionService:
                             break
             except Exception:
                 pass
-
+        
+        main_text = self._preclean_noise(main_text)
 
         # 3) Fallbacks from raw text
         raw_text = self._clean_text(re.sub(r"<[^>]+>", "", html or ""))

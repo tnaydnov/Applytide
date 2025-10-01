@@ -197,12 +197,32 @@ export default function JobDetailsModal({
         <div className="section">
           <label className="field-label">Description</label>
           {jobDetailsMode === 'view' ? (
-            parsed.cleanDescription ? (
+            parsed.blocks?.length ? (
+              <div className="space-y-2">
+                {parsed.blocks.map((b, i) =>
+                  b.type === 'header' ? (
+                    <div key={i} className="mt-3 mb-1 text-slate-100 font-semibold tracking-wide">
+                      {b.text}
+                    </div>
+                  ) : b.type === 'bullet' ? (
+                    <div key={i} className="text-slate-300 text-sm flex">
+                      <span className="text-indigo-400 mr-2">•</span>
+                      <span className="break-words">{b.text}</span>
+                    </div>
+                  ) : (
+                    <div key={i} className="text-slate-300 text-sm break-words">
+                      {b.text}
+                    </div>
+                  )
+                )}
+              </div>
+            ) : parsed.cleanDescription ? (
               <pre className="job-desc whitespace-pre-wrap break-words">{parsed.cleanDescription}</pre>
             ) : (
               <p className="text-slate-500 italic">No description provided</p>
             )
           ) : (
+
             <Textarea
               value={editJobData?.description || ''}
               onChange={(e) => setEditJobData((p) => ({ ...p, description: e.target.value }))}
@@ -256,7 +276,7 @@ export default function JobDetailsModal({
                   skills: Array.from(
                     new Set(
                       e.target.value
-                        .split(/[,\r\n]+/) 
+                        .split(/[,\r\n]+/)
                         .map((s) => s.trim())
                         .filter(Boolean)
                     )

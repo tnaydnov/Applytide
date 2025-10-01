@@ -1,6 +1,6 @@
 /**
  * Extracts a clean description, requirements and skills from a raw job object.
- * This is display-only (does not mutate the DB shape).
+ * Also returns a light structure for UI rendering: blocks = [{type:'header'|'text'|'bullet', text}]
  */
 export function parseJobForDisplay(job) {
   const rawDesc = (job?.description || "").replace(/\r/g, "");
@@ -30,13 +30,39 @@ export function parseJobForDisplay(job) {
     "stack",
   ];
 
+  // Titles we want to emphasize in the description
+  const displayHeaders = [
+    "about the job",
+    "company overview",
+    "about the company",
+    "about us",
+    "position overview",
+    "role summary",
+    "summary",
+    "overview",
+    "key responsibilities",
+    "responsibilities",
+    "what you'll do",
+    "what you will do",
+    "work environment",
+    "qualifications",
+    "culture",
+    "benefits",
+    "perks",
+    "compensation",
+    "salary",
+    "why join us",
+    "mission",
+  ];
+
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const reqHeaderRe = new RegExp(`^\\s*(?:${reqHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
   const skillHeaderRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
   const skillInlineRe = new RegExp(`^\\s*(?:${skillHeaders.map(esc).join("|")})\\s*:\\s*(.+)$`, "i");
+  const displayHeaderRe = new RegExp(`^\\s*(?:${displayHeaders.map(esc).join("|")})\\s*:?\\s*$`, "i");
 
-  const isBullet = (s) => /^\\s*(?:[-–—•·*]|\\d+\.)\\s+/.test(s);
-  const normalizeBullet = (s) => s.replace(/^\\s*(?:[-–—•·*]|\\d+\.)\\s+/, "").trim();
+  const isBullet = (s) => /^\s*(?:[-–—•·*]|\d+\.)\s+/.test(s);
+  const normalizeBullet = (s) => s.replace(/^\s*(?:[-–—•·*]|\d+\.)\s+/, "").trim();
 
   const cleanToken = (s) =>
     s
@@ -74,11 +100,17 @@ export function parseJobForDisplay(job) {
     if (reqHeaderRe.test(line)) {
       inReqBlock = true;
       inSkillsBlock = false;
+      // keep the header line in description for styling if it's not literally "Requirements"
+      // (We will still remove the *items* below from description.)
+      if (!/^requirements$/i.test(line.trim())) {
+        descOut.push(line.trim());
+      }
       continue;
     }
     if (skillHeaderRe.test(line)) {
       inSkillsBlock = true;
       inReqBlock = false;
+      descOut.push(line.trim()); // keep skill header as a visual section if present
       continue;
     }
 
@@ -96,6 +128,7 @@ export function parseJobForDisplay(job) {
       if (skillHeaderRe.test(line)) {
         inReqBlock = false;
         inSkillsBlock = true;
+        descOut.push(line.trim());
         continue;
       }
       if (line.trim() === "") {
@@ -156,10 +189,25 @@ export function parseJobForDisplay(job) {
       if (!skillMap.has(key)) skillMap.set(key, pretty(String(s)));
     });
 
+  // Build simple blocks for rendering with styled headers
+  const blocks = [];
+  cleanDescription.split("\n").forEach((ln) => {
+    const t = ln.trim();
+    if (!t) return;
+    if (displayHeaderRe.test(t) || (/^[A-Z][A-Za-z0-9 '&/+-]{2,80}:?$/.test(t) && t.split(" ").length <= 8)) {
+      blocks.push({ type: "header", text: t.replace(/:$/, "") });
+    } else if (/^\s*•\s+/.test(ln)) {
+      blocks.push({ type: "bullet", text: ln.replace(/^\s*•\s+/, "") });
+    } else {
+      blocks.push({ type: "text", text: ln });
+    }
+  });
+
   return {
     cleanDescription,
     requirements: Array.from(reqMap.values()),
     skills: Array.from(skillMap.values()),
+    blocks,
   };
 }
 

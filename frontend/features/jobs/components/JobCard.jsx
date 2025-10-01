@@ -12,8 +12,11 @@ export default function JobCard({
   toast,
 }) {
   const parsed = parseJobForDisplay(job);
-  const lines = parsed.cleanDescription.split('\n').filter((l) => l.trim());
-  const showReadMore = lines.length > 3;
+  const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+
+  const previewCount = 5; // how many blocks to show when collapsed
+  const visibleBlocks = isExpanded ? blocks : blocks.slice(0, previewCount);
+  const showReadMore = blocks.length > previewCount;
 
   return (
     <Card
@@ -31,13 +34,19 @@ export default function JobCard({
               {job.remote_type && (
                 <span
                   className={`chip ${
-                    job.remote_type === 'Remote' ? 'chip-cyan' : job.remote_type === 'Hybrid' ? 'chip-amber' : 'chip-rose'
+                    job.remote_type === 'Remote'
+                      ? 'chip-cyan'
+                      : job.remote_type === 'Hybrid'
+                      ? 'chip-amber'
+                      : 'chip-rose'
                   }`}
                 >
                   {job.remote_type}
                 </span>
               )}
-              <span className="text-xs text-gray-400">{new Date(job.created_at).toLocaleDateString()}</span>
+              <span className="text-xs text-gray-400">
+                {new Date(job.created_at).toLocaleDateString()}
+              </span>
             </div>
           </div>
 
@@ -59,15 +68,26 @@ export default function JobCard({
         </div>
       </div>
 
-      {/* Description */}
-      {parsed.cleanDescription && (
+      {/* Description preview */}
+      {blocks.length > 0 && (
         <div className="mb-4">
-          <div className="text-slate-300 text-sm leading-relaxed break-words">
-            {(isExpanded ? lines : lines.slice(0, 3)).map((line, idx) => (
-              <div key={idx} className={line.startsWith('•') ? 'ml-4 mb-1' : 'mb-2'}>
-                {line}
-              </div>
-            ))}
+          <div className="text-sm leading-relaxed break-words space-y-1">
+            {visibleBlocks.map((b, i) =>
+              b.type === 'header' ? (
+                <div key={i} className="mt-2 mb-1 text-slate-100 font-semibold tracking-wide">
+                  {b.text}
+                </div>
+              ) : b.type === 'bullet' ? (
+                <div key={i} className="text-slate-300 flex">
+                  <span className="text-indigo-400 mr-2">•</span>
+                  <span>{b.text}</span>
+                </div>
+              ) : (
+                <div key={i} className="text-slate-300">
+                  {b.text}
+                </div>
+              )
+            )}
             {showReadMore && (
               <button
                 onClick={() => onToggle?.(job.id)}
@@ -90,7 +110,9 @@ export default function JobCard({
             </span>
           ))}
           {parsed.skills.length > 5 && (
-            <span className="chip text-slate-300 bg-white/10 border border-white/15">+{parsed.skills.length - 5} more</span>
+            <span className="chip text-slate-300 bg-white/10 border border-white/15">
+              +{parsed.skills.length - 5} more
+            </span>
           )}
         </div>
       )}
@@ -107,7 +129,9 @@ export default function JobCard({
               </li>
             ))}
             {parsed.requirements.length > 3 && (
-              <li className="text-gray-400 italic">...and {parsed.requirements.length - 3} more requirements</li>
+              <li className="text-gray-400 italic">
+                ...and {parsed.requirements.length - 3} more requirements
+              </li>
             )}
           </ul>
         </div>
