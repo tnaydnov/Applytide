@@ -32,20 +32,19 @@ FIELD GUIDELINES:
 
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
-- ALWAYS PRESERVE ALL SECTION HEADERS (e.g., "About the Company", "Responsibilities", "Advantages", "Benefits", etc.)
-- REMOVE any lines you extract as requirements (these go in the requirements array)
+- ALWAYS PRESERVE ALL SECTION HEADERS in the description - never remove headers
+- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description
+- Only remove lines that are core mandatory requirements (these go in requirements array)
 - Keep EXACT original wording - do not rewrite or rephrase
-- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities", "Advantages", etc.
+- Add TWO line breaks (\\n\\n) before section headers
 - Preserve bullet points and list formatting
 
 requirements[]:
-- Extract ANY qualification lines, even without explicit "Requirements" headers
-- Look for statements about:
-  * Needed experience ("X years of...")
-  * Education ("Bachelor's degree...")
-  * Certifications ("Licensed...", "Certified...")
-  * Necessary skills ("Must be proficient in...")
-  * Essential qualities ("Strong communication skills...")
+- Extract ONLY CORE/MANDATORY qualification lines (must-have requirements)
+- Use your judgment to distinguish between:
+  * CORE requirements: essential qualifications without which applications would be rejected
+  * NICE-TO-HAVE features: preferred skills, advantages, or bonuses that should stay in description
+- Look for statements containing language like "required", "must have", "essential"
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols but preserve the full text
 - These lines should NOT appear in the description
@@ -98,19 +97,19 @@ FIELD GUIDELINES:
 
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
-- REMOVE any lines you extract as requirements (these go in requirements array)
+- ALWAYS PRESERVE ALL SECTION HEADERS in the description - never remove headers
+- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description. use your judgment to decide what is "nice-to-have".
+- Only remove lines that are core mandatory requirements (these go in requirements array)
 - Keep EXACT original wording - do not rewrite or rephrase
-- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities"
+- Add TWO line breaks (\\n\\n) before section headers
 - Preserve bullet points and list formatting
 
 requirements[]:
-- Extract ANY qualification lines, even without explicit "Requirements" headers
-- Look for statements about:
-  * Needed experience ("X years of...")
-  * Education ("Bachelor's degree...")
-  * Certifications ("Licensed...", "Certified...")
-  * Necessary skills ("Must be proficient in...")
-  * Essential qualities ("Strong communication skills...")
+- Extract ONLY CORE/MANDATORY qualification lines (must-have requirements)
+- Use your judgment to distinguish between:
+  * CORE requirements: essential qualifications without which applications would be rejected
+  * NICE-TO-HAVE features: preferred skills, advantages, or bonuses that should stay in description
+- Look for statements containing language like "required", "must have", "essential"
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols but preserve the full text
 - These lines should NOT appear in the description
