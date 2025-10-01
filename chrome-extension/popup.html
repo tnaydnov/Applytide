@@ -112,7 +112,8 @@
     }
 
     /* Input styles */
-    input, textarea {
+    input,
+    textarea {
       width: 100%;
       padding: 12px;
       border-radius: 8px;
@@ -124,7 +125,8 @@
       box-sizing: border-box;
     }
 
-    input:focus, textarea:focus {
+    input:focus,
+    textarea:focus {
       outline: none;
       border-color: #4f46e5;
     }
@@ -199,7 +201,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     /* Hide/show sections */
@@ -213,8 +217,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* Progress bar */
@@ -274,7 +285,7 @@
 <body>
   <div class="wrap">
     <h1>🎯 Applytide</h1>
-    
+
     <!-- Status indicator - hidden by default -->
     <div id="status" class="status loading" style="display: none;">
       <span class="spinner"></span>
@@ -287,13 +298,13 @@
         <div class="muted" style="text-align: center; margin-bottom: 16px;">
           Sign in to save jobs from any job posting page
         </div>
-        
+
         <label>Email</label>
         <input id="email" type="email" placeholder="you@example.com" />
-        
+
         <label>Password</label>
         <input id="password" type="password" placeholder="Enter your password" />
-        
+
         <div class="btn-row">
           <button id="loginBtn" class="btn primary">
             Sign In
@@ -328,8 +339,11 @@
 
         <div id="methodSelection">
           <!-- Copy & Paste Method - RECOMMENDED -->
-          <div class="method-card" data-method="paste" style="border-color: #10b981; background: rgba(16, 185, 129, 0.1); position: relative;">
-            <div style="position: absolute; top: -8px; right: 12px; background: #10b981; color: #0f172a; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 12px;">RECOMMENDED</div>
+          <div class="method-card" data-method="paste"
+            style="border-color: #10b981; background: rgba(16, 185, 129, 0.1); position: relative;">
+            <div
+              style="position: absolute; top: -8px; right: 12px; background: #10b981; color: #0f172a; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 12px;">
+              RECOMMENDED</div>
             <div class="method-header">
               <span class="method-icon">�</span>
               <span class="method-title" style="color: #10b981;">Copy & Paste</span>
@@ -369,9 +383,9 @@
       <div class="card">
         <div style="text-align: center; margin-bottom: 16px;">
           <div style="font-size: 32px; margin-bottom: 12px;">📷</div>
-          <div style="font-weight: 600; margin-bottom: 8px;">Screenshot Method</div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Full Page Screenshot</div>
           <div class="muted">
-            Make sure the job posting is fully visible, then click capture
+            We'll automatically scan the entire page by scrolling, capturing multiple screenshots to get all content.
           </div>
         </div>
 
@@ -396,7 +410,7 @@
           </div>
         </div>
 
-        <textarea id="pasteBox" rows="6" 
+        <textarea id="pasteBox" rows="6"
           placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
 
         <div class="btn-row">
@@ -418,10 +432,14 @@
             <span class="spinner large"></span>
           </div>
           <div style="font-weight: 600; margin-bottom: 8px;">Processing Job...</div>
-          <div id="processingStatus" class="muted">Analyzing content with AI</div>
-          
+          <div id="processingStatus" class="muted">Starting capture process...</div>
+
           <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
+          </div>
+
+          <div id="processingDetails" class="muted" style="margin-top: 8px; font-size: 12px;">
+            This may take a moment for long job postings
           </div>
         </div>
       </div>

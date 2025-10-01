@@ -81,14 +81,14 @@ async function apiExtract(payload) {
     screenshot_len: (payload.screenshot || '').length,
     jsonld_count: (payload.jsonld || []).length
   });
-  
+
   await ensureAccessToken();
   const res = await fetch(`${API_HOST}/ai/extract`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload)
   });
-  
+
   console.log('[bg] DEBUG: API response status=', res.status);
 
   if (!res.ok) {
@@ -98,7 +98,7 @@ async function apiExtract(payload) {
       const errorData = await res.json();
       console.log('[bg] DEBUG: Error response data=', errorData);
       errorMsg = errorData?.detail || errorMsg;
-      
+
       // Check if it's debug info from backend
       if (errorMsg.includes('DEBUG_INFO:')) {
         console.log('[bg] BACKEND DEBUG INFO RECEIVED:', errorMsg);
@@ -110,7 +110,7 @@ async function apiExtract(payload) {
     }
     throw new Error(errorMsg);
   }
-  
+
   console.log('[bg] DEBUG: API request successful, parsing response');
 
   return res.json();
@@ -135,7 +135,7 @@ async function apiSaveJob(jobPayload) {
     }
     throw new Error(errorMsg);
   }
-  
+
   console.log('[bg] DEBUG: API request successful, parsing response');
   const result = await res.json();
   console.log('[bg] DEBUG: API response parsed successfully');
@@ -541,16 +541,107 @@ function classifyPage(urlStr) {
 async function captureScreenshot() {
   return new Promise((resolve, reject) => {
     // Use JPEG with quality to reduce file size and visual noise for AI processing
-    chrome.tabs.captureVisibleTab({ 
+    chrome.tabs.captureVisibleTab({
       format: 'jpeg',
       quality: 100  // Lower quality to reduce file size for better AI processing
     }, (dataUrl) => {
       if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
-      
+
       // Return the JPEG directly - the quality setting above already optimizes it
       resolve(dataUrl);
     });
   });
+}
+
+async function captureFullPageScreenshot(tabId) {
+  console.log("[bg] Starting full-page screenshot capture");
+
+  // Step 1: Get page dimensions and prepare capture
+  const [dimensionsResult] = await chrome.scripting.executeScript({
+    target: { tabId },
+    function: () => {
+      return {
+        scrollHeight: document.body.scrollHeight,
+        viewportHeight: window.innerHeight,
+        scrollWidth: document.body.scrollWidth,
+        viewportWidth: window.innerWidth
+      };
+    }
+  });
+
+  if (!dimensionsResult || chrome.runtime.lastError) {
+    console.error("[bg] Failed to get page dimensions:", chrome.runtime.lastError);
+    throw new Error("Failed to get page dimensions");
+  }
+
+  const { scrollHeight, viewportHeight } = dimensionsResult.result;
+  console.log(`[bg] Page dimensions: scrollHeight=${scrollHeight}, viewportHeight=${viewportHeight}`);
+
+  // Calculate sections needed (add overlap to ensure nothing is missed)
+  const overlap = Math.min(200, viewportHeight * 0.1); // 10% overlap, max 200px
+  const effectiveViewportHeight = viewportHeight - overlap;
+  const sectionsNeeded = Math.ceil(scrollHeight / effectiveViewportHeight);
+  console.log(`[bg] Sections needed: ${sectionsNeeded} (with ${overlap}px overlap)`);
+
+  if (sectionsNeeded > 20) {
+    console.warn("[bg] Very long page detected, limiting to 20 sections");
+    // Limit to avoid overwhelming the API
+    sectionsNeeded = Math.min(sectionsNeeded, 20);
+  }
+
+  const screenshots = [];
+
+  // Step 2: Scroll and capture each section
+  for (let i = 0; i < sectionsNeeded; i++) {
+    // Calculate scroll position (with overlap)
+    const scrollPosition = i * effectiveViewportHeight;
+
+    // Scroll to position
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      function: (position) => {
+        window.scrollTo(0, position);
+      },
+      args: [scrollPosition]
+    });
+
+    // Wait for any lazy-loaded content and for the page to stabilize
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    try {
+      // Capture visible portion
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+        format: 'jpeg',
+        quality: 85  // Good balance between quality and size
+      });
+
+      screenshots.push({
+        dataUrl,
+        scrollPosition,
+        index: i,
+        total: sectionsNeeded
+      });
+
+      notifyProgress('capture:scroll', {
+        current: i + 1,
+        total: sectionsNeeded
+      });
+    } catch (error) {
+      console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
+      // Continue with other screenshots even if one fails
+    }
+  }
+
+  // Return to the top of the page
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    function: () => {
+      window.scrollTo(0, 0);
+    }
+  });
+
+  console.log(`[bg] Captured ${screenshots.length} screenshots`);
+  return screenshots;
 }
 
 // -------- Message bus for popup --------
@@ -579,7 +670,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.log('[bg] DEBUG: text length=', (text || '').length);
             console.log('[bg] DEBUG: url=', url);
             console.log('[bg] DEBUG: text preview=', (text || '').substring(0, 200));
-            
+
             if (!text || !text.trim()) {
               console.log('[bg] ERROR: No text provided');
               throw new Error('Please paste some text first');
@@ -588,14 +679,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               console.log('[bg] ERROR: Text too short, length=', text.trim().length);
               throw new Error('Please paste more text including job title, company, and description');
             }
-            
+
             console.log('[bg] Step 2: Validation passed, calling API');
             notifyProgress('flow:begin', { url });
             notifyProgress('backend:extract');
-            
+
             const payload = { url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {}, manual_text: text };
-            console.log('[bg] DEBUG: API payload=', JSON.stringify({...payload, manual_text: payload.manual_text.substring(0, 100) + '...'}));
-            
+            console.log('[bg] DEBUG: API payload=', JSON.stringify({ ...payload, manual_text: payload.manual_text.substring(0, 100) + '...' }));
+
             const { job } = await apiExtract(payload);
 
             if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
@@ -625,41 +716,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (!tab?.id) throw new Error('No active tab');
             notifyProgress('flow:begin', { url: tab.url });
 
-            let dataUrl;
             try {
-              dataUrl = await captureScreenshot();
+              notifyProgress('capture:start', { url: tab.url });
+              console.log('[bg] Starting full-page screenshot capture');
+
+              // Use our new scrolling capture function
+              const screenshots = await captureFullPageScreenshot(tab.id);
+
+              if (!screenshots || !screenshots.length) {
+                throw new Error('Failed to capture screenshots');
+              }
+
+              notifyProgress('capture:done', { count: screenshots.length });
+              console.log(`[bg] Captured ${screenshots.length} screenshots successfully`);
+
+              // Send all screenshots to backend
+              notifyProgress('backend:extract');
+              const payload = {
+                url: tab.url,
+                html: '',
+                jsonld: [],
+                metas: {},
+                readable: {},
+                xhrLogs: [],
+                quick: { source: 'screenshot', sections: screenshots.length },
+                screenshots: screenshots
+              };
+
+              const { job } = await apiExtract(payload);
+
+              if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
+                !((job?.description || '').trim().length >= 30)) {
+                notifyProgress('backend:error');
+                throw new Error('Could not extract meaningful job details');
+              }
+
+              notifyProgress('backend:save');
+              const saved = await apiSaveJob(job);
+              notifyProgress('flow:done', { savedId: saved?.id });
+              sendResponse({ ok: true, saved });
             } catch (e) {
               notifyProgress('screenshot:failed', { error: String(e?.message || e) });
-              throw new Error('Failed to capture screenshot - please try paste text instead');
+              throw e;
             }
-
-            if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-              throw new Error('Invalid screenshot captured - please try again');
-            }
-
-            notifyProgress('backend:extract');
-            console.log('[bg] SCREENSHOT - Step 3: Screenshot captured successfully');
-            console.log('[bg] DEBUG: screenshot data length=', (dataUrl || '').length);
-            console.log('[bg] DEBUG: url=', tab.url);
-            console.log('[bg] DEBUG: screenshot preview=', (dataUrl || '').slice(0, 100));
-            
-            const payload = {
-              url: tab.url, html: '', jsonld: [], metas: {}, readable: {}, xhrLogs: [], quick: {},
-              screenshot: dataUrl
-            };
-            console.log('[bg] DEBUG: Screenshot API payload=', JSON.stringify({...payload, screenshot: payload.screenshot.substring(0, 100) + '...'}));
-            
-            const { job } = await apiExtract(payload);
-            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
-              !((job?.description || '').trim().length >= 30)) {
-              notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try screenshot or paste text instead.');
-            }
-
-            notifyProgress('backend:save');
-            const saved = await apiSaveJob(job);
-            notifyProgress('flow:done', { savedId: saved?.id });
-            sendResponse({ ok: true, saved });
           } catch (error) {
             notifyProgress('flow:error');
             const errorMsg = error?.message || String(error);
@@ -698,7 +797,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const url = tab.url;
           console.log('[bg] DEBUG: Regular flow URL=', url);
           console.log('[bg] DEBUG: Page classification=', classifyPage(url));
-          
+
           if (classifyPage(url) !== 'allowed') {
             console.log('[bg] ERROR: Page not allowed for auto-save');
             sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste or screenshot instead.' });

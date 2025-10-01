@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from ...domain.jobs.extraction.service import JobExtractionService
 from ..deps import get_job_extraction_service
 
@@ -12,11 +12,12 @@ class ExtractIn(BaseModel):
     html: str = ""
     jsonld: Optional[List[Dict[str, Any]]] = None
     metas: Optional[Dict[str, Any]] = None
-    readable: Optional[Dict[str, Any]] = None   # { title, byline, content (HTML), textContent, length, excerpt, siteName }
+    readable: Optional[Dict[str, Any]] = None
     xhrLogs: Optional[List[Dict[str, Any]]] = None
     quick: Optional[Dict[str, Any]] = None
-    manual_text: Optional[str] = None              # NEW: user-provided text (selection/paste)
-    screenshot: Optional[str] = None               # NEW: data URL (data:image/png;base64,...)
+    manual_text: Optional[str] = None
+    screenshot: Optional[str] = None                   # Single screenshot (legacy support)
+    screenshots: Optional[List[str]] = None            # NEW: Array of screenshot data URLs
 
 class JobOut(BaseModel):
     title: str = ""
@@ -41,10 +42,12 @@ def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_
     html_len = len(payload.html or "")
     manual_text_len = len(payload.manual_text or "")
     screenshot_len = len(payload.screenshot or "")
+    screenshots_count = len(payload.screenshots or [])
     
     print(f"AI Router: html_len = {html_len}", flush=True)
     print(f"AI Router: manual_text_len = {manual_text_len}", flush=True)
     print(f"AI Router: screenshot_len = {screenshot_len}", flush=True)
+    print(f"AI Router: screenshots_count = {screenshots_count}", flush=True)
     print(f"AI Router: jsonld items = {len(payload.jsonld or [])}", flush=True)
     print(f"AI Router: has_readable = {bool(payload.readable)}", flush=True)
     print(f"AI Router: has_metas = {bool(payload.metas)}", flush=True)
@@ -54,14 +57,23 @@ def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_
         print(f"AI Router: manual_text preview = {repr(payload.manual_text[:200])}", flush=True)
     if payload.screenshot:
         print(f"AI Router: screenshot preview = {payload.screenshot[:100]}", flush=True)
+    if payload.screenshots and len(payload.screenshots) > 0:
+        print(f"AI Router: first screenshot preview = {payload.screenshots[0][:100]}", flush=True)
     
-    if html_len == 0 and manual_text_len == 0 and screenshot_len == 0:
+    if html_len == 0 and manual_text_len == 0 and screenshot_len == 0 and screenshots_count == 0:
         print("AI Router ERROR: All content sources are empty", flush=True)
         raise HTTPException(status_code=400, detail="All content sources are empty")
     
+    # Validate screenshot format(s)
     if payload.screenshot and not payload.screenshot.startswith("data:image/"):
         print("AI Router ERROR: Invalid screenshot format", flush=True)
         raise HTTPException(status_code=400, detail="Invalid screenshot format")
+        
+    if payload.screenshots:
+        for i, screenshot in enumerate(payload.screenshots):
+            if not screenshot or not screenshot.startswith("data:image/"):
+                print(f"AI Router ERROR: Invalid screenshot format at index {i}", flush=True)
+                raise HTTPException(status_code=400, detail=f"Invalid screenshot format at index {i}")
 
     if payload.manual_text and len(payload.manual_text) > 200_000:
         print("AI Router ERROR: Text too large", flush=True)
@@ -69,17 +81,27 @@ def extract_job(payload: ExtractIn, svc: JobExtractionService = Depends(get_job_
     
     print("AI Router: Calling extraction service...", flush=True)
     try:
-        job = svc.extract_job(
-            url=payload.url,
-            html=payload.html,
-            hints=payload.quick or {},
-            jsonld=payload.jsonld or [],
-            readable=payload.readable or {},
-            metas=payload.metas or {},
-            xhr_logs=payload.xhrLogs or [],
-            manual_text=payload.manual_text,
-            screenshot_data_url=payload.screenshot,
-        )
+        # Handle either multiple screenshots or a single screenshot/text
+        if payload.screenshots and len(payload.screenshots) > 0:
+            print(f"AI Router: Processing {len(payload.screenshots)} screenshots", flush=True)
+            job = svc.extract_job_from_multiple_screenshots(
+                url=payload.url,
+                data_urls=payload.screenshots,
+                hints=payload.quick or {},
+            )
+        else:
+            job = svc.extract_job(
+                url=payload.url,
+                html=payload.html,
+                hints=payload.quick or {},
+                jsonld=payload.jsonld or [],
+                readable=payload.readable or {},
+                metas=payload.metas or {},
+                xhr_logs=payload.xhrLogs or [],
+                manual_text=payload.manual_text,
+                screenshot_data_url=payload.screenshot,
+            )
+            
         # Reject results with no meaningful content (prevents saving blank jobs)
         title_ok = bool((job.get("title") or "").strip())
         company_ok = bool((job.get("company_name") or "").strip())

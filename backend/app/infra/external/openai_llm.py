@@ -32,8 +32,8 @@ FIELD GUIDELINES:
 
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
-- ALWAYS PRESERVE ALL SECTION HEADERS in the description - never remove headers
-- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description
+- CRITICALLY IMPORTANT: NEVER remove ANY section headers - headers like "About the Company", "Position Overview", "Key Responsibilities", "Advantages", "Work Environment", etc. MUST remain in the description
+- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description (including their headers). use your judgment to decide what is "nice-to-have".
 - Only remove lines that are core mandatory requirements (these go in requirements array)
 - Keep EXACT original wording - do not rewrite or rephrase
 - Add TWO line breaks (\\n\\n) before section headers
@@ -97,8 +97,8 @@ FIELD GUIDELINES:
 
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
-- ALWAYS PRESERVE ALL SECTION HEADERS in the description - never remove headers
-- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description. use your judgment to decide what is "nice-to-have".
+- CRITICALLY IMPORTANT: NEVER remove ANY section headers - headers like "About the Company", "Position Overview", "Key Responsibilities", "Advantages", "Work Environment", etc. MUST remain in the description
+- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description (including their headers). use your judgment to decide what is "nice-to-have".
 - Only remove lines that are core mandatory requirements (these go in requirements array)
 - Keep EXACT original wording - do not rewrite or rephrase
 - Add TWO line breaks (\\n\\n) before section headers

@@ -83,6 +83,144 @@ class JobExtractionService:
                     return ln.strip(" .,")
         return ""
     
+
+    def extract_job_from_multiple_screenshots(self, url: str, data_urls: list[str], hints=None) -> dict:
+        """Process multiple screenshots and combine the results."""
+        print(f"JobExtraction: Processing {len(data_urls)} screenshots for URL: {url}")
+        
+        if not data_urls:
+            raise ValueError("No screenshots provided")
+        
+        # Process the first screenshot to get base job data
+        hints = hints or {}
+        base_job = self.llm.extract_job_from_image(url, data_urls[0], hints)
+        
+        # If only one screenshot, return immediately
+        if len(data_urls) == 1:
+            return base_job
+        
+        # For multiple screenshots, process each one and combine results
+        combined_job = {
+            "title": base_job.get("title", ""),
+            "company_name": base_job.get("company_name", ""),
+            "source_url": url,
+            "location": base_job.get("location", ""),
+            "remote_type": base_job.get("remote_type", ""),
+            "job_type": base_job.get("job_type", ""),
+            "description": base_job.get("description", ""),
+            "requirements": base_job.get("requirements", []),
+            "skills": base_job.get("skills", [])
+        }
+        
+        # Process remaining screenshots and combine results
+        for i, data_url in enumerate(data_urls[1:], 1):
+            print(f"JobExtraction: Processing screenshot {i+1}/{len(data_urls)}")
+            
+            # Add section index to hints
+            section_hints = {
+                **(hints or {}),
+                "screenshot_index": i,
+                "screenshot_total": len(data_urls)
+            }
+            
+            try:
+                section_job = self.llm.extract_job_from_image(url, data_url, section_hints)
+                # Combine with our accumulating results
+                self._combine_job_results(combined_job, section_job)
+            except Exception as e:
+                print(f"JobExtraction WARNING: Error processing screenshot {i+1}: {str(e)}")
+                # Continue processing other screenshots even if one fails
+        
+        # Final cleanup and deduplication
+        combined_job["requirements"] = self._deduplicate_list(combined_job["requirements"])
+        combined_job["skills"] = self._deduplicate_list(combined_job["skills"])
+        
+        print(f"JobExtraction: Combined {len(data_urls)} screenshots successfully")
+        print(f"JobExtraction: Final description length: {len(combined_job['description'])}")
+        print(f"JobExtraction: Final requirements count: {len(combined_job['requirements'])}")
+        print(f"JobExtraction: Final skills count: {len(combined_job['skills'])}")
+        
+        return combined_job
+
+    def _combine_job_results(self, target_job, source_job):
+        """Intelligently combine job data from multiple sources."""
+        # For single-value fields, prefer first non-empty value
+        if not target_job["title"] and source_job.get("title"):
+            target_job["title"] = source_job["title"]
+        
+        if not target_job["company_name"] and source_job.get("company_name"):
+            target_job["company_name"] = source_job["company_name"]
+        
+        if not target_job["location"] and source_job.get("location"):
+            target_job["location"] = source_job["location"]
+        
+        if not target_job["remote_type"] and source_job.get("remote_type"):
+            target_job["remote_type"] = source_job["remote_type"]
+        
+        if not target_job["job_type"] and source_job.get("job_type"):
+            target_job["job_type"] = source_job["job_type"]
+        
+        # For description, append non-duplicate paragraphs
+        if source_job.get("description"):
+            source_paragraphs = source_job["description"].split("\n\n")
+            target_paragraphs = target_job["description"].split("\n\n") if target_job["description"] else []
+            
+            # Convert to lowercase for comparison but keep original for adding
+            target_paragraphs_lower = [p.lower() for p in target_paragraphs]
+            
+            for paragraph in source_paragraphs:
+                # Skip empty paragraphs
+                if not paragraph.strip():
+                    continue
+                    
+                # Check if this paragraph or very similar content is already included
+                if not any(self._is_similar_paragraph(paragraph.lower(), existing) for existing in target_paragraphs_lower):
+                    target_paragraphs.append(paragraph)
+                    target_paragraphs_lower.append(paragraph.lower())
+            
+            target_job["description"] = "\n\n".join(target_paragraphs)
+        
+        # For arrays, extend and deduplicate later
+        if source_job.get("requirements"):
+            target_job["requirements"].extend(source_job["requirements"])
+        
+        if source_job.get("skills"):
+            target_job["skills"].extend(source_job["skills"])
+
+    def _is_similar_paragraph(self, p1, p2):
+        """Check if paragraphs are similar to avoid duplication."""
+        # Simple containment check
+        if p1 in p2 or p2 in p1:
+            return True
+        
+        # Check if they share a significant number of words
+        words1 = set(p1.split())
+        words2 = set(p2.split())
+        
+        if not words1 or not words2:
+            return False
+        
+        # Calculate Jaccard similarity
+        intersection = words1.intersection(words2)
+        union = words1.union(words2)
+        
+        # If they share more than 70% of words, consider them similar
+        similarity = len(intersection) / len(union)
+        return similarity > 0.7
+
+    def _deduplicate_list(self, items):
+        """Remove duplicates while preserving order."""
+        seen = set()
+        result = []
+        
+        for item in items:
+            item_lower = item.lower()
+            if item_lower not in seen:
+                seen.add(item_lower)
+                result.append(item)
+                
+        return result
+    
     def _preclean_noise(self, text: str) -> str:
         """
         Remove obvious non-job UI chrome commonly copied from LinkedIn/ATS pages.
