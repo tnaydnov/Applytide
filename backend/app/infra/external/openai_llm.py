@@ -37,26 +37,39 @@ _EXTRACT_IMAGE_SYSTEM = """
 Return STRICT JSON with keys:
 title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
 
-🚨 ULTRA CRITICAL: This is a vision task. Read EVERY SINGLE WORD visible in the job posting screenshot. Extract 100% of the text content. Missing content causes job application failures.
+🚨 CRITICAL TRANSCRIPTION TASK: You are a PROFESSIONAL COPY TYPIST. Your ONLY job is to type the job posting content WORD-FOR-WORD exactly as shown in the image.
+
+❌ ABSOLUTELY FORBIDDEN:
+- DO NOT rephrase, rewrite, or paraphrase ANY sentences
+- DO NOT change company names (e.g., "Backline" must stay "Backline", never "BackBox")  
+- DO NOT summarize, shorten, or modify paragraphs in any way
+- DO NOT change wording, sentence structure, or phrasing
+- DO NOT interpret or improve the text
+- DO NOT read from dark modal overlays, popups, or sidebars
+
+✅ MANDATORY REQUIREMENTS:
+- Copy text EXACTLY character-by-character as written
+- Read ONLY from the WHITE/LIGHT background main job content area (center-right side of screen)
+- Type complete sentences and paragraphs verbatim without ANY changes
+- Preserve original capitalization, punctuation, spacing, and phrasing
+- If you see "Backline" in the image, write "Backline" - never change it
+
+SCREEN READING PRIORITY:
+1. PRIMARY TARGET: White/light background job content (center-right area with readable text)
+2. IGNORE: Dark modal popups, sidebars, navigation, "Job Details" overlays
+3. If you see both a dark modal AND main content, read from the MAIN CONTENT area
 
 TRANSCRIPTION RULES:
-- description: Type out EVERY word from ALL job description sections. Include complete paragraphs from "About the job", "Company Overview", "Position Overview", "Key Responsibilities", "Work Environment", etc. Transcribe sentences exactly as shown - do NOT rewrite, summarize, or paraphrase ANY content.
-- requirements[]: Extract EVERY qualification/requirement bullet point. Read the entire requirements section and list each item separately. For senior roles, expect 8-15+ requirements typically.
-- skills[]: List ALL technical skills, programming languages, frameworks, tools, platforms mentioned anywhere in the posting (standardize names: "JavaScript", "Node.js", "React", "AWS", "Docker", etc.)
+- description: Copy EVERY word from "About the job", "Company Overview", "Position Overview", "Key Responsibilities", "Work Environment", etc. sections. Use the EXACT sentences as shown.
+- requirements[]: Extract items from "Qualifications", "Requirements" sections. Copy each bullet point exactly.
+- skills[]: List technical skills mentioned (standardize names: "Java", "Python", "AWS", "Docker")
 
-READING METHODOLOGY:
-1. Start at the top of the job content area and read left-to-right, top-to-bottom
-2. Read EVERY paragraph completely - do not skip sentences
-3. For bulleted/numbered lists, read each item fully
-4. When you reach requirements/qualifications sections, count items as you extract them
-5. Continue reading until you reach the bottom of the job content
-6. Double-check: Did you miss any paragraphs or requirement bullets?
+WARNING SIGNS YOU'RE READING THE WRONG AREA:
+- If you see empty "Requirements" and "Required Skills" sections → You're reading a modal overlay, not main content
+- If company name seems wrong → Double-check you're reading the right area
+- If content seems abbreviated → Look for the full job description in main content area
 
-TARGET AREAS: Main job content (usually center/right of LinkedIn screenshot)
-IGNORE: LinkedIn navigation, left sidebar job list, "Easy Apply" buttons, applicant counts, social elements
-
-QUALITY VALIDATION:
-- If your extraction seems short, you likely missed content - re-read the image
+QUALITY CHECK: Your description should match the user's provided text EXACTLY, word-for-word.
 
 Standards:
 - remote_type: exactly "Remote", "Hybrid", "On-site", or ""
@@ -72,9 +85,12 @@ class OpenAILLMExtractor(LLMExtractor):
         if not api:
             raise RuntimeError("OPENAI_API_KEY not set")
         self.client = OpenAI(api_key=api)
-        # Use better model for screenshots, keep mini for text
+        # Use cost-effective models by default, allow upgrade via env vars
+        # Cost comparison: gpt-4o-mini ~$0.00015/1K tokens vs gpt-4o ~$0.0025/1K tokens (16x cheaper!)
         self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
-        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o")  # Full model for better vision
+        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o-mini")  # Use mini by default for cost efficiency
+        # To upgrade image model: set JOB_EXTRACT_IMAGE_MODEL=gpt-4o in environment
+        print(f"OpenAI LLM: Using text_model='{self.text_model}', image_model='{self.image_model}'")
     
     def _clean_array(self, items):
         """Clean and deduplicate requirements array - minimal processing"""
@@ -267,7 +283,7 @@ class OpenAILLMExtractor(LLMExtractor):
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": f"Source URL: {url}\nPlease read the image and extract the job posting."},
+                {"type": "text", "text": f"Source URL: {url}\n\nEXTRACT FROM: Main job content area with WHITE/LIGHT background (center-right of screenshot)\nIGNORE: Any dark modal overlays, popups, or 'Job Details' windows\n\nPlease transcribe the job posting content EXACTLY as written - do not rephrase or change any wording."},
                 {"type": "image_url", "image_url": { "url": data_url }}
             ]
         })
