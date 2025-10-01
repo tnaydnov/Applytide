@@ -8,6 +8,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
@@ -57,7 +61,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/applytide-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/applytide-frontend:latest
 
-    deploy:
+  deploy:
     runs-on: ubuntu-latest
     needs: build_and_push
     steps:
@@ -71,16 +75,16 @@ jobs:
             set -euo pipefail
             cd ~/Applytide
 
-            # 1) Make sure the repo is up to date for bind mounts (nginx, alembic.ini, etc.)
+            # 1) Update repo so bind-mounted files (nginx, alembic.ini) are fresh
             git fetch --all
             git reset --hard origin/main
 
             # 2) Login to GHCR if needed (skip if public)
-            if [ -n "${{ secrets.GHCR_PAT }}" ]; then
+            if [ -n "${{ secrets.GHCR_PAT || '' }}" ]; then
               echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             fi
 
-            # 3) Pull & run the images for this commit
+            # 3) Pull & run exact images for this commit
             export GITHUB_OWNER=${{ github.repository_owner }}
             export IMAGE_TAG=${{ github.sha }}
             echo "Deploying OWNER=$GITHUB_OWNER TAG=$IMAGE_TAG"
