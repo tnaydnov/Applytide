@@ -50,9 +50,7 @@ class JobService:
             location=payload.get("location"),
         )
         final_desc = build_final_description(
-            payload.get("description"),
-            payload.get("requirements"),
-            payload.get("skills"),
+            payload.get("description")
         )
         data = {**payload, "description": final_desc}
         return self.jobs.create(user_id=user_id, company_id=company_id, payload=data)
@@ -174,9 +172,7 @@ class JobService:
             company_id = None
 
         final_desc = build_final_description(
-            payload.get("description"),
-            payload.get("requirements"),
-            payload.get("skills"),
+            payload.get("description")
         )
 
         data = {

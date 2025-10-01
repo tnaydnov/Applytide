@@ -32,9 +32,10 @@ FIELD GUIDELINES:
 
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
+- ALWAYS PRESERVE ALL SECTION HEADERS (e.g., "About the Company", "Responsibilities", "Advantages", "Benefits", etc.)
 - REMOVE any lines you extract as requirements (these go in the requirements array)
 - Keep EXACT original wording - do not rewrite or rephrase
-- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities"
+- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities", "Advantages", etc.
 - Preserve bullet points and list formatting
 
 requirements[]:
