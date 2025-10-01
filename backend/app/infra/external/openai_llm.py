@@ -7,99 +7,66 @@ logger = logging.getLogger(__name__)
 
 # System prompt for TEXT-based extraction (when user pastes text)
 _EXTRACT_TEXT_SYSTEM = """
-You are a STRICT, DETERMINISTIC extractor for job postings.
+You are a PRECISE JOB EXTRACTOR for ANY type of job posting (tech, healthcare, retail, finance, education, etc).
 
-🚧 OUTPUT CONTRACT (JSON ONLY, no markdown, no commentary):
+OUTPUT CONTRACT (JSON ONLY):
 {
   "title": string,
-  "company_name": string,
+  "company_name": string, 
   "source_url": string,
   "location": string,
   "remote_type": "Remote" | "Hybrid" | "On-site" | "",
   "job_type": "Full-time" | "Part-time" | "Contract" | "Internship" | "",
-  "description": string,
-  "requirements": string[],      // each item = one concrete qualification/bullet
-  "skills": string[],            // canonical tech/tool names
-  "remove_lines": integer[],     // 1-based line numbers from DESCRIPTION_LINES to drop
-  "section_headers": string[]    // major section titles present in the text
+  "description": string,       # FILTERED job-related text only
+  "requirements": string[],    # extracted qualification lines
+  "skills": string[]           # extracted skills/keywords
 }
 
-CRITICAL INVARIANTS:
-- description MUST BE EXACTLY the RAW_DESCRIPTION text (verbatim). Do NOT rewrite, reflow, fix typos, or delete anything. Your reasoning must NOT modify description.
-- remove_lines[] MUST reference the 1-based indices from DESCRIPTION_LINES (the numbered view), not from RAW_DESCRIPTION. Sort ascending, unique integers only.
-- If a field is unknown, use "" (or [] for arrays). NEVER invent values.
+CONTENT FILTERING:
+1. KEEP only text related to the job posting itself
+2. REMOVE website navigation, UI elements, irrelevant footers/headers
+3. REMOVE application instructions unless they contain key job details
+4. KEEP company descriptions if they provide context about the workplace
 
-LINE CLASSIFICATION (how to decide remove_lines):
-Mark a line number N for removal ONLY if the line is ANY of:
-A) REQUIREMENT/QUALIFICATION LINES:
-   - A bullet/short line under a requirement-like header (see “Header dictionaries” below)
-   - A concise requirement-like sentence (<= 200 chars) in the requirement block (years/degree/must-have/familiar with/etc.)
-B) STANDALONE SECTION HEADERS:
-   - Lines that are just a section title (e.g., "Requirements", "Qualifications", "Skills", "Responsibilities", "Benefits", "Work Environment", "About You", etc.)
-   - Keep the content under them for description except requirement bullets you also move into requirements[]
-C) UI/PLATFORM CHROME (copied from LinkedIn/ATS/etc.):
-   - “Easy Apply”, “Save”, “Share”, “Show more options”, “Promoted by hirer”, “Actively reviewing applicants”,
-     “Your AI-powered job assessment”, “Meet the hiring team”, “Message”, “2nd”, “—”, “Show more”, “Hide”,
-     “XX applicants”, “Matches your job preferences”, “Workplace type is…”, “Job type is…”, pagination, counters.
-   - Also: “Apply”, “Apply now”, “Copy link”, “People also viewed”, “Similar jobs”, “Back”, “Sign in”, “Log in”.
+FIELD GUIDELINES:
 
-DO NOT mark for removal:
-- Real paragraphs of the job description (overview, responsibilities prose, culture, benefits text, DEI/EEO policies, salary ranges, legal statements).
-- Company overview, mission, or any legitimate narrative content. Only remove the CHROME, the pure HEADERS, and the requirement items.
+description:
+- Include ALL job-relevant text (job details, company info, responsibilities, etc)
+- REMOVE any lines you extract as requirements (these go in the requirements array)
+- Keep EXACT original wording - do not rewrite or rephrase
+- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities"
+- Preserve bullet points and list formatting
 
-FIELDS:
-- requirements[]: Each item is a single qualification line (years, degrees, certifications, tech + level, legal right to work, security clearance, etc.). Strip bullets/leading symbols only; keep wording otherwise. De-duplicate case-insensitively.
-- skills[]: Tech/tools/frameworks/languages/platforms. Canonicalize trivial variants:
-    js→JavaScript, ts→TypeScript, node/nodejs→Node.js, react.js→React, vue.js→Vue.js, aws/gcp→AWS/GCP, k8s→Kubernetes, postgres→PostgreSQL, sql→SQL.
-  Keep short tokens (≤ 4 words), drop sentences. De-duplicate case-insensitively.
-- section_headers[]: Titles that segment the description (e.g., "Company Overview", "Position Overview", "Key Responsibilities", "Responsibilities",
-  "Qualifications", "Requirements", "About You", "Skills", "Benefits", "Compensation", "Work Environment", "Why Join Us"). Return the visible text as-is (trim punctuation).
+requirements[]:
+- Extract ANY qualification lines, even without explicit "Requirements" headers
+- Look for statements about:
+  * Needed experience ("X years of...")
+  * Education ("Bachelor's degree...")
+  * Certifications ("Licensed...", "Certified...")
+  * Necessary skills ("Must be proficient in...")
+  * Essential qualities ("Strong communication skills...")
+- Keep EXACT wording, one requirement per array item
+- Strip bullet symbols but preserve the full text
+- These lines should NOT appear in the description
 
-REMOTE / JOB TYPE CANON:
-- remote_type: map to exactly one of {"Remote","Hybrid","On-site",""} by reading any hints in text; default "" if unsure.
-- job_type: map to exactly one of {"Full-time","Part-time","Contract","Internship",""}; else "".
+skills[]:
+- Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE
+- Include both hard skills (Excel, Python, CNC machine) and soft skills (leadership, communication)
+- Identify industry-specific terminology (HIPAA, GAAP, HACCP, etc)
+- Include keywords relevant for job search/filtering
+- For technical skills, standardize common names (js→JavaScript, etc)
 
-LOCATION:
-- Prefer explicit "Location: ..." style lines. Otherwise infer the best city/region/country phrase seen near title/company. If unsure → "".
-
-HEADER DICTIONARIES (case-insensitive; optional colon allowed):
-- Requirement-like headers (begin requirement block):
-  "requirements","minimum requirements","basic qualifications","preferred qualifications","qualifications","about you",
-  "must have","nice to have","what you'll need","what you bring","skills & qualifications","experience","required skills",
-  "preferred skills","eligibility","who you are","candidate profile", "advantages"
-- Skill headers (begin skills block):
-  "skills","required skills","preferred skills","technical skills","tech stack","technology stack","our stack","stack","tools"
-- Display headers (keep in description; classify as section_headers):
-  "about the job","company overview","about the company","about us","position overview","role summary","summary","overview",
-  "key responsibilities","responsibilities","what you'll do","what you will do","day to day","duties","work environment","culture",
-  "benefits","perks","compensation","salary","why join us","mission","values","diversity & inclusion","eeo statement","visa","relocation"
-
-ALGORITHM (follow in order):
-1) NEVER modify RAW_DESCRIPTION. That exact text becomes description.
-2) Use DESCRIPTION_LINES (numbered view) ONLY to compute remove_lines[].
-   a) Detect requirement/skill/display headers using the dictionaries (exact match after trimming punctuation).
-   b) When inside a requirement block, collect bullets/short lines into requirements[], and add their line numbers to remove_lines[].
-   c) Add standalone header lines to remove_lines[] (we’ll style headers at render time).
-   d) Add pure UI-chrome lines to remove_lines[] (see list above).
-3) Extract skills[] from explicit skill blocks and inline lists; keep short tokens; canonicalize trivial variants; de-dupe.
-4) Build section_headers[] by scanning description for visible section titles (don’t include UI).
-5) De-duplicate requirements[] and skills[] (case-insensitive). Sort remove_lines ascending, unique.
-
-VALIDATION (do this BEFORE answering):
-- description equals RAW_DESCRIPTION EXACTLY (same bytes, except trailing newline differences).
-- remove_lines[] contains ONLY integers between 1 and number of DESCRIPTION_LINES.
-- Arrays contain strings; no empty strings after trimming; deduplicated.
-- No additional keys in the root object besides those specified.
+remote_type/job_type:
+- Only use the specified values or empty string if uncertain
 
 Return ONLY the JSON object.
 """
 
-
 # System prompt for IMAGE-based extraction (when user takes screenshot)
 _EXTRACT_IMAGE_SYSTEM = """
-You are a PROFESSIONAL TRANSCRIBER + EXTRACTOR for job postings from a screenshot.
+You are a JOB POSTING EXTRACTOR for ANY type of job (not just tech jobs).
 
-🚧 OUTPUT CONTRACT (JSON ONLY, no markdown, no commentary):
+OUTPUT CONTRACT (JSON ONLY):
 {
   "title": string,
   "company_name": string,
@@ -107,41 +74,55 @@ You are a PROFESSIONAL TRANSCRIBER + EXTRACTOR for job postings from a screensho
   "location": string,
   "remote_type": "Remote" | "Hybrid" | "On-site" | "",
   "job_type": "Full-time" | "Part-time" | "Contract" | "Internship" | "",
-  "description": string,         // verbatim transcription from the MAIN job content
-  "requirements": string[],      // one bullet/line each, copied verbatim (minus bullet symbol)
-  "skills": string[],            // canonical tech/tool names
-  "remove_lines": [],            // ALWAYS []
-  "section_headers": string[]    // visible section titles exactly as they appear
+  "description": string,       # FILTERED job-related text only
+  "requirements": string[],    # extracted qualification lines
+  "skills": string[]           # extracted skills/keywords
 }
 
-WHAT TO READ (and what to IGNORE):
-- READ: The MAIN job content pane with a white/light background (center/right). This contains headings like “Company Overview”, “Responsibilities”, “Qualifications”, paragraphs and bullets.
-- IGNORE COMPLETELY: dark/transparent modals, overlays/popups (“Job details”), left nav, sidebars, footer, buttons (“Easy Apply”, “Save”, “Share”, “Apply”), counters (“89 applicants”), social widgets, “Meet the hiring team”, avatars, timestamps (“Just posted”), pagination, “Show more”.
-- If both an overlay and the main page are visible, ALWAYS read the MAIN page. Prefer the longer, complete description. Do not mix areas.
+READING INSTRUCTIONS:
+1. First, read and transcribe ALL text from the image
+2. Focus on main job content area (usually central/light background)
+3. IGNORE navigation bars, user comments, application buttons, sidebars
+4. Read top-to-bottom, left-to-right
+5. Include all section headers and full paragraph content
 
-TRANSCRIPTION RULES (NO PARAPHRASING):
-- description MUST BE a character-for-character copy of the visible job text from the MAIN content area only.
-- Preserve original words, capitalization, punctuation, line breaks, paragraph breaks, and section headings exactly as they appear.
-- Company names must NOT be altered (e.g., “Backline” must stay “Backline”, never “BackBox”).
-- Do NOT summarize or fix grammar. No reformatting.
+CONTENT PROCESSING:
+1. Filter out website UI elements, menus, buttons, etc.
+2. Keep only text relevant to the job posting itself
+3. Extract the complete job description
+4. Identify requirements even without explicit "Requirements" headers
+5. Look for skills mentioned throughout the entire text
 
-EXTRACTION RULES:
-- requirements[]: Copy each requirement bullet from “Qualifications/Requirements/About You/Basic/Preferred” sections. Remove only the bullet symbol; keep wording as-is. One bullet → one array item. De-duplicate case-insensitively.
-- skills[]: Extract tech/tools/frameworks/languages mentioned; short tokens (≤ 4 words). Canonicalize trivial variants (js→JavaScript, ts→TypeScript, node→Node.js, react.js→React, vue.js→Vue.js, aws/gcp→AWS/GCP, k8s→Kubernetes, postgres→PostgreSQL, sql→SQL). De-duplicate case-insensitively.
-- section_headers[]: All major section titles visible in the main content (e.g., “Company Overview”, “Position Overview”, “Key Responsibilities”, “Responsibilities”, “Qualifications”, “Requirements”, “About You”, “Skills”, “Benefits”, “Compensation”, “Work Environment”, “Why Join Us”).
+FIELD GUIDELINES:
 
-REMOTE / JOB TYPE CANON:
-- remote_type: map visible phrases to {"Remote","Hybrid","On-site",""}.
-- job_type: map to {"Full-time","Part-time","Contract","Internship",""} or "".
+description:
+- Include ALL job-relevant text (job details, company info, responsibilities, etc)
+- REMOVE any lines you extract as requirements (these go in requirements array)
+- Keep EXACT original wording - do not rewrite or rephrase
+- Add TWO line breaks (\\n\\n) before section headers like "About the Company", "Responsibilities"
+- Preserve bullet points and list formatting
 
-IMPORTANT:
-- remove_lines MUST be an empty array [] for images (no line-number removals in OCR mode).
-- If some heading is visible, include it in description exactly and list it in section_headers[].
+requirements[]:
+- Extract ANY qualification lines, even without explicit "Requirements" headers
+- Look for statements about:
+  * Needed experience ("X years of...")
+  * Education ("Bachelor's degree...")
+  * Certifications ("Licensed...", "Certified...")
+  * Necessary skills ("Must be proficient in...")
+  * Essential qualities ("Strong communication skills...")
+- Keep EXACT wording, one requirement per array item
+- Strip bullet symbols but preserve the full text
+- These lines should NOT appear in the description
 
-VALIDATION (do this BEFORE answering):
-- description is non-empty and looks like full sentences/paragraphs from the main pane.
-- remove_lines is exactly [].
-- Arrays contain strings; de-duplicated; no empty items.
+skills[]:
+- Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE
+- Include both hard skills (Excel, Python, CNC machine) and soft skills (leadership, communication)
+- Identify industry-specific terminology (HIPAA, GAAP, HACCP, etc)
+- Include keywords relevant for job search/filtering
+- For technical skills, standardize common names (js→JavaScript, etc)
+
+remote_type/job_type:
+- Only use the specified values or empty string if uncertain
 
 Return ONLY the JSON object.
 """
@@ -293,17 +274,8 @@ class OpenAILLMExtractor(LLMExtractor):
             if not job.get("source_url"):
                 job["source_url"] = url
 
-            # Normalize remove_lines[]
-            rls = job.get("remove_lines") or []
-            try:
-                rls = sorted({int(x) for x in rls if isinstance(x, (int, str)) and str(x).strip().isdigit()})
-            except Exception:
-                rls = []
-            job["remove_lines"] = rls
-
             print(f"OpenAI Extractor: Final requirements count = {len(job['requirements'])}")
             print(f"OpenAI Extractor: Final skills count = {len(job['skills'])}")
-            print(f"OpenAI Extractor: remove_lines count = {len(job['remove_lines'])}")
             print(f"OpenAI Extractor: Extraction completed successfully")
             print("=== OPENAI EXTRACTOR SUCCESS ===")
             return job
@@ -390,10 +362,6 @@ class OpenAILLMExtractor(LLMExtractor):
             job["requirements"] = self._clean_array(job.get("requirements") or [])
             job["skills"] = self._clean_skills_array(job.get("skills") or [])
             if not job.get("source_url"): job["source_url"] = url
-            
-            # For images, ensure remove_lines is always empty (no line removal for generated content)
-            job["remove_lines"] = []
-            # Keep section_headers as extracted by the LLM for images
             
             print(f"OpenAI Image Extractor: API call successful")
             print(f"OpenAI Image Extractor: Extracted title = '{job.get('title', '')}'")

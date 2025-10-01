@@ -271,17 +271,6 @@ class JobExtractionService:
             "requirements": [],
             "skills": []
         }
-    
-    def _apply_line_removals(self, text: str, remove_lines: list[int]) -> str:
-        if not text:
-            return ""
-        if not remove_lines:
-            return text
-        lines = text.splitlines()
-        # keep only valid 1-based indices
-        to_drop = {int(n) for n in remove_lines if isinstance(n, int) and 1 <= int(n) <= len(lines)}
-        kept = [ln for idx, ln in enumerate(lines, start=1) if idx not in to_drop]
-        return self._clean_text("\n".join(kept))
 
 
     def extract_job(
@@ -348,12 +337,8 @@ class JobExtractionService:
                 # 1) Start from the exact user text as description
                 desc_raw = self._clean_text(text)
 
-                # 2) Apply model guidance (remove_lines) deterministically
-                remove_lines = job.get("remove_lines") or []
-                desc_after_llm = self._apply_line_removals(desc_raw, remove_lines)
-
                 # 3) Backstop: run regex splitter to catch missed bullets & dedupe against LLM requirements
-                desc_clean, extra_reqs = self.req_splitter.split(desc_after_llm, job.get("requirements") or [])
+                desc_clean, extra_reqs = self.req_splitter.split(desc_raw, job.get("requirements") or [])
                 merged_reqs = list(dict.fromkeys((job.get("requirements") or []) + (extra_reqs or [])))
 
                 # 4) Remove any exact requirement lines that still linger in description
@@ -546,22 +531,18 @@ class JobExtractionService:
         # 6) Start from main_text as the source-of-truth description
         desc_raw = self._clean_text(main_text)
 
-        # 6.1) If the model returned remove_lines, apply them deterministically
-        remove_lines = llm_job.get("remove_lines") or []
-        desc_after_llm = self._apply_line_removals(desc_raw, remove_lines)
-
         requirements = llm_job.get("requirements") or []
         skills = llm_job.get("skills") or []
 
         # 7) Backstop: regex splitter + dedupe
         try:
-            description, extra_reqs = self.req_splitter.split(desc_after_llm, requirements)
+            description, extra_reqs = self.req_splitter.split(desc_raw, requirements)
             requirements = list(dict.fromkeys((requirements or []) + (extra_reqs or [])))
             req_set = {r.strip() for r in requirements}
             if description:
                 description = "\n".join([ln for ln in description.split("\n") if ln.strip() not in req_set])
         except Exception:
-            description = desc_after_llm
+            description = desc_raw
 
 
 
