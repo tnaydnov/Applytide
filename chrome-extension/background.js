@@ -565,37 +565,35 @@ async function captureFullPageScreenshot(tabId) {
         const elements = [];
         // Common selectors for job description containers
         const selectors = [
-          '.jobs-description',
-          '.jobs-details',
-          '.job-view-layout',
-          // LinkedIn specific containers
-          'div[role="region"]',
-          '.jobs-search__job-details',
-          '.jobs-details__main-content',
-          '.scaffold-layout__detail',
           '.jobs-description-content',
           '.jobs-box__html-content',
-          // Generic scrollable containers
-          'div[style*="overflow: auto"]',
-          'div[style*="overflow-y: auto"]',
-          'div[style*="overflow-y: scroll"]'
+          '.jobs-details__main-content',
+          '.jobs-search__job-details--wrapper',
+          '.jobs-search__job-details--container',
+          '.jobs-details',
+          // Generic selectors
+          'div[role="region"]',
+          'div[style*="overflow"]',
+          'div[style*="scroll"]'
         ];
+
+        setTimeout(() => { }, 300);
 
         for (const selector of selectors) {
           const found = document.querySelectorAll(selector);
           found.forEach(el => {
-            // Check if element actually has overflow content
-            if (el.scrollHeight > el.clientHeight + 50) { // +50px threshold
+            // Lower the threshold to catch more elements
+            if (el.scrollHeight > el.clientHeight + 20) {
               elements.push({
                 selector,
                 scrollHeight: el.scrollHeight,
                 clientHeight: el.clientHeight,
                 overflow: el.scrollHeight - el.clientHeight
               });
+              console.log(`Found scrollable: ${selector}, overflow=${el.scrollHeight - el.clientHeight}`);
             }
           });
         }
-
         return elements;
       }
 
