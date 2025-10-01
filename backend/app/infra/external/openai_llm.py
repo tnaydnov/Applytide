@@ -66,7 +66,7 @@ HEADER DICTIONARIES (case-insensitive; optional colon allowed):
 - Requirement-like headers (begin requirement block):
   "requirements","minimum requirements","basic qualifications","preferred qualifications","qualifications","about you",
   "must have","nice to have","what you'll need","what you bring","skills & qualifications","experience","required skills",
-  "preferred skills","eligibility","who you are","candidate profile"
+  "preferred skills","eligibility","who you are","candidate profile", "advantages"
 - Skill headers (begin skills block):
   "skills","required skills","preferred skills","technical skills","tech stack","technology stack","our stack","stack","tools"
 - Display headers (keep in description; classify as section_headers):

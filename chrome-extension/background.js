@@ -543,7 +543,7 @@ async function captureScreenshot() {
     // Use JPEG with quality to reduce file size and visual noise for AI processing
     chrome.tabs.captureVisibleTab({ 
       format: 'jpeg',
-      quality: 70  // Lower quality to reduce file size for better AI processing
+      quality: 100  // Lower quality to reduce file size for better AI processing
     }, (dataUrl) => {
       if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
       

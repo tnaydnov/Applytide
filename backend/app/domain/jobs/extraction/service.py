@@ -159,6 +159,48 @@ class JobExtractionService:
             else:
                 yield obj
 
+    def _hints_from_raw_paste(self, raw: str) -> Dict[str, str]:
+        out: Dict[str, str] = {}
+        if not raw: return out
+        s = self._clean_text(raw)
+
+        # Pattern like: "Backline AI · Ramat Gan, Tel Aviv District, Israel (Hybrid)"
+        m = re.search(r"^\s*([A-Z][^\n]{1,80}?)\s*·\s*([^\n(]{2,120}?)(?:\s*\((Remote|Hybrid|On-?site)\))?\s*$", s, re.I | re.M)
+        if m:
+            out["company_name"] = m.group(1).strip()
+            out["location"] = m.group(2).strip()
+            rt = (m.group(3) or "").lower()
+            out["remote_type"] = "Hybrid" if "hybrid" in rt else "Remote" if "remote" in rt else "On-site" if "on" in rt else ""
+
+        # “Save Senior Software Engineer at Backline AI”
+        cm = out.get("company_name", "")
+        if cm:
+            m2 = re.search(rf"Save\s+(.{{2,80}}?)\s+at\s+{re.escape(cm)}", s, re.I)
+            if m2:
+                out["title"] = m2.group(1).strip()
+
+        # Also pick up standalone title lines often repeated before the company dot-line
+        if "title" not in out:
+            m3 = re.search(r"^\s*([A-Z][A-Za-z0-9 /&+\-]{2,80})\s*$\s*^\s*" + (re.escape(cm) if cm else r"[A-Z]"),
+                        s, re.M)
+            if m3:
+                out["title"] = m3.group(1).strip()
+
+        # Job type from chrome lines
+        if re.search(r"\bFull-?time\b", s, re.I): out.setdefault("job_type", "Full-time")
+        elif re.search(r"\bPart-?time\b", s, re.I): out.setdefault("job_type", "Part-time")
+        elif re.search(r"\bContract\b", s, re.I): out.setdefault("job_type", "Contract")
+        elif re.search(r"\bIntern(ship|)\b", s, re.I): out.setdefault("job_type", "Internship")
+
+        # Remote type as fallback
+        if "remote_type" not in out:
+            if re.search(r"\bHybrid\b", s, re.I): out["remote_type"] = "Hybrid"
+            elif re.search(r"\bRemote\b", s, re.I): out["remote_type"] = "Remote"
+            elif re.search(r"\bOn[- ]?site\b", s, re.I): out["remote_type"] = "On-site"
+
+        return out
+
+
     def _is_type(self, obj: Dict[str, Any], name: str) -> bool:
         t = obj.get('@type') or obj.get('type') or ''
         if isinstance(t, list):
@@ -291,8 +333,14 @@ class JobExtractionService:
             
             print("Manual text LLM extraction starting...", flush=True)
             try:
-                text = self._preclean_noise(self._clean_text(manual_text))
-                print(f"Cleaned text length: {len(text)}", flush=True)
+                full_raw = self._clean_text(manual_text)
+                derived = self._hints_from_raw_paste(full_raw)
+                hints = hints or {}
+                for k, v in derived.items():
+                    if v and not hints.get(k):
+                        hints[k] = v
+
+                text = self._preclean_noise(full_raw)  # then run your current LLM call
                 job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
                 print(f"LLM extraction completed successfully", flush=True)
                 print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'", flush=True)
@@ -324,6 +372,11 @@ class JobExtractionService:
                     "requirements": [x.strip() for x in merged_reqs if x and x.strip()],
                     "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
                 }
+                result["title"] = result["title"] or hints.get("title", "")
+                result["company_name"] = result["company_name"] or hints.get("company_name", "")
+                result["location"] = result["location"] or hints.get("location", "")
+                result["remote_type"] = result["remote_type"] or hints.get("remote_type", "")
+                result["job_type"] = result["job_type"] or hints.get("job_type", "")
 
                 print(f"Manual text extraction completed successfully", flush=True)
                 print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
@@ -535,7 +588,7 @@ class JobExtractionService:
 
 # --- default requirement stripper (regex-based, safe fallback) ---
 _REQ_HEADER_RE = re.compile(
-    r"^\s*(requirements|qualifications|about you|what you(?:'|’)ll need|what we(?:'|’)re looking for|must have|nice to have|skills|required skills|preferred qualifications)\s*:?\s*$",
+    r"^\s*(requirements|qualifications|advantages|about you|what you(?:'|’)ll need|what we(?:'|’)re looking for|must have|nice to have|skills|required skills|preferred qualifications)\s*:?\s*$",
     re.I
 )
 _BULLET_RE = re.compile(r"^\s*(?:[-–—•·\*]|\d{1,2}[.)])\s*(.+)$")
