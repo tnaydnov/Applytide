@@ -170,7 +170,7 @@ async function login() {
     loginBtn.disabled = true;
     
     const response = await bg.sendMessage({
-      type: 'APPLYTIDE_LOGIN',
+      type: 'APPLYTIDE_LOGIN_EMAIL',
       email,
       password
     });
@@ -196,7 +196,7 @@ async function loginWithGoogle() {
     setStatus('loading', 'Signing in with Google...');
     googleBtn.disabled = true;
     
-    const response = await bg.sendMessage({ type: 'APPLYTIDE_GOOGLE_LOGIN' });
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_LOGIN_GOOGLE' });
     
     if (response?.ok) {
       currentUser = { email: response.email || 'User' };
@@ -255,7 +255,7 @@ async function saveCurrentJob() {
     setProgress('flow:begin', 'Starting job extraction...');
     resetProgressBar();
     
-    const response = await bg.sendMessage({ type: 'APPLYTIDE_SAVE_JOB' });
+    const response = await bg.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
     
     if (response?.ok) {
       setProgress('flow:done', 'Job saved successfully!');
