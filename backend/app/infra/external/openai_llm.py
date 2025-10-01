@@ -37,24 +37,32 @@ _EXTRACT_IMAGE_SYSTEM = """
 Return STRICT JSON with keys:
 title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
 
-CRITICAL: Read ALL text content from the job posting sections. DO NOT summarize or truncate the job description content.
+🚨 ULTRA CRITICAL: This is a vision task. Read EVERY SINGLE WORD visible in the job posting screenshot. Extract 100% of the text content. Missing content causes job application failures.
 
-Rules:
-- description: Include ALL content from job posting sections like "Company Overview", "Position Overview", "Key Responsibilities", "Work Environment", etc. DO NOT summarize or shorten. Write the complete text from these sections as continuous paragraphs, excluding only section headers themselves and requirements/qualifications lists.
-- requirements[]: Extract ALL items from "Requirements", "Qualifications", "Must-haves", etc. sections. Include every single requirement listed.
-- skills[]: Extract technical skills/tools/frameworks/languages (canonical names, e.g., "Node.js", "JavaScript", "AWS"). 
-- remove_lines[]: ALWAYS empty [] for images.
-- section_headers[]: List major section titles found in the posting.
+TRANSCRIPTION RULES:
+- description: Type out EVERY word from ALL job description sections. Include complete paragraphs from "About the job", "Company Overview", "Position Overview", "Key Responsibilities", "Work Environment", etc. Transcribe sentences exactly as shown - do NOT rewrite, summarize, or paraphrase ANY content.
+- requirements[]: Extract EVERY qualification/requirement bullet point. Read the entire requirements section and list each item separately. For senior roles, expect 8-15+ requirements typically.
+- skills[]: List ALL technical skills, programming languages, frameworks, tools, platforms mentioned anywhere in the posting (standardize names: "JavaScript", "Node.js", "React", "AWS", "Docker", etc.)
+
+READING METHODOLOGY:
+1. Start at the top of the job content area and read left-to-right, top-to-bottom
+2. Read EVERY paragraph completely - do not skip sentences
+3. For bulleted/numbered lists, read each item fully
+4. When you reach requirements/qualifications sections, count items as you extract them
+5. Continue reading until you reach the bottom of the job content
+6. Double-check: Did you miss any paragraphs or requirement bullets?
+
+TARGET AREAS: Main job content (usually center/right of LinkedIn screenshot)
+IGNORE: LinkedIn navigation, left sidebar job list, "Easy Apply" buttons, applicant counts, social elements
+
+QUALITY VALIDATION:
+- If your extraction seems short, you likely missed content - re-read the image
 
 Standards:
-- remote_type: exactly "Remote", "Hybrid", "On-site", or "".
-- job_type: exactly "Full-time", "Part-time", "Contract", "Internship", or "".
-- Unknown fields: empty string "" (or [] for arrays).
-
-FOCUS ON: Main job content area in the center/right side of the screenshot.
-IGNORE: LinkedIn navigation, left sidebar, buttons ("Easy Apply", "Save"), comments, applicant counts, social elements.
-
-IMPORTANT: Include the COMPLETE text from all job description sections. Do not abbreviate or summarize the content.
+- remote_type: exactly "Remote", "Hybrid", "On-site", or ""
+- job_type: exactly "Full-time", "Part-time", "Contract", "Internship", or ""
+- remove_lines[]: ALWAYS empty [] for images
+- section_headers[]: List ALL major section titles you can see
 """
 
 
@@ -64,7 +72,9 @@ class OpenAILLMExtractor(LLMExtractor):
         if not api:
             raise RuntimeError("OPENAI_API_KEY not set")
         self.client = OpenAI(api_key=api)
-        self.model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
+        # Use better model for screenshots, keep mini for text
+        self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
+        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o")  # Full model for better vision
     
     def _clean_array(self, items):
         """Clean and deduplicate requirements array - minimal processing"""
@@ -137,7 +147,7 @@ class OpenAILLMExtractor(LLMExtractor):
         text_len = len(text)
         print(f"OpenAI Extractor: Starting extraction")
         print(f"OpenAI Extractor: text_len = {text_len}")
-        print(f"OpenAI Extractor: model = {self.model}")
+        print(f"OpenAI Extractor: text_model = {self.text_model}")
         print(f"OpenAI Extractor: url = {url}")
         print(f"OpenAI Extractor: hints = {hints}")
         print(f"OpenAI Extractor: text preview = {repr(text[:300])}")
@@ -171,7 +181,7 @@ class OpenAILLMExtractor(LLMExtractor):
 
         try:
             resp = self.client.chat.completions.create(
-                model=self.model,
+                model=self.text_model,
                 temperature=0.1,
                 response_format={"type": "json_object"},
                 messages=messages,
@@ -238,7 +248,8 @@ class OpenAILLMExtractor(LLMExtractor):
         print("\n=== OPENAI IMAGE EXTRACTOR START ===")
         hints = hints or {}
         print(f"OpenAI Image Extractor: Starting extraction")
-        print(f"OpenAI Image Extractor: model = {self.model}")
+        print(f"OpenAI Image Extractor: text_model = {self.text_model}")
+        print(f"OpenAI Image Extractor: image_model = {self.image_model}")
         print(f"OpenAI Image Extractor: url = {url}")
         print(f"OpenAI Image Extractor: image data length = {len(data_url) if data_url else 0}")
         print(f"OpenAI Image Extractor: hints = {hints}")
@@ -247,8 +258,8 @@ class OpenAILLMExtractor(LLMExtractor):
             raise ValueError("Invalid image data URL format")
         
         # Check if model supports vision
-        if "gpt-4" not in self.model.lower() and "vision" not in self.model.lower():
-            print(f"OpenAI Image Extractor WARNING: Model {self.model} may not support vision - proceeding anyway")
+        if "gpt-4" not in self.image_model.lower() and "vision" not in self.image_model.lower():
+            print(f"OpenAI Image Extractor WARNING: Model {self.image_model} may not support vision - proceeding anyway")
         
         messages = [{"role": "system", "content": _EXTRACT_IMAGE_SYSTEM}]
         if hints:
@@ -267,11 +278,11 @@ class OpenAILLMExtractor(LLMExtractor):
         
         try:
             resp = self.client.chat.completions.create(
-                model=self.model,  # ensure this is vision-capable (e.g., gpt-4o-mini)
+                model=self.image_model,  # Use full gpt-4o for better vision capabilities
                 temperature=0.1,
                 response_format={"type": "json_object"},
                 messages=messages,
-                max_tokens=6000  # Allow space for complete job descriptions from screenshots
+                max_tokens=8000  # Increased tokens for complete screenshot extraction
             )
             
             if not resp.choices or not resp.choices[0].message.content:
@@ -326,6 +337,6 @@ class OpenAILLMExtractor(LLMExtractor):
             elif "invalid api key" in str(e).lower():
                 raise ValueError("Invalid OpenAI API key - please check configuration")
             elif "model" in str(e).lower() and "vision" in str(e).lower():
-                raise ValueError(f"Model {self.model} does not support vision - use gpt-4o-mini or gpt-4o")
+                raise ValueError(f"Model {self.image_model} does not support vision - use gpt-4o-mini or gpt-4o")
             else:
                 raise ValueError(f"OpenAI image API error: {str(e)}")
