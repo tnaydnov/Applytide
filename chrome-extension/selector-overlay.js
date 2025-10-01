@@ -28,6 +28,7 @@
     try {
       await chrome.runtime.sendMessage({
         type: 'APPLYTIDE_SELECTION_DONE',
+        origin: 'applytide_selector',   // <— NEW: robust marker
         text,
         url: location.href
       });

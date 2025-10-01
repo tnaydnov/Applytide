@@ -590,10 +590,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error('Selection timed out - please try again'));
-              }, 30000);
+              }, 90000);
 
-              const listener = (msg, sender) => {
-                if (msg?.type === 'APPLYTIDE_SELECTION_DONE' && sender?.tab?.id === tab.id) {
+              const listener = (msg) => {
+                // Trust our overlay marker instead of fragile sender.tab checks
+                if (msg?.type === 'APPLYTIDE_SELECTION_DONE' && msg?.origin === 'applytide_selector') {
                   cleanup();
                   resolve(msg); // { text, url }
                 }

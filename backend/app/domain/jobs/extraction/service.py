@@ -166,6 +166,18 @@ class JobExtractionService:
             "requirements": [],
             "skills": []
         }
+    
+    def _apply_line_removals(self, text: str, remove_lines: list[int]) -> str:
+        if not text:
+            return ""
+        if not remove_lines:
+            return text
+        lines = text.splitlines()
+        # keep only valid 1-based indices
+        to_drop = {int(n) for n in remove_lines if isinstance(n, int) and 1 <= int(n) <= len(lines)}
+        kept = [ln for idx, ln in enumerate(lines, start=1) if idx not in to_drop]
+        return self._clean_text("\n".join(kept))
+
 
     def extract_job(
         self,
@@ -222,6 +234,22 @@ class JobExtractionService:
                 print(f"LLM extraction completed successfully", flush=True)
                 print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'", flush=True)
                 
+                # 1) Start from the exact user text as description
+                desc_raw = self._clean_text(text)
+
+                # 2) Apply model guidance (remove_lines) deterministically
+                remove_lines = job.get("remove_lines") or []
+                desc_after_llm = self._apply_line_removals(desc_raw, remove_lines)
+
+                # 3) Backstop: run regex splitter to catch missed bullets & dedupe against LLM requirements
+                desc_clean, extra_reqs = self.req_splitter.split(desc_after_llm, job.get("requirements") or [])
+                merged_reqs = list(dict.fromkeys((job.get("requirements") or []) + (extra_reqs or [])))
+
+                # 4) Remove any exact requirement lines that still linger in description
+                req_set = {r.strip() for r in merged_reqs}
+                if desc_clean:
+                    desc_clean = "\n".join([ln for ln in desc_clean.split("\n") if ln.strip() not in req_set])
+
                 result = {
                     "title": (job.get("title") or hints.get("title") or "").strip(),
                     "company_name": (job.get("company_name") or hints.get("company_name") or "").strip(),
@@ -229,10 +257,11 @@ class JobExtractionService:
                     "location": (job.get("location") or "").strip(),
                     "remote_type": (job.get("remote_type") or "").strip(),
                     "job_type": (job.get("job_type") or "").strip(),
-                    "description": self._clean_text(job.get("description") or text),
-                    "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
+                    "description": self._clean_text(desc_clean),
+                    "requirements": [x.strip() for x in merged_reqs if x and x.strip()],
                     "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
                 }
+
                 print(f"Manual text extraction completed successfully", flush=True)
                 print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
                 return result
@@ -264,6 +293,18 @@ class JobExtractionService:
                     "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
                     "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
                 }
+                # Backstop stripper (no remove_lines for images)
+                try:
+                    desc_clean, extra_reqs = self.req_splitter.split(result["description"], result.get("requirements") or [])
+                    merged_reqs = list(dict.fromkeys((result.get("requirements") or []) + (extra_reqs or [])))
+                    req_set = {r.strip() for r in merged_reqs}
+                    if desc_clean:
+                        desc_clean = "\n".join([ln for ln in desc_clean.split("\n") if ln.strip() not in req_set])
+
+                    result["description"] = self._clean_text(desc_clean)
+                    result["requirements"] = [x.strip() for x in merged_reqs if x and x.strip()]
+                except Exception:
+                    pass
                 print(f"Screenshot extraction completed successfully", flush=True)
                 print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
                 return result
@@ -385,20 +426,27 @@ class JobExtractionService:
                 logger.warning(f"LLM extraction failed for regular extraction: {str(e)}")
                 llm_job = {}  # For regular extraction, we can fall back to structured data
 
-        # 6) Merge best fields
-        description = (llm_job.get("description") or "").strip() or main_text
+        # 6) Start from main_text as the source-of-truth description
+        desc_raw = self._clean_text(main_text)
+
+        # 6.1) If the model returned remove_lines, apply them deterministically
+        remove_lines = llm_job.get("remove_lines") or []
+        desc_after_llm = self._apply_line_removals(desc_raw, remove_lines)
+
         requirements = llm_job.get("requirements") or []
         skills = llm_job.get("skills") or []
 
-        # 7) Strip requirement-like content from description
+        # 7) Backstop: regex splitter + dedupe
         try:
-            description, extra_reqs = self.req_splitter.split(description, requirements)
+            description, extra_reqs = self.req_splitter.split(desc_after_llm, requirements)
             requirements = list(dict.fromkeys((requirements or []) + (extra_reqs or [])))
             req_set = {r.strip() for r in requirements}
             if description:
                 description = "\n".join([ln for ln in description.split("\n") if ln.strip() not in req_set])
         except Exception:
-            pass
+            description = desc_after_llm
+
+
 
         final_result = {
             "title": (llm_job.get("title") or mapped.get("title") or t_c.get("title") or readable_title or "").strip(),
