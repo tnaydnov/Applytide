@@ -275,8 +275,8 @@
   <div class="wrap">
     <h1>🎯 Applytide</h1>
     
-    <!-- Status indicator -->
-    <div id="status" class="status loading">
+    <!-- Status indicator - hidden by default -->
+    <div id="status" class="status loading" style="display: none;">
       <span class="spinner"></span>
       Checking session...
     </div>
@@ -327,25 +327,26 @@
         </div>
 
         <div id="methodSelection">
-          <!-- Screenshot Method -->
-          <div class="method-card" data-method="screenshot">
+          <!-- Copy & Paste Method - RECOMMENDED -->
+          <div class="method-card" data-method="paste" style="border-color: #10b981; background: rgba(16, 185, 129, 0.1); position: relative;">
+            <div style="position: absolute; top: -8px; right: 12px; background: #10b981; color: #0f172a; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 12px;">RECOMMENDED</div>
             <div class="method-header">
-              <span class="method-icon">📷</span>
-              <span class="method-title">Screenshot</span>
+              <span class="method-icon">�</span>
+              <span class="method-title" style="color: #10b981;">Copy & Paste</span>
             </div>
             <div class="method-desc">
-              AI reads the entire page - best for most jobs
+              ⭐ Most accurate results - works on any site, any layout
             </div>
           </div>
 
-          <!-- Paste Method -->
-          <div class="method-card" data-method="paste">
+          <!-- Screenshot Method -->
+          <div class="method-card" data-method="screenshot">
             <div class="method-header">
-              <span class="method-icon">📝</span>
-              <span class="method-title">Copy & Paste</span>
+              <span class="method-icon">�</span>
+              <span class="method-title">Screenshot</span>
             </div>
             <div class="method-desc">
-              Perfect for complex layouts or mobile
+              Quick option - may miss some details
             </div>
           </div>
 
@@ -434,11 +435,6 @@
           Extract Another Job
         </button>
       </div>
-    </div>
-
-    <!-- Footer tip -->
-    <div class="muted" style="text-align: center; margin-top: 12px; font-size: 12px; line-height: 1.4;">
-      💡 Works with LinkedIn, Indeed, Glassdoor & more
     </div>
   </div>
 

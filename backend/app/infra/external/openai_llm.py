@@ -37,29 +37,24 @@ _EXTRACT_IMAGE_SYSTEM = """
 Return STRICT JSON with keys:
 title, company_name, source_url, location, remote_type, job_type, description, requirements[], skills[], remove_lines[], section_headers[].
 
-FOCUS: Read the job posting from the screenshot and extract ONLY the core job information. IGNORE all website navigation, UI elements, sidebars, comments, and page scaffolding.
+CRITICAL: Read ALL text content from the job posting sections. DO NOT summarize or truncate the job description content.
 
 Rules:
-- description: Create a CLEAN, CONCISE job description from the main job content. Write 2-4 focused paragraphs covering: company overview, role responsibilities, and work environment. EXCLUDE all section headers, requirements lists, and UI text.
-- requirements[]: List concrete qualifications from requirements/qualifications sections (years, degrees, certifications, must-have / nice-to-have). One item per bullet. De-duplicate.
-- skills[]: Extract technical skills/tools/frameworks/languages from the posting (canonical names, e.g., "Node.js", "JavaScript", "AWS"). De-duplicate.
+- description: Include ALL content from job posting sections like "Company Overview", "Position Overview", "Key Responsibilities", "Work Environment", etc. DO NOT summarize or shorten. Write the complete text from these sections as continuous paragraphs, excluding only section headers themselves and requirements/qualifications lists.
+- requirements[]: Extract ALL items from "Requirements", "Qualifications", "Must-haves", etc. sections. Include every single requirement listed.
+- skills[]: Extract technical skills/tools/frameworks/languages (canonical names, e.g., "Node.js", "JavaScript", "AWS"). 
 - remove_lines[]: ALWAYS empty [] for images.
-- section_headers[]: List major section titles from the job posting (e.g., "About the Company", "Key Responsibilities", "Requirements", "Qualifications", "Benefits", "Work Environment"). Extract these even though they won't appear in the description.
+- section_headers[]: List major section titles found in the posting.
 
 Standards:
 - remote_type: exactly "Remote", "Hybrid", "On-site", or "".
 - job_type: exactly "Full-time", "Part-time", "Contract", "Internship", or "".
 - Unknown fields: empty string "" (or [] for arrays).
 
-IGNORE completely:
-- Website navigation, headers, footers, sidebars
-- "Easy Apply", "Save", "Share", "Message" buttons
-- User comments, "89 applicants", pagination
-- "Meet the hiring team", "Message", social elements
-- "Your AI-powered job assessment"
-- Cookie banners, ads, unrelated content
+FOCUS ON: Main job content area in the center/right side of the screenshot.
+IGNORE: LinkedIn navigation, left sidebar, buttons ("Easy Apply", "Save"), comments, applicant counts, social elements.
 
-Focus ONLY on the actual job posting content in the center/main area of the screenshot.
+IMPORTANT: Include the COMPLETE text from all job description sections. Do not abbreviate or summarize the content.
 """
 
 
@@ -276,7 +271,7 @@ class OpenAILLMExtractor(LLMExtractor):
                 temperature=0.1,
                 response_format={"type": "json_object"},
                 messages=messages,
-                max_tokens=4000  # Focused output for clean job extraction from screenshots
+                max_tokens=6000  # Allow space for complete job descriptions from screenshots
             )
             
             if not resp.choices or not resp.choices[0].message.content:

@@ -57,6 +57,9 @@ function setStatus(type, message) {
   statusEl.className = `status ${type}`;
   statusEl.innerHTML = type === 'loading' ? 
     `<span class="spinner"></span> ${message}` : message;
+  
+  // Only show status for errors, hide for success/loading
+  statusEl.style.display = type === 'error' ? 'block' : 'none';
 }
 
 function setProgress(phase, message = null) {
