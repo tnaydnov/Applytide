@@ -56,6 +56,12 @@ skills[]:
 - Include keywords relevant for job search/filtering
 - For technical skills, standardize common names (js→JavaScript, etc)
 
+CRITICAL INSTRUCTION: 
+- ONLY include information EXPLICITLY EXIST in the text provided
+- DO NOT infer, assume, or generate requirements or skills not shown
+- If you cannot read all requirements or skills, leave those fields with only what's existing
+- If a section appears cut off, indicate with [...] at the end
+
 remote_type/job_type:
 - Only use the specified values or empty string if uncertain
 
@@ -85,6 +91,12 @@ READING INSTRUCTIONS:
 3. IGNORE navigation bars, user comments, application buttons, sidebars
 4. Read top-to-bottom, left-to-right
 5. Include all section headers and full paragraph content
+
+CRITICAL INSTRUCTION: 
+- ONLY include information EXPLICITLY VISIBLE in the screenshots
+- DO NOT infer, assume, or generate requirements or skills not shown
+- If you cannot see all requirements or skills, leave those fields with only what's visible
+- If a section appears cut off, indicate with [...] at the end
 
 CONTENT PROCESSING:
 1. Filter out website UI elements, menus, buttons, etc.

@@ -556,26 +556,98 @@ async function captureScreenshot() {
 async function captureFullPageScreenshot(tabId) {
   console.log("[bg] Starting full-page screenshot capture");
 
-  // Step 1: Get page dimensions and prepare capture
+  // Step 1: Get page dimensions and identify scrollable elements
   const [dimensionsResult] = await chrome.scripting.executeScript({
     target: { tabId },
     function: () => {
-      return {
+      // Find scrollable elements (including LinkedIn's hidden scrollers)
+      function findScrollableElements() {
+        const elements = [];
+        // Common selectors for job description containers
+        const selectors = [
+          '.jobs-description',
+          '.jobs-details',
+          '.job-view-layout',
+          // LinkedIn specific containers
+          'div[role="region"]',
+          '.jobs-search__job-details',
+          '.jobs-details__main-content',
+          '.scaffold-layout__detail',
+          '.jobs-description-content',
+          '.jobs-box__html-content',
+          // Generic scrollable containers
+          'div[style*="overflow: auto"]',
+          'div[style*="overflow-y: auto"]',
+          'div[style*="overflow-y: scroll"]'
+        ];
+
+        for (const selector of selectors) {
+          const found = document.querySelectorAll(selector);
+          found.forEach(el => {
+            // Check if element actually has overflow content
+            if (el.scrollHeight > el.clientHeight + 50) { // +50px threshold
+              elements.push({
+                selector,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                overflow: el.scrollHeight - el.clientHeight
+              });
+            }
+          });
+        }
+
+        return elements;
+      }
+
+      // Main document dimensions
+      const docDimensions = {
         scrollHeight: document.body.scrollHeight,
         viewportHeight: window.innerHeight,
         scrollWidth: document.body.scrollWidth,
         viewportWidth: window.innerWidth
       };
+
+      // Also find scrollable containers (LinkedIn uses these)
+      const scrollableElements = findScrollableElements();
+
+      return {
+        document: docDimensions,
+        scrollableElements
+      };
     }
   });
 
-  if (!dimensionsResult || chrome.runtime.lastError) {
-    console.error("[bg] Failed to get page dimensions:", chrome.runtime.lastError);
+  if (!dimensionsResult) {
+    console.error("[bg] Failed to get page dimensions");
     throw new Error("Failed to get page dimensions");
   }
 
-  const { scrollHeight, viewportHeight } = dimensionsResult.result;
-  console.log(`[bg] Page dimensions: scrollHeight=${scrollHeight}, viewportHeight=${viewportHeight}`);
+  const { document: docDimensions, scrollableElements } = dimensionsResult.result;
+  console.log(`[bg] Page dimensions: documentScrollHeight=${docDimensions.scrollHeight}, viewportHeight=${docDimensions.viewportHeight}`);
+  console.log(`[bg] Found ${scrollableElements.length} scrollable elements:`, scrollableElements);
+
+  // If we found scrollable elements, use those for scrolling
+  if (scrollableElements.length > 0) {
+    return await captureScrollableElementScreenshots(tabId, scrollableElements);
+  }
+
+  // If no scrollable elements found, use traditional page scrolling
+  const { scrollHeight, viewportHeight } = docDimensions;
+
+  // If page isn't scrollable, just take one screenshot
+  if (scrollHeight <= viewportHeight || Math.abs(scrollHeight - viewportHeight) < 50) {
+    console.log("[bg] Page not scrollable, taking single screenshot");
+    try {
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+        format: 'jpeg',
+        quality: 85
+      });
+      return [dataUrl];
+    } catch (error) {
+      console.error("[bg] Error capturing screenshot:", error);
+      throw error;
+    }
+  }
 
   // Calculate sections needed (add overlap to ensure nothing is missed)
   const overlap = Math.min(200, viewportHeight * 0.1); // 10% overlap, max 200px
@@ -583,16 +655,11 @@ async function captureFullPageScreenshot(tabId) {
   const sectionsNeeded = Math.ceil(scrollHeight / effectiveViewportHeight);
   console.log(`[bg] Sections needed: ${sectionsNeeded} (with ${overlap}px overlap)`);
 
-  if (sectionsNeeded > 20) {
-    console.warn("[bg] Very long page detected, limiting to 20 sections");
-    // Limit to avoid overwhelming the API
-    sectionsNeeded = Math.min(sectionsNeeded, 20);
-  }
-
+  const maxSections = 10; // Limit to avoid overwhelming the API
   const screenshots = [];
 
   // Step 2: Scroll and capture each section
-  for (let i = 0; i < sectionsNeeded; i++) {
+  for (let i = 0; i < Math.min(sectionsNeeded, maxSections); i++) {
     // Calculate scroll position (with overlap)
     const scrollPosition = i * effectiveViewportHeight;
 
@@ -615,16 +682,11 @@ async function captureFullPageScreenshot(tabId) {
         quality: 85  // Good balance between quality and size
       });
 
-      screenshots.push({
-        dataUrl,
-        scrollPosition,
-        index: i,
-        total: sectionsNeeded
-      });
+      screenshots.push(dataUrl);
 
       notifyProgress('capture:scroll', {
         current: i + 1,
-        total: sectionsNeeded
+        total: Math.min(sectionsNeeded, maxSections)
       });
     } catch (error) {
       console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
@@ -641,6 +703,103 @@ async function captureFullPageScreenshot(tabId) {
   });
 
   console.log(`[bg] Captured ${screenshots.length} screenshots`);
+  return screenshots;
+}
+
+// Add this helper function to capture scrollable elements
+async function captureScrollableElementScreenshots(tabId, scrollableElements) {
+  console.log("[bg] Using scrollable elements capture strategy");
+
+  // Find the largest scrollable element (likely the job container)
+  const targetElement = scrollableElements.sort((a, b) => b.overflow - a.overflow)[0];
+  console.log("[bg] Target scrollable element:", targetElement);
+
+  const screenshots = [];
+  const scrollHeight = targetElement.scrollHeight;
+  const clientHeight = targetElement.clientHeight;
+  const scrollSteps = Math.min(Math.ceil(scrollHeight / clientHeight) + 1, 5); // Limit to 5 screenshots
+
+  console.log(`[bg] Will capture ${scrollSteps} screenshots of scrollable content (${scrollHeight}px in ${clientHeight}px container)`);
+
+  for (let i = 0; i < scrollSteps; i++) {
+    // Calculate scroll position as percentage of total scroll
+    const scrollPercentage = i / (scrollSteps - 1);
+    const scrollPosition = Math.floor(scrollPercentage * (scrollHeight - clientHeight));
+
+    // Execute scroll on the element
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      function: (selector, scrollPosition) => {
+        const elements = document.querySelectorAll(selector);
+        if (elements && elements.length > 0) {
+          // Find the one with the highest overflow
+          let target = elements[0];
+          let maxOverflow = 0;
+
+          for (const el of elements) {
+            const overflow = el.scrollHeight - el.clientHeight;
+            if (overflow > maxOverflow) {
+              maxOverflow = overflow;
+              target = el;
+            }
+          }
+
+          // Scroll the target element
+          target.scrollTop = scrollPosition;
+          console.log(`Scrolled element to position ${scrollPosition}/${target.scrollHeight}`);
+          return true;
+        }
+        return false;
+      },
+      args: [targetElement.selector, scrollPosition]
+    });
+
+    // Wait for content to load after scroll
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    try {
+      // Capture visible portion
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+        format: 'jpeg',
+        quality: 85
+      });
+
+      screenshots.push(dataUrl);
+
+      notifyProgress('capture:scroll', {
+        current: i + 1,
+        total: scrollSteps
+      });
+    } catch (error) {
+      console.error(`[bg] Error capturing screenshot at section ${i}:`, error);
+    }
+  }
+
+  // Reset scroll position
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    function: (selector) => {
+      const elements = document.querySelectorAll(selector);
+      if (elements && elements.length > 0) {
+        // Find the one with the highest overflow
+        let target = elements[0];
+        let maxOverflow = 0;
+
+        for (const el of elements) {
+          const overflow = el.scrollHeight - el.clientHeight;
+          if (overflow > maxOverflow) {
+            maxOverflow = overflow;
+            target = el;
+          }
+        }
+
+        target.scrollTop = 0;
+      }
+    },
+    args: [targetElement.selector]
+  });
+
+  console.log(`[bg] Captured ${screenshots.length} screenshots from scrollable element`);
   return screenshots;
 }
 
