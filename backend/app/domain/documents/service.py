@@ -407,28 +407,60 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         try:
             side = self._sidecar(file_path)
             cache = side.get("analysis_cache", {})
-            if cache.get("cache_key") == cache_key:
-                cached_data = cache.get("data")
-                if cached_data:
-                    # Validate it has minimum required structure
-                    if isinstance(cached_data, dict) and "ats_score" in cached_data:
-                        return cached_data
+            
+            if not cache:
+                print(f"[cache] MISS: No cache found for {file_path.name}")
+                return None
+                
+            stored_key = cache.get("cache_key")
+            if stored_key != cache_key:
+                print(f"[cache] MISS: Key mismatch for {file_path.name}")
+                print(f"[cache]   Expected: {cache_key[:50]}...")
+                print(f"[cache]   Found: {stored_key[:50] if stored_key else 'None'}...")
+                return None
+            
+            cached_data = cache.get("data")
+            if not cached_data:
+                print(f"[cache] MISS: No data in cache for {file_path.name}")
+                return None
+                
+            # Validate it has minimum required structure
+            if not isinstance(cached_data, dict):
+                print(f"[cache] MISS: Invalid cache data type for {file_path.name}")
+                return None
+                
+            if "ats_score" not in cached_data:
+                print(f"[cache] MISS: Missing ats_score in cache for {file_path.name}")
+                return None
+            
+            cached_at = cache.get("cached_at")
+            print(f"[cache] HIT: Loaded from cache (cached at: {cached_at})")
+            return cached_data
+            
         except Exception as e:
-            print(f"[documents] Cache read failed: {e}")
+            print(f"[cache] ERROR: Cache read failed: {e}")
+            import traceback
+            traceback.print_exc()
         return None
 
     def _write_analysis_cache(self, file_path: Path, cache_key: str, analysis_data: Dict[str, Any]) -> None:
         """Write analysis to sidecar cache."""
         try:
+            from datetime import datetime
+            
             side = self._sidecar(file_path)
             side["analysis_cache"] = {
                 "cache_key": cache_key,
                 "data": analysis_data,
-                "cached_at": Path(file_path).stat().st_mtime if file_path.exists() else None
+                "cached_at": datetime.now().isoformat()
             }
             self._write_sidecar(file_path, side)
+            print(f"[cache] WRITE: Cached analysis for {file_path.name}")
+            print(f"[cache]   Key: {cache_key[:50]}...")
         except Exception as e:
-            print(f"[documents] Cache write failed (non-fatal): {e}")
+            print(f"[cache] ERROR: Cache write failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _llm_analyze_job_first(self, *, resume_text: str, job_meta: str,
                             requirements: List[str], required_tech: List[str],
@@ -929,6 +961,9 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         cache_key = self._compute_cache_key(document_id, job_id, resume_text, job_context)
         cached = self._read_analysis_cache(file_path, cache_key)
         if cached:
+            # Reconstruct nested ATSScore model from dict
+            if isinstance(cached.get("ats_score"), dict):
+                cached["ats_score"] = ATSScore(**cached["ats_score"])
             # Return cached DocumentAnalysis
             return DocumentAnalysis(**cached)
 
@@ -1001,7 +1036,12 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             )
 
         # Write to cache
-        self._write_analysis_cache(file_path, cache_key, result.dict())
+        # Use model_dump() for Pydantic v2, dict() for v1
+        if hasattr(result, 'model_dump'):
+            result_dict = result.model_dump()
+        else:
+            result_dict = result.dict()
+        self._write_analysis_cache(file_path, cache_key, result_dict)
         
         return result
 
