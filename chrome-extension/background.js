@@ -228,19 +228,41 @@ async function getRenderedCapture(tabId, {
 
     // 2) Scroll/overscan (helps virtualized lists render)
     async function overscanScroll() {
-      const target = document.scrollingElement || document.documentElement || document.body;
-      const total = target.scrollHeight - target.clientHeight;
-      if (total <= 0) return;
-      const steps = Math.max(6, (window.__APPLYTIDE_SCROLL_STEPS__ || 10));
-      for (let i = 1; i <= steps; i++) {
-        target.scrollTo({ top: Math.round((i / steps) * total), behavior: 'instant' });
-        tryExpandAll();
-        await new Promise(r => setTimeout(r, (window.__APPLYTIDE_PAUSE_MS__ || 300)));
-      }
-      // Scroll back to top (some sites lazy-mount on reverse)
-      for (let i = steps; i >= 0; i--) {
-        target.scrollTo({ top: Math.round((i / steps) * total), behavior: 'instant' });
-        await new Promise(r => setTimeout(r, (window.__APPLYTIDE_PAUSE_MS__ || 300)));
+      try {
+        const target = document.scrollingElement || document.documentElement || document.body;
+        if (!target) return; // No scrollable element
+        
+        const total = target.scrollHeight - target.clientHeight;
+        if (total <= 0) return; // Nothing to scroll
+        
+        const steps = Math.max(6, (window.__APPLYTIDE_SCROLL_STEPS__ || 10));
+        const pauseMs = window.__APPLYTIDE_PAUSE_MS__ || 300;
+        
+        // Scroll down
+        for (let i = 1; i <= steps; i++) {
+          try {
+            target.scrollTo({ top: Math.round((i / steps) * total), behavior: 'instant' });
+            tryExpandAll();
+            await new Promise(r => setTimeout(r, pauseMs));
+          } catch (e) {
+            console.warn('Scroll step failed:', e);
+            break; // Exit on error
+          }
+        }
+        
+        // Scroll back to top (some sites lazy-mount on reverse)
+        for (let i = steps; i >= 0; i--) {
+          try {
+            target.scrollTo({ top: Math.round((i / steps) * total), behavior: 'instant' });
+            await new Promise(r => setTimeout(r, pauseMs));
+          } catch (e) {
+            console.warn('Reverse scroll step failed:', e);
+            break; // Exit on error
+          }
+        }
+      } catch (error) {
+        console.error('Overscan scroll failed:', error);
+        // Continue anyway - don't block capture
       }
     }
 
@@ -346,10 +368,20 @@ async function getRenderedCapture(tabId, {
         s.src = 'https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.min.js';
         s.crossOrigin = 'anonymous';
         document.documentElement.appendChild(s);
-        await new Promise(r => s.onload = r);
-        const article = new Readability(document.cloneNode(true)).parse();
-        return article || null;
+        
+        // Add timeout to prevent hanging
+        await Promise.race([
+          new Promise(r => s.onload = r),
+          new Promise(r => setTimeout(r, 3000)) // 3 second timeout
+        ]);
+        
+        // Check if Readability loaded
+        if (window.Readability) {
+          const article = new Readability(document.cloneNode(true)).parse();
+          return article || null;
+        }
       } catch { return null; }
+      return null;
     }
 
     // 7) Capture XHR/fetch responses (bodies) within page context
@@ -466,17 +498,52 @@ async function getRenderedCapture(tabId, {
 
     // Expand & scroll to mount virtualized DOM
     tryExpandAll();
-    // Overscan passes
+    // Overscan passes with timeout protection
     return (async () => {
-      await overscanScroll();
+      try {
+        console.log('[INJECTED] Starting overscan scroll...');
+        await Promise.race([
+          overscanScroll(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Scroll timeout')), 8000))
+        ]);
+        console.log('[INJECTED] Overscan scroll complete');
+      } catch (e) {
+        console.warn('[INJECTED] Overscan scroll failed or timed out:', e.message);
+        // Continue anyway
+      }
+      
       // One more expand pass after scroll
       tryExpandAll();
+      
+      console.log('[INJECTED] Serializing HTML...');
       const html = serializeWithShadow(document);
+      console.log('[INJECTED] HTML serialized:', html.length, 'chars');
+      
+      console.log('[INJECTED] Harvesting JSON-LD...');
       const jsonld = harvestJSONLD();
+      console.log('[INJECTED] JSON-LD items:', jsonld.length);
+      
+      console.log('[INJECTED] Harvesting metas...');
       const metas = harvestMetas();
-      const readable = await getReadable();
+      console.log('[INJECTED] Metas:', Object.keys(metas).length);
+      
+      console.log('[INJECTED] Getting Readability...');
+      let readable = null;
+      try {
+        readable = await Promise.race([
+          getReadable(),
+          new Promise(r => setTimeout(() => r(null), 5000)) // 5 second timeout
+        ]);
+        console.log('[INJECTED] Readability complete:', !!readable);
+      } catch (e) {
+        console.warn('[INJECTED] Readability failed:', e.message);
+        readable = null;
+      }
+      
       const textLen = (document.body?.innerText || '').length;
       const xhrLogs = (window.__applytideLogs || []);
+      
+      console.log('[INJECTED] Capture complete, returning data');
       return { html, jsonld, metas, readable, textLen, xhrLogs, jobIframe };
     })();
   } // end INJECTED_CAPTURE
