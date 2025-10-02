@@ -422,12 +422,47 @@ async function getRenderedCapture(tabId, {
       return window.__applytideLogs;
     }
 
+    // 7) Detect job posting iframes (Ashby, Greenhouse, etc.)
+    function detectJobIframe() {
+      const iframes = Array.from(document.querySelectorAll('iframe'));
+      for (const iframe of iframes) {
+        const src = iframe.src || '';
+        const id = iframe.id || '';
+        
+        // Ashby embed detection
+        if (src.includes('jobs.ashbyhq.com') || src.includes('ashbyhq') || id.includes('ashby')) {
+          return { url: src, type: 'ashby' };
+        }
+        
+        // Greenhouse embed detection
+        if (src.includes('boards.greenhouse.io') || src.includes('greenhouse') || id.includes('greenhouse')) {
+          return { url: src, type: 'greenhouse' };
+        }
+        
+        // Lever embed detection
+        if (src.includes('jobs.lever.co') || src.includes('lever') || id.includes('lever')) {
+          return { url: src, type: 'lever' };
+        }
+        
+        // Generic job board iframe (large size, contains "job" in src/id)
+        const isLarge = iframe.offsetHeight > 500 || iframe.offsetWidth > 500;
+        const hasJobKeyword = src.toLowerCase().includes('job') || id.toLowerCase().includes('job');
+        if (isLarge && hasJobKeyword) {
+          return { url: src, type: 'generic' };
+        }
+      }
+      return null;
+    }
+
     /* ---------- main flow ---------- */
     window.__APPLYTIDE_SCROLL_STEPS__ = 12;
     window.__APPLYTIDE_PAUSE_MS__ = 300;
 
     // Start network hook immediately
     hookNetwork();
+
+    // Check for job posting iframe first
+    const jobIframe = detectJobIframe();
 
     // Expand & scroll to mount virtualized DOM
     tryExpandAll();
@@ -442,7 +477,7 @@ async function getRenderedCapture(tabId, {
       const readable = await getReadable();
       const textLen = (document.body?.innerText || '').length;
       const xhrLogs = (window.__applytideLogs || []);
-      return { html, jsonld, metas, readable, textLen, xhrLogs };
+      return { html, jsonld, metas, readable, textLen, xhrLogs, jobIframe };
     })();
   } // end INJECTED_CAPTURE
 
@@ -461,6 +496,20 @@ async function getRenderedCapture(tabId, {
       func: INJECTED_CAPTURE
     });
     last = result;
+    
+    // Check if we detected a job iframe
+    if (result?.jobIframe) {
+      console.log(`[CAPTURE] ⚠️  Detected job posting in iframe!`);
+      console.log(`[CAPTURE] Iframe type: ${result.jobIframe.type}`);
+      console.log(`[CAPTURE] Iframe URL: ${result.jobIframe.url}`);
+      console.log(`[CAPTURE] Suggestion: Navigate directly to ${result.jobIframe.url} for better extraction`);
+      
+      // Store iframe info in result for potential use
+      last.iframeDetected = true;
+      last.iframeUrl = result.jobIframe.url;
+      last.iframeType = result.jobIframe.type;
+    }
+    
     const jlCount = Array.isArray(result?.jsonld) ? result.jsonld.length : 0;
     notifyProgress('capture:pass', { textLen: result?.textLen || 0, jsonld: jlCount });
     
@@ -800,12 +849,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               jsonld_types: (capture.jsonld || []).map(j => j?.['@type']).filter(Boolean),
               readable: !!capture.readable,
               readable_title: capture.readable?.title,
-              readable_textLen: capture.readable?.textContent?.length,
-              textLen: capture.textLen || 0,
+              readable_textLen: (capture.readable?.textContent || '').length,
+              textLen: capture.textLen,
               metas_count: Object.keys(capture.metas || {}).length,
-              xhrLogs_count: (capture.xhrLogs || []).length
+              xhrLogs_count: (capture.xhrLogs || []).length,
+              iframe_detected: capture.iframeDetected,
+              iframe_url: capture.iframeUrl,
+              iframe_type: capture.iframeType
             });
             
+            // If iframe detected, check if we should redirect
+            if (capture.iframeDetected && capture.iframeUrl) {
+              console.log('[BACKGROUND] ⚠️  Job posting detected in iframe');
+              console.log('[BACKGROUND] For better extraction, user should navigate to:', capture.iframeUrl);
+              
+              // If content is minimal, suggest iframe URL
+              const hasMinimalContent = (capture.textLen || 0) < 2000 || 
+                                       !(capture.readable?.textContent || '').length > 1000;
+              
+              if (hasMinimalContent) {
+                console.log('[BACKGROUND] ⚠️  Content appears minimal, iframe URL recommended');
+                sendResponse({ 
+                  ok: false, 
+                  error: 'Job posting is in an iframe and cannot be extracted from this page.',
+                  iframeDetected: true,
+                  iframeUrl: capture.iframeUrl,
+                  iframeType: capture.iframeType,
+                  suggestion: `This job is embedded in an iframe. For better results, navigate directly to: ${capture.iframeUrl}`
+                });
+                return;
+              }
+            }
+            
+            console.log('[BACKGROUND] Step 7: Capture cached for future use');
             CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
             console.log('[BACKGROUND] Step 7: Capture cached for future use');
 
