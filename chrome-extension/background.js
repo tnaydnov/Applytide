@@ -174,9 +174,11 @@ async function apiSaveJob(jobPayload) {
   const result = await res.json();
   console.log('[bg] DEBUG: API response parsed successfully');
   console.log('[bg] DEBUG: Response job summary=', {
-    title: result.job?.title || 'None',
-    company: result.job?.company_name || 'None',
-    desc_len: (result.job?.description || '').length
+    title: result?.title || 'None',
+    company: result?.company_name || 'None',
+    desc_len: (result?.description || '').length,
+    requirements_count: (result?.requirements || []).length,
+    skills_count: (result?.skills || []).length
   });
   return result;
 }
