@@ -693,9 +693,58 @@ async function getRenderedCapture(tabId, {
           new Promise(r => setTimeout(() => r(null), 5000)) // 5 second timeout
         ]);
         console.log('[INJECTED] Readability complete:', !!readable);
+        console.log('[INJECTED] Readability text length:', readable?.textContent?.length || 0);
       } catch (e) {
         console.warn('[INJECTED] Readability failed:', e.message);
         readable = null;
+      }
+      
+      // Fallback: If Readability failed or returned minimal content, try direct extraction
+      if (!readable || !readable.textContent || readable.textContent.length < 1000) {
+        console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
+        
+        // Try to find main content containers
+        const contentSelectors = [
+          '[data-testid*="overview"]',
+          '[data-testid*="section"]',
+          '[data-testid*="description"]',
+          '[data-testid*="requirement"]',
+          '[data-testid*="responsibility"]',
+          '[data-testid*="benefit"]',
+          'main',
+          'article',
+          '[role="main"]',
+          '[class*="job-description"]',
+          '[class*="job-detail"]',
+          '[class*="job-content"]',
+          '[class*="content"]',
+          '[id*="job"]',
+          '[id*="description"]'
+        ];
+        
+        let directText = '';
+        for (const selector of contentSelectors) {
+          const elements = document.querySelectorAll(selector);
+          for (const el of elements) {
+            const text = el.innerText || el.textContent || '';
+            if (text.length > 50) { // Only include substantial content
+              directText += text + '\n\n';
+            }
+          }
+          if (directText.length > 2000) break; // Stop when we have enough
+        }
+        
+        console.log('[INJECTED] Direct extraction got:', directText.length, 'chars');
+        
+        // If direct extraction worked better, use it
+        if (directText.length > (readable?.textContent?.length || 0)) {
+          readable = {
+            title: document.title || '',
+            textContent: directText,
+            excerpt: directText.substring(0, 200)
+          };
+          console.log('[INJECTED] Using direct extraction instead of Readability');
+        }
       }
       
       const textLen = (document.body?.innerText || '').length + shadowContent.length;
