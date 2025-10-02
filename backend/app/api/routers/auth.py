@@ -13,7 +13,6 @@ from ...db.session import get_db
 from ...db import models
 from ...infra.security.passwords import hash_password, verify_password
 from ...api.deps_auth import get_current_user
-from ...api.routers.auth_sessions import router as sessions_router, create_user_session
 from ...api.schemas import auth as schemas
 
 from ...infra.security.tokens import (
@@ -27,7 +26,6 @@ from ...config import settings
 from ...infra.external.google_oauth import OAuthService as GoogleOAuthService  # keep for now
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-router.include_router(sessions_router)
 
 class _Schemas:  # tiny helper to make type checkers happy in returns
     TokenPairOut = schemas.TokenPairOut
@@ -135,19 +133,6 @@ async def login(
     refresh_token, _fam = create_refresh_token(
         str(user.id), user_agent=user_agent, ip_address=ip_address, extended=form_data.remember_me
     )
-
-    try:
-        token_data = decode_refresh(refresh_token)
-        jti = token_data.get("jti")
-        device_info = {
-            "client_id": request.cookies.get("client_id", str(uuid.uuid4())),
-            "device_type": "browser",
-            "ip_address": ip_address,
-            "user_agent": user_agent
-        }
-        create_user_session(db, str(user.id), jti, device_info)
-    except Exception as e:
-        print(f"Failed to create user session: {e}")
 
     if form_data.remember_me:
         refresh_days = getattr(settings, 'REFRESH_EXTENDED_TTL_DAYS',
@@ -451,16 +436,6 @@ async def callback_google(
         refresh_token, _family = create_refresh_token(
             user_id, user_agent=user_agent, ip_address=ip, extended=True
         )
-
-        token_data = jwt.decode(refresh_token, settings.REFRESH_SECRET, algorithms=["HS256"])
-        jti = token_data.get("jti")
-        device_info = {
-            "client_id": request.cookies.get("client_id", str(uuid.uuid4())),
-            "device_type": "browser",
-            "ip_address": ip,
-            "user_agent": user_agent,
-        }
-        create_user_session(db, user_id, jti, device_info)
 
         resp = RedirectResponse(f"{settings.FRONTEND_URL}/dashboard")
         resp.set_cookie("access_token", access_token, httponly=True, secure=settings.SECURE_COOKIES,

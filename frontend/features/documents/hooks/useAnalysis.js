@@ -58,541 +58,137 @@ export default function useAnalysis() {
     const exportPDF = useCallback(() => {
         if (!currentAnalysis) return;
 
-
-        // Derive section_quality data since it's null in the API response
-        const derivedSectionQuality = {};
+        const doc = new jsPDF();
         const ats = currentAnalysis.ats_score || {};
         const ai = currentAnalysis.ai_detailed_analysis || {};
+        const sections = currentAnalysis.section_quality || {}; // <-- LLM section scores here
 
-        // Add detected headers from AI analysis if available
-        if (ai.detected_headers && Array.isArray(ai.detected_headers)) {
-            ai.detected_headers.forEach(header => {
-                // Generate random scores for demonstration (or use more sophisticated logic)
-                const score = header === "TECHNICAL SKILLS" && ats.technical_skills_score != null
-                    ? ats.technical_skills_score
-                    : (Math.floor(Math.random() * 40) + 60); // Random score between 60-100
-
-                derivedSectionQuality[header] = {
-                    score: score,
-                    improvement_needed: score < 70
-                };
-            });
-        }
-
-        // Use the actual data from the API response
-        const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 20;
         const contentWidth = pageWidth - 2 * margin;
-        let yPosition = 20;
+        let y = 20;
 
-        // Helper function to add new page if needed
-        const checkPage = (neededSpace = 40) => {
-            if (yPosition + neededSpace > doc.internal.pageSize.getHeight() - 20) {
-                doc.addPage();
-                yPosition = 20;
-                return true;
-            }
-            return false;
+        const add = (text, size = 11, bold = false) => {
+            doc.setFont("helvetica", bold ? "bold" : "normal");
+            doc.setFontSize(size);
+            const lines = doc.splitTextToSize(String(text || ""), contentWidth);
+            lines.forEach((ln) => {
+            if (y + 6 > pageHeight - 20) { doc.addPage(); y = 20; }
+            doc.text(ln, margin, y);
+            y += 6;
+            });
         };
 
         // Title
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.text(`Resume Analysis: ${currentAnalysis.document_name || "Document"}`, margin, yPosition);
-        yPosition += 12;
+        add(`Resume Analysis: ${currentAnalysis.document_name || "Document"}`, 16, true);
+        y += 4;
 
-        // Overall score
-        const overall = Number(ats.overall_score || 0).toFixed(1);
+        // Overall
+        add(`Overall ATS Score: ${Number(ats.overall_score || 0).toFixed(1)}%`, 14, true);
+        y += 2;
+        add(`Document: ${currentAnalysis.document_name || "Document"}`);
+        add(`Word Count: ${currentAnalysis.word_count || "N/A"}`);
+        y += 4;
 
-        doc.setFontSize(14);
-        doc.text(`Overall ATS Score: ${overall}%`, margin, yPosition);
-        yPosition += 10;
-
-        // Document info
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.text(`Document: ${currentAnalysis.document_name || "Document"}`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Word Count: ${currentAnalysis.word_count || "N/A"}`, margin, yPosition);
-        yPosition += 12;
-
-        // Job-Specific Analysis
-        const isJobSpecific = ats.technical_skills_score != null || Boolean(currentAnalysis.job_match_summary);
-        checkPage();
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.text(isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis", margin, yPosition);
-        yPosition += 6;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        const analysisTypeText = isJobSpecific
+        // Analysis type
+        const isJob = ats.technical_skills_score != null || Boolean(currentAnalysis.job_match_summary);
+        add(isJob ? "Job-Specific Analysis" : "General Resume Analysis", 13, true);
+        add(isJob
             ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
-            : "This is a general analysis. Select a job for tailored matching.";
-        doc.text(analysisTypeText, margin, yPosition);
-        yPosition += 10;
-
-        // Tech skills match summary from job_match_summary
+            : "This is a general analysis. Select a job for tailored matching."
+        );
         if (currentAnalysis.job_match_summary) {
-            let summaryText = "";
-            if (typeof currentAnalysis.job_match_summary === "string") {
-                summaryText = currentAnalysis.job_match_summary;
-            } else if (currentAnalysis.job_match_summary.summary) {
-                summaryText = currentAnalysis.job_match_summary.summary;
-            }
-
-            doc.text(summaryText, margin, yPosition);
-            yPosition += 10;
+            const summary = typeof currentAnalysis.job_match_summary === "string"
+            ? currentAnalysis.job_match_summary
+            : currentAnalysis.job_match_summary.summary;
+            if (summary) add(summary);
         }
+        y += 2;
 
-        // Technical Skills section
+        // Category blocks
+        const cat = (title, score, desc, block) => {
+            add(title, 13, true);
+            add(`Score: ${Number(score ?? 0).toFixed(1)}%`);
+            add(desc);
+            block?.();
+            y += 2;
+        };
+
         if (ats.technical_skills_score != null) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Technical Skills", margin, yPosition);
-            yPosition += 6;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text(`Score: ${Number(ats.technical_skills_score).toFixed(1)}%`, margin, yPosition);
-            yPosition += 5;
-
-            doc.setFontSize(10);
-            doc.text("How well your technical skills align with job requirements", margin, yPosition);
-            yPosition += 10;
-
-            // Technical skills details from ai.technical_skills
-            if (ai.technical_skills) {
-                // Strengths
-                if (ai.technical_skills.strengths && ai.technical_skills.strengths.length) {
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Strengths:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.technical_skills.strengths.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                // Weaknesses
-                if (ai.technical_skills.weaknesses && ai.technical_skills.weaknesses.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Areas to Improve:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.technical_skills.weaknesses.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                // Missing elements
-                if (ai.technical_skills.missing_elements && ai.technical_skills.missing_elements.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Missing Skills:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.technical_skills.missing_elements.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                if (ai.technical_skills && ai.technical_skills.improvements && ai.technical_skills.improvements.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Improvement Examples:", margin, yPosition);
-                    yPosition += 8;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.technical_skills.improvements.forEach((imp, i) => {
-                        checkPage(20);
-                        doc.setFontSize(10);
-                        doc.setFont("helvetica", "bold");
-                        doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
-                        yPosition += 7;
-
-                        doc.setFont("helvetica", "italic");
-                        doc.setFontSize(9);
-                        doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
-                        yPosition += 5;
-
-                        doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
-                        yPosition += 10;
-                    });
-                }
-            }
+            cat("Technical (Hard) Skills", ats.technical_skills_score,
+                "Role-specific hard skills match",
+                () => {
+                const t = ai.technical_skills || {};
+                if (t.strengths?.length) { add("Strengths:", 11, true); t.strengths.forEach(s => add(`• ${s}`)); }
+                if (t.weaknesses?.length) { add("Areas to Improve:", 11, true); t.weaknesses.forEach(s => add(`• ${s}`)); }
+                if (t.missing_elements?.length) { add("Missing Skills:", 11, true); t.missing_elements.forEach(s => add(`• ${s}`)); }
+                });
         }
 
-        // Soft Skills section
         if (ats.soft_skills_score != null) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Soft Skills", margin, yPosition);
-            yPosition += 6;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text(`Score: ${Number(ats.soft_skills_score).toFixed(1)}%`, margin, yPosition);
-            yPosition += 5;
-
-            doc.setFontSize(10);
-            doc.text("Presence of important soft skills relevant to this role", margin, yPosition);
-            yPosition += 10;
-
-            // Soft skills details from ai.soft_skills
-            if (ai.soft_skills) {
-                // Relevant skills
-                if (ai.soft_skills.relevant_skills && ai.soft_skills.relevant_skills.length) {
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Found Skills:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.soft_skills.relevant_skills.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                // Missing elements
-                if (ai.soft_skills.missing_elements && ai.soft_skills.missing_elements.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Suggested Skills:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.soft_skills.missing_elements.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                if (ai.soft_skills && ai.soft_skills.improvements && ai.soft_skills.improvements.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Improvement Examples:", margin, yPosition);
-                    yPosition += 8;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.soft_skills.improvements.forEach((imp, i) => {
-                        checkPage(20);
-                        doc.setFontSize(10);
-                        doc.setFont("helvetica", "bold");
-                        doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
-                        yPosition += 7;
-
-                        doc.setFont("helvetica", "italic");
-                        doc.setFontSize(9);
-                        doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
-                        yPosition += 5;
-
-                        doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
-                        yPosition += 10;
-                    });
-                }
-            }
+            cat("Soft Skills", ats.soft_skills_score,
+                "Presence of important soft skills relevant to this role",
+                () => {
+                const s = ai.soft_skills || {};
+                if (s.relevant_skills?.length) { add("Found:", 11, true); s.relevant_skills.forEach(x => add(`• ${x}`)); }
+                if (s.missing_elements?.length) { add("Suggested:", 11, true); s.missing_elements.forEach(x => add(`• ${x}`)); }
+                });
         }
 
-        // Keywords section
         if (ats.keyword_score != null) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Keywords", margin, yPosition);
-            yPosition += 6;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text(`Score: ${Number(ats.keyword_score).toFixed(1)}%`, margin, yPosition);
-            yPosition += 5;
-
-            doc.setFontSize(10);
-            doc.text("Job-specific terminology and industry language match", margin, yPosition);
-            yPosition += 10;
-
-            // Keywords details from ai.keywords or keyword_analysis
             const keywordData = ai.keywords || currentAnalysis.keyword_analysis || {};
-
-            // Found keywords
-            if (keywordData.keywords_found && keywordData.keywords_found.length) {
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Matched Keywords:", margin, yPosition);
-                yPosition += 5;
-
-                doc.setFont("helvetica", "normal");
-                keywordData.keywords_found.forEach(item => {
-                    checkPage(6);
-                    doc.text(`• ${item}`, margin + 5, yPosition);
-                    yPosition += 5;
+            cat("Keywords", ats.keyword_score,
+                "Job-specific terminology and industry language match",
+                () => {
+                if (keywordData.keywords_found?.length) { add("Matched Keywords:", 11, true); keywordData.keywords_found.forEach(k => add(`• ${k}`)); }
+                if (keywordData.keywords_missing?.length) { add("Missing Keywords:", 11, true); keywordData.keywords_missing.forEach(k => add(`• ${k}`)); }
+                if (keywordData.weaknesses?.length) { add("Areas to Improve:", 11, true); keywordData.weaknesses.forEach(k => add(`• ${k}`)); }
                 });
-                yPosition += 5;
-            } else if (keywordData.strengths && keywordData.strengths.length) {
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Strengths:", margin, yPosition);
-                yPosition += 5;
-
-                doc.setFont("helvetica", "normal");
-                keywordData.strengths.forEach(item => {
-                    checkPage(6);
-                    doc.text(`• ${item}`, margin + 5, yPosition);
-                    yPosition += 5;
-                });
-                yPosition += 5;
-            }
-
-            // Missing keywords
-            if (keywordData.keywords_missing && keywordData.keywords_missing.length) {
-                checkPage();
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Missing Keywords:", margin, yPosition);
-                yPosition += 5;
-
-                doc.setFont("helvetica", "normal");
-                keywordData.keywords_missing.forEach(item => {
-                    checkPage(6);
-                    doc.text(`• ${item}`, margin + 5, yPosition);
-                    yPosition += 5;
-                });
-                yPosition += 5;
-            } else if (keywordData.missing_elements && keywordData.missing_elements.length) {
-                checkPage();
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Missing Keywords:", margin, yPosition);
-                yPosition += 5;
-
-                doc.setFont("helvetica", "normal");
-                keywordData.missing_elements.forEach(item => {
-                    checkPage(6);
-                    doc.text(`• ${item}`, margin + 5, yPosition);
-                    yPosition += 5;
-                });
-                yPosition += 5;
-            }
-
-            // Weaknesses
-            if (keywordData.weaknesses && keywordData.weaknesses.length) {
-                checkPage();
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Areas to Improve:", margin, yPosition);
-                yPosition += 5;
-
-                doc.setFont("helvetica", "normal");
-                keywordData.weaknesses.forEach(item => {
-                    checkPage(6);
-                    doc.text(`• ${item}`, margin + 5, yPosition);
-                    yPosition += 5;
-                });
-                yPosition += 5;
-            }
-
-            if (ai.keywords && ai.keywords.improvements && ai.keywords.improvements.length) {
-                checkPage();
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "bold");
-                doc.text("Improvement Examples:", margin, yPosition);
-                yPosition += 8;
-
-                doc.setFont("helvetica", "normal");
-                ai.keywords.improvements.forEach((imp, i) => {
-                    checkPage(20);
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`${i + 1}. ${imp.suggestion}`, margin, yPosition);
-                    yPosition += 7;
-
-                    doc.setFont("helvetica", "italic");
-                    doc.setFontSize(9);
-                    doc.text(`Before: ${imp.example_before}`, margin + 5, yPosition);
-                    yPosition += 5;
-
-                    doc.text(`After: ${imp.example_after}`, margin + 5, yPosition);
-                    yPosition += 10;
-                });
-            }
         }
 
-        // Formatting section
         if (ats.formatting_score != null) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Formatting", margin, yPosition);
-            yPosition += 6;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text(`Score: ${Number(ats.formatting_score).toFixed(1)}%`, margin, yPosition);
-            yPosition += 5;
-
-            doc.setFontSize(10);
-            doc.text("ATS-friendly structure and organization", margin, yPosition);
-            yPosition += 10;
-
-            // Formatting details from ai.formatting
-            if (ai.formatting) {
-                // Strengths
-                if (ai.formatting.strengths && ai.formatting.strengths.length) {
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Strengths:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.formatting.strengths.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-
-                // Weaknesses
-                if (ai.formatting.weaknesses && ai.formatting.weaknesses.length) {
-                    checkPage();
-                    doc.setFontSize(11);
-                    doc.setFont("helvetica", "bold");
-                    doc.text("Areas to Improve:", margin, yPosition);
-                    yPosition += 5;
-
-                    doc.setFont("helvetica", "normal");
-                    ai.formatting.weaknesses.forEach(item => {
-                        checkPage(6);
-                        doc.text(`• ${item}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    });
-                    yPosition += 5;
-                }
-            }
+            cat("Formatting", ats.formatting_score,
+                "ATS-friendly structure and organization",
+                () => {
+                const f = ai.formatting || {};
+                if (f.strengths?.length) { add("Strengths:", 11, true); f.strengths.forEach(x => add(`• ${x}`)); }
+                if (f.weaknesses?.length) { add("Areas to Improve:", 11, true); f.weaknesses.forEach(x => add(`• ${x}`)); }
+                });
         }
 
-        // Language Analysis
-        checkPage();
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.text("Language Analysis", margin, yPosition);
-        yPosition += 8;
+        // Section Quality from backend (no randomness)
+        if (sections && Object.keys(sections).length) {
+            add("Section Quality", 13, true);
+            Object.entries(sections).forEach(([name, data]) => {
+            const sc = Number(data?.score ?? 0).toFixed(0);
+            const flag = data?.improvement_needed ? " (needs work)" : "";
+            add(`${name}: ${sc}%${flag}`);
+            if (data?.notes) add(`  • ${data.notes}`);
+            });
+        }
 
-        // Action verbs - use readability_score as a proxy if action_verb_count is null
-        const actionVerbCount = currentAnalysis.action_verb_count || "N/A";
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.text("Action Verbs:", margin, yPosition);
-        yPosition += 5;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`${actionVerbCount}`, margin + 5, yPosition);
-        yPosition += 5;
-        doc.text(Number(actionVerbCount) >= 10
-            ? "Strong use of action verbs"
-            : "Consider adding more impactful verbs", margin + 5, yPosition);
-        yPosition += 8;
-
-        // Readability
+        // Language / readability
+        add("Language Analysis", 13, true);
+        add(`Action Verbs: ${currentAnalysis.action_verb_count ?? "N/A"}`);
         const readabilityScore = currentAnalysis.readability_score || ats.readability_score || 0;
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.text("Readability:", margin, yPosition);
-        yPosition += 5;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`${Number(readabilityScore).toFixed(0)}%`, margin + 5, yPosition);
-        yPosition += 5;
-        doc.text(Number(readabilityScore) >= 70
-            ? "Good content structure"
-            : "Content needs improvement", margin + 5, yPosition);
-        yPosition += 10;
+        add(`Readability: ${Number(readabilityScore).toFixed(0)}%`);
+        y += 2;
 
         // Key Recommendations
-        if (ai.overall_suggestions && ai.overall_suggestions.length > 0) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Key Recommendations", margin, yPosition);
-            yPosition += 8;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-
-            ai.overall_suggestions.forEach((suggestion, i) => {
-                checkPage(15);
-                const lines = doc.splitTextToSize(`${i + 1}. ${suggestion}`, contentWidth - 5);
-                doc.text(lines, margin, yPosition);
-                yPosition += (lines.length * 5) + 5;
-            });
-
-            yPosition += 5;
+        if (ai.overall_suggestions?.length) {
+            add("Key Recommendations", 13, true);
+            ai.overall_suggestions.forEach((s, i) => add(`${i + 1}. ${s}`));
         }
 
-        // Document Statistics
-        checkPage();
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.text("Document Statistics", margin, yPosition);
-        yPosition += 8;
+        // Stats
+        add("Document Statistics", 13, true);
+        add(`Words: ${currentAnalysis.word_count || "N/A"}`);
+        add(`Missing Sections: ${currentAnalysis.missing_sections?.length || 0}`);
 
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`Words: ${currentAnalysis.word_count || "N/A"}`, margin, yPosition);
-        yPosition += 5;
-        doc.text(`Readability: ${Number(readabilityScore).toFixed(1)}%`, margin, yPosition);
-        yPosition += 5;
-        doc.text(`Missing Sections: ${currentAnalysis.missing_sections?.length || 0}`, margin, yPosition);
-        yPosition += 10;
-
-        // Missing Sections
-        if (Array.isArray(currentAnalysis.missing_sections) && currentAnalysis.missing_sections.length > 0) {
-            checkPage();
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("Missing Sections", margin, yPosition);
-            yPosition += 8;
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-
-            currentAnalysis.missing_sections.forEach((section) => {
-                checkPage(6);
-                doc.text(`• ${section}`, margin, yPosition);
-                yPosition += 5;
-            });
-        }
-
-        // Save the PDF
         doc.save(`${(currentAnalysis.document_name || "analysis").replace(/[^a-z0-9_-]+/gi, "_")}_analysis.pdf`);
-    }, [currentAnalysis]);
+        }, [currentAnalysis]);
+
 
     const exportWord = useCallback(() => {
         if (!currentAnalysis) return;

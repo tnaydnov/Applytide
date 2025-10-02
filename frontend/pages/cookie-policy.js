@@ -79,10 +79,6 @@ export default function CookiePolicy() {
                         <strong>Local Storage:</strong> Recent job searches are stored locally in your browser and can be cleared
                         by clearing your browser's local storage or using your browser's developer tools.
                     </p>
-                    <p className="text-slate-300 mb-4">
-                        <strong>Session Management:</strong> You can view and revoke active sessions from your
-                        <a href="/sessions" className="text-blue-400 hover:text-blue-300"> Account Sessions</a> page.
-                    </p>
 
                     <h2 className="text-2xl font-bold text-white mt-8 mb-4">4. Cookie Retention</h2>
                     <p className="text-slate-300 mb-4">Our cookies have the following lifespans:</p>

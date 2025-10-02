@@ -43,10 +43,6 @@ requirements[]:
 - CRITICAL: Read the ENTIRE job posting first to understand its structure and context before extracting
 - Extract ONLY CORE/MANDATORY qualifications that candidates MUST have to be considered
 - Use your judgment to identify requirement sections (commonly: "Requirements", "Qualifications", "What You Bring", "Must Have", "Essential Skills")
-- IMPORTANT: Many job postings have sections AFTER requirements that describe company culture, benefits, team, or perks
-  → These sections should STAY in description, NOT be extracted as requirements
-  → Examples of non-requirement sections: "Why Join Us?", "About Us", "Company Culture", "Benefits", "What We Offer", "Our Team", "Life At [Company]", "Perks"
-  → Even if these sections have bullet points, they are NOT requirements!
 - Distinguish between requirement types:
   * CORE/MANDATORY: "5+ years experience", "Bachelor's degree required", "Must have X", "Proficient in Y"
     → These are dealbreakers - extract to requirements[]

@@ -112,7 +112,7 @@ def set_document_status(
 def analyze_document(
     document_id: str,
     job_id: Optional[str] = Query(None),
-    use_ai: bool = Query(False, description="If true and OpenAI is configured, include AI suggestions."),
+    use_ai: bool = Query(True, description="If true and OpenAI is configured, include AI suggestions."),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     svc: DocumentService = Depends(get_document_service),

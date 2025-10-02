@@ -33,12 +33,10 @@ from .api.routers.profile import router as profile_router
 from .api.routers.preferences import router as preferences_router
 from .api.routers.ai import router as ai_router
 from .api.routers.feedback import router as feedback_router
-from .infra.tasks.cleanup import cleanup_expired_sessions
 from .db.session import get_db
 from .infra.cache.redis_client import get_redis
 from .api.routers.reminders import router as reminders_router
 from .api.routers.auth import router as auth_router
-from .api.routers.auth_sessions import router as auth_sessions_router
 from .config import settings
 
 app = FastAPI(title="Applytide API")
@@ -86,7 +84,6 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # --- Routers
 app.include_router(auth_router)
-app.include_router(auth_sessions_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(ws_router)
@@ -135,7 +132,6 @@ log = logging.getLogger("uvicorn.error")
 @app.on_event("startup")
 async def startup_event():
     app.state.scheduler = BackgroundScheduler(daemon=True)
-    app.state.scheduler.add_job(cleanup_expired_sessions, "interval", hours=24)
     app.state.scheduler.start()
     log.info(
         "Boot: SecurityHeaders=%s RateLimit=%s limit=%s window=%ss ENV=%s",

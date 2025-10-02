@@ -9,6 +9,7 @@ import json
 import os
 import mimetypes
 import re
+import hashlib
 from fastapi import HTTPException
 
 from ...db import models
@@ -313,6 +314,345 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
 
         text = doc.text or ""
         return "text", {"text": text or "(no preview text available)"}
+    
+    # === LLM-first analysis helpers =============================================
+
+    def _clamp_pct(self, x, default=0.0):
+        try:
+            x = float(x)
+        except Exception:
+            return float(default)
+        return max(0.0, min(100.0, x))
+
+    def _coerce_list(self, v):
+        if not v:
+            return []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return [str(v)]
+
+    def _normalize_ai_detailed_analysis(self, ai_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Ensure ai_detailed_analysis always has complete structure with all keys.
+        Fills missing keys with empty arrays/objects so frontend doesn't need fallbacks.
+        """
+        if not isinstance(ai_data, dict):
+            ai_data = {}
+        
+        # Start with complete skeleton
+        normalized = {
+            "detected_headers": self._coerce_list(ai_data.get("detected_headers")),
+            "expected_sections": self._coerce_list(ai_data.get("expected_sections")),
+            "technical_skills": {
+                "strengths": self._coerce_list(ai_data.get("technical_skills", {}).get("strengths")),
+                "weaknesses": self._coerce_list(ai_data.get("technical_skills", {}).get("weaknesses")),
+                "missing_elements": self._coerce_list(ai_data.get("technical_skills", {}).get("missing_elements")),
+                "improvements": ai_data.get("technical_skills", {}).get("improvements") or [],
+            },
+            "keywords": {
+                "strengths": self._coerce_list(ai_data.get("keywords", {}).get("strengths")),
+                "weaknesses": self._coerce_list(ai_data.get("keywords", {}).get("weaknesses")),
+                "missing_elements": self._coerce_list(ai_data.get("keywords", {}).get("missing_elements")),
+                "keywords_found": self._coerce_list(ai_data.get("keywords", {}).get("keywords_found")),
+                "keywords_missing": self._coerce_list(ai_data.get("keywords", {}).get("keywords_missing")),
+                "improvements": ai_data.get("keywords", {}).get("improvements") or [],
+            },
+            "soft_skills": {
+                "relevant_skills": self._coerce_list(ai_data.get("soft_skills", {}).get("relevant_skills")),
+                "missing_elements": self._coerce_list(ai_data.get("soft_skills", {}).get("missing_elements")),
+                "improvements": ai_data.get("soft_skills", {}).get("improvements") or [],
+            },
+            "formatting": {
+                "strengths": self._coerce_list(ai_data.get("formatting", {}).get("strengths")),
+                "weaknesses": self._coerce_list(ai_data.get("formatting", {}).get("weaknesses")),
+                "improvements": ai_data.get("formatting", {}).get("improvements") or [],
+            },
+            "overall_suggestions": self._coerce_list(ai_data.get("overall_suggestions")),
+        }
+        return normalized
+
+    def _llm_call(self, *, system: str, user: str, max_tokens: int = 2600) -> dict:
+        """Safe LLM call that always returns a JSON object or {}."""
+        if self._llm is None:
+            return {}
+        resp = self._llm.chat.completions.create(
+            model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
+            temperature=0.0,
+            top_p=1.0,
+            presence_penalty=0,
+            frequency_penalty=0,
+            response_format={"type": "json_object"},
+            messages=[{"role": "system", "content": system},
+                    {"role": "user", "content": user}],
+            max_tokens=max_tokens,
+        )
+        try:
+            content = resp.choices[0].message.content or "{}"
+            return json.loads(content)
+        except Exception:
+            return {}
+
+    def _compute_cache_key(self, document_id: str, job_id: Optional[str], 
+                          resume_text: str, job_context: str = "") -> str:
+        """
+        Generate cache key: (document_id, job_id or "general", sha256(resume_text), sha256(job_context))
+        """
+        resume_hash = hashlib.sha256(resume_text.encode('utf-8')).hexdigest()[:16]
+        job_hash = hashlib.sha256(job_context.encode('utf-8')).hexdigest()[:16] if job_context else "none"
+        job_key = job_id or "general"
+        return f"{document_id}_{job_key}_{resume_hash}_{job_hash}"
+
+    def _read_analysis_cache(self, file_path: Path, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Read cached analysis from sidecar if exists and matches key."""
+        try:
+            side = self._sidecar(file_path)
+            cache = side.get("analysis_cache", {})
+            if cache.get("cache_key") == cache_key:
+                cached_data = cache.get("data")
+                if cached_data:
+                    # Validate it has minimum required structure
+                    if isinstance(cached_data, dict) and "ats_score" in cached_data:
+                        return cached_data
+        except Exception as e:
+            print(f"[documents] Cache read failed: {e}")
+        return None
+
+    def _write_analysis_cache(self, file_path: Path, cache_key: str, analysis_data: Dict[str, Any]) -> None:
+        """Write analysis to sidecar cache."""
+        try:
+            side = self._sidecar(file_path)
+            side["analysis_cache"] = {
+                "cache_key": cache_key,
+                "data": analysis_data,
+                "cached_at": Path(file_path).stat().st_mtime if file_path.exists() else None
+            }
+            self._write_sidecar(file_path, side)
+        except Exception as e:
+            print(f"[documents] Cache write failed (non-fatal): {e}")
+
+    def _llm_analyze_job_first(self, *, resume_text: str, job_meta: str,
+                            requirements: List[str], required_tech: List[str],
+                            extra_keywords: List[str]) -> Dict[str, Any]:
+        """
+        Ask the LLM to do end-to-end job matching across ANY domain.
+        'technical_skills' == 'hard skills relevant to this role' (non-tech friendly).
+        """
+        # Keep prompt compact but strict; cap resume text length for token safety
+        resume_snip = (resume_text or "")[:12000]
+        job_req_blobs = "\n".join([f"- {r}" for r in (requirements or [])][:60])  # plenty
+        job_skills = ", ".join(required_tech or [])
+        job_keywords = ", ".join(sorted(set(extra_keywords or []))[:60])
+
+        system = (
+            "You are a strict, domain-agnostic resume-to-job assessor. "
+            "Return ONLY valid JSON. Never invent facts not present in the RESUME. "
+            "First, infer the industry/domain from the job title and description (e.g., healthcare, tech, retail, finance, education, hospitality, construction, etc.). "
+            "Then treat 'technical_skills' as 'role-specific hard skills' for that domain. "
+            "For example: clinical skills for nursing, POS systems for retail, programming languages for tech, financial modeling for finance. "
+            "All percentages are 0–100."
+        )
+        user = f"""
+    JOB META:
+    {job_meta}
+
+    REQUIREMENTS (bullets):
+    {job_req_blobs or "(none)"}
+
+    JOB SKILLS (from posting):
+    {job_skills or "(none)"}
+
+    EXTRA KEYWORDS (from title/desc):
+    {job_keywords or "(none)"}
+
+    RESUME (source of truth):
+    <<<RESUME>>>
+    {resume_snip}
+    <<<END RESUME>>>
+
+    Return JSON with exactly these keys:
+    - scores: {{
+        overall, technical_skills, soft_skills, keyword, formatting, readability
+    }}  # all 0-100
+    - job_match_summary: string  # concise, like "Tech skills match: 72%, Requirements: 64%, Keywords: 58%"
+    - keyword_analysis: {{
+        keywords_found: string[],
+        keywords_missing: string[],
+        keyword_density: Array<{{term: string, count: number}}>
+    }}
+    - tech_analysis: {{
+        tech_found: string[],
+        tech_missing: string[]
+    }}  # 'tech' means 'hard skills' for the role
+    - recommendations: string[]  # prioritized, 1 sentence each
+    - ai_detailed_analysis: {{
+        detected_headers: string[],
+        technical_skills: {{
+        strengths: string[], weaknesses: string[], missing_elements: string[],
+        improvements: Array<{{suggestion: string, example_before?: string, example_after?: string, example?: string}}>
+        }},
+        keywords: {{
+        strengths: string[], weaknesses: string[], missing_elements: string[],
+        improvements: Array<{{suggestion: string, example_before?: string, example_after?: string, example?: string}}>
+        }},
+        soft_skills: {{
+        relevant_skills: string[], missing_elements: string[],
+        improvements: Array<{{suggestion: string, example?: string}}>
+        }},
+        formatting: {{
+        strengths: string[], weaknesses: string[],
+        improvements: Array<{{suggestion: string}}>
+        }},
+        overall_suggestions: string[]
+    }}
+    - section_scores: Record<string, {{score: number, improvement_needed: boolean, notes?: string}}>
+        # e.g. "Experience": {{score: 82, improvement_needed: false}}
+
+    Rules:
+    - Only mark a hard skill as 'found' if present in RESUME.
+    - Prefer concise bullets. No markdown. Keep arrays short but useful.
+    """
+
+        j = self._llm_call(system=system, user=user)
+        # Defensive coercion & defaults
+        scores = j.get("scores", {}) if isinstance(j.get("scores"), dict) else {}
+        formatting_score = self._clamp_pct(scores.get("formatting"), 70.0)
+        readability_score = self._clamp_pct(scores.get("readability"), 70.0)
+        keyword_score = self._clamp_pct(scores.get("keyword"), 60.0)
+        tech_score = self._clamp_pct(scores.get("technical_skills"), 60.0)
+        soft_score = self._clamp_pct(scores.get("soft_skills"), 70.0)
+
+        # If overall missing, synthesize with mild weights (LLM-first mindset)
+        overall = scores.get("overall")
+        if overall is None:
+            overall = (
+                0.45 * tech_score
+                + 0.25 * keyword_score
+                + 0.15 * soft_score
+                + 0.10 * formatting_score
+                + 0.05 * readability_score
+            )
+        overall = self._clamp_pct(overall, 65.0)
+
+        # Keyword density => flatten to mapping
+        kd_list = j.get("keyword_analysis", {}).get("keyword_density") or []
+        kd_map = {}
+        for entry in kd_list if isinstance(kd_list, list) else []:
+            try:
+                term = str(entry.get("term", "")).lower().strip()
+                cnt = int(entry.get("count", 0))
+                if term:
+                    kd_map[term] = int(max(0, cnt))
+            except Exception:
+                pass
+
+        section_scores = j.get("section_scores") if isinstance(j.get("section_scores"), dict) else {}
+        # Normalize section scores
+        norm_sections = {}
+        for k, v in (section_scores or {}).items():
+            if not isinstance(v, dict):
+                continue
+            norm_sections[k] = {
+                "score": self._clamp_pct(v.get("score"), 0.0),
+                "improvement_needed": bool(v.get("improvement_needed", False)),
+                **({"notes": str(v.get("notes"))} if v.get("notes") else {}),
+            }
+
+        out = {
+            "word_count": len(resume_text.split()),
+            "overall_score": overall,
+            "formatting_score": formatting_score,
+            "readability_score": readability_score,
+            "keyword_score": keyword_score,
+            "technical_skills_score": tech_score,
+            "soft_skills_score": soft_score,
+            "recommendations": self._coerce_list(j.get("recommendations")),
+            "missing_sections": [],
+            "job_match_summary": j.get("job_match_summary") or
+                f"Tech skills match: {tech_score:.0f}%, Keywords: {keyword_score:.0f}%",
+            "keyword_analysis": {
+                "keywords_found": self._coerce_list(j.get("keyword_analysis", {}).get("keywords_found")),
+                "keywords_missing": self._coerce_list(j.get("keyword_analysis", {}).get("keywords_missing")),
+                "keyword_density": kd_map,
+            },
+            "tech_analysis": {
+                "tech_found": self._coerce_list(j.get("tech_analysis", {}).get("tech_found")),
+                "tech_missing": self._coerce_list(j.get("tech_analysis", {}).get("tech_missing")),
+            },
+            "missing_skills": self._coerce_list(j.get("tech_analysis", {}).get("tech_missing")),
+            "ai_detailed_analysis": self._normalize_ai_detailed_analysis(
+                j.get("ai_detailed_analysis", {}) if isinstance(j.get("ai_detailed_analysis"), dict) else {}
+            ),
+            "section_quality": norm_sections,
+        }
+        return out
+
+    def _llm_analyze_general_first(self, *, resume_text: str) -> Dict[str, Any]:
+        """General, job-agnostic LLM analysis for ANY profession."""
+        resume_snip = (resume_text or "")[:12000]
+        system = (
+            "You are an ATS-aware resume reviewer across ALL professions. "
+            "Return ONLY valid JSON. No markdown. All percentages 0–100."
+        )
+        user = f"""
+    RESUME (source of truth):
+    <<<RESUME>>>
+    {resume_snip}
+    <<<END RESUME>>>
+
+    Return JSON with:
+    - scores: {{ overall, formatting, readability }}  # 0-100
+    - missing_sections: string[]  # optional/soft; only if obviously absent
+    - section_scores: Record<string, {{score: number, improvement_needed: boolean, notes?: string}}>
+    - suggestions: string[]  # prioritized, concise
+    - language: {{ action_verb_count: number }}
+    - ai_detailed_analysis: {{
+        detected_headers: string[],
+        keywords: {{ strengths: string[], weaknesses: string[], missing_elements: string[], improvements: Array<{{suggestion: string, example?: string}}>}}, 
+        soft_skills: {{ relevant_skills: string[], missing_elements: string[], improvements: Array<{{suggestion: string}}>}}, 
+        formatting: {{ strengths: string[], weaknesses: string[], improvements: Array<{{suggestion: string}}>}}, 
+        overall_suggestions: string[]
+    }}
+
+    Rules:
+    - Do not fabricate content not present in resume.
+    - 'section_scores' keys can be any sections present or expected (e.g., Summary, Experience, Education, Certifications).
+    """
+
+        j = self._llm_call(system=system, user=user)
+        scores = j.get("scores", {}) if isinstance(j.get("scores"), dict) else {}
+        formatting = self._clamp_pct(scores.get("formatting"), 70.0)
+        readability = self._clamp_pct(scores.get("readability"), 70.0)
+        overall = self._clamp_pct(scores.get("overall"), (0.55 * readability + 0.45 * formatting))
+
+        sections = j.get("section_scores") if isinstance(j.get("section_scores"), dict) else {}
+        section_quality = {}
+        for k, v in (sections or {}).items():
+            if not isinstance(v, dict):
+                continue
+            section_quality[k] = {
+                "score": self._clamp_pct(v.get("score"), 0.0),
+                "improvement_needed": bool(v.get("improvement_needed", False)),
+                **({"notes": str(v.get("notes"))} if v.get("notes") else {}),
+            }
+
+        lang = j.get("language", {}) if isinstance(j.get("language"), dict) else {}
+        action_count = int(lang.get("action_verb_count") or 0)
+
+        return {
+            "word_count": len(resume_text.split()),
+            "overall_score": overall,
+            "formatting_score": formatting,
+            "readability_score": readability,
+            "completeness_score": overall,  # simple proxy
+            "suggestions": self._coerce_list(j.get("suggestions")),
+            "missing_sections": self._coerce_list(j.get("missing_sections")),
+            "section_quality": section_quality,
+            "action_verb_count": action_count,
+            "ai_detailed_analysis": self._normalize_ai_detailed_analysis(
+                j.get("ai_detailed_analysis", {}) if isinstance(j.get("ai_detailed_analysis"), dict) else {}
+            ),
+        }
+
 
     # ---------------- Analysis / Optimization ----------------
 
@@ -357,28 +697,60 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             return None
 
     def _extract_keywords_from_job(self, job) -> List[str]:
-        kws = set()
-        if job.title:
-            kws.update([w.lower() for w in re.findall(r'\b[A-Za-z]{3,}\b', job.title)])
-        if job.description:
-            txt = job.description.lower()
-            tech_patterns = [
-                r'\b(python|javascript|java|c\+\+|c#|php|ruby|go|rust)\b',
-                r'\b(react|angular|vue|node\.?js|express|django|flask|spring)\b',
-                r'\b(sql|mysql|postgresql|mongodb|redis|elasticsearch)\b',
-                r'\b(aws|azure|gcp|docker|kubernetes|jenkins|git)\b',
-                r'\b(html|css|scss|sass|bootstrap|tailwind)\b',
-                r'\b(api|rest|graphql|microservices|devops|ci/cd)\b',
-            ]
-            for pat in tech_patterns:
-                kws.update(re.findall(pat, txt))
-        return list(kws)
+        text = " ".join(filter(None, [job.title or "", job.description or ""])).strip()
+        if not text:
+            return []
+
+        # LLM-first (only if available and allowed)
+        if self._llm is not None:
+            try:
+                resp = self._llm.chat.completions.create(
+                    model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
+                    temperature=0.0,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content":
+                        "Extract 15–40 domain-relevant keywords/phrases (hard skills, tools, certifications, domain terms). "
+                        "Return JSON: {\"keywords\": [\"...\"]}. Do not invent."},
+                        {"role": "user", "content": text[:8000]},
+                    ],
+                    max_tokens=600,
+                )
+                data = json.loads(resp.choices[0].message.content or "{}")
+                kws = [k.strip() for k in (data.get("keywords") or []) if k and isinstance(k, str)]
+                return list(dict.fromkeys(kws))
+            except Exception:
+                pass
+
+        # Domain-agnostic fallback: proper nouns + frequent terms
+        import re
+        blob = text.lower()
+        # keep words / 1–3-grams, remove stopwords quickly
+        stop = set(("the","and","for","with","to","of","in","on","at","a","an","our","we","you","as","by","from","or"))
+        words = re.findall(r"[a-z][a-z0-9\-\./+]{2,}", blob)
+        freq = {}
+        for w in words:
+            if w in stop:
+                continue
+            freq[w] = freq.get(w, 0) + 1
+        # grab top unigrams + simple proper-noun phrases from original text
+        caps = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b", job.description or "")
+        candidates = list(dict.fromkeys([*sorted(freq, key=freq.get, reverse=True)[:25], *caps]))
+        return [c for c in candidates if c]
+
 
     def _perform_general_resume_analysis(self, text_content: str) -> dict:
+        if self._llm is not None:
+            try:
+                j = self._llm_analyze_general_first(resume_text=text_content or "")
+                return j
+            except Exception as e:
+                print(f"[documents] LLM-first general analysis failed, using fallback: {e}")
+
+        # ---- Fallback to your previous heuristic version ----
         lines = text_content.split("\n")
         words = text_content.split()
         word_count = len(words)
-
         contact_score = 0
         email_ok = bool(re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', text_content))
         if email_ok: contact_score += 33
@@ -386,16 +758,12 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         if phone_ok: contact_score += 33
         name_ok = bool(re.search(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', text_content))
         if name_ok: contact_score += 34
-
-        # quick structure/missing sections proxy
         missing_sections = []
         critical = ["Technical Skills", "Work Experience", "Education"]
         for c in critical:
             if c.lower() not in text_content.lower():
                 missing_sections.append(c)
-
-        action_verbs = ["managed", "led", "built", "created", "developed", "designed", "implemented",
-                        "achieved", "improved", "increased", "reduced", "negotiated", "coordinated"]
+        action_verbs = ["managed", "led", "built", "created", "developed", "designed", "implemented", "achieved", "improved", "increased", "reduced", "negotiated", "coordinated"]
         action_verb_count = sum(1 for v in action_verbs if v in text_content.lower())
         action_verb_score = min(100, action_verb_count * 10)
         bullet_count = text_content.count(SAFE_BULLET)
@@ -403,29 +771,24 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         has_dates = bool(re.search(r'\b(19|20)\d{2}\b', text_content))
         date_score = 80 if has_dates else 0
         content_score = (action_verb_score * 0.4 + bullet_score * 0.3 + date_score * 0.3)
-
         non_ascii = [c for c in text_content if ord(c) > 126]
         formatting_score = 0
-        if len(non_ascii) < 0.05 * max(1, len(text_content)): formatting_score += 40
-        if len([ln for ln in lines if not ln.strip()]) < 0.35 * max(1, len(lines)): formatting_score += 35
-        if bullet_count > 0: formatting_score += 25
+        if len(non_ascii) < 0.05 * max(1, len(text_content)):
+            formatting_score += 40
+        if len([ln for ln in lines if not ln.strip()]) < 0.35 * max(1, len(lines)):
+            formatting_score += 35
+        if bullet_count > 0:
+            formatting_score += 25
         formatting_score = min(100, formatting_score)
-
         suggestions = []
         if not email_ok: suggestions.append("Add a professional email address")
         if not phone_ok: suggestions.append("Include a phone number for contact")
         if not name_ok: suggestions.append("Make your full name prominent at the top")
-        for s in missing_sections:
-            suggestions.append(f"Add a {s} section")
-        if action_verb_count < 5:
-            suggestions.append("Use more action verbs like 'achieved', 'implemented', or 'developed'")
-        if bullet_count < 5:
-            suggestions.append("Use bullet points to make accomplishments stand out")
-        if not has_dates:
-            suggestions.append("Include dates for your experiences and education")
-
+        for s in missing_sections: suggestions.append(f"Add a {s} section")
+        if action_verb_count < 5: suggestions.append("Use more action verbs like 'achieved', 'implemented', or 'developed'")
+        if bullet_count < 5: suggestions.append("Use bullet points to make accomplishments stand out")
+        if not has_dates: suggestions.append("Include dates for your experiences and education")
         overall = (contact_score * 0.25 + (100 - 25*len(missing_sections)) * 0.25 + content_score * 0.25 + formatting_score * 0.25)
-
         return {
             "word_count": word_count,
             "overall_score": overall,
@@ -435,8 +798,10 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             "suggestions": suggestions,
             "missing_sections": missing_sections,
             "section_quality": {},
-            "action_verb_count": action_verb_count
+            "action_verb_count": action_verb_count,
+            "ai_detailed_analysis": self._normalize_ai_detailed_analysis({})
         }
+
 
     def _analyze_against_job(
         self,
@@ -447,26 +812,35 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         use_ai: bool,
         job_meta: str,
     ) -> Dict[str, Any]:
+        # If LLM available (or user asked for it), use LLM-first universal scoring
+        if self._llm is not None and (use_ai or True):  # default to LLM since you want LLM-based
+            try:
+                return self._llm_analyze_job_first(
+                    resume_text=resume_text,
+                    job_meta=job_meta,
+                    requirements=requirements,
+                    required_tech=required_tech,
+                    extra_keywords=extra_keywords,
+                )
+            except Exception as e:
+                print(f"[documents] LLM-first job analysis failed, using fallback: {e}")
+
+        # ---- Fallback to your existing deterministic approach (unchanged) ----
         text_lower = resume_text.lower()
         tokens = set(self._normalize_tokens(resume_text))
-
         tech_keywords = [k.lower() for k in required_tech]
         general_keywords = [k.lower() for k in extra_keywords if k.lower() not in tech_keywords]
         found_tech = [s for s in tech_keywords if s in text_lower]
         tech_score = (len(found_tech) / max(1, len(set(tech_keywords)))) * 100
-
         req_keywords: List[str] = []
         for line in requirements:
             req_keywords.extend(self._normalize_tokens(line))
         req_keywords = list({k for k in req_keywords if len(k) >= 3})
         found_req = [k for k in req_keywords if k in tokens]
         req_score = (len(found_req) / max(1, len(req_keywords))) * 100
-
         extra_norm = [k.lower() for k in extra_keywords if k]
         found_extra = [k for k in extra_norm if k in text_lower]
         keyword_score = min(100.0, (len(set(found_extra)) / max(1, len(set(extra_norm)))) * 100)
-
-        # soft skills (only if explicitly present in job)
         job_description = "\n".join(requirements)
         common_soft_skills = {
             "leadership": ["lead", "leadership", "manage", "oversee", "direct"],
@@ -483,12 +857,9 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         else:
             soft_score = 100
         soft_weight = 0.1 if len(relevant_soft_skills) >= 2 else 0.05
-
         formatting_score = 80.0 if SAFE_BULLET in resume_text or "-" in resume_text else 60.0
         readability_score = 85.0 if len(resume_text.split()) >= 200 else 60.0
-
         overall = (0.45 * tech_score + 0.25 * req_score + (0.30 - soft_weight) * keyword_score + soft_weight * soft_score)
-
         recommendations: List[str] = []
         missing_tech = [k for k in tech_keywords if k not in text_lower]
         missing_keywords = [k for k in general_keywords if k not in text_lower]
@@ -498,42 +869,7 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             recommendations.append("Mirror wording from the job’s requirements in your bullets where truthful.")
         if keyword_score < 60:
             recommendations.append("Add role/industry keywords from the job post (titles, domain terms).")
-
-        analysis_result = {}
-        if use_ai and self._llm is not None:
-            try:
-                prompt = "You are an expert resume analyzer. Respond with valid JSON as instructed."
-                msg = [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": f"JOB INFO:\n{job_meta}\n\nREQUIREMENTS:\n" + "\n".join(requirements[:40])},
-                    {"role": "user", "content": f"REQUIRED TECH (parsed):\n{', '.join(required_tech)}"},
-                    {"role": "user", "content": f"RESUME TEXT:\n{resume_text[:6000]}"},
-                ]
-                resp = self._llm.chat.completions.create(
-                    model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
-                    temperature=0.2,
-                    messages=msg,
-                    response_format={"type": "json_object"},
-                    max_tokens=2000,
-                )
-                try:
-                    ai_analysis = json.loads(resp.choices[0].message.content)
-                    for improvement in ai_analysis.get("technical_skills", {}).get("improvements", []):
-                        if improvement.get("suggestion"):
-                            recommendations.append(f"**{improvement['suggestion']}**")
-                    for improvement in ai_analysis.get("keywords", {}).get("improvements", []):
-                        if improvement.get("suggestion"):
-                            recommendations.append(f"**{improvement['suggestion']}**")
-                    for improvement in ai_analysis.get("overall_suggestions", []):
-                        recommendations.append(f"**{improvement}**")
-                    analysis_result["ai_detailed_analysis"] = ai_analysis
-                except Exception as e:
-                    print(f"[documents] Failed to parse AI response: {e}")
-            except Exception as e:
-                print(f"[documents] AI suggestion failed: {e}")
-
         job_match_summary = f"Tech skills match: {tech_score:.0f}%, Requirements match: {req_score:.0f}%, Keywords: {keyword_score:.0f}%"
-
         return {
             "word_count": len(resume_text.split()),
             "overall_score": overall,
@@ -550,13 +886,12 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 "keywords_missing": missing_keywords,
                 "keyword_density": {k: resume_text.lower().count(k) for k in set(found_extra)},
             },
-            "tech_analysis": {
-                "tech_found": found_tech,
-                "tech_missing": missing_tech,
-            },
+            "tech_analysis": {"tech_found": found_tech, "tech_missing": missing_tech},
             "missing_skills": missing_tech,
-            "ai_detailed_analysis": analysis_result.get("ai_detailed_analysis", {})
+            "ai_detailed_analysis": self._normalize_ai_detailed_analysis({}),
+            "section_quality": {},
         }
+
 
     def analyze_document_ats(
         self,
@@ -573,7 +908,10 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         if not doc:
             raise ValueError("Document not found or access denied")
         resume_text = doc.text or ""
+        file_path = Path(doc.file_path)
 
+        # Prepare job context for cache key
+        job_context = ""
         job_keywords: List[str] = []
         required_tech: List[str] = []
         req_phrases: List[str] = []
@@ -584,7 +922,17 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 required_tech = [(s or "").strip().lower() for s in (job.skills or []) if s]
                 req_phrases = [(r or "").strip().lower() for r in (job.requirements or []) if r]
                 job_keywords = list({*required_tech, *self._extract_keywords_from_job(job)})
+                # Build context string for hashing
+                job_context = f"{job.title or ''}\n{job.description or ''}"
 
+        # Check cache
+        cache_key = self._compute_cache_key(document_id, job_id, resume_text, job_context)
+        cached = self._read_analysis_cache(file_path, cache_key)
+        if cached:
+            # Return cached DocumentAnalysis
+            return DocumentAnalysis(**cached)
+
+        # Cache miss - perform analysis
         if job_id and job:
             job_title = job.title or ""
             job_location = getattr(job, "location", "") or ""
@@ -610,60 +958,52 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 soft_skills_score=analysis["soft_skills_score"],
                 suggestions=analysis["recommendations"],
             )
-            return DocumentAnalysis(
+            result = DocumentAnalysis(
                 word_count=analysis["word_count"],
                 keyword_density=analysis.get("keyword_analysis", {}).get("keyword_density", {}),
                 readability_score=analysis["readability_score"],
                 ats_score=ats,
                 suggested_improvements=analysis["recommendations"],
-                missing_sections=[],
+                missing_sections=analysis.get("missing_sections", []),
                 job_match_summary={"summary": analysis.get("job_match_summary", "")},
                 keyword_analysis=analysis.get("keyword_analysis"),
                 missing_skills={"skills": analysis.get("missing_skills", [])},
                 ai_detailed_analysis=analysis.get("ai_detailed_analysis"),
-                section_quality=None,
+                section_quality=analysis.get("section_quality"),
                 action_verb_count=None,
             )
         else:
             gen = self._perform_general_resume_analysis(resume_text)
+
             ats = ATSScore(
                 overall_score=gen["overall_score"],
                 formatting_score=gen["formatting_score"],
-                keyword_score=gen["completeness_score"],
+                keyword_score=gen.get("completeness_score", gen.get("readability_score", 0.0)),
                 readability_score=gen["readability_score"],
                 technical_skills_score=None,
                 soft_skills_score=None,
                 suggestions=gen["suggestions"],
             )
-            # optional AI “detailed” general analysis (no job)
-            ai_detailed = {}
-            if self._llm is not None and use_ai:
-                try:
-                    ai_detailed = {
-                        "detected_headers": [],
-                        "expected_sections": [],
-                        "technical_skills": {"strengths": [], "weaknesses": [], "missing_elements": [], "improvements": []},
-                        "keywords": {"strengths": [], "weaknesses": [], "missing_elements": [], "improvements": []},
-                        "soft_skills": {"relevant_skills": [], "missing_elements": [], "improvements": []},
-                        "formatting": {"strengths": [], "weaknesses": [], "improvements": []},
-                        "overall_suggestions": [],
-                    }
-                except Exception:
-                    pass
-            return DocumentAnalysis(
+
+            result = DocumentAnalysis(
                 word_count=gen["word_count"],
                 keyword_density={},
                 readability_score=gen["readability_score"],
                 ats_score=ats,
                 suggested_improvements=gen["suggestions"],
-                missing_sections=gen["missing_sections"],
+                missing_sections=gen.get("missing_sections", []),
                 job_match_summary={"summary": "General resume analysis - select a job for detailed matching"},
                 keyword_analysis=None,
                 missing_skills={"skills": []},
-                ai_detailed_analysis=ai_detailed,
+                ai_detailed_analysis=gen.get("ai_detailed_analysis", {}),
                 section_quality=gen.get("section_quality"),
                 action_verb_count=gen.get("action_verb_count"),
             )
+
+        # Write to cache
+        self._write_analysis_cache(file_path, cache_key, result.dict())
+        
+        return result
 
     def optimize_document(self, db: Session, request: DocumentOptimizationRequest) -> str:
         doc = db.query(models.Resume).filter(models.Resume.id == uuid.UUID(request.document_id)).first()
