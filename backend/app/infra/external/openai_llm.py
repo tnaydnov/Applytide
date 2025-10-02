@@ -42,14 +42,17 @@ description:
 requirements[]:
 - Extract ONLY CORE/MANDATORY qualification lines (must-have requirements)
 - Use your judgment to distinguish between:
-  * CORE requirements: essential qualifications without which applications would be rejected
+  * CORE requirements: essential qualifications without which applications would be rejected (e.g., "5+ years experience", "Bachelor's degree required")
   * NICE-TO-HAVE features: preferred skills, advantages, or bonuses that should stay in description
-- Look for statements containing language like "required", "must have", "essential"
+  * COMPANY/CULTURE INFO: sections about company culture, benefits, team, work environment belong in description, NOT requirements
+- DO NOT extract lines from sections like "Why Join Us?", "About Us", "Company Culture", "Benefits" - these stay in description
+- Look for statements containing language like "required", "must have", "essential", "X+ years"
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols but preserve the full text
 - Remove duplicates (case-insensitive comparison)
 - Skip empty strings or strings shorter than 5 characters
 - These lines should NOT appear in the description
+- If you extract requirements from a "What You Bring" or similar section, REMOVE that section header from description
 
 skills[]:
 - Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE

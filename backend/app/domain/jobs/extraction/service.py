@@ -86,27 +86,17 @@ class JobExtractionService:
     def _preclean_noise(self, text: str) -> str:
         """
         Remove obvious non-job UI chrome commonly copied from LinkedIn/ATS pages.
-        Keeps everything from 'About the job' / 'Job Description' onward if present.
-        Also drops frequent UI lines anywhere in the text.
+        Removes common UI noise lines but PRESERVES company information sections.
         """
         if not text:
             return ""
 
         s = text
 
-        # If there's a clear starting anchor, keep from there forward.
-        anchors = [
-            r"^\s*About the job\s*$",
-            r"^\s*Job Description\s*$",
-            r"^\s*Description\s*$",
-            r"^\s*About the role\s*$",
-            r"^\s*Role Summary\s*$",
-        ]
-        for pat in anchors:
-            m = re.search(pat, s, flags=re.I | re.M)
-            if m:
-                s = s[m.start():]
-                break
+        # DON'T cut off content at anchor points - this removes company overviews!
+        # Company sections like "Company Overview", "About the Company", "About Us" 
+        # often appear BEFORE "About the Role" and should be preserved.
+        # The LLM is smart enough to filter out actual UI chrome.
 
         # Drop common UI/noise lines anywhere
         drop_line_res = [
