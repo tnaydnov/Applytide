@@ -209,23 +209,74 @@ async function getRenderedCapture(tabId, {
         '[data-testid*="expand"]',
         '[data-control-name*="expand"]',
         '[aria-controls]',
-        '[aria-expanded="false"]'
+        '[aria-expanded="false"]',
+        // Angular Material specific
+        '[data-collapsible="false"]',
+        '.mat-expansion-panel-header',
+        '.mat-accordion button',
+        // Bootstrap accordion
+        '[data-toggle="collapse"]',
+        '[data-bs-toggle="collapse"]',
+        '.accordion-button.collapsed',
+        // Generic accordion patterns
+        '[class*="accordion"]',
+        '[class*="collapse"]',
+        '[class*="expand"]',
+        // Job board specific
+        '[data-testid*="overview"]',
+        '[data-testid*="section"]',
+        '[class*="job-"]',
+        'details:not([open])'
       ].join(',')));
 
-      const txtRe = /\b(show|see|read|view)\s+(more|details|all)|expand|more|\u2026|…/i;
+      const txtRe = /\b(show|see|read|view|open)\s+(more|details|all|description|requirements|responsibilities)|expand|more|overview|description|requirements|responsibilities|\u2026|…/i;
+
+      console.log('[INJECTED] tryExpandAll: Found', candidates.length, 'potential expand buttons');
+      let expanded = 0;
 
       for (const el of candidates) {
-        const label = (el.innerText || el.textContent || '').trim().toLowerCase();
-        const isLikely = txtRe.test(label) || el.getAttribute('aria-expanded') === 'false';
+        const label = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').trim().toLowerCase();
+        const dataAttrs = Array.from(el.attributes || [])
+          .map(a => a.name + '=' + a.value)
+          .join(' ')
+          .toLowerCase();
+        
+        const isLikely = txtRe.test(label) || 
+                        txtRe.test(dataAttrs) ||
+                        el.getAttribute('aria-expanded') === 'false' ||
+                        el.getAttribute('data-collapsible') === 'false' ||
+                        (el.tagName === 'DETAILS' && !el.hasAttribute('open'));
+        
         if (!isLikely) continue;
+        
         try {
-          // Try a few real interactions:
-          el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+          // For <details> elements, just set the open attribute
+          if (el.tagName === 'DETAILS') {
+            el.setAttribute('open', '');
+            expanded++;
+            continue;
+          }
+          
+          // Try multiple interaction methods
+          el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }));
+          el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
           el.click();
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
-        } catch { }
+          el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+          el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+          
+          // For aria-expanded, try to set it directly
+          if (el.getAttribute('aria-expanded') === 'false') {
+            el.setAttribute('aria-expanded', 'true');
+          }
+          
+          expanded++;
+        } catch (e) {
+          console.warn('[INJECTED] Failed to expand element:', e);
+        }
       }
+
+      console.log('[INJECTED] tryExpandAll: Attempted to expand', expanded, 'elements');
     }
 
     // 2) Scroll/overscan (helps virtualized lists render)

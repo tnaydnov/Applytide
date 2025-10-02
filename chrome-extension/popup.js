@@ -431,21 +431,12 @@ document.getElementById('openDirectLinkBtn')?.addEventListener('click', async ()
     console.log('[POPUP] Redirecting to direct URL:', window.__iframeUrl);
     
     try {
-      // Update current tab to the iframe URL
+      // Get current tab and redirect immediately
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
       
-      // Show redirect message
-      showSection('processing');
-      setProgress('flow:begin', 'Redirecting to job page...');
-      processingStatus.textContent = 'Opening direct job posting URL. Please click the extension again after the page loads to extract the job.';
-      
-      // Wait a moment to show the message, then redirect
-      setTimeout(async () => {
-        await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
-        console.log('[POPUP] Redirected to:', window.__iframeUrl);
-        // Popup will close automatically after redirect
-        // User will need to click extension again on new page
-      }, 1000);
+      // Close the popup explicitly
+      window.close();
       
     } catch (error) {
       console.error('[POPUP] Error redirecting:', error);
