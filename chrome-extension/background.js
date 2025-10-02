@@ -185,8 +185,14 @@ async function apiSaveJob(jobPayload) {
 async function getRenderedCapture(tabId, {
   timeoutMs = 18000,
   scrollSteps = 10,
-  pauseMs = 300
+  pauseMs = 300,
+  initialDelayMs = 2000  // NEW: Wait for JS to load dynamic content
 } = {}) {
+
+  // Wait for initial page load and JavaScript execution
+  console.log(`[CAPTURE] Waiting ${initialDelayMs}ms for dynamic content to load...`);
+  await new Promise(r => setTimeout(r, initialDelayMs));
+  console.log(`[CAPTURE] Initial delay complete, starting capture attempts`);
 
   // This function is stringified & executed in the page context
   function INJECTED_CAPTURE() {
@@ -442,9 +448,13 @@ async function getRenderedCapture(tabId, {
 
   const start = Date.now();
   let last = null;
+  let attempt = 0;
   notifyProgress('capture:start');
 
   while (Date.now() - start < timeoutMs) {
+    attempt++;
+    console.log(`[CAPTURE] Attempt ${attempt}...`);
+    
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',           // run in page world so hooks & clicks work
@@ -453,15 +463,38 @@ async function getRenderedCapture(tabId, {
     last = result;
     const jlCount = Array.isArray(result?.jsonld) ? result.jsonld.length : 0;
     notifyProgress('capture:pass', { textLen: result?.textLen || 0, jsonld: jlCount });
+    
     // Heuristic: either enough text or we got JSON-LD JobPosting
     const hasJobPosting = Array.isArray(result?.jsonld) && result.jsonld.some(
       x => String(x?.['@type'] || '').toLowerCase().includes('jobposting')
     );
     const textEnough = (result?.textLen || 0) >= 1400; // a tad safer for SPAs
     const hasReadable = !!result?.readable?.textContent && result.readable.textContent.length > 800;
-    if (hasJobPosting || hasReadable || textEnough) break;
+    
+    console.log(`[CAPTURE] Attempt ${attempt} results:`);
+    console.log(`  - Text length: ${result?.textLen || 0}`);
+    console.log(`  - Readable text: ${result?.readable?.textContent?.length || 0}`);
+    console.log(`  - JSON-LD count: ${jlCount}`);
+    console.log(`  - Has JobPosting: ${hasJobPosting}`);
+    console.log(`  - Text enough (≥1400): ${textEnough}`);
+    console.log(`  - Readable enough (≥800): ${hasReadable}`);
+    console.log(`  - Title: ${result?.readable?.title || 'none'}`);
+    console.log(`  - Text preview: ${(result?.readable?.textContent || '').substring(0, 200)}...`);
+    
+    if (hasJobPosting || hasReadable || textEnough) {
+      console.log(`[CAPTURE] ✓ Capture criteria met after ${attempt} attempts`);
+      break;
+    }
+    
+    console.log(`[CAPTURE] Criteria not met, waiting 600ms before retry...`);
     await new Promise(r => setTimeout(r, 600));
   }
+  const elapsed = Date.now() - start;
+  console.log(`[CAPTURE] Capture complete after ${elapsed}ms`);
+  console.log(`[CAPTURE] Final content length: ${last?.textLen || 0}`);
+  console.log(`[CAPTURE] Final readable length: ${last?.readable?.textContent?.length || 0}`);
+  console.log(`[CAPTURE] Final title: ${last?.readable?.title || 'none'}`);
+  
   notifyProgress('capture:done', { ok: !!last, textLen: last?.textLen || 0 });
   return last || { html: '', jsonld: [], metas: {}, readable: null, textLen: 0, xhrLogs: [] };
 }
