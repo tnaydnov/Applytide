@@ -385,7 +385,8 @@ function showResult(success, message, jobData = null) {
 function showIframeWarning(url, type) {
   document.getElementById('iframeUrl').textContent = url;
   const typeText = type.charAt(0).toUpperCase() + type.slice(1);
-  document.getElementById('iframeType')?.textContent = typeText;
+  const iframeTypeEl = document.getElementById('iframeType');
+  if (iframeTypeEl) iframeTypeEl.textContent = typeText;
   showSection('iframeWarning');
   
   // Store for button handlers
@@ -395,7 +396,8 @@ function showIframeWarning(url, type) {
 
 // PDF warning
 function showPDFWarning(url) {
-  document.getElementById('pdfUrl')?.textContent = url || 'PDF document detected';
+  const pdfUrlEl = document.getElementById('pdfUrl');
+  if (pdfUrlEl) pdfUrlEl.textContent = url || 'PDF document detected';
   showSection('pdfWarning');
 }
 
@@ -417,8 +419,10 @@ function showShadowDOMWarning() {
 // Generic unsupported warning
 function showGenericWarning(issues) {
   const issueTypes = issues.map(i => i.type).join(', ');
-  document.getElementById('genericWarningText')?.textContent = 
-    `Detected: ${issueTypes}. Automatic extraction may not work properly.`;
+  const genericTextEl = document.getElementById('genericWarningText');
+  if (genericTextEl) {
+    genericTextEl.textContent = `Detected: ${issueTypes}. Automatic extraction may not work properly.`;
+  }
   showSection('genericWarning');
 }
 
