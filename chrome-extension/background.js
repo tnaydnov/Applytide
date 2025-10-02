@@ -71,48 +71,83 @@ async function ensureAccessToken() {
 
 // -------- API calls needed for Flow 1 --------
 async function apiExtract(payload) {
-  console.log('[bg] apiExtract - Step 4: Making API call');
-  console.log('[bg] DEBUG: API_HOST=', API_HOST);
-  console.log('[bg] DEBUG: payload keys=', Object.keys(payload));
-  console.log('[bg] DEBUG: payload summary=', {
+  console.log('\n--- apiExtract START ---');
+  console.log('[API] Making request to backend extraction endpoint');
+  console.log('[API] Target:', API_HOST + '/ai/extract');
+  console.log('[API] Payload keys:', Object.keys(payload));
+  console.log('[API] Payload summary:', {
     url: payload.url,
-    html_len: (payload.html || '').length,
-    manual_text_len: (payload.manual_text || '').length,
-    jsonld_count: (payload.jsonld || []).length
+    url_length: payload.url?.length,
+    html_length: (payload.html || '').length,
+    html_preview: (payload.html || '').substring(0, 150) + '...',
+    manual_text_length: (payload.manual_text || '').length,
+    jsonld_count: (payload.jsonld || []).length,
+    jsonld_types: (payload.jsonld || []).map(j => j?.['@type']).filter(Boolean),
+    has_readable: !!payload.readable,
+    readable_title: payload.readable?.title,
+    has_metas: !!payload.metas,
+    metas_keys: Object.keys(payload.metas || {}).slice(0, 10),
+    xhrLogs_count: (payload.xhrLogs || []).length,
+    quick_hints: payload.quick
   });
 
+  console.log('[API] Ensuring access token...');
   await ensureAccessToken();
+  console.log('[API] Access token ready, making fetch request...');
+  
+  const fetchStart = Date.now();
   const res = await fetch(`${API_HOST}/ai/extract`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload)
   });
 
-  console.log('[bg] DEBUG: API response status=', res.status);
+  const fetchTime = Date.now() - fetchStart;
+  console.log('[API] Response received in', fetchTime + 'ms');
+  console.log('[API] Response status:', res.status, res.statusText);
+  console.log('[API] Response headers:', {
+    contentType: res.headers.get('content-type'),
+    contentLength: res.headers.get('content-length')
+  });
 
   if (!res.ok) {
-    console.log('[bg] ERROR: API request failed, status=', res.status);
+    console.error('[API] ✗ API request failed!');
+    console.error('[API] Status:', res.status, res.statusText);
     let errorMsg = `Request failed (${res.status})`;
     try {
       const errorData = await res.json();
-      console.log('[bg] DEBUG: Error response data=', errorData);
+      console.error('[API] Error response body:', errorData);
       errorMsg = errorData?.detail || errorMsg;
 
       // Check if it's debug info from backend
       if (errorMsg.includes('DEBUG_INFO:')) {
-        console.log('[bg] BACKEND DEBUG INFO RECEIVED:', errorMsg);
+        console.log('[API] BACKEND DEBUG INFO RECEIVED:', errorMsg);
       }
     } catch (e) {
-      console.log('[bg] ERROR: Failed to parse error response:', e);
-      // Fallback to status text if JSON parsing fails
+      console.error('[API] Failed to parse error response:', e);
+      console.error('[API] Falling back to status text');
       errorMsg = res.statusText || errorMsg;
     }
+    console.error('[API] Final error message:', errorMsg);
+    console.log('--- apiExtract ERROR ---\n');
     throw new Error(errorMsg);
   }
 
-  console.log('[bg] DEBUG: API request successful, parsing response');
+  console.log('[API] ✓ API request successful (status 200)');
+  console.log('[API] Parsing JSON response...');
+  
+  const responseData = await res.json();
+  console.log('[API] Response parsed successfully');
+  console.log('[API] Response data:', {
+    has_job: !!responseData.job,
+    job_keys: Object.keys(responseData.job || {}),
+    job_title: responseData.job?.title,
+    job_company: responseData.job?.company_name,
+    job_desc_length: responseData.job?.description?.length
+  });
+  console.log('--- apiExtract SUCCESS ---\n');
 
-  return res.json();
+  return responseData;
 }
 
 async function apiSaveJob(jobPayload) {
@@ -619,41 +654,90 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Flow 1: Save job only
         case 'APPLYTIDE_RUN_FLOW1': {
-          console.log('[bg] APPLYTIDE_RUN_FLOW1 - Step 1: Starting regular extraction');
+          console.log('\n========================================');
+          console.log('[BACKGROUND] FLOW START - APPLYTIDE_RUN_FLOW1');
+          console.log('[BACKGROUND] Timestamp:', new Date().toISOString());
+          console.log('========================================');
+          
+          console.log('[BACKGROUND] Step 1: Ensuring access token...');
           await ensureAccessToken();
+          console.log('[BACKGROUND] Step 1: Access token ready');
+          
+          console.log('[BACKGROUND] Step 2: Getting active tab...');
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (!tab?.id) throw new Error('No active tab');
+          if (!tab?.id) {
+            console.error('[BACKGROUND] ERROR: No active tab found');
+            throw new Error('No active tab');
+          }
 
           const url = tab.url;
-          console.log('[bg] DEBUG: Regular flow URL=', url);
-          console.log('[bg] DEBUG: Page classification=', classifyPage(url));
+          const pageType = classifyPage(url);
+          console.log('[BACKGROUND] Step 2: Tab info:', {
+            tabId: tab.id,
+            url: url,
+            title: tab.title,
+            pageType: pageType
+          });
 
-          if (classifyPage(url) !== 'allowed') {
-            console.log('[bg] ERROR: Page not allowed for auto-save');
+          if (pageType !== 'allowed') {
+            console.error('[BACKGROUND] ERROR: Page classification check failed');
+            console.error('[BACKGROUND] Page type:', pageType, 'Expected: allowed');
+            console.error('[BACKGROUND] URL:', url);
             sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste instead.' });
             break;
           }
+          
           if (RUNNING_BY_TAB.get(tab.id)) {
+            console.warn('[BACKGROUND] WARNING: Already processing this tab');
             sendResponse({ ok: false, error: 'Already working on this tab. Please wait.' });
             break;
           }
 
           try {
             RUNNING_BY_TAB.set(tab.id, true);
+            console.log('[BACKGROUND] Step 3: Tab marked as processing');
             notifyProgress('flow:begin', { url });
 
             // short-term cache
+            console.log('[BACKGROUND] Step 4: Checking capture cache...');
             const cached = CAPTURE_CACHE.get(url);
-            if (cached && (Date.now() - cached.ts) < CAPTURE_TTL_MS) {
-              console.log('[bg] DEBUG: Using cached capture data');
+            const cacheAge = cached ? Date.now() - cached.ts : null;
+            console.log('[BACKGROUND] Cache status:', {
+              hasCached: !!cached,
+              cacheAge: cacheAge,
+              ttl: CAPTURE_TTL_MS,
+              isValid: cached && cacheAge < CAPTURE_TTL_MS
+            });
+            
+            if (cached && cacheAge < CAPTURE_TTL_MS) {
+              console.log('[BACKGROUND] Step 4: ✓ Using cached capture (age: ' + cacheAge + 'ms)');
+              console.log('[BACKGROUND] Cached data summary:', {
+                htmlLength: cached.capture?.html?.length,
+                jsonldCount: cached.capture?.jsonld?.length,
+                hasReadable: !!cached.capture?.readable,
+                textLen: cached.capture?.textLen
+              });
               notifyProgress('capture:cache_hit', { url });
               const payload = { url, ...cached.capture, quick: {} };
-              console.log('[bg] DEBUG: Cached payload summary=', {
+              console.log('[BACKGROUND] Step 5: Preparing payload from cache:', {
+                url: payload.url,
                 html_len: (payload.html || '').length,
                 jsonld_count: (payload.jsonld || []).length,
-                readable: !!payload.readable
+                readable: !!payload.readable,
+                metas_keys: Object.keys(payload.metas || {}),
+                xhrLogs_count: (payload.xhrLogs || []).length
               });
+              
+              console.log('[BACKGROUND] Step 6: Calling apiExtract with cached data...');
               const { job } = await apiExtract(payload);
+              console.log('[BACKGROUND] Step 7: apiExtract returned:', {
+                hasJob: !!job,
+                title: job?.title,
+                company: job?.company_name,
+                descriptionLength: job?.description?.length,
+                requirementsCount: job?.requirements?.length,
+                skillsCount: job?.skills?.length
+              });
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
                 notifyProgress('backend:error');
@@ -667,41 +751,98 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               break;
             }
 
-            console.log('[bg] DEBUG: No cache, capturing page content');
+            console.log('[BACKGROUND] Step 4: ✗ No valid cache, starting fresh capture');
             notifyProgress('capture:run');
+            
+            console.log('[BACKGROUND] Step 5: Calling getRenderedCapture for tab', tab.id);
+            const captureStart = Date.now();
             const capture = await getRenderedCapture(tab.id);
-            CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
-
-            console.log('[bg] DEBUG: Page capture completed');
-            console.log('[bg] DEBUG: Capture summary=', {
+            const captureTime = Date.now() - captureStart;
+            
+            console.log('[BACKGROUND] Step 6: ✓ Capture completed in', captureTime + 'ms');
+            console.log('[BACKGROUND] Capture data summary:', {
               html_len: (capture.html || '').length,
+              html_preview: (capture.html || '').substring(0, 200),
               jsonld_count: (capture.jsonld || []).length,
+              jsonld_types: (capture.jsonld || []).map(j => j?.['@type']).filter(Boolean),
               readable: !!capture.readable,
-              textLen: capture.textLen || 0
+              readable_title: capture.readable?.title,
+              readable_textLen: capture.readable?.textContent?.length,
+              textLen: capture.textLen || 0,
+              metas_count: Object.keys(capture.metas || {}).length,
+              xhrLogs_count: (capture.xhrLogs || []).length
             });
+            
+            CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
+            console.log('[BACKGROUND] Step 7: Capture cached for future use');
 
             notifyProgress('backend:extract');
             const payload = { url, ...capture, quick: {} };
-            console.log('[bg] DEBUG: Regular extraction payload summary=', {
+            console.log('[BACKGROUND] Step 8: Preparing payload for backend:', {
+              url: payload.url,
               html_len: (payload.html || '').length,
               jsonld_count: (payload.jsonld || []).length,
               readable: !!payload.readable
             });
+            console.log('[BACKGROUND] Step 9: Calling apiExtract...');
+            const extractStart = Date.now();
             const { job } = await apiExtract(payload);
-            if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
-              !((job?.description || '').trim().length >= 30)) {
+            const extractTime = Date.now() - extractStart;
+            
+            console.log('[BACKGROUND] Step 10: ✓ apiExtract completed in', extractTime + 'ms');
+            console.log('[BACKGROUND] Extracted job data:', {
+              title: job?.title,
+              company_name: job?.company_name,
+              location: job?.location,
+              remote_type: job?.remote_type,
+              job_type: job?.job_type,
+              description_length: (job?.description || '').length,
+              description_preview: (job?.description || '').substring(0, 200),
+              requirements_count: (job?.requirements || []).length,
+              skills_count: (job?.skills || []).length,
+              skills: job?.skills
+            });
+            
+            // Validate extraction quality
+            const hasTitle = !!(job?.title?.trim());
+            const hasCompany = !!(job?.company_name?.trim());
+            const hasDescription = ((job?.description || '').trim().length >= 30);
+            
+            console.log('[BACKGROUND] Validation check:', {
+              hasTitle,
+              hasCompany,
+              hasDescription,
+              isValid: hasTitle || hasCompany || hasDescription
+            });
+            
+            if (!hasTitle && !hasCompany && !hasDescription) {
+              console.error('[BACKGROUND] ERROR: Extraction validation failed - insufficient data');
               notifyProgress('backend:error');
               throw new Error('Could not extract meaningful job details. Try paste text instead.');
             }
 
-
+            console.log('[BACKGROUND] Step 11: ✓ Validation passed, saving job...');
             notifyProgress('backend:save');
+            const saveStart = Date.now();
             const saved = await apiSaveJob(job);
+            const saveTime = Date.now() - saveStart;
+            
+            console.log('[BACKGROUND] Step 12: ✓ Job saved successfully in', saveTime + 'ms');
+            console.log('[BACKGROUND] Saved job info:', {
+              id: saved?.id,
+              title: saved?.title,
+              company_name: saved?.company_name
+            });
 
             notifyProgress('flow:done', { savedId: saved?.id });
+            console.log('[BACKGROUND] Step 13: ✓✓✓ FLOW COMPLETE - SUCCESS ✓✓✓');
+            console.log('[BACKGROUND] Total flow time:', Date.now() - new Date(console.log.timestamp || Date.now()).getTime());
+            console.log('[BACKGROUND] Sending success response to popup');
+            console.log('========================================\n');
             sendResponse({ ok: true, saved });
           } finally {
             RUNNING_BY_TAB.delete(tab.id);
+            console.log('[BACKGROUND] Tab processing flag cleared');
           }
           break;
         }

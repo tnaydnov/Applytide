@@ -213,20 +213,44 @@ function checkModeAndShow(mode) {
 // Job extraction methods
 async function saveCurrentJob() {
   try {
+    console.log('========================================');
+    console.log('[POPUP] Step 1: User clicked Save Current Job');
+    console.log('[POPUP] Timestamp:', new Date().toISOString());
+    console.log('========================================');
+    
     showSection('processing');
     setProgress('flow:begin', 'Starting job extraction...');
     resetProgressBar();
 
+    console.log('[POPUP] Step 2: Sending APPLYTIDE_RUN_FLOW1 message to background...');
     const response = await bg.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
+    console.log('[POPUP] Step 3: Received response from background:', {
+      ok: response?.ok,
+      hasJob: !!response?.saved,
+      jobTitle: response?.saved?.title,
+      jobCompany: response?.saved?.company_name,
+      error: response?.error
+    });
 
     if (response?.ok) {
+      console.log('[POPUP] Step 4: SUCCESS - Job extracted and saved!');
+      console.log('[POPUP] Saved job details:', {
+        id: response.saved?.id,
+        title: response.saved?.title,
+        company: response.saved?.company_name,
+        location: response.saved?.location,
+        descriptionLength: response.saved?.description?.length
+      });
       setProgress('flow:done', 'Job saved successfully!');
       showResult(true, 'Job saved successfully!', response.saved);
     } else {
+      console.error('[POPUP] Step 4: FAILED - Job extraction failed');
+      console.error('[POPUP] Error message:', response?.error);
       showResult(false, response?.error || 'Failed to save job');
     }
   } catch (error) {
-    console.error('Save job failed:', error);
+    console.error('[POPUP] Step 4: EXCEPTION caught:', error);
+    console.error('[POPUP] Error stack:', error.stack);
     showResult(false, 'Failed to save job');
   }
 }

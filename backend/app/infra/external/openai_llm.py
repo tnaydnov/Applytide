@@ -98,44 +98,66 @@ class OpenAILLMExtractor(LLMExtractor):
         print(f"OpenAI LLM: Using text_model='{self.text_model}', image_model='{self.image_model}'")
 
     def extract_job(self, url: str, text: str, hints=None) -> dict:
-        print("\n=== OPENAI LLM EXTRACTOR START ===")
+        print("\n" + "#"*80)
+        print("### OPENAI LLM EXTRACTOR START ###")
+        print("#"*80)
+        
         hints = hints or {}
         text_len = len(text)
-        print(f"OpenAI Extractor: Starting extraction")
-        print(f"OpenAI Extractor: text_len = {text_len}")
-        print(f"OpenAI Extractor: text_model = {self.text_model}")
-        print(f"OpenAI Extractor: url = {url}")
-        print(f"OpenAI Extractor: hints = {hints}")
-        print(f"OpenAI Extractor: text preview = {repr(text[:300])}")
+        
+        print(f"\n[LLM] INPUT PARAMETERS:")
+        print(f"  URL: {url}")
+        print(f"  Text length: {text_len} characters")
+        print(f"  Text is empty: {not text}")
+        print(f"  Text preview (first 500 chars):\n{repr(text[:500])}...\n")
+        print(f"  Model: {self.text_model}")
+        print(f"  Hints provided: {list(hints.keys())}")
+        print(f"  Hints values: {hints}")
         
         if text_len < 50:
-            print(f"OpenAI Extractor ERROR: Text too short: {text_len} characters")
+            print(f"\n[LLM] ✗ ERROR: Text too short: {text_len} characters")
+            print(f"[LLM] Minimum required: 50 characters")
             raise ValueError(f"Text too short for extraction: {text_len} characters")
+        
+        print(f"\n[LLM] ✓ Text length validation passed")
 
         # Build two views: raw (for exact description) and numbered (for line-pointer extraction)
+        print(f"\n[LLM] Preparing text for LLM...")
         lines = (text or "").splitlines()
         numbered = "\n".join(f"{i+1:05d} {ln}" for i, ln in enumerate(lines))
+        print(f"[LLM] Text split into {len(lines)} lines")
 
+        print(f"\n[LLM] Building message array...")
         messages = [{"role": "system", "content": _EXTRACT_TEXT_SYSTEM}]
         if hints:
+            print(f"[LLM] Adding hints message")
             messages.append({"role": "user", "content": f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
-        messages.append({
-            "role": "user",
-            "content": (
-                f"Source URL: {url}\n\n"
-                "RAW_DESCRIPTION (use this text verbatim for the JSON 'description' field):\n"
-                "<<<BEGIN_RAW>>>\n"
-                f"{text}\n"
-                "<<<END_RAW>>>\n\n"
-                "DESCRIPTION_LINES (1-based; use this ONLY to decide remove_lines[]):\n"
-                f"{numbered}"
-            )
-        })
+        
+        user_content = (
+            f"Source URL: {url}\n\n"
+            "RAW_DESCRIPTION (use this text verbatim for the JSON 'description' field):\n"
+            "<<<BEGIN_RAW>>>\n"
+            f"{text}\n"
+            "<<<END_RAW>>>\n\n"
+            "DESCRIPTION_LINES (1-based; use this ONLY to decide remove_lines[]):\n"
+            f"{numbered}"
+        )
+        messages.append({"role": "user", "content": user_content})
+        
+        print(f"[LLM] Message array prepared: {len(messages)} messages")
+        print(f"[LLM] Message sizes:")
+        for i, msg in enumerate(messages):
+            print(f"  Message {i}: {len(msg['content'])} chars")
+        print(f"[LLM] Total prompt size: {sum(len(m['content']) for m in messages)} chars")
 
-        print(f"OpenAI Extractor: Prepared {len(messages)} messages for API call")
-        print(f"OpenAI Extractor: Making API call to OpenAI...")
+        print(f"\n[LLM] Making OpenAI API call...")
+        print(f"[LLM] Model: {self.text_model}")
+        print(f"[LLM] Temperature: 0.1")
+        print(f"[LLM] Max tokens: 2500")
+        print(f"[LLM] Response format: json_object")
 
         try:
+            api_start = __import__('time').time()
             resp = self.client.chat.completions.create(
                 model=self.text_model,
                 temperature=0.1,
@@ -143,19 +165,45 @@ class OpenAILLMExtractor(LLMExtractor):
                 messages=messages,
                 max_tokens=2500
             )
-            print(f"OpenAI Extractor: API call successful")
+            api_time = __import__('time').time() - api_start
+            
+            print(f"\n[LLM] ✓ API call successful in {api_time:.2f}s")
+            print(f"[LLM] Response metadata:")
+            print(f"  Model: {resp.model}")
+            print(f"  Finish reason: {resp.choices[0].finish_reason if resp.choices else 'None'}")
+            print(f"  Total tokens: {resp.usage.total_tokens if resp.usage else 'Unknown'}")
+            print(f"  Prompt tokens: {resp.usage.prompt_tokens if resp.usage else 'Unknown'}")
+            print(f"  Completion tokens: {resp.usage.completion_tokens if resp.usage else 'Unknown'}")
 
             if not resp.choices or not resp.choices[0].message.content:
-                print("OpenAI Extractor ERROR: OpenAI returned empty response")
+                print(f"\n[LLM] ✗ ERROR: OpenAI returned empty response")
+                print(f"[LLM] Response object: {resp}")
                 raise ValueError("OpenAI returned empty response")
 
-            print(f"OpenAI Extractor: Parsing JSON response...")
-            print(f"OpenAI Extractor: Raw response preview = {resp.choices[0].message.content[:200]}")
-
-            data = json.loads(resp.choices[0].message.content)
+            raw_content = resp.choices[0].message.content
+            print(f"\n[LLM] Response content length: {len(raw_content)} chars")
+            print(f"[LLM] Response preview (first 300 chars):\n{raw_content[:300]}...\n")
+            print(f"[LLM] Parsing JSON response...")
+            
+            data = json.loads(raw_content)
             job = data.get("job") or data
+            
+            print(f"\n[LLM] ✓ JSON parsed successfully")
+            print(f"[LLM] Extracted fields from LLM:")
+            print(f"  title: {job.get('title', 'None')}")
+            print(f"  company_name: {job.get('company_name', 'None')}")
+            print(f"  location: {job.get('location', 'None')}")
+            print(f"  remote_type: {job.get('remote_type', 'None')}")
+            print(f"  job_type: {job.get('job_type', 'None')}")
+            print(f"  description length: {len(job.get('description', ''))}")
+            print(f"  requirements count: {len(job.get('requirements', []))}")
+            print(f"  requirements: {job.get('requirements', [])}")
+            print(f"  skills count: {len(job.get('skills', []))}")
+            print(f"  skills: {job.get('skills', [])}")
 
             # Force description to the exact raw input (do NOT trust model echoing)
+            print(f"\n[LLM] Post-processing...")
+            print(f"[LLM] Forcing description to use original text (not LLM echo)")
             job["description"] = (text or "").strip()
 
             # Trust LLM to return properly formatted, deduplicated arrays
@@ -164,24 +212,52 @@ class OpenAILLMExtractor(LLMExtractor):
             if not job.get("source_url"):
                 job["source_url"] = url
 
-            print(f"OpenAI Extractor: Final requirements count = {len(job['requirements'])}")
-            print(f"OpenAI Extractor: Final skills count = {len(job['skills'])}")
-            print(f"OpenAI Extractor: Extraction completed successfully")
-            print("=== OPENAI EXTRACTOR SUCCESS ===")
+            print(f"\n[LLM] FINAL RESULT:")
+            print(f"  title: {job.get('title')}")
+            print(f"  company_name: {job.get('company_name')}")
+            print(f"  location: {job.get('location')}")
+            print(f"  remote_type: {job.get('remote_type')}")
+            print(f"  job_type: {job.get('job_type')}")
+            print(f"  source_url: {job.get('source_url')}")
+            print(f"  description length: {len(job.get('description', ''))}")
+            print(f"  description preview: {job.get('description', '')[:200]}...")
+            print(f"  requirements count: {len(job['requirements'])}")
+            print(f"  requirements: {job['requirements']}")
+            print(f"  skills count: {len(job['skills'])}")
+            print(f"  skills: {job['skills'][:20]}..." if len(job['skills']) > 20 else f"  skills: {job['skills']}")
+            
+            print(f"\n[LLM] ✓✓✓ EXTRACTION SUCCESSFUL")
+            print("#"*80)
+            print("### OPENAI LLM EXTRACTOR SUCCESS ###")
+            print("#"*80 + "\n")
             return job
 
         except json.JSONDecodeError as e:
-            print(f"OpenAI Extractor ERROR: Invalid JSON response: {str(e)}")
+            print(f"\n[LLM] ✗✗✗ JSON DECODE ERROR")
+            print(f"[LLM] Error: {str(e)}")
+            print(f"[LLM] Raw response content:")
+            print(raw_content if 'raw_content' in locals() else 'Response not available')
+            print("#"*80)
+            print("### OPENAI LLM EXTRACTOR ERROR ###")
+            print("#"*80)
             raise ValueError(f"OpenAI returned invalid JSON response: {str(e)}")
         except Exception as e:
-            print(f"OpenAI Extractor ERROR: API error: {str(e)}")
-            print(f"OpenAI Extractor ERROR: Error type: {type(e).__name__}")
-            print("=== OPENAI EXTRACTOR ERROR ===")
-            if "rate limit" in str(e).lower():
+            print(f"\n[LLM] ✗✗✗ API ERROR")
+            print(f"[LLM] Error type: {type(e).__name__}")
+            print(f"[LLM] Error message: {str(e)}")
+            import traceback
+            print(f"[LLM] Stack trace:")
+            traceback.print_exc()
+            print("#"*80)
+            print("### OPENAI LLM EXTRACTOR ERROR ###")
+            print("#"*80)
+            
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg:
                 raise ValueError("OpenAI API rate limit exceeded - please try again later")
-            elif "insufficient quota" in str(e).lower():
+            elif "insufficient quota" in error_msg or "quota" in error_msg:
                 raise ValueError("OpenAI API quota exceeded - please check your billing")
-            elif "invalid api key" in str(e).lower():
+            elif "invalid api key" in error_msg or "authentication" in error_msg:
                 raise ValueError("Invalid OpenAI API key - please check configuration")
             else:
                 raise ValueError(f"OpenAI API error: {str(e)}")
