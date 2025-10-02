@@ -699,6 +699,73 @@ async function getRenderedCapture(tabId, {
         readable = null;
       }
       
+      // Clean common UI chrome from Readability output
+      if (readable && readable.textContent) {
+        const originalText = readable.textContent;
+        let cleanedText = originalText;
+        
+        // Remove common job board UI patterns at the start
+        // Pattern: Short lines (< 50 chars) at the very beginning that are likely UI elements
+        const lines = cleanedText.split('\n');
+        let firstContentIndex = 0;
+        
+        // Skip initial short lines that look like UI chrome
+        for (let i = 0; i < Math.min(10, lines.length); i++) {
+          const line = lines[i].trim();
+          
+          // Stop when we hit substantial content (descriptions usually start with longer text)
+          if (line.length > 80) {
+            firstContentIndex = i;
+            break;
+          }
+          
+          // Skip lines that are clearly UI chrome
+          const isUIChrome = 
+            line.length === 0 || // Empty line
+            /^(overview|application|description|requirements|benefits|apply|details|back|close|save|share)$/i.test(line) || // Tab/button names
+            (line.length < 50 && /^[A-Z][a-z]+(\s+[A-Z][a-z]+){0,5}$/.test(line) && i === 0) || // Title-case at very start (likely duplicate title)
+            /^(posted|updated|created|expires|deadline|closing):/i.test(line); // Date labels
+          
+          if (!isUIChrome && line.length > 20) {
+            // This looks like actual content, stop skipping
+            firstContentIndex = i;
+            break;
+          }
+        }
+        
+        // Remove lines from the end that are likely UI chrome
+        let lastContentIndex = lines.length;
+        for (let i = lines.length - 1; i >= 0 && i > lastContentIndex - 10; i--) {
+          const line = lines[i].trim();
+          
+          const isUIChrome = 
+            line.length === 0 ||
+            /^(apply|apply now|apply for this job|submit|submit application|easy apply|quick apply|learn more|view details|go back|back to|return to)$/i.test(line);
+          
+          if (!isUIChrome && line.length > 20) {
+            lastContentIndex = i + 1;
+            break;
+          }
+        }
+        
+        // Reconstruct the cleaned text
+        if (firstContentIndex > 0 || lastContentIndex < lines.length) {
+          cleanedText = lines.slice(firstContentIndex, lastContentIndex).join('\n').trim();
+          console.log('[INJECTED] Cleaned UI chrome from Readability:');
+          console.log('[INJECTED] - Removed', firstContentIndex, 'lines from start');
+          console.log('[INJECTED] - Removed', lines.length - lastContentIndex, 'lines from end');
+          console.log('[INJECTED] - Original length:', originalText.length);
+          console.log('[INJECTED] - Cleaned length:', cleanedText.length);
+          
+          // Only use cleaned version if we didn't remove too much (safety check)
+          if (cleanedText.length > originalText.length * 0.7) {
+            readable.textContent = cleanedText;
+          } else {
+            console.warn('[INJECTED] Cleaning removed too much content, keeping original');
+          }
+        }
+      }
+      
       // Fallback: If Readability failed or returned minimal content, try direct extraction
       if (!readable || !readable.textContent || readable.textContent.length < 1000) {
         console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
