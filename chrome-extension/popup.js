@@ -433,32 +433,19 @@ document.getElementById('openDirectLinkBtn')?.addEventListener('click', async ()
     try {
       // Update current tab to the iframe URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
       
-      // Wait for page to load, then auto-retry extraction
-      console.log('[POPUP] Waiting for page to load...');
+      // Show redirect message
       showSection('processing');
-      setProgress('flow:begin', 'Navigating to direct link...');
+      setProgress('flow:begin', 'Redirecting to job page...');
+      processingStatus.textContent = 'Opening direct job posting URL. Please click the extension again after the page loads to extract the job.';
       
-      // Listen for tab update
-      const listener = (tabId, info) => {
-        if (tabId === tab.id && info.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(listener);
-          console.log('[POPUP] Page loaded, starting extraction...');
-          
-          // Wait a bit for JS to load, then retry
-          setTimeout(() => {
-            saveCurrentJob(); // Now on direct page, no iframe
-          }, 2000);
-        }
-      };
-      
-      chrome.tabs.onUpdated.addListener(listener);
-      
-      // Timeout fallback (if page doesn't load in 15s)
-      setTimeout(() => {
-        chrome.tabs.onUpdated.removeListener(listener);
-      }, 15000);
+      // Wait a moment to show the message, then redirect
+      setTimeout(async () => {
+        await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
+        console.log('[POPUP] Redirected to:', window.__iframeUrl);
+        // Popup will close automatically after redirect
+        // User will need to click extension again on new page
+      }, 1000);
       
     } catch (error) {
       console.error('[POPUP] Error redirecting:', error);
