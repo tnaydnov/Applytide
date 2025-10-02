@@ -650,7 +650,11 @@ class JobExtractionService:
 
 # --- default requirement stripper (regex-based, safe fallback) ---
 _REQ_HEADER_RE = re.compile(
-    r"^\s*(requirements|qualifications|advantages|about you|what you(?:'|’)ll need|what we(?:'|’)re looking for|must have|nice to have|skills|required skills|preferred qualifications)\s*:?\s*$",
+    r"^\s*(requirements|qualifications|what you(?:'|')ll need|what we(?:'|')re looking for|must have|required skills|minimum qualifications|what you bring)\s*:?\s*$",
+    re.I
+)
+_STOP_HEADER_RE = re.compile(
+    r"^\s*(why join us\??|about us|company culture|benefits|perks|what we offer|our culture|our values|our team|the team|working here|life at)\s*:?\s*$",
     re.I
 )
 _BULLET_RE = re.compile(r"^\s*(?:[-–—•·\*]|\d{1,2}[.)])\s*(.+)$")
@@ -672,6 +676,13 @@ class _DefaultRequirementStripper(RequirementStripper):
         for ln in lines:
             raw = ln
             s = ln.strip()
+
+            # Check if we hit a STOP header (culture/benefits section)
+            if _STOP_HEADER_RE.match(s):
+                # Stop extracting requirements, keep everything else as description
+                in_reqs = False
+                cleaned.append(raw)
+                continue
 
             if _REQ_HEADER_RE.match(s):
                 in_reqs = True

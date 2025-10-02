@@ -40,25 +40,36 @@ description:
 - Preserve bullet points and list formatting
 
 requirements[]:
-- Extract ONLY CORE/MANDATORY qualification lines (must-have requirements)
-- Use your judgment to distinguish between:
-  * CORE requirements: essential qualifications without which applications would be rejected (e.g., "5+ years experience", "Bachelor's degree required")
-  * NICE-TO-HAVE features: preferred skills, advantages, or bonuses that should stay in description
-  * COMPANY/CULTURE INFO: sections about company culture, benefits, team, work environment belong in description, NOT requirements
-- DO NOT extract lines from sections like "Why Join Us?", "About Us", "Company Culture", "Benefits" - these stay in description
-- Look for statements containing language like "required", "must have", "essential", "X+ years"
+- CRITICAL: Read the ENTIRE job posting first to understand its structure and context before extracting
+- Extract ONLY CORE/MANDATORY qualifications that candidates MUST have to be considered
+- Use your judgment to identify requirement sections (commonly: "Requirements", "Qualifications", "What You Bring", "Must Have", "Essential Skills")
+- IMPORTANT: Many job postings have sections AFTER requirements that describe company culture, benefits, team, or perks
+  → These sections should STAY in description, NOT be extracted as requirements
+  → Examples of non-requirement sections: "Why Join Us?", "About Us", "Company Culture", "Benefits", "What We Offer", "Our Team", "Life At [Company]", "Perks"
+  → Even if these sections have bullet points, they are NOT requirements!
+- Distinguish between requirement types:
+  * CORE/MANDATORY: "5+ years experience", "Bachelor's degree required", "Must have X", "Proficient in Y"
+    → These are dealbreakers - extract to requirements[]
+  * NICE-TO-HAVE: "X is a plus", "preferred", "bonus points", "familiarity with Y is helpful"
+    → These increase chances but aren't required - KEEP in description
+  * CULTURE/BENEFITS: "Collaborative team", "Great benefits", "Work-life balance", "Learning opportunities"
+    → These describe the workplace - KEEP in description
+- Look for requirement indicators: "required", "must have", "essential", "minimum", "X+ years", "proficient", "strong experience"
 - Keep EXACT wording, one requirement per array item
-- Strip bullet symbols but preserve the full text
+- Strip bullet symbols (•, -, *, etc.) but preserve the full text
 - Remove duplicates (case-insensitive comparison)
 - Skip empty strings or strings shorter than 5 characters
-- These lines should NOT appear in the description
-- If you extract requirements from a "What You Bring" or similar section, REMOVE that section header from description
+- CRITICAL: When you extract requirements from a section, you MUST do BOTH:
+  1. Add the requirement lines to requirements[] array
+  2. REMOVE those exact lines AND the section header from description
+  → This prevents duplicate content and orphaned headers
 
 skills[]:
-- Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE
-- Include both hard skills (Excel, Python, CNC machine) and soft skills (leadership, communication)
-- Identify industry-specific terminology (HIPAA, GAAP, HACCP, etc)
-- Include keywords relevant for job search/filtering
+- Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE in the job posting
+- Scan the ENTIRE text - skills can appear in ANY section (requirements, responsibilities, nice-to-have, projects, etc.)
+- Include both hard skills (Excel, Python, SQL, CNC machine, AutoCAD) and soft skills (leadership, communication, problem-solving)
+- Include industry-specific terminology and certifications (HIPAA, GAAP, PMP, AWS Certified, etc.)
+- Include relevant keywords for job search/filtering
 - CRITICAL: Normalize all technical skill names to their proper full form:
   * js → JavaScript
   * ts → TypeScript
@@ -69,6 +80,7 @@ skills[]:
   * k8s → Kubernetes
   * aws → AWS
   * gcp → GCP (Google Cloud Platform)
+  * azure → Azure
   * And similar common abbreviations
 - Remove duplicates (case-insensitive comparison - don't include both "JavaScript" and "javascript")
 - Skip empty strings or strings shorter than 2 characters
