@@ -105,6 +105,15 @@ async function checkAuth() {
     if (response?.ok && response?.authenticated) {
       currentUser = { email: response.email || 'User' };
       setStatus('success', 'Ready');
+      
+      // Handle accessibility issues immediately
+      if (response.mode === 'allowed' && response?.accessibilityIssues && response.accessibilityIssues.length > 0) {
+        console.log('[POPUP] Accessibility issues detected:', response.accessibilityIssues);
+        handleAccessibilityIssues(response.accessibilityIssues);
+        userInfo.style.display = 'block';
+        return;
+      }
+      
       showSection('main');
       checkModeAndShow(response.mode);
     } else {
@@ -116,6 +125,49 @@ async function checkAuth() {
     setStatus('error', 'Connection failed');
     showSection('auth');
   }
+}
+
+// Handle all types of accessibility issues
+function handleAccessibilityIssues(issues) {
+  // Priority order: iframe > pdf > canvas > auth-wall > shadow-dom
+  
+  // 1. Iframe - highest priority, requires redirect
+  const iframeIssue = issues.find(i => i.type === 'iframe');
+  if (iframeIssue && iframeIssue.url) {
+    showIframeWarning(iframeIssue.url, iframeIssue.subtype || 'generic');
+    return;
+  }
+  
+  // 2. PDF - cannot extract, must paste
+  const pdfIssue = issues.find(i => i.type === 'pdf');
+  if (pdfIssue) {
+    showPDFWarning(pdfIssue.url);
+    return;
+  }
+  
+  // 3. Canvas - cannot extract text from pixels
+  const canvasIssue = issues.find(i => i.type === 'canvas');
+  if (canvasIssue) {
+    showCanvasWarning();
+    return;
+  }
+  
+  // 4. Auth wall - content behind login
+  const authIssue = issues.find(i => i.type === 'auth-wall');
+  if (authIssue) {
+    showAuthWallWarning();
+    return;
+  }
+  
+  // 5. Shadow DOM - we can auto-extract open shadow roots
+  const shadowIssue = issues.find(i => i.type === 'shadow-dom');
+  if (shadowIssue && shadowIssue.hasClosed) {
+    showShadowDOMWarning();
+    return;
+  }
+  
+  // 6. Other issues - show generic warning
+  showGenericWarning(issues);
 }
 
 async function login() {
@@ -329,12 +381,162 @@ function showResult(success, message, jobData = null) {
   resultContent.innerHTML = html;
 }
 
+// Iframe warning handlers
+function showIframeWarning(url, type) {
+  document.getElementById('iframeUrl').textContent = url;
+  const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+  document.getElementById('iframeType')?.textContent = typeText;
+  showSection('iframeWarning');
+  
+  // Store for button handlers
+  window.__iframeUrl = url;
+  window.__iframeType = type;
+}
+
+// PDF warning
+function showPDFWarning(url) {
+  document.getElementById('pdfUrl')?.textContent = url || 'PDF document detected';
+  showSection('pdfWarning');
+}
+
+// Canvas warning  
+function showCanvasWarning() {
+  showSection('canvasWarning');
+}
+
+// Auth wall warning
+function showAuthWallWarning() {
+  showSection('authWallWarning');
+}
+
+// Shadow DOM warning
+function showShadowDOMWarning() {
+  showSection('shadowDOMWarning');
+}
+
+// Generic unsupported warning
+function showGenericWarning(issues) {
+  const issueTypes = issues.map(i => i.type).join(', ');
+  document.getElementById('genericWarningText')?.textContent = 
+    `Detected: ${issueTypes}. Automatic extraction may not work properly.`;
+  showSection('genericWarning');
+}
+
+document.getElementById('openDirectLinkBtn')?.addEventListener('click', async () => {
+  if (window.__iframeUrl) {
+    console.log('[POPUP] Redirecting to direct URL:', window.__iframeUrl);
+    
+    try {
+      // Update current tab to the iframe URL
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
+      
+      // Wait for page to load, then auto-retry extraction
+      console.log('[POPUP] Waiting for page to load...');
+      showSection('processing');
+      setProgress('flow:begin', 'Navigating to direct link...');
+      
+      // Listen for tab update
+      const listener = (tabId, info) => {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          console.log('[POPUP] Page loaded, starting extraction...');
+          
+          // Wait a bit for JS to load, then retry
+          setTimeout(() => {
+            saveCurrentJob(); // Now on direct page, no iframe
+          }, 2000);
+        }
+      };
+      
+      chrome.tabs.onUpdated.addListener(listener);
+      
+      // Timeout fallback (if page doesn't load in 15s)
+      setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+      }, 15000);
+      
+    } catch (error) {
+      console.error('[POPUP] Error redirecting:', error);
+      showResult(false, 'Failed to open direct link');
+    }
+  }
+});
+
 // Event listeners
 loginBtn.addEventListener('click', login);
 googleBtn.addEventListener('click', loginWithGoogle);
 logoutBtn.addEventListener('click', logout);
 saveJobBtn.addEventListener('click', saveCurrentJob);
 usePastedBtn.addEventListener('click', extractFromText);
+
+// Paste button handlers for all warning screens
+document.getElementById('usePastedPDFBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('pasteBoxPDF').value;
+  extractFromPastedText(text);
+});
+
+document.getElementById('usePastedCanvasBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('pasteBoxCanvas').value;
+  extractFromPastedText(text);
+});
+
+document.getElementById('usePastedAuthBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('pasteBoxAuth').value;
+  extractFromPastedText(text);
+});
+
+document.getElementById('usePastedShadowBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('pasteBoxShadow').value;
+  extractFromPastedText(text);
+});
+
+document.getElementById('usePastedGenericBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('pasteBoxGeneric').value;
+  extractFromPastedText(text);
+});
+
+document.getElementById('tryExtractAnywayBtn')?.addEventListener('click', () => {
+  saveCurrentJob(); // Try extraction despite warnings
+});
+
+// Unified paste extraction function
+async function extractFromPastedText(text) {
+  if (!text || !text.trim()) {
+    setStatus('error', 'Please paste some job text first');
+    return;
+  }
+
+  if (text.length < 100) {
+    setStatus('error', 'Please paste more job details');
+    return;
+  }
+
+  try {
+    showSection('processing');
+    setProgress('flow:begin', 'Processing pasted text...');
+    resetProgressBar();
+
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab?.url || '';
+
+    const response = await bg.sendMessage({
+      type: 'APPLYTIDE_USE_PASTED',
+      text: text,
+      url: url
+    });
+
+    if (response?.ok) {
+      setProgress('flow:done', 'Job extracted successfully!');
+      showResult(true, 'Job extracted from text!', response.saved);
+    } else {
+      showResult(false, response?.error || 'Text extraction failed');
+    }
+  } catch (error) {
+    console.error('Text extraction failed:', error);
+    showResult(false, 'Text extraction failed');
+  }
+}
 
 // Handle Enter key in password field
 document.getElementById('password').addEventListener('keypress', (e) => {

@@ -456,36 +456,138 @@ async function getRenderedCapture(tabId, {
       return window.__applytideLogs;
     }
 
-    // 7) Detect job posting iframes (Ashby, Greenhouse, etc.)
-    function detectJobIframe() {
+    // 7) Comprehensive content accessibility detection
+    function detectContentAccessibility() {
+      const issues = [];
+      
+      // A) Iframe detection
       const iframes = Array.from(document.querySelectorAll('iframe'));
       for (const iframe of iframes) {
         const src = iframe.src || '';
         const id = iframe.id || '';
         
-        // Ashby embed detection
+        // Known job board iframes
         if (src.includes('jobs.ashbyhq.com') || src.includes('ashbyhq') || id.includes('ashby')) {
-          return { url: src, type: 'ashby' };
+          issues.push({ type: 'iframe', subtype: 'ashby', url: src, action: 'redirect' });
+          continue;
         }
-        
-        // Greenhouse embed detection
         if (src.includes('boards.greenhouse.io') || src.includes('greenhouse') || id.includes('greenhouse')) {
-          return { url: src, type: 'greenhouse' };
+          issues.push({ type: 'iframe', subtype: 'greenhouse', url: src, action: 'redirect' });
+          continue;
         }
-        
-        // Lever embed detection
         if (src.includes('jobs.lever.co') || src.includes('lever') || id.includes('lever')) {
-          return { url: src, type: 'lever' };
+          issues.push({ type: 'iframe', subtype: 'lever', url: src, action: 'redirect' });
+          continue;
+        }
+        if (src.includes('myworkdayjobs.com') || src.includes('workday')) {
+          issues.push({ type: 'iframe', subtype: 'workday', url: src, action: 'redirect' });
+          continue;
         }
         
-        // Generic job board iframe (large size, contains "job" in src/id)
+        // Generic large job iframe
         const isLarge = iframe.offsetHeight > 500 || iframe.offsetWidth > 500;
-        const hasJobKeyword = src.toLowerCase().includes('job') || id.toLowerCase().includes('job');
-        if (isLarge && hasJobKeyword) {
-          return { url: src, type: 'generic' };
+        const hasJobKeyword = src.toLowerCase().includes('job') || src.toLowerCase().includes('career') || 
+                            id.toLowerCase().includes('job') || id.toLowerCase().includes('career');
+        if (isLarge && hasJobKeyword && src) {
+          issues.push({ type: 'iframe', subtype: 'generic', url: src, action: 'redirect' });
         }
       }
-      return null;
+      
+      // B) Shadow DOM detection
+      const elementsWithShadow = [];
+      document.querySelectorAll('*').forEach(el => {
+        if (el.shadowRoot) {
+          elementsWithShadow.push({ element: el.tagName, mode: 'open' });
+        } else if (el.shadowRoot === null && el.attachShadow) {
+          // Closed shadow root (we can't be 100% sure, but check for common patterns)
+          const hasClosedShadow = el.innerHTML === '' && el.childNodes.length === 0 && 
+                                 (el.classList.toString().includes('job') || el.id.includes('job'));
+          if (hasClosedShadow) {
+            elementsWithShadow.push({ element: el.tagName, mode: 'closed' });
+          }
+        }
+      });
+      
+      if (elementsWithShadow.length > 0) {
+        const hasClosedShadow = elementsWithShadow.some(s => s.mode === 'closed');
+        issues.push({ 
+          type: 'shadow-dom', 
+          count: elementsWithShadow.length,
+          hasClosed: hasClosedShadow,
+          action: hasClosedShadow ? 'paste-only' : 'auto-extract'
+        });
+      }
+      
+      // C) PDF embed detection
+      const pdfEmbeds = document.querySelectorAll('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
+      if (pdfEmbeds.length > 0) {
+        const pdfUrl = pdfEmbeds[0].src || pdfEmbeds[0].getAttribute('data');
+        issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' });
+      }
+      
+      // D) Canvas detection (text rendering)
+      const canvasElements = Array.from(document.querySelectorAll('canvas'));
+      const hasLargeCanvas = canvasElements.some(c => c.width > 500 && c.height > 500);
+      if (hasLargeCanvas) {
+        issues.push({ type: 'canvas', action: 'paste-only' });
+      }
+      
+      // E) Authentication wall detection
+      const authIndicators = [
+        'login', 'sign-in', 'signin', 'log-in', 'authenticate', 
+        'register', 'signup', 'sign-up', 'create-account'
+      ];
+      const bodyText = (document.body?.innerText || '').toLowerCase();
+      const hasAuthWall = authIndicators.some(keyword => {
+        const regex = new RegExp(`(${keyword}\\s+to\\s+(view|see|access)|please\\s+${keyword})`, 'i');
+        return regex.test(bodyText);
+      });
+      
+      const hasLoginForm = document.querySelector('form[action*="login"], input[type="password"]');
+      const contentLength = (document.body?.innerText || '').trim().length;
+      
+      if ((hasAuthWall || hasLoginForm) && contentLength < 500) {
+        issues.push({ type: 'auth-wall', action: 'paste-only' });
+      }
+      
+      // F) Minimal/empty content detection (might be fully dynamic)
+      if (contentLength < 200 && !hasAuthWall && iframes.length === 0) {
+        issues.push({ type: 'minimal-content', length: contentLength, action: 'warn' });
+      }
+      
+      // G) Third-party widget detection
+      const widgetScripts = Array.from(document.querySelectorAll('script[src]'))
+        .map(s => s.src)
+        .filter(src => 
+          src.includes('greenhouse') || 
+          src.includes('lever') || 
+          src.includes('ashby') ||
+          src.includes('workday') ||
+          src.includes('bamboohr') ||
+          src.includes('jobvite')
+        );
+      
+      if (widgetScripts.length > 0 && iframes.length === 0) {
+        issues.push({ type: 'third-party-widget', scripts: widgetScripts, action: 'warn' });
+      }
+      
+      return issues.length > 0 ? issues : null;
+    }
+    
+    // Extract content from open shadow DOMs
+    function extractFromShadowDOM() {
+      let shadowContent = '';
+      document.querySelectorAll('*').forEach(el => {
+        if (el.shadowRoot) {
+          try {
+            shadowContent += el.shadowRoot.textContent || '';
+            shadowContent += '\n---\n';
+          } catch (e) {
+            console.warn('[INJECTED] Could not extract from shadow root:', e);
+          }
+        }
+      });
+      return shadowContent;
     }
 
     /* ---------- main flow ---------- */
@@ -495,8 +597,11 @@ async function getRenderedCapture(tabId, {
     // Start network hook immediately
     hookNetwork();
 
-    // Check for job posting iframe first
-    const jobIframe = detectJobIframe();
+    // Detect all content accessibility issues
+    const accessibilityIssues = detectContentAccessibility();
+    
+    // Extract shadow DOM content if available
+    const shadowContent = extractFromShadowDOM();
 
     // Expand & scroll to mount virtualized DOM
     tryExpandAll();
@@ -542,11 +647,21 @@ async function getRenderedCapture(tabId, {
         readable = null;
       }
       
-      const textLen = (document.body?.innerText || '').length;
+      const textLen = (document.body?.innerText || '').length + shadowContent.length;
       const xhrLogs = (window.__applytideLogs || []);
       
+      console.log('[INJECTED] Accessibility issues detected:', accessibilityIssues);
       console.log('[INJECTED] Capture complete, returning data');
-      return { html, jsonld, metas, readable, textLen, xhrLogs, jobIframe };
+      return { 
+        html, 
+        jsonld, 
+        metas, 
+        readable, 
+        textLen, 
+        xhrLogs, 
+        accessibilityIssues,
+        shadowContent
+      };
     })();
   } // end INJECTED_CAPTURE
 
@@ -731,7 +846,98 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Tell popup which mode to show
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           const mode = tab?.url ? classifyPage(tab.url) : 'restricted';
-          sendResponse({ ok: true, authenticated: !!ok, mode });
+          
+          // Run comprehensive accessibility check on current page
+          let accessibilityIssues = null;
+          if (tab?.id && mode === 'allowed') {
+            try {
+              const result = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => {
+                  // Inline detection function (same logic as INJECTED_CAPTURE)
+                  const issues = [];
+                  
+                  // A) Iframe detection
+                  const iframes = Array.from(document.querySelectorAll('iframe'));
+                  for (const iframe of iframes) {
+                    const src = iframe.src || '';
+                    const id = iframe.id || '';
+                    
+                    if (src.includes('jobs.ashbyhq.com') || src.includes('ashbyhq') || id.includes('ashby')) {
+                      issues.push({ type: 'iframe', subtype: 'ashby', url: src, action: 'redirect' });
+                      continue;
+                    }
+                    if (src.includes('boards.greenhouse.io') || src.includes('greenhouse') || id.includes('greenhouse')) {
+                      issues.push({ type: 'iframe', subtype: 'greenhouse', url: src, action: 'redirect' });
+                      continue;
+                    }
+                    if (src.includes('jobs.lever.co') || src.includes('lever') || id.includes('lever')) {
+                      issues.push({ type: 'iframe', subtype: 'lever', url: src, action: 'redirect' });
+                      continue;
+                    }
+                    if (src.includes('myworkdayjobs.com') || src.includes('workday')) {
+                      issues.push({ type: 'iframe', subtype: 'workday', url: src, action: 'redirect' });
+                      continue;
+                    }
+                    
+                    const isLarge = iframe.offsetHeight > 500 || iframe.offsetWidth > 500;
+                    const hasJobKeyword = src.toLowerCase().includes('job') || src.toLowerCase().includes('career') || 
+                                        id.toLowerCase().includes('job') || id.toLowerCase().includes('career');
+                    if (isLarge && hasJobKeyword && src) {
+                      issues.push({ type: 'iframe', subtype: 'generic', url: src, action: 'redirect' });
+                    }
+                  }
+                  
+                  // B) Shadow DOM detection
+                  let shadowCount = 0;
+                  let hasClosedShadow = false;
+                  document.querySelectorAll('*').forEach(el => {
+                    if (el.shadowRoot) {
+                      shadowCount++;
+                    }
+                  });
+                  if (shadowCount > 0) {
+                    issues.push({ type: 'shadow-dom', count: shadowCount, hasClosed: hasClosedShadow, action: 'auto-extract' });
+                  }
+                  
+                  // C) PDF detection
+                  const pdfEmbeds = document.querySelectorAll('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
+                  if (pdfEmbeds.length > 0) {
+                    const pdfUrl = pdfEmbeds[0].src || pdfEmbeds[0].getAttribute('data');
+                    issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' });
+                  }
+                  
+                  // D) Canvas detection
+                  const canvasElements = Array.from(document.querySelectorAll('canvas'));
+                  const hasLargeCanvas = canvasElements.some(c => c.width > 500 && c.height > 500);
+                  if (hasLargeCanvas) {
+                    issues.push({ type: 'canvas', action: 'paste-only' });
+                  }
+                  
+                  // E) Auth wall detection
+                  const bodyText = (document.body?.innerText || '').toLowerCase();
+                  const hasAuthKeywords = /(login|sign-in|signin)\\s+to\\s+(view|see|access)|please\\s+(login|sign-in)/.test(bodyText);
+                  const hasLoginForm = document.querySelector('form[action*="login"], input[type="password"]');
+                  const contentLength = (document.body?.innerText || '').trim().length;
+                  
+                  if ((hasAuthKeywords || hasLoginForm) && contentLength < 500) {
+                    issues.push({ type: 'auth-wall', action: 'paste-only' });
+                  }
+                  
+                  return issues.length > 0 ? issues : null;
+                }
+              });
+              
+              if (result?.[0]?.result) {
+                accessibilityIssues = result[0].result;
+                console.log('[bg] Detected accessibility issues:', accessibilityIssues);
+              }
+            } catch (err) {
+              console.log('[bg] Could not run accessibility check:', err);
+            }
+          }
+          
+          sendResponse({ ok: true, authenticated: !!ok, mode, accessibilityIssues });
           break;
         }
 
@@ -866,17 +1072,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 htmlLength: cached.capture?.html?.length,
                 jsonldCount: cached.capture?.jsonld?.length,
                 hasReadable: !!cached.capture?.readable,
-                textLen: cached.capture?.textLen
+                textLen: cached.capture?.textLen,
+                accessibilityIssues: cached.capture?.accessibilityIssues,
+                shadowContent_len: (cached.capture?.shadowContent || '').length
               });
               notifyProgress('capture:cache_hit', { url });
-              const payload = { url, ...cached.capture, quick: {} };
+              
+              // Prepare payload with shadow DOM content if available
+              const payload = { 
+                url, 
+                ...cached.capture, 
+                quick: {},
+                // Append shadow DOM content to readable if available
+                readable: cached.capture.shadowContent && cached.capture.shadowContent.length > 100 ? {
+                  ...cached.capture.readable,
+                  textContent: (cached.capture.readable?.textContent || '') + '\n\n--- Shadow DOM Content ---\n' + cached.capture.shadowContent
+                } : cached.capture.readable
+              };
+              
               console.log('[BACKGROUND] Step 5: Preparing payload from cache:', {
                 url: payload.url,
                 html_len: (payload.html || '').length,
                 jsonld_count: (payload.jsonld || []).length,
                 readable: !!payload.readable,
+                readable_textLen: (payload.readable?.textContent || '').length,
                 metas_keys: Object.keys(payload.metas || {}),
-                xhrLogs_count: (payload.xhrLogs || []).length
+                xhrLogs_count: (payload.xhrLogs || []).length,
+                shadowContent_included: !!(cached.capture.shadowContent && cached.capture.shadowContent.length > 100)
               });
               
               console.log('[BACKGROUND] Step 6: Calling apiExtract with cached data...');
@@ -889,16 +1111,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 requirementsCount: job?.requirements?.length,
                 skillsCount: job?.skills?.length
               });
+              
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
+                  
+                // Provide context based on cached accessibility issues
+                let errorMsg = 'Could not extract meaningful job details.';
+                if (cached.capture.accessibilityIssues && cached.capture.accessibilityIssues.length > 0) {
+                  const issues = cached.capture.accessibilityIssues.map(i => i.type).join(', ');
+                  errorMsg += ` Detected issues: ${issues}. Try paste mode instead.`;
+                } else {
+                  errorMsg += ' Try paste text instead.';
+                }
+                
                 notifyProgress('backend:error');
-                throw new Error('Could not extract meaningful job details. Try paste text instead.');
+                throw new Error(errorMsg);
               }
 
               notifyProgress('backend:save');
               const saved = await apiSaveJob(job);
               notifyProgress('flow:done', { savedId: saved?.id });
-              sendResponse({ ok: true, saved });
+              sendResponse({ 
+                ok: true, 
+                saved,
+                accessibilityIssues: cached.capture.accessibilityIssues || null
+              });
               break;
             }
 
@@ -924,43 +1161,82 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               xhrLogs_count: (capture.xhrLogs || []).length,
               iframe_detected: capture.iframeDetected,
               iframe_url: capture.iframeUrl,
-              iframe_type: capture.iframeType
+              iframe_type: capture.iframeType,
+              accessibilityIssues: capture.accessibilityIssues,
+              shadowContent_len: (capture.shadowContent || '').length
             });
             
-            // If iframe detected, check if we should redirect
-            if (capture.iframeDetected && capture.iframeUrl) {
-              console.log('[BACKGROUND] ⚠️  Job posting detected in iframe');
-              console.log('[BACKGROUND] For better extraction, user should navigate to:', capture.iframeUrl);
+            // Check for accessibility issues that require special handling
+            if (capture.accessibilityIssues && capture.accessibilityIssues.length > 0) {
+              console.log('[BACKGROUND] ⚠️ Accessibility issues detected:', capture.accessibilityIssues);
               
-              // If content is minimal, suggest iframe URL
-              const hasMinimalContent = (capture.textLen || 0) < 2000 || 
-                                       !(capture.readable?.textContent || '').length > 1000;
+              // If iframe detected, check if we should redirect
+              const iframeIssue = capture.accessibilityIssues.find(i => i.type === 'iframe');
+              if (iframeIssue && iframeIssue.url) {
+                console.log('[BACKGROUND] ⚠️ Job posting detected in iframe');
+                console.log('[BACKGROUND] For better extraction, user should navigate to:', iframeIssue.url);
+                
+                // If content is minimal, suggest iframe URL
+                const hasMinimalContent = (capture.textLen || 0) < 2000 || 
+                                         !(capture.readable?.textContent || '').length > 1000;
+                
+                if (hasMinimalContent) {
+                  console.log('[BACKGROUND] ⚠️ Content appears minimal, iframe URL recommended');
+                  sendResponse({ 
+                    ok: false, 
+                    error: 'Job posting is in an iframe and cannot be extracted from this page.',
+                    iframeDetected: true,
+                    iframeUrl: iframeIssue.url,
+                    iframeType: iframeIssue.subtype || 'generic',
+                    suggestion: `This job is embedded in an iframe. For better results, navigate directly to: ${iframeIssue.url}`
+                  });
+                  return;
+                }
+              }
               
-              if (hasMinimalContent) {
-                console.log('[BACKGROUND] ⚠️  Content appears minimal, iframe URL recommended');
-                sendResponse({ 
-                  ok: false, 
-                  error: 'Job posting is in an iframe and cannot be extracted from this page.',
-                  iframeDetected: true,
-                  iframeUrl: capture.iframeUrl,
-                  iframeType: capture.iframeType,
-                  suggestion: `This job is embedded in an iframe. For better results, navigate directly to: ${capture.iframeUrl}`
-                });
-                return;
+              // Check for other blocking issues
+              const pdfIssue = capture.accessibilityIssues.find(i => i.type === 'pdf');
+              const authIssue = capture.accessibilityIssues.find(i => i.type === 'auth-wall');
+              const canvasIssue = capture.accessibilityIssues.find(i => i.type === 'canvas');
+              
+              if (pdfIssue || authIssue || canvasIssue) {
+                const issueType = pdfIssue ? 'PDF document' : authIssue ? 'authentication wall' : 'canvas rendering';
+                console.log(`[BACKGROUND] ⚠️ ${issueType} detected - auto-extraction may fail`);
+                
+                // Continue with extraction attempt, but log the limitation
+                console.log('[BACKGROUND] Attempting extraction despite accessibility issues...');
+              }
+              
+              // If shadow DOM content available, include it
+              if (capture.shadowContent && capture.shadowContent.length > 100) {
+                console.log('[BACKGROUND] ✓ Including shadow DOM content:', capture.shadowContent.length, 'chars');
               }
             }
             
             console.log('[BACKGROUND] Step 7: Capture cached for future use');
             CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
-            console.log('[BACKGROUND] Step 7: Capture cached for future use');
 
             notifyProgress('backend:extract');
-            const payload = { url, ...capture, quick: {} };
+            
+            // Prepare payload with shadow DOM content if available
+            const payload = { 
+              url, 
+              ...capture, 
+              quick: {},
+              // Append shadow DOM content to readable if available
+              readable: capture.shadowContent && capture.shadowContent.length > 100 ? {
+                ...capture.readable,
+                textContent: (capture.readable?.textContent || '') + '\n\n--- Shadow DOM Content ---\n' + capture.shadowContent
+              } : capture.readable
+            };
+            
             console.log('[BACKGROUND] Step 8: Preparing payload for backend:', {
               url: payload.url,
               html_len: (payload.html || '').length,
               jsonld_count: (payload.jsonld || []).length,
-              readable: !!payload.readable
+              readable: !!payload.readable,
+              readable_textLen: (payload.readable?.textContent || '').length,
+              shadowContent_included: !!(capture.shadowContent && capture.shadowContent.length > 100)
             });
             console.log('[BACKGROUND] Step 9: Calling apiExtract...');
             const extractStart = Date.now();
@@ -995,8 +1271,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             
             if (!hasTitle && !hasCompany && !hasDescription) {
               console.error('[BACKGROUND] ERROR: Extraction validation failed - insufficient data');
+              
+              // Provide more context based on detected issues
+              let errorMsg = 'Could not extract meaningful job details.';
+              
+              if (capture.accessibilityIssues && capture.accessibilityIssues.length > 0) {
+                const issues = capture.accessibilityIssues.map(i => i.type).join(', ');
+                console.error('[BACKGROUND] Detected issues may have affected extraction:', issues);
+                
+                const pdfIssue = capture.accessibilityIssues.find(i => i.type === 'pdf');
+                const authIssue = capture.accessibilityIssues.find(i => i.type === 'auth-wall');
+                const canvasIssue = capture.accessibilityIssues.find(i => i.type === 'canvas');
+                
+                if (pdfIssue) {
+                  errorMsg = 'This appears to be a PDF document. Please copy the text and use paste mode.';
+                } else if (authIssue) {
+                  errorMsg = 'This page requires login. Please log in and try again, or use paste mode.';
+                } else if (canvasIssue) {
+                  errorMsg = 'This page uses canvas rendering. Please copy the text and use paste mode.';
+                } else {
+                  errorMsg += ` Detected issues: ${issues}. Try paste mode instead.`;
+                }
+              } else {
+                errorMsg += ' Try paste text instead.';
+              }
+              
               notifyProgress('backend:error');
-              throw new Error('Could not extract meaningful job details. Try paste text instead.');
+              throw new Error(errorMsg);
             }
 
             console.log('[BACKGROUND] Step 11: ✓ Validation passed, saving job...');
@@ -1017,7 +1318,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.log('[BACKGROUND] Total flow time:', Date.now() - new Date(console.log.timestamp || Date.now()).getTime());
             console.log('[BACKGROUND] Sending success response to popup');
             console.log('========================================\n');
-            sendResponse({ ok: true, saved });
+            sendResponse({ 
+              ok: true, 
+              saved,
+              iframeDetected: !!(capture.accessibilityIssues?.find(i => i.type === 'iframe')),
+              iframeUrl: capture.accessibilityIssues?.find(i => i.type === 'iframe')?.url || null,
+              iframeType: capture.accessibilityIssues?.find(i => i.type === 'iframe')?.subtype || null,
+              accessibilityIssues: capture.accessibilityIssues || null
+            });
           } finally {
             RUNNING_BY_TAB.delete(tab.id);
             console.log('[BACKGROUND] Tab processing flag cleared');
