@@ -235,9 +235,9 @@ class AdminRepository:
         # Document metrics
         total_documents = self.db.query(models.Resume).count()
         
-        # Try to estimate analyzed documents (those with analysis cache)
+        # Count analyzed documents (those with extracted text)
         documents_analyzed = self.db.query(models.Resume).filter(
-            models.Resume.meta_json.isnot(None)
+            models.Resume.text.isnot(None)
         ).count()
         
         # Estimate cache hit rate (simplified)
