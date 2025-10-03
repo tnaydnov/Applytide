@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db.session import get_db
 from ..db import models
 from ..infra.security.tokens import decode_access
-from ..infra.security.password import verify_password
+from ..infra.security.passwords import verify_password
 from ..infra.cache.service import CacheService, get_cache_service
 
 security = HTTPBearer(auto_error=False)

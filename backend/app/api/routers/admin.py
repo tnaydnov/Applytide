@@ -16,7 +16,7 @@ from ...db import models
 from ...domain.admin.repository import AdminRepository
 from ...domain.admin.service import AdminService
 from ..deps_auth import get_admin_user, get_admin_user_with_step_up
-from ...infra.security.password import verify_password
+from ...infra.security.passwords import verify_password
 from ...infra.cache.service import CacheService, get_cache_service
 
 
