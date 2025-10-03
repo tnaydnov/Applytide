@@ -1,7 +1,7 @@
 """add admin features
 
 Revision ID: c5d6e7f8g9h0
-Revises: b4d5a72fc891
+Revises: f2a3b4c5d6e7
 Create Date: 2025-01-20 12:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'c5d6e7f8g9h0'
-down_revision = 'b4d5a72fc891'
+down_revision = 'f2a3b4c5d6e7'
 branch_labels = None
 depends_on = None
 
