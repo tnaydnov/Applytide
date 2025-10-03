@@ -2,6 +2,7 @@
 import MonthGrid from "./MonthGrid";
 import WeekGrid from "./WeekGrid";
 import DayGrid from "./DayGrid";
+import CalendarLegend from "./CalendarLegend";
 
 export default function CalendarView({
   view = "month",
@@ -26,18 +27,9 @@ export default function CalendarView({
     <div className="mt-4">
       {/* Nav + title */}
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2">
           <div className="text-sm font-semibold text-slate-100">{title}</div>
-
-          {/* Legend */}
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/30">
-              Applytide Reminder
-            </span>
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/30">
-              Google Event
-            </span>
-          </div>
+          <CalendarLegend />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

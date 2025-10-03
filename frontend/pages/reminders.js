@@ -89,12 +89,15 @@ export default function RemindersPage() {
 
       {activeTab === "calendar" && (
         <div className="mt-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-4">
             {["month", "week", "day"].map((v) => (
               <button
                 key={v}
-                className={`px-3 py-1 rounded border text-sm ${calendarView === v ? "bg-blue-50 border-blue-300 text-blue-700" : ""
-                  }`}
+                className={`px-3 py-1 rounded border text-sm transition-colors ${
+                  calendarView === v 
+                    ? "bg-violet-500/20 border-violet-400/50 text-violet-100" 
+                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                }`}
                 onClick={() => setCalendarView(v)}
                 type="button"
               >
@@ -102,7 +105,6 @@ export default function RemindersPage() {
               </button>
             ))}
           </div>
-          <CalendarLegend />
           <CalendarView
             view={calendarView}
             date={calendar.selectedDate}

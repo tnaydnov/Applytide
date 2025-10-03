@@ -942,7 +942,7 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
         resume_text = doc.text or ""
         file_path = Path(doc.file_path)
 
-        # Prepare job context for cache key
+        # Prepare job context for cache key (WITHOUT expensive LLM calls)
         job_context = ""
         job_keywords: List[str] = []
         required_tech: List[str] = []
@@ -953,8 +953,7 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             if job:
                 required_tech = [(s or "").strip().lower() for s in (job.skills or []) if s]
                 req_phrases = [(r or "").strip().lower() for r in (job.requirements or []) if r]
-                job_keywords = list({*required_tech, *self._extract_keywords_from_job(job)})
-                # Build context string for hashing
+                # Build context string for hashing (don't extract keywords yet - expensive!)
                 job_context = f"{job.title or ''}\n{job.description or ''}"
 
         # Check cache
@@ -967,7 +966,11 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             # Return cached DocumentAnalysis
             return DocumentAnalysis(**cached)
 
-        # Cache miss - perform analysis
+        # Cache miss - NOW extract keywords (after cache check to avoid unnecessary LLM calls)
+        if job_id and job:
+            job_keywords = list({*required_tech, *self._extract_keywords_from_job(job)})
+        
+        # Perform analysis
         if job_id and job:
             job_title = job.title or ""
             job_location = getattr(job, "location", "") or ""

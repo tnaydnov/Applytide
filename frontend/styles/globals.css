@@ -516,6 +516,37 @@ a {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, .35), 0 8px 20px rgba(99, 102, 241, .25);
 }
 
+/* Reminder type colors (neon badges) */
+.neon-violet {
+  background: rgba(139, 92, 246, 0.15);
+  color: rgb(196, 181, 253);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.neon-pink {
+  background: rgba(236, 72, 153, 0.15);
+  color: rgb(251, 207, 232);
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.neon-rose {
+  background: rgba(244, 63, 94, 0.15);
+  color: rgb(254, 205, 211);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.neon-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: rgb(253, 230, 138);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.neon-slate {
+  background: rgba(148, 163, 184, 0.15);
+  color: rgb(203, 213, 225);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 /* Pipeline board drag & drop */
 .pipeline-board {
   overflow: visible;
