@@ -231,11 +231,12 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             jti = data.get("jti")
             revoke_refresh_token(jti)
             if jti:
-                db_session = db.query(models.UserSession).filter(
-                    models.UserSession.refresh_token_jti == jti
+                db_token = db.query(models.RefreshToken).filter(
+                    models.RefreshToken.jti == jti
                 ).first()
-                if db_session:
-                    db.delete(db_session); db.commit()
+                if db_token:
+                    db_token.revoked_at = datetime.now(timezone.utc)
+                    db.commit()
         except Exception as e:
             print(f"Error during logout: {e}")
 

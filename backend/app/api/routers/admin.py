@@ -20,7 +20,7 @@ from ...infra.security.passwords import verify_password
 from ...infra.cache.service import CacheService, get_cache_service
 
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # Rate limiter for admin endpoints
 limiter = Limiter(key_func=get_remote_address)

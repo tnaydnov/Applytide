@@ -82,18 +82,6 @@ def decode_access(token: str) -> dict:
         return data
     except JWTError:
         raise
-
-def update_user_session(jti: str, last_seen_at=None):
-    with get_db_session() as db:
-        session = db.query(models.UserSession).filter(
-            models.UserSession.refresh_token_jti == jti,
-            models.UserSession.is_active == True
-        ).first()
-        if session:
-            if last_seen_at:
-                session.last_seen_at = last_seen_at
-            db.commit()
-
 def decode_refresh(token: str) -> dict:
     try:
         data = jwt.decode(token, settings.REFRESH_SECRET, algorithms=["HS256"])
