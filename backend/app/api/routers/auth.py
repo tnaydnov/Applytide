@@ -350,6 +350,7 @@ def get_current_user_info(current_user: models.User = Depends(get_current_user))
         "notification_email": current_user.notification_email,
         "notification_push": current_user.notification_push,
         "is_premium": getattr(current_user, 'is_premium', False),
+        "is_admin": getattr(current_user, 'is_admin', False),
         "premium_expires_at": current_user.premium_expires_at.isoformat() if getattr(current_user, 'premium_expires_at', None) else None,
         "created_at": current_user.created_at.isoformat(),
         "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
