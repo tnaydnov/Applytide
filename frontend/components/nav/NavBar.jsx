@@ -92,6 +92,18 @@ export default function NavBar() {
         { label: "Reminders", href: "/reminders", icon: "notifications" },
       ],
     },
+    // Admin link - only show if user is admin
+    ...(user?.is_admin ? [{
+      label: "Admin",
+      href: "/admin",
+      icon: "settings",
+      subItems: [
+        { label: "Dashboard", href: "/admin", icon: "dashboard" },
+        { label: "Users", href: "/admin/users", icon: "group" },
+        { label: "Analytics", href: "/admin/analytics", icon: "analytics" },
+        { label: "System Logs", href: "/admin/system", icon: "description" },
+      ],
+    }] : []),
   ];
 
   const links = loading || !isAuthenticated ? publicLinks : authenticatedLinks;

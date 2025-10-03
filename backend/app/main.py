@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +7,9 @@ from sqlalchemy import text
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 
 # Try ProxyHeadersMiddleware from Starlette, then Uvicorn, else disable
@@ -37,9 +40,15 @@ from .db.session import get_db
 from .infra.cache.redis_client import get_redis
 from .api.routers.reminders import router as reminders_router
 from .api.routers.auth import router as auth_router
+from .api.routers.admin import router as admin_router
 from .config import settings
 
+# Initialize rate limiter for admin endpoints
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Applytide API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 
@@ -95,6 +104,7 @@ app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
 app.include_router(reminders_router)
+app.include_router(admin_router)
 
 # --- Security headers (as late as possible)
 if settings.SECURITY_HEADERS_ENABLED:

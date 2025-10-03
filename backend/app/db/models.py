@@ -65,6 +65,7 @@ class User(Base):
     
     # Account Status
     is_premium: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(default=False, nullable=False)
     premium_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -280,3 +281,24 @@ class ReminderNote(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+# ---------- Admin Logs ----------
+class AdminLog(Base):
+    """Track all admin actions for audit trail
+    
+    IMPORTANT: Audit logs are immutable and permanent for compliance.
+    Even if an admin user is deleted, their logs MUST be preserved.
+    We store admin_email redundantly to maintain readability.
+    """
+    __tablename__ = "admin_logs"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Nullable to preserve logs
+    admin_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)  # Redundant but permanent record
+    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # 'view_user', 'update_user', 'view_stats', etc.
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)  # 'user', 'application', 'document', etc.
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # Changed from String to UUID to match migration
+    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Additional context
+    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)

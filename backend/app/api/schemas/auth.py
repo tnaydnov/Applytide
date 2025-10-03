@@ -80,6 +80,7 @@ class UserInfo(BaseModel):
     notification_email: bool = True
     notification_push: bool = True
     is_premium: bool = False
+    is_admin: bool = False  # SECURITY: Include admin flag for frontend
     premium_expires_at: Optional[str] = None
     created_at: str
     updated_at: Optional[str] = None
