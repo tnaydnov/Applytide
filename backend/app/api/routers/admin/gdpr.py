@@ -11,4 +11,206 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.gdpr_service import GDPRAdminService\n\n\nrouter = APIRouter(tags=["admin-gdpr"])\n\n\nclass GDPRStatsResponse(BaseModel):\n    total_requests: int\n    pending_requests: int\n    completed_requests: int\n    failed_requests: int\n    export_requests: int\n    delete_requests: int\n\n\nclass GDPRRequestResponse(BaseModel):\n    id: str\n    user_id: str\n    user_email: str\n    request_type: str\n    status: str\n    requested_at: datetime\n    completed_at: Optional[datetime]\n    processed_by_admin_id: Optional[str]\n    error_message: Optional[str]\n    file_path: Optional[str]\n\n\nclass CreateExportRequest(BaseModel):\n    user_id: str = Field(..., description="User ID to export data for")\n    justification: str = Field(..., min_length=20, description="Detailed reason for export")\n\n\nclass CreateDeleteRequest(BaseModel):\n    user_id: str = Field(..., description="User ID to delete")\n    justification: str = Field(..., min_length=50, description="Detailed reason for deletion (DANGEROUS OPERATION)")\n\n\n@router.get(\n    "/gdpr/stats",\n    response_model=GDPRStatsResponse,\n    summary="Get GDPR Statistics"\n)\n@limiter.limit("30/minute")\nasync def get_gdpr_stats(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get GDPR request statistics\n    \n    Returns counts of export/delete requests and their statuses\n    """\n    service = GDPRAdminService(db)\n    stats = await service.get_gdpr_stats()\n    \n    return GDPRStatsResponse(\n        total_requests=stats.total_requests,\n        pending_requests=stats.pending_requests,\n        completed_requests=stats.completed_requests,\n        failed_requests=stats.failed_requests,\n        export_requests=stats.export_requests,\n        delete_requests=stats.delete_requests\n    )\n\n\n@router.get(\n    "/gdpr/requests",\n    response_model=list[GDPRRequestResponse],\n    summary="List GDPR Requests"\n)\n@limiter.limit("30/minute")\nasync def list_gdpr_requests(\n    request: Request,\n    request_type: Optional[str] = Query(default=None, regex="^(export|delete)$"),\n    limit: int = Query(default=100, ge=1, le=500),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    List GDPR requests from audit logs\n    \n    Returns history of data export and deletion requests\n    """\n    from ...domain.admin.gdpr_dto import GDPRRequestType\n    \n    service = GDPRAdminService(db)\n    req_type = GDPRRequestType(request_type) if request_type else None\n    requests = await service.list_gdpr_requests(request_type=req_type, limit=limit)\n    \n    return [\n        GDPRRequestResponse(\n            id=req.id,\n            user_id=req.user_id,\n            user_email=req.user_email,\n            request_type=req.request_type.value,\n            status=req.status.value,\n            requested_at=req.requested_at,\n            completed_at=req.completed_at,\n            processed_by_admin_id=req.processed_by_admin_id,\n            error_message=req.error_message,\n            file_path=req.file_path\n        )\n        for req in requests\n    ]\n\n\n@router.post(\n    "/gdpr/export",\n    summary="Create Data Export Request"\n)\n@limiter.limit("10/hour")  # Strict limit for GDPR operations\nasync def create_export_request(\n    request: Request,\n    export_request: CreateExportRequest,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Create and process user data export request\n    \n    - Requires step-up authentication\n    - Exports all user data to JSON file\n    - Includes jobs, applications, documents\n    - Rate limited to 10 per hour\n    """\n    service = GDPRAdminService(db)\n    \n    try:\n        request_id = await service.create_export_request(\n            user_id=export_request.user_id,\n            admin_id=current_admin.id,\n            justification=export_request.justification\n        )\n        \n        return {\n            "success": True,\n            "request_id": request_id,\n            "message": f"Data export completed for user {export_request.user_id}"\n        }\n    except ValueError as e:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail=str(e)\n        )\n    except Exception as e:\n        raise HTTPException(\n            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,\n            detail=f"Export failed: {str(e)}"\n        )\n\n\n@router.post(\n    "/gdpr/delete",\n    summary="Create User Deletion Request"\n)\n@limiter.limit("5/hour")  # Very strict limit for deletions\nasync def create_delete_request(\n    request: Request,\n    delete_request: CreateDeleteRequest,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Create and process user deletion request\n    \n    EXTREMELY DANGEROUS OPERATION - Permanently deletes user and ALL data!\n    \n    - Requires step-up authentication\n    - Requires detailed justification (min 50 characters)\n    - Deletes user, jobs, applications, documents\n    - Cascades to all related records\n    - Rate limited to 5 per hour\n    - Permanently logged in audit trail\n    """\n    service = GDPRAdminService(db)\n    \n    try:\n        request_id = await service.create_delete_request(\n            user_id=delete_request.user_id,\n            admin_id=current_admin.id,\n            justification=delete_request.justification\n        )\n        \n        return {\n            "success": True,\n            "request_id": request_id,\n            "message": f"User {delete_request.user_id} and all related data have been permanently deleted",\n            "warning": "This operation cannot be undone"\n        }\n    except ValueError as e:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail=str(e)\n        )\n    except Exception as e:\n        await db.rollback()\n        raise HTTPException(\n            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,\n            detail=f"Deletion failed: {str(e)}"\n        )\n\n
+from ....domain.admin.gdpr_service import GDPRAdminService
+
+
+router = APIRouter(tags=["admin-gdpr"])
+
+
+class GDPRStatsResponse(BaseModel):
+    total_requests: int
+    pending_requests: int
+    completed_requests: int
+    failed_requests: int
+    export_requests: int
+    delete_requests: int
+
+
+class GDPRRequestResponse(BaseModel):
+    id: str
+    user_id: str
+    user_email: str
+    request_type: str
+    status: str
+    requested_at: datetime
+    completed_at: Optional[datetime]
+    processed_by_admin_id: Optional[str]
+    error_message: Optional[str]
+    file_path: Optional[str]
+
+
+class CreateExportRequest(BaseModel):
+    user_id: str = Field(..., description="User ID to export data for")
+    justification: str = Field(..., min_length=20, description="Detailed reason for export")
+
+
+class CreateDeleteRequest(BaseModel):
+    user_id: str = Field(..., description="User ID to delete")
+    justification: str = Field(..., min_length=50, description="Detailed reason for deletion (DANGEROUS OPERATION)")
+
+
+@router.get(
+    "/gdpr/stats",
+    response_model=GDPRStatsResponse,
+    summary="Get GDPR Statistics"
+)
+@limiter.limit("30/minute")
+async def get_gdpr_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get GDPR request statistics
+    
+    Returns counts of export/delete requests and their statuses
+    """
+    service = GDPRAdminService(db)
+    stats = await service.get_gdpr_stats()
+    
+    return GDPRStatsResponse(
+        total_requests=stats.total_requests,
+        pending_requests=stats.pending_requests,
+        completed_requests=stats.completed_requests,
+        failed_requests=stats.failed_requests,
+        export_requests=stats.export_requests,
+        delete_requests=stats.delete_requests
+    )
+
+
+@router.get(
+    "/gdpr/requests",
+    response_model=list[GDPRRequestResponse],
+    summary="List GDPR Requests"
+)
+@limiter.limit("30/minute")
+async def list_gdpr_requests(
+    request: Request,
+    request_type: Optional[str] = Query(default=None, regex="^(export|delete)$"),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List GDPR requests from audit logs
+    
+    Returns history of data export and deletion requests
+    """
+    from ...domain.admin.gdpr_dto import GDPRRequestType
+    
+    service = GDPRAdminService(db)
+    req_type = GDPRRequestType(request_type) if request_type else None
+    requests = await service.list_gdpr_requests(request_type=req_type, limit=limit)
+    
+    return [
+        GDPRRequestResponse(
+            id=req.id,
+            user_id=req.user_id,
+            user_email=req.user_email,
+            request_type=req.request_type.value,
+            status=req.status.value,
+            requested_at=req.requested_at,
+            completed_at=req.completed_at,
+            processed_by_admin_id=req.processed_by_admin_id,
+            error_message=req.error_message,
+            file_path=req.file_path
+        )
+        for req in requests
+    ]
+
+
+@router.post(
+    "/gdpr/export",
+    summary="Create Data Export Request"
+)
+@limiter.limit("10/hour")  # Strict limit for GDPR operations
+async def create_export_request(
+    request: Request,
+    export_request: CreateExportRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Create and process user data export request
+    
+    - Requires step-up authentication
+    - Exports all user data to JSON file
+    - Includes jobs, applications, documents
+    - Rate limited to 10 per hour
+    """
+    service = GDPRAdminService(db)
+    
+    try:
+        request_id = await service.create_export_request(
+            user_id=export_request.user_id,
+            admin_id=current_admin.id,
+            justification=export_request.justification
+        )
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "message": f"Data export completed for user {export_request.user_id}"
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Export failed: {str(e)}"
+        )
+
+
+@router.post(
+    "/gdpr/delete",
+    summary="Create User Deletion Request"
+)
+@limiter.limit("5/hour")  # Very strict limit for deletions
+async def create_delete_request(
+    request: Request,
+    delete_request: CreateDeleteRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Create and process user deletion request
+    
+    EXTREMELY DANGEROUS OPERATION - Permanently deletes user and ALL data!
+    
+    - Requires step-up authentication
+    - Requires detailed justification (min 50 characters)
+    - Deletes user, jobs, applications, documents
+    - Cascades to all related records
+    - Rate limited to 5 per hour
+    - Permanently logged in audit trail
+    """
+    service = GDPRAdminService(db)
+    
+    try:
+        request_id = await service.create_delete_request(
+            user_id=delete_request.user_id,
+            admin_id=current_admin.id,
+            justification=delete_request.justification
+        )
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "message": f"User {delete_request.user_id} and all related data have been permanently deleted",
+            "warning": "This operation cannot be undone"
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Deletion failed: {str(e)}"
+        )
+

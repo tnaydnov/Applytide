@@ -11,4 +11,152 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.database_service import DatabaseAdminService\n\n\nrouter = APIRouter(tags=["admin-database"])\n\n# Emergency SQL query tool for production debugging\n# Read-only queries with comprehensive safety checks\n\nclass DatabaseQueryRequest(BaseModel):\n    query: str = Field(..., description="SQL query to execute (SELECT only)")\n    justification: str = Field(..., min_length=10, description="Reason for executing this query")\n\n\nclass DatabaseQueryResponse(BaseModel):\n    columns: list[str]\n    rows: list[dict]\n    row_count: int\n    execution_time_ms: float\n    query: str\n\n\nclass TableColumn(BaseModel):\n    column_name: str\n    data_type: str\n    is_nullable: bool\n    column_default: Optional[str]\n    max_length: Optional[int]\n\n\nclass TableInfoResponse(BaseModel):\n    table_name: str\n    row_count: int\n    size_bytes: Optional[int]\n    columns: list[TableColumn]\n\n\n@router.post(\n    "/database/query",\n    response_model=DatabaseQueryResponse,\n    summary="Execute SQL Query"\n)\n@limiter.limit("10/minute")  # Very strict limit for database queries\nasync def execute_database_query(\n    request: Request,\n    query_request: DatabaseQueryRequest,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Execute read-only SQL query for debugging\n    \n    - Requires step-up authentication (recent password confirmation)\n    - Only SELECT and WITH queries allowed\n    - Comprehensive safety validation\n    - Automatic audit logging\n    - Query timing metrics\n    """\n    service = DatabaseAdminService(db)\n    \n    result = await service.execute_query(\n        query=query_request.query,\n        admin_id=current_admin.id,\n        justification=query_request.justification\n    )\n    \n    return DatabaseQueryResponse(\n        columns=result.columns,\n        rows=result.rows,\n        row_count=result.row_count,\n        execution_time_ms=result.execution_time_ms,\n        query=result.query\n    )\n\n\n@router.get(\n    "/database/tables",\n    response_model=list[TableInfoResponse],\n    summary="List Database Tables"\n)\n@limiter.limit("20/minute")\nasync def list_database_tables(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    List all database tables with row counts and column info\n    \n    Returns schema information for all tables in public schema\n    """\n    service = DatabaseAdminService(db)\n    tables = await service.list_tables()\n    \n    return [\n        TableInfoResponse(\n            table_name=table.table_name,\n            row_count=table.row_count,\n            size_bytes=table.size_bytes,\n            columns=[\n                TableColumn(\n                    column_name=col["column_name"],\n                    data_type=col["data_type"],\n                    is_nullable=col["is_nullable"],\n                    column_default=col.get("column_default"),\n                    max_length=col.get("max_length")\n                )\n                for col in table.columns\n            ]\n        )\n        for table in tables\n    ]\n\n\n@router.get(\n    "/database/schema/{table_name}",\n    response_model=TableInfoResponse,\n    summary="Get Table Schema"\n)\n@limiter.limit("30/minute")\nasync def get_table_schema(\n    request: Request,\n    table_name: str,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get detailed schema for specific table\n    \n    Returns columns with types, nullable status, defaults, and constraints\n    """\n    service = DatabaseAdminService(db)\n    table_info = await service.get_table_schema(table_name)\n    \n    return TableInfoResponse(\n        table_name=table_info.table_name,\n        row_count=table_info.row_count,\n        size_bytes=table_info.size_bytes,\n        columns=[\n            TableColumn(\n                column_name=col["column_name"],\n                data_type=col["data_type"],\n                is_nullable=col["is_nullable"],\n                column_default=col.get("column_default"),\n                max_length=col.get("max_length")\n            )\n            for col in table_info.columns\n        ]\n    )\n\n
+from ....domain.admin.database_service import DatabaseAdminService
+
+
+router = APIRouter(tags=["admin-database"])
+
+# Emergency SQL query tool for production debugging
+# Read-only queries with comprehensive safety checks
+
+class DatabaseQueryRequest(BaseModel):
+    query: str = Field(..., description="SQL query to execute (SELECT only)")
+    justification: str = Field(..., min_length=10, description="Reason for executing this query")
+
+
+class DatabaseQueryResponse(BaseModel):
+    columns: list[str]
+    rows: list[dict]
+    row_count: int
+    execution_time_ms: float
+    query: str
+
+
+class TableColumn(BaseModel):
+    column_name: str
+    data_type: str
+    is_nullable: bool
+    column_default: Optional[str]
+    max_length: Optional[int]
+
+
+class TableInfoResponse(BaseModel):
+    table_name: str
+    row_count: int
+    size_bytes: Optional[int]
+    columns: list[TableColumn]
+
+
+@router.post(
+    "/database/query",
+    response_model=DatabaseQueryResponse,
+    summary="Execute SQL Query"
+)
+@limiter.limit("10/minute")  # Very strict limit for database queries
+async def execute_database_query(
+    request: Request,
+    query_request: DatabaseQueryRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Execute read-only SQL query for debugging
+    
+    - Requires step-up authentication (recent password confirmation)
+    - Only SELECT and WITH queries allowed
+    - Comprehensive safety validation
+    - Automatic audit logging
+    - Query timing metrics
+    """
+    service = DatabaseAdminService(db)
+    
+    result = await service.execute_query(
+        query=query_request.query,
+        admin_id=current_admin.id,
+        justification=query_request.justification
+    )
+    
+    return DatabaseQueryResponse(
+        columns=result.columns,
+        rows=result.rows,
+        row_count=result.row_count,
+        execution_time_ms=result.execution_time_ms,
+        query=result.query
+    )
+
+
+@router.get(
+    "/database/tables",
+    response_model=list[TableInfoResponse],
+    summary="List Database Tables"
+)
+@limiter.limit("20/minute")
+async def list_database_tables(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List all database tables with row counts and column info
+    
+    Returns schema information for all tables in public schema
+    """
+    service = DatabaseAdminService(db)
+    tables = await service.list_tables()
+    
+    return [
+        TableInfoResponse(
+            table_name=table.table_name,
+            row_count=table.row_count,
+            size_bytes=table.size_bytes,
+            columns=[
+                TableColumn(
+                    column_name=col["column_name"],
+                    data_type=col["data_type"],
+                    is_nullable=col["is_nullable"],
+                    column_default=col.get("column_default"),
+                    max_length=col.get("max_length")
+                )
+                for col in table.columns
+            ]
+        )
+        for table in tables
+    ]
+
+
+@router.get(
+    "/database/schema/{table_name}",
+    response_model=TableInfoResponse,
+    summary="Get Table Schema"
+)
+@limiter.limit("30/minute")
+async def get_table_schema(
+    request: Request,
+    table_name: str,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get detailed schema for specific table
+    
+    Returns columns with types, nullable status, defaults, and constraints
+    """
+    service = DatabaseAdminService(db)
+    table_info = await service.get_table_schema(table_name)
+    
+    return TableInfoResponse(
+        table_name=table_info.table_name,
+        row_count=table_info.row_count,
+        size_bytes=table_info.size_bytes,
+        columns=[
+            TableColumn(
+                column_name=col["column_name"],
+                data_type=col["data_type"],
+                is_nullable=col["is_nullable"],
+                column_default=col.get("column_default"),
+                max_length=col.get("max_length")
+            )
+            for col in table_info.columns
+        ]
+    )
+

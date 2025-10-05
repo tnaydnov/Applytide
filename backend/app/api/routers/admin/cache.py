@@ -11,4 +11,215 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.cache_service import CacheAdminService\n\n\nrouter = APIRouter(tags=["admin-cache"])\n\n# Redis cache browser and management\n\nclass CacheStatsResponse(BaseModel):\n    total_keys: int\n    memory_usage_bytes: int\n    memory_usage_human: str\n    hit_rate: Optional[float]\n    connected_clients: int\n    uptime_seconds: int\n    used_memory_peak: int\n    expired_keys: int\n\n\nclass CacheKeyResponse(BaseModel):\n    key: str\n    type: str\n    ttl: int\n    size_bytes: Optional[int]\n    value_preview: Optional[str]\n\n\nclass CacheKeyDetailResponse(BaseModel):\n    key: str\n    type: str\n    ttl: int\n    size_bytes: int\n    value: str\n\n\nclass DeleteKeyRequest(BaseModel):\n    key: str\n    justification: str = Field(..., min_length=10)\n\n\nclass FlushPatternRequest(BaseModel):\n    pattern: str = Field(..., min_length=2, description="Redis pattern (e.g., 'session:*')")\n    justification: str = Field(..., min_length=10)\n    max_keys: int = Field(default=1000, ge=1, le=10000)\n\n\n@router.get(\n    "/cache/stats",\n    response_model=CacheStatsResponse,\n    summary="Get Cache Statistics"\n)\n@limiter.limit("30/minute")\nasync def get_cache_stats(\n    request: Request,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get comprehensive Redis cache statistics\n    \n    Returns memory usage, key count, hit rate, and performance metrics\n    """\n    service = CacheAdminService(db, cache_service)\n    stats = await service.get_cache_stats()\n    \n    return CacheStatsResponse(\n        total_keys=stats.total_keys,\n        memory_usage_bytes=stats.memory_usage_bytes,\n        memory_usage_human=stats.memory_usage_human,\n        hit_rate=stats.hit_rate,\n        connected_clients=stats.connected_clients,\n        uptime_seconds=stats.uptime_seconds,\n        used_memory_peak=stats.used_memory_peak,\n        expired_keys=stats.expired_keys\n    )\n\n\n@router.get(\n    "/cache/keys",\n    response_model=list[CacheKeyResponse],\n    summary="List Cache Keys"\n)\n@limiter.limit("30/minute")\nasync def list_cache_keys(\n    request: Request,\n    pattern: str = Query(default="*", description="Redis pattern"),\n    limit: int = Query(default=100, ge=1, le=1000),\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    List cache keys matching pattern\n    \n    Use patterns like:\n    - `user:*` - All user keys\n    - `session:*` - All session keys\n    - `*email*` - Keys containing "email"\n    """\n    service = CacheAdminService(db, cache_service)\n    keys = await service.list_keys(pattern=pattern, limit=limit)\n    \n    return [\n        CacheKeyResponse(\n            key=key.key,\n            type=key.type,\n            ttl=key.ttl,\n            size_bytes=key.size_bytes,\n            value_preview=key.value_preview\n        )\n        for key in keys\n    ]\n\n\n@router.get(\n    "/cache/keys/{key}",\n    response_model=CacheKeyDetailResponse,\n    summary="Get Cache Key Detail"\n)\n@limiter.limit("30/minute")\nasync def get_cache_key_detail(\n    request: Request,\n    key: str,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get detailed information about a cache key\n    \n    Returns full value and metadata\n    """\n    service = CacheAdminService(db, cache_service)\n    detail = await service.get_key_detail(key)\n    \n    return CacheKeyDetailResponse(\n        key=detail.key,\n        type=detail.type,\n        ttl=detail.ttl,\n        size_bytes=detail.size_bytes,\n        value=detail.value\n    )\n\n\n@router.delete(\n    "/cache/keys",\n    summary="Delete Cache Key"\n)\n@limiter.limit("20/minute")\nasync def delete_cache_key(\n    request: Request,\n    delete_request: DeleteKeyRequest,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Delete a cache key\n    \n    Requires step-up authentication and justification\n    """\n    service = CacheAdminService(db, cache_service)\n    deleted = await service.delete_key(\n        key=delete_request.key,\n        admin_id=current_admin.id,\n        justification=delete_request.justification\n    )\n    \n    return {\n        "success": True,\n        "deleted": deleted,\n        "message": f"Key '{delete_request.key}' deleted" if deleted else f"Key '{delete_request.key}' not found"\n    }\n\n\n@router.post(\n    "/cache/flush",\n    summary="Flush Keys by Pattern"\n)\n@limiter.limit("5/hour")  # Very strict limit for bulk operations\nasync def flush_cache_pattern(\n    request: Request,\n    flush_request: FlushPatternRequest,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Delete all keys matching pattern\n    \n    DANGEROUS OPERATION - Use with extreme caution!\n    \n    - Requires step-up authentication\n    - Cannot flush all keys (pattern "*" is blocked)\n    - Limited to 10,000 keys per operation\n    - Rate limited to 5 per hour\n    """\n    service = CacheAdminService(db, cache_service)\n    deleted_count = await service.flush_pattern(\n        pattern=flush_request.pattern,\n        admin_id=current_admin.id,\n        justification=flush_request.justification,\n        max_keys=flush_request.max_keys\n    )\n    \n    return {\n        "success": True,\n        "deleted_count": deleted_count,\n        "pattern": flush_request.pattern,\n        "message": f"Deleted {deleted_count} keys matching pattern '{flush_request.pattern}'"\n    }\n\n
+from ....domain.admin.cache_service import CacheAdminService
+
+
+router = APIRouter(tags=["admin-cache"])
+
+# Redis cache browser and management
+
+class CacheStatsResponse(BaseModel):
+    total_keys: int
+    memory_usage_bytes: int
+    memory_usage_human: str
+    hit_rate: Optional[float]
+    connected_clients: int
+    uptime_seconds: int
+    used_memory_peak: int
+    expired_keys: int
+
+
+class CacheKeyResponse(BaseModel):
+    key: str
+    type: str
+    ttl: int
+    size_bytes: Optional[int]
+    value_preview: Optional[str]
+
+
+class CacheKeyDetailResponse(BaseModel):
+    key: str
+    type: str
+    ttl: int
+    size_bytes: int
+    value: str
+
+
+class DeleteKeyRequest(BaseModel):
+    key: str
+    justification: str = Field(..., min_length=10)
+
+
+class FlushPatternRequest(BaseModel):
+    pattern: str = Field(..., min_length=2, description="Redis pattern (e.g., 'session:*')")
+    justification: str = Field(..., min_length=10)
+    max_keys: int = Field(default=1000, ge=1, le=10000)
+
+
+@router.get(
+    "/cache/stats",
+    response_model=CacheStatsResponse,
+    summary="Get Cache Statistics"
+)
+@limiter.limit("30/minute")
+async def get_cache_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get comprehensive Redis cache statistics
+    
+    Returns memory usage, key count, hit rate, and performance metrics
+    """
+    service = CacheAdminService(db, cache_service)
+    stats = await service.get_cache_stats()
+    
+    return CacheStatsResponse(
+        total_keys=stats.total_keys,
+        memory_usage_bytes=stats.memory_usage_bytes,
+        memory_usage_human=stats.memory_usage_human,
+        hit_rate=stats.hit_rate,
+        connected_clients=stats.connected_clients,
+        uptime_seconds=stats.uptime_seconds,
+        used_memory_peak=stats.used_memory_peak,
+        expired_keys=stats.expired_keys
+    )
+
+
+@router.get(
+    "/cache/keys",
+    response_model=list[CacheKeyResponse],
+    summary="List Cache Keys"
+)
+@limiter.limit("30/minute")
+async def list_cache_keys(
+    request: Request,
+    pattern: str = Query(default="*", description="Redis pattern"),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List cache keys matching pattern
+    
+    Use patterns like:
+    - `user:*` - All user keys
+    - `session:*` - All session keys
+    - `*email*` - Keys containing "email"
+    """
+    service = CacheAdminService(db, cache_service)
+    keys = await service.list_keys(pattern=pattern, limit=limit)
+    
+    return [
+        CacheKeyResponse(
+            key=key.key,
+            type=key.type,
+            ttl=key.ttl,
+            size_bytes=key.size_bytes,
+            value_preview=key.value_preview
+        )
+        for key in keys
+    ]
+
+
+@router.get(
+    "/cache/keys/{key}",
+    response_model=CacheKeyDetailResponse,
+    summary="Get Cache Key Detail"
+)
+@limiter.limit("30/minute")
+async def get_cache_key_detail(
+    request: Request,
+    key: str,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get detailed information about a cache key
+    
+    Returns full value and metadata
+    """
+    service = CacheAdminService(db, cache_service)
+    detail = await service.get_key_detail(key)
+    
+    return CacheKeyDetailResponse(
+        key=detail.key,
+        type=detail.type,
+        ttl=detail.ttl,
+        size_bytes=detail.size_bytes,
+        value=detail.value
+    )
+
+
+@router.delete(
+    "/cache/keys",
+    summary="Delete Cache Key"
+)
+@limiter.limit("20/minute")
+async def delete_cache_key(
+    request: Request,
+    delete_request: DeleteKeyRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Delete a cache key
+    
+    Requires step-up authentication and justification
+    """
+    service = CacheAdminService(db, cache_service)
+    deleted = await service.delete_key(
+        key=delete_request.key,
+        admin_id=current_admin.id,
+        justification=delete_request.justification
+    )
+    
+    return {
+        "success": True,
+        "deleted": deleted,
+        "message": f"Key '{delete_request.key}' deleted" if deleted else f"Key '{delete_request.key}' not found"
+    }
+
+
+@router.post(
+    "/cache/flush",
+    summary="Flush Keys by Pattern"
+)
+@limiter.limit("5/hour")  # Very strict limit for bulk operations
+async def flush_cache_pattern(
+    request: Request,
+    flush_request: FlushPatternRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Delete all keys matching pattern
+    
+    DANGEROUS OPERATION - Use with extreme caution!
+    
+    - Requires step-up authentication
+    - Cannot flush all keys (pattern "*" is blocked)
+    - Limited to 10,000 keys per operation
+    - Rate limited to 5 per hour
+    """
+    service = CacheAdminService(db, cache_service)
+    deleted_count = await service.flush_pattern(
+        pattern=flush_request.pattern,
+        admin_id=current_admin.id,
+        justification=flush_request.justification,
+        max_keys=flush_request.max_keys
+    )
+    
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "pattern": flush_request.pattern,
+        "message": f"Deleted {deleted_count} keys matching pattern '{flush_request.pattern}'"
+    }
+

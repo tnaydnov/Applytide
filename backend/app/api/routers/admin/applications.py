@@ -11,4 +11,258 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.applications_service import ApplicationsAdminService\n\n\nrouter = APIRouter(tags=["admin-applications"])\n\n\nclass ApplicationSummaryResponse(BaseModel):\n    id: str\n    user_id: Optional[str]\n    job_id: str\n    resume_id: Optional[str]\n    status: str\n    source: Optional[str]\n    created_at: datetime\n    user_email: Optional[str]\n    job_title: Optional[str]\n    company_name: Optional[str]\n\n\nclass ApplicationDetailResponse(BaseModel):\n    id: str\n    user_id: Optional[str]\n    job_id: str\n    resume_id: Optional[str]\n    status: str\n    source: Optional[str]\n    created_at: datetime\n    user_email: Optional[str]\n    user_name: Optional[str]\n    job_title: Optional[str]\n    job_location: Optional[str]\n    company_name: Optional[str]\n    resume_label: Optional[str]\n\n\nclass ApplicationStatusUpdateRequest(BaseModel):\n    status: str = Field(..., description="New application status")\n    justification: str = Field(..., description="Reason for the status update")\n\n\nclass ApplicationBulkDeleteRequest(BaseModel):\n    application_ids: list[str] = Field(..., description="List of application IDs to delete")\n    justification: str = Field(..., description="Reason for bulk deletion")\n\n\nclass ApplicationAnalyticsResponse(BaseModel):\n    total_applications: int\n    apps_7d: int\n    apps_30d: int\n    by_status: list[dict]\n    by_source: list[dict]\n    conversion_funnel: list[dict]\n    apps_by_date: list[dict]\n\n\n@router.get("/applications", response_model=dict)\n@limiter.limit("100/minute")\nasync def list_applications(\n    request: Request,\n    skip: int = Query(0, ge=0),\n    limit: int = Query(50, ge=1, le=100),\n    search: Optional[str] = Query(None),\n    status: Optional[str] = Query(None),\n    source: Optional[str] = Query(None),\n    user_id: Optional[str] = Query(None),\n    job_id: Optional[str] = Query(None),\n    sort_by: str = Query("created_at"),\n    sort_order: str = Query("desc"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """List all applications with pagination and filters"""\n    service = ApplicationsAdminService(db)\n    \n    user_uuid = UUID(user_id) if user_id else None\n    job_uuid = UUID(job_id) if job_id else None\n    \n    applications, total = await service.list_applications(\n        skip=skip,\n        limit=limit,\n        search=search,\n        status=status,\n        source=source,\n        user_id=user_uuid,\n        job_id=job_uuid,\n        sort_by=sort_by,\n        sort_order=sort_order\n    )\n    \n    return {\n        "applications": [\n            {\n                "id": str(app.id),\n                "user_id": str(app.user_id) if app.user_id else None,\n                "job_id": str(app.job_id),\n                "resume_id": str(app.resume_id) if app.resume_id else None,\n                "status": app.status,\n                "source": app.source,\n                "created_at": app.created_at.isoformat(),\n                "user_email": app.user_email,\n                "job_title": app.job_title,\n                "company_name": app.company_name\n            }\n            for app in applications\n        ],\n        "total": total,\n        "skip": skip,\n        "limit": limit\n    }\n\n\n@router.get("/applications/{app_id}", response_model=ApplicationDetailResponse)\n@limiter.limit("100/minute")\nasync def get_application_detail(\n    request: Request,\n    app_id: UUID,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """Get detailed application information"""\n    service = ApplicationsAdminService(db)\n    app = await service.get_application_detail(app_id)\n    \n    if not app:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail="Application not found"\n        )\n    \n    return ApplicationDetailResponse(\n        id=str(app.id),\n        user_id=str(app.user_id) if app.user_id else None,\n        job_id=str(app.job_id),\n        resume_id=str(app.resume_id) if app.resume_id else None,\n        status=app.status,\n        source=app.source,\n        created_at=app.created_at,\n        user_email=app.user_email,\n        user_name=app.user_name,\n        job_title=app.job_title,\n        job_location=app.job_location,\n        company_name=app.company_name,\n        resume_label=app.resume_label\n    )\n\n\n@router.patch("/applications/{app_id}/status")\n@limiter.limit("20/minute")\nasync def update_application_status(\n    request: Request,\n    app_id: UUID,\n    body: ApplicationStatusUpdateRequest,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """Update application status (requires step-up authentication)"""\n    service = ApplicationsAdminService(db)\n    \n    success = await service.update_application_status(\n        app_id=app_id,\n        admin_id=current_admin.id,\n        status=body.status,\n        justification=body.justification\n    )\n    \n    if not success:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail="Application not found"\n        )\n    \n    return {\n        "success": True,\n        "message": "Application status updated successfully",\n        "application_id": str(app_id),\n        "new_status": body.status\n    }\n\n\n@router.delete("/applications/{app_id}")\n@limiter.limit("20/minute")\nasync def delete_application(\n    request: Request,\n    app_id: UUID,\n    justification: str = Query(..., description="Reason for deletion"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """Delete an application (requires step-up authentication)"""\n    service = ApplicationsAdminService(db)\n    \n    success = await service.delete_application(\n        app_id=app_id,\n        admin_id=current_admin.id,\n        justification=justification\n    )\n    \n    if not success:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail="Application not found"\n        )\n    \n    return {\n        "success": True,\n        "message": "Application deleted successfully",\n        "application_id": str(app_id)\n    }\n\n\n@router.post("/applications/bulk-delete")\n@limiter.limit("10/minute")\nasync def bulk_delete_applications(\n    request: Request,\n    body: ApplicationBulkDeleteRequest,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """Bulk delete applications (requires step-up authentication)"""\n    service = ApplicationsAdminService(db)\n    \n    app_ids = [UUID(aid) for aid in body.application_ids]\n    deleted_count = await service.bulk_delete_applications(\n        app_ids=app_ids,\n        admin_id=current_admin.id,\n        justification=body.justification\n    )\n    \n    return {\n        "success": True,\n        "message": f"Deleted {deleted_count} applications",\n        "deleted_count": deleted_count\n    }\n\n\n@router.get("/applications/analytics/overview", response_model=ApplicationAnalyticsResponse)\n@limiter.limit("100/minute")\nasync def get_application_analytics(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """Get application analytics"""\n    service = ApplicationsAdminService(db)\n    analytics = await service.get_application_analytics()\n    \n    return ApplicationAnalyticsResponse(\n        total_applications=analytics.total_applications,\n        apps_7d=analytics.apps_7d,\n        apps_30d=analytics.apps_30d,\n        by_status=analytics.by_status,\n        by_source=analytics.by_source,\n        conversion_funnel=analytics.conversion_funnel,\n        apps_by_date=analytics.apps_by_date\n    )\n\n
+from ....domain.admin.applications_service import ApplicationsAdminService
+
+
+router = APIRouter(tags=["admin-applications"])
+
+
+class ApplicationSummaryResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    job_id: str
+    resume_id: Optional[str]
+    status: str
+    source: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    job_title: Optional[str]
+    company_name: Optional[str]
+
+
+class ApplicationDetailResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    job_id: str
+    resume_id: Optional[str]
+    status: str
+    source: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    user_name: Optional[str]
+    job_title: Optional[str]
+    job_location: Optional[str]
+    company_name: Optional[str]
+    resume_label: Optional[str]
+
+
+class ApplicationStatusUpdateRequest(BaseModel):
+    status: str = Field(..., description="New application status")
+    justification: str = Field(..., description="Reason for the status update")
+
+
+class ApplicationBulkDeleteRequest(BaseModel):
+    application_ids: list[str] = Field(..., description="List of application IDs to delete")
+    justification: str = Field(..., description="Reason for bulk deletion")
+
+
+class ApplicationAnalyticsResponse(BaseModel):
+    total_applications: int
+    apps_7d: int
+    apps_30d: int
+    by_status: list[dict]
+    by_source: list[dict]
+    conversion_funnel: list[dict]
+    apps_by_date: list[dict]
+
+
+@router.get("/applications", response_model=dict)
+@limiter.limit("100/minute")
+async def list_applications(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    job_id: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """List all applications with pagination and filters"""
+    service = ApplicationsAdminService(db)
+    
+    user_uuid = UUID(user_id) if user_id else None
+    job_uuid = UUID(job_id) if job_id else None
+    
+    applications, total = await service.list_applications(
+        skip=skip,
+        limit=limit,
+        search=search,
+        status=status,
+        source=source,
+        user_id=user_uuid,
+        job_id=job_uuid,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    return {
+        "applications": [
+            {
+                "id": str(app.id),
+                "user_id": str(app.user_id) if app.user_id else None,
+                "job_id": str(app.job_id),
+                "resume_id": str(app.resume_id) if app.resume_id else None,
+                "status": app.status,
+                "source": app.source,
+                "created_at": app.created_at.isoformat(),
+                "user_email": app.user_email,
+                "job_title": app.job_title,
+                "company_name": app.company_name
+            }
+            for app in applications
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/applications/{app_id}", response_model=ApplicationDetailResponse)
+@limiter.limit("100/minute")
+async def get_application_detail(
+    request: Request,
+    app_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get detailed application information"""
+    service = ApplicationsAdminService(db)
+    app = await service.get_application_detail(app_id)
+    
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return ApplicationDetailResponse(
+        id=str(app.id),
+        user_id=str(app.user_id) if app.user_id else None,
+        job_id=str(app.job_id),
+        resume_id=str(app.resume_id) if app.resume_id else None,
+        status=app.status,
+        source=app.source,
+        created_at=app.created_at,
+        user_email=app.user_email,
+        user_name=app.user_name,
+        job_title=app.job_title,
+        job_location=app.job_location,
+        company_name=app.company_name,
+        resume_label=app.resume_label
+    )
+
+
+@router.patch("/applications/{app_id}/status")
+@limiter.limit("20/minute")
+async def update_application_status(
+    request: Request,
+    app_id: UUID,
+    body: ApplicationStatusUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Update application status (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    success = await service.update_application_status(
+        app_id=app_id,
+        admin_id=current_admin.id,
+        status=body.status,
+        justification=body.justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Application status updated successfully",
+        "application_id": str(app_id),
+        "new_status": body.status
+    }
+
+
+@router.delete("/applications/{app_id}")
+@limiter.limit("20/minute")
+async def delete_application(
+    request: Request,
+    app_id: UUID,
+    justification: str = Query(..., description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Delete an application (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    success = await service.delete_application(
+        app_id=app_id,
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Application deleted successfully",
+        "application_id": str(app_id)
+    }
+
+
+@router.post("/applications/bulk-delete")
+@limiter.limit("10/minute")
+async def bulk_delete_applications(
+    request: Request,
+    body: ApplicationBulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Bulk delete applications (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    app_ids = [UUID(aid) for aid in body.application_ids]
+    deleted_count = await service.bulk_delete_applications(
+        app_ids=app_ids,
+        admin_id=current_admin.id,
+        justification=body.justification
+    )
+    
+    return {
+        "success": True,
+        "message": f"Deleted {deleted_count} applications",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/applications/analytics/overview", response_model=ApplicationAnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_application_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get application analytics"""
+    service = ApplicationsAdminService(db)
+    analytics = await service.get_application_analytics()
+    
+    return ApplicationAnalyticsResponse(
+        total_applications=analytics.total_applications,
+        apps_7d=analytics.apps_7d,
+        apps_30d=analytics.apps_30d,
+        by_status=analytics.by_status,
+        by_source=analytics.by_source,
+        conversion_funnel=analytics.conversion_funnel,
+        apps_by_date=analytics.apps_by_date
+    )

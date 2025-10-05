@@ -11,4 +11,232 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.documents_service import DocumentsAdminService\n\n\nrouter = APIRouter(tags=["admin-documents"])\n\n\nclass DocumentSummaryResponse(BaseModel):\n    id: str\n    user_id: Optional[str]\n    label: str\n    file_path: str\n    created_at: datetime\n    user_email: Optional[str]\n    file_size: Optional[int]\n    file_type: Optional[str]\n\n\nclass DocumentDetailResponse(BaseModel):\n    id: str\n    user_id: Optional[str]\n    label: str\n    file_path: str\n    text: Optional[str]\n    created_at: datetime\n    user_email: Optional[str]\n    user_name: Optional[str]\n    file_size: Optional[int]\n    file_type: Optional[str]\n    usage_count: int\n\n\nclass DocumentAnalyticsResponse(BaseModel):\n    total_documents: int\n    documents_7d: int\n    documents_30d: int\n    total_storage_bytes: int\n    avg_document_size: float\n    by_file_type: list[dict]\n    by_user: list[dict]\n    orphaned_count: int\n    documents_by_date: list[dict]\n\n\n@router.get("/documents", response_model=dict)\n@limiter.limit("100/minute")\nasync def list_documents(\n    request: Request,\n    skip: int = Query(0, ge=0),\n    limit: int = Query(50, ge=1, le=100),\n    search: Optional[str] = Query(None),\n    user_id: Optional[str] = Query(None),\n    orphaned_only: bool = Query(False),\n    sort_by: str = Query("created_at"),\n    sort_order: str = Query("desc"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """List all documents with pagination and filters"""\n    service = DocumentsAdminService(db)\n    \n    user_uuid = UUID(user_id) if user_id else None\n    \n    documents, total = await service.list_documents(\n        skip=skip,\n        limit=limit,\n        search=search,\n        user_id=user_uuid,\n        orphaned_only=orphaned_only,\n        sort_by=sort_by,\n        sort_order=sort_order\n    )\n    \n    return {\n        "documents": [\n            {\n                "id": str(doc.id),\n                "user_id": str(doc.user_id) if doc.user_id else None,\n                "label": doc.label,\n                "file_path": doc.file_path,\n                "created_at": doc.created_at.isoformat(),\n                "user_email": doc.user_email,\n                "file_size": doc.file_size,\n                "file_type": doc.file_type\n            }\n            for doc in documents\n        ],\n        "total": total,\n        "skip": skip,\n        "limit": limit\n    }\n\n\n@router.get("/documents/{doc_id}", response_model=DocumentDetailResponse)\n@limiter.limit("100/minute")\nasync def get_document_detail(\n    request: Request,\n    doc_id: UUID,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """Get detailed document information"""\n    service = DocumentsAdminService(db)\n    doc = await service.get_document_detail(doc_id)\n    \n    if not doc:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail="Document not found"\n        )\n    \n    return DocumentDetailResponse(\n        id=str(doc.id),\n        user_id=str(doc.user_id) if doc.user_id else None,\n        label=doc.label,\n        file_path=doc.file_path,\n        text=doc.text,\n        created_at=doc.created_at,\n        user_email=doc.user_email,\n        user_name=doc.user_name,\n        file_size=doc.file_size,\n        file_type=doc.file_type,\n        usage_count=doc.usage_count\n    )\n\n\n@router.delete("/documents/{doc_id}")\n@limiter.limit("20/minute")\nasync def delete_document(\n    request: Request,\n    doc_id: UUID,\n    justification: str = Query(..., description="Reason for deletion"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """Delete a document (requires step-up authentication)"""\n    service = DocumentsAdminService(db)\n    \n    success = await service.delete_document(\n        doc_id=doc_id,\n        admin_id=current_admin.id,\n        justification=justification\n    )\n    \n    if not success:\n        raise HTTPException(\n            status_code=status.HTTP_404_NOT_FOUND,\n            detail="Document not found"\n        )\n    \n    return {\n        "success": True,\n        "message": "Document deleted successfully",\n        "document_id": str(doc_id)\n    }\n\n\n@router.get("/documents/orphaned/list", response_model=dict)\n@limiter.limit("100/minute")\nasync def list_orphaned_documents(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """Get list of orphaned documents"""\n    service = DocumentsAdminService(db)\n    documents = await service.get_orphaned_documents()\n    \n    return {\n        "documents": [\n            {\n                "id": str(doc.id),\n                "label": doc.label,\n                "file_path": doc.file_path,\n                "created_at": doc.created_at.isoformat(),\n                "file_size": doc.file_size,\n                "file_type": doc.file_type\n            }\n            for doc in documents\n        ],\n        "total": len(documents)\n    }\n\n\n@router.delete("/documents/orphaned/cleanup")\n@limiter.limit("5/hour")\nasync def cleanup_orphaned_documents(\n    request: Request,\n    justification: str = Query(..., description="Reason for cleanup"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """Cleanup all orphaned documents (requires step-up authentication)"""\n    service = DocumentsAdminService(db)\n    \n    deleted_count = await service.cleanup_orphaned_documents(\n        admin_id=current_admin.id,\n        justification=justification\n    )\n    \n    return {\n        "success": True,\n        "message": f"Cleaned up {deleted_count} orphaned documents",\n        "deleted_count": deleted_count\n    }\n\n\n@router.get("/documents/analytics/overview", response_model=DocumentAnalyticsResponse)\n@limiter.limit("100/minute")\nasync def get_document_analytics(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """Get document analytics"""\n    service = DocumentsAdminService(db)\n    analytics = await service.get_document_analytics()\n    \n    return DocumentAnalyticsResponse(\n        total_documents=analytics.total_documents,\n        documents_7d=analytics.documents_7d,\n        documents_30d=analytics.documents_30d,\n        total_storage_bytes=analytics.total_storage_bytes,\n        avg_document_size=analytics.avg_document_size,\n        by_file_type=analytics.by_file_type,\n        by_user=analytics.by_user,\n        orphaned_count=analytics.orphaned_count,\n        documents_by_date=analytics.documents_by_date\n    )\n\n
+from ....domain.admin.documents_service import DocumentsAdminService
+
+
+router = APIRouter(tags=["admin-documents"])
+
+
+class DocumentSummaryResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    label: str
+    file_path: str
+    created_at: datetime
+    user_email: Optional[str]
+    file_size: Optional[int]
+    file_type: Optional[str]
+
+
+class DocumentDetailResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    label: str
+    file_path: str
+    text: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    user_name: Optional[str]
+    file_size: Optional[int]
+    file_type: Optional[str]
+    usage_count: int
+
+
+class DocumentAnalyticsResponse(BaseModel):
+    total_documents: int
+    documents_7d: int
+    documents_30d: int
+    total_storage_bytes: int
+    avg_document_size: float
+    by_file_type: list[dict]
+    by_user: list[dict]
+    orphaned_count: int
+    documents_by_date: list[dict]
+
+
+@router.get("/documents", response_model=dict)
+@limiter.limit("100/minute")
+async def list_documents(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    orphaned_only: bool = Query(False),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """List all documents with pagination and filters"""
+    service = DocumentsAdminService(db)
+    
+    user_uuid = UUID(user_id) if user_id else None
+    
+    documents, total = await service.list_documents(
+        skip=skip,
+        limit=limit,
+        search=search,
+        user_id=user_uuid,
+        orphaned_only=orphaned_only,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    return {
+        "documents": [
+            {
+                "id": str(doc.id),
+                "user_id": str(doc.user_id) if doc.user_id else None,
+                "label": doc.label,
+                "file_path": doc.file_path,
+                "created_at": doc.created_at.isoformat(),
+                "user_email": doc.user_email,
+                "file_size": doc.file_size,
+                "file_type": doc.file_type
+            }
+            for doc in documents
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/documents/{doc_id}", response_model=DocumentDetailResponse)
+@limiter.limit("100/minute")
+async def get_document_detail(
+    request: Request,
+    doc_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get detailed document information"""
+    service = DocumentsAdminService(db)
+    doc = await service.get_document_detail(doc_id)
+    
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    return DocumentDetailResponse(
+        id=str(doc.id),
+        user_id=str(doc.user_id) if doc.user_id else None,
+        label=doc.label,
+        file_path=doc.file_path,
+        text=doc.text,
+        created_at=doc.created_at,
+        user_email=doc.user_email,
+        user_name=doc.user_name,
+        file_size=doc.file_size,
+        file_type=doc.file_type,
+        usage_count=doc.usage_count
+    )
+
+
+@router.delete("/documents/{doc_id}")
+@limiter.limit("20/minute")
+async def delete_document(
+    request: Request,
+    doc_id: UUID,
+    justification: str = Query(..., description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Delete a document (requires step-up authentication)"""
+    service = DocumentsAdminService(db)
+    
+    success = await service.delete_document(
+        doc_id=doc_id,
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Document deleted successfully",
+        "document_id": str(doc_id)
+    }
+
+
+@router.get("/documents/orphaned/list", response_model=dict)
+@limiter.limit("100/minute")
+async def list_orphaned_documents(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get list of orphaned documents"""
+    service = DocumentsAdminService(db)
+    documents = await service.get_orphaned_documents()
+    
+    return {
+        "documents": [
+            {
+                "id": str(doc.id),
+                "label": doc.label,
+                "file_path": doc.file_path,
+                "created_at": doc.created_at.isoformat(),
+                "file_size": doc.file_size,
+                "file_type": doc.file_type
+            }
+            for doc in documents
+        ],
+        "total": len(documents)
+    }
+
+
+@router.delete("/documents/orphaned/cleanup")
+@limiter.limit("5/hour")
+async def cleanup_orphaned_documents(
+    request: Request,
+    justification: str = Query(..., description="Reason for cleanup"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Cleanup all orphaned documents (requires step-up authentication)"""
+    service = DocumentsAdminService(db)
+    
+    deleted_count = await service.cleanup_orphaned_documents(
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    return {
+        "success": True,
+        "message": f"Cleaned up {deleted_count} orphaned documents",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/documents/analytics/overview", response_model=DocumentAnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_document_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get document analytics"""
+    service = DocumentsAdminService(db)
+    analytics = await service.get_document_analytics()
+    
+    return DocumentAnalyticsResponse(
+        total_documents=analytics.total_documents,
+        documents_7d=analytics.documents_7d,
+        documents_30d=analytics.documents_30d,
+        total_storage_bytes=analytics.total_storage_bytes,
+        avg_document_size=analytics.avg_document_size,
+        by_file_type=analytics.by_file_type,
+        by_user=analytics.by_user,
+        orphaned_count=analytics.orphaned_count,
+        documents_by_date=analytics.documents_by_date
+    )
+

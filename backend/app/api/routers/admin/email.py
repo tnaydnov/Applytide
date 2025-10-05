@@ -11,4 +11,12 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.email_service import EmailAdminService\n\n\nrouter = APIRouter(tags=["admin-email"])\n\n# Disk usage analysis and orphaned file cleanup\n\nclass StorageStatsResponse(BaseModel):\n    total_documents: int
+from ....domain.admin.email_service import EmailAdminService
+
+
+router = APIRouter(tags=["admin-email"])
+
+# Disk usage analysis and orphaned file cleanup
+
+class StorageStatsResponse(BaseModel):
+    total_documents: int

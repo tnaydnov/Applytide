@@ -11,4 +11,196 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.analytics_service import AnalyticsService\nfrom ....domain.admin.analytics_dto import (\n    CohortAnalysisResponseDTO,\n    ChurnPredictionResponseDTO,\n    FeatureAdoptionResponseDTO,\n    ConversionFunnelResponseDTO,\n    ApplicationVelocityResponseDTO,\n)\n\n\nrouter = APIRouter(tags=["admin-analytics-advanced"])\n\n\nfrom app.domain.admin.analytics_service import AnalyticsService\nfrom app.domain.admin.analytics_dto import (\n    CohortAnalysisResponseDTO,\n    ChurnPredictionResponseDTO,\n    FeatureAdoptionResponseDTO,\n    ConversionFunnelResponseDTO,\n    ApplicationVelocityResponseDTO,\n)\n\n\n@router.get(\n    "/analytics/cohort-retention",\n    response_model=CohortAnalysisResponseDTO,\n    summary="Get Cohort Retention Analysis"\n)\n@limiter.limit("30/minute")\nasync def get_cohort_retention(\n    request: Request,\n    months_back: int = Query(12, ge=1, le=24, description="Months of history to analyze"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Cohort retention analysis by signup month\n    \n    Shows what percentage of users from each cohort are still active over time.\n    Tracks retention at 1, 2, 3, 6, and 12 months.\n    \n    Perfect for understanding:\n    - User retention patterns\n    - Product-market fit\n    - Impact of onboarding changes\n    - Long-term user engagement\n    """\n    service = AnalyticsService(db)\n    return service.get_cohort_retention(months_back=months_back)\n\n\n@router.get(\n    "/analytics/churn-prediction",\n    response_model=ChurnPredictionResponseDTO,\n    summary="Predict User Churn Risk"\n)\n@limiter.limit("30/minute")\nasync def predict_churn(\n    request: Request,\n    days_inactive: int = Query(30, ge=7, le=180, description="Days inactive threshold"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Identify users at risk of churning\n    \n    Calculates churn score (0-100) based on:\n    - Days since last login\n    - Application activity level\n    - Recent engagement\n    - Premium status\n    \n    Returns:\n    - High risk users (score >= 70)\n    - Medium risk users (score 40-69)\n    - Overall churn rate\n    \n    Use this to:\n    - Send re-engagement emails\n    - Offer premium trials\n    - Identify product issues\n    """\n    service = AnalyticsService(db)\n    return service.predict_churn(days_inactive_threshold=days_inactive)\n\n\n@router.get(\n    "/analytics/feature-adoption",\n    response_model=FeatureAdoptionResponseDTO,\n    summary="Track Feature Adoption Rates"\n)\n@limiter.limit("30/minute")\nasync def get_feature_adoption(\n    request: Request,\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Track adoption of key platform features\n    \n    Analyzes:\n    - Job applications usage\n    - Document uploads\n    - Premium subscriptions\n    - Feature usage patterns\n    \n    Shows:\n    - Total users who adopted feature\n    - Active users (last 30 days)\n    - Adoption rate (% of all users)\n    - Average usage per user\n    - Power users (>10 uses)\n    \n    Helps identify:\n    - Which features drive engagement\n    - Underutilized features\n    - Premium conversion opportunities\n    """\n    service = AnalyticsService(db)\n    return service.get_feature_adoption()\n\n\n@router.get(\n    "/analytics/conversion-funnel",\n    response_model=ConversionFunnelResponseDTO,\n    summary="Application Conversion Funnel"\n)\n@limiter.limit("30/minute")\nasync def get_conversion_funnel(\n    request: Request,\n    days: int = Query(30, ge=7, le=180, description="Days of data to analyze"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Application conversion funnel analysis\n    \n    Tracks user journey:\n    1. Signed Up\n    2. Applied to Jobs\n    3. Got Interviews\n    4. Received Offers\n    5. Accepted Offers\n    \n    For each step shows:\n    - User count\n    - Conversion rate to next step\n    - Drop-off rate\n    \n    Identifies:\n    - Biggest friction points\n    - Optimization opportunities\n    - Overall conversion rate\n    """\n    service = AnalyticsService(db)\n    return service.get_application_funnel(days=days)\n\n\n@router.get(\n    "/analytics/application-velocity",\n    response_model=ApplicationVelocityResponseDTO,\n    summary="Application Processing Speed"\n)\n@limiter.limit("30/minute")\nasync def get_application_velocity(\n    request: Request,\n    days: int = Query(30, ge=7, le=90, description="Days of data to analyze"),\n    db: Session = Depends(get_db),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Track how fast applications move through pipeline\n    \n    Daily metrics:\n    - Total applications\n    - Time to first action\n    - Time to interview\n    - Time to offer\n    - Conversion rates\n    \n    Overall metrics:\n    - Average time to interview\n    - Average time to offer\n    - Interview conversion rate\n    - Offer conversion rate\n    \n    Use to:\n    - Measure platform effectiveness\n    - Identify bottlenecks\n    - Track improvements over time\n    """\n    service = AnalyticsService(db)\n    return service.get_application_velocity(days=days)
+from ....domain.admin.analytics_service import AnalyticsService
+from ....domain.admin.analytics_dto import (
+    CohortAnalysisResponseDTO,
+    ChurnPredictionResponseDTO,
+    FeatureAdoptionResponseDTO,
+    ConversionFunnelResponseDTO,
+    ApplicationVelocityResponseDTO,
+)
+
+
+router = APIRouter(tags=["admin-analytics-advanced"])
+
+
+from app.domain.admin.analytics_service import AnalyticsService
+from app.domain.admin.analytics_dto import (
+    CohortAnalysisResponseDTO,
+    ChurnPredictionResponseDTO,
+    FeatureAdoptionResponseDTO,
+    ConversionFunnelResponseDTO,
+    ApplicationVelocityResponseDTO,
+)
+
+
+@router.get(
+    "/analytics/cohort-retention",
+    response_model=CohortAnalysisResponseDTO,
+    summary="Get Cohort Retention Analysis"
+)
+@limiter.limit("30/minute")
+async def get_cohort_retention(
+    request: Request,
+    months_back: int = Query(12, ge=1, le=24, description="Months of history to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Cohort retention analysis by signup month
+    
+    Shows what percentage of users from each cohort are still active over time.
+    Tracks retention at 1, 2, 3, 6, and 12 months.
+    
+    Perfect for understanding:
+    - User retention patterns
+    - Product-market fit
+    - Impact of onboarding changes
+    - Long-term user engagement
+    """
+    service = AnalyticsService(db)
+    return service.get_cohort_retention(months_back=months_back)
+
+
+@router.get(
+    "/analytics/churn-prediction",
+    response_model=ChurnPredictionResponseDTO,
+    summary="Predict User Churn Risk"
+)
+@limiter.limit("30/minute")
+async def predict_churn(
+    request: Request,
+    days_inactive: int = Query(30, ge=7, le=180, description="Days inactive threshold"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Identify users at risk of churning
+    
+    Calculates churn score (0-100) based on:
+    - Days since last login
+    - Application activity level
+    - Recent engagement
+    - Premium status
+    
+    Returns:
+    - High risk users (score >= 70)
+    - Medium risk users (score 40-69)
+    - Overall churn rate
+    
+    Use this to:
+    - Send re-engagement emails
+    - Offer premium trials
+    - Identify product issues
+    """
+    service = AnalyticsService(db)
+    return service.predict_churn(days_inactive_threshold=days_inactive)
+
+
+@router.get(
+    "/analytics/feature-adoption",
+    response_model=FeatureAdoptionResponseDTO,
+    summary="Track Feature Adoption Rates"
+)
+@limiter.limit("30/minute")
+async def get_feature_adoption(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Track adoption of key platform features
+    
+    Analyzes:
+    - Job applications usage
+    - Document uploads
+    - Premium subscriptions
+    - Feature usage patterns
+    
+    Shows:
+    - Total users who adopted feature
+    - Active users (last 30 days)
+    - Adoption rate (% of all users)
+    - Average usage per user
+    - Power users (>10 uses)
+    
+    Helps identify:
+    - Which features drive engagement
+    - Underutilized features
+    - Premium conversion opportunities
+    """
+    service = AnalyticsService(db)
+    return service.get_feature_adoption()
+
+
+@router.get(
+    "/analytics/conversion-funnel",
+    response_model=ConversionFunnelResponseDTO,
+    summary="Application Conversion Funnel"
+)
+@limiter.limit("30/minute")
+async def get_conversion_funnel(
+    request: Request,
+    days: int = Query(30, ge=7, le=180, description="Days of data to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Application conversion funnel analysis
+    
+    Tracks user journey:
+    1. Signed Up
+    2. Applied to Jobs
+    3. Got Interviews
+    4. Received Offers
+    5. Accepted Offers
+    
+    For each step shows:
+    - User count
+    - Conversion rate to next step
+    - Drop-off rate
+    
+    Identifies:
+    - Biggest friction points
+    - Optimization opportunities
+    - Overall conversion rate
+    """
+    service = AnalyticsService(db)
+    return service.get_application_funnel(days=days)
+
+
+@router.get(
+    "/analytics/application-velocity",
+    response_model=ApplicationVelocityResponseDTO,
+    summary="Application Processing Speed"
+)
+@limiter.limit("30/minute")
+async def get_application_velocity(
+    request: Request,
+    days: int = Query(30, ge=7, le=90, description="Days of data to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Track how fast applications move through pipeline
+    
+    Daily metrics:
+    - Total applications
+    - Time to first action
+    - Time to interview
+    - Time to offer
+    - Conversion rates
+    
+    Overall metrics:
+    - Average time to interview
+    - Average time to offer
+    - Interview conversion rate
+    - Offer conversion rate
+    
+    Use to:
+    - Measure platform effectiveness
+    - Identify bottlenecks
+    - Track improvements over time
+    """
+    service = AnalyticsService(db)
+    return service.get_application_velocity(days=days)

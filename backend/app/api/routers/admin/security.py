@@ -11,4 +11,264 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.security_service import SecurityAdminService\n\n\nrouter = APIRouter(tags=["admin-security"])\n\n# Failed login tracking, IP blacklist management, session monitoring\n\nclass SecurityStatsResponse(BaseModel):\n    failed_logins_24h: int\n    failed_logins_7d: int\n    blocked_ips_count: int\n    suspicious_activities_24h: int\n    active_sessions_count: int\n\n\nclass FailedLoginResponse(BaseModel):\n    email: str\n    ip_address: str\n    timestamp: datetime\n    reason: str\n    user_agent: Optional[str]\n\n\nclass BlockedIPResponse(BaseModel):\n    ip_address: str\n    reason: str\n    blocked_at: datetime\n    blocked_by_admin_id: Optional[str]\n    expires_at: Optional[datetime]\n    failed_attempts: int\n\n\nclass ActiveSessionResponse(BaseModel):\n    user_id: str\n    user_email: str\n    ip_address: Optional[str]\n    last_activity: datetime\n    session_started: datetime\n    user_agent: Optional[str]\n\n\nclass BlockIPRequest(BaseModel):\n    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')\n    reason: str = Field(..., min_length=10, max_length=500)\n    duration_hours: Optional[int] = Field(default=None, ge=1, le=8760)  # Max 1 year\n\n\nclass UnblockIPRequest(BaseModel):\n    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')\n    justification: str = Field(..., min_length=10, max_length=500)\n\n\n@router.get(\n    "/security/stats",\n    response_model=SecurityStatsResponse,\n    summary="Get Security Statistics"\n)\n@limiter.limit("30/minute")\nasync def get_security_stats(\n    request: Request,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get comprehensive security statistics\n    \n    Returns failed login counts, blocked IPs, suspicious activities, and active sessions\n    """\n    service = SecurityAdminService(db, cache_service)\n    stats = await service.get_security_stats()\n    \n    return SecurityStatsResponse(\n        failed_logins_24h=stats.failed_logins_24h,\n        failed_logins_7d=stats.failed_logins_7d,\n        blocked_ips_count=stats.blocked_ips_count,\n        suspicious_activities_24h=stats.suspicious_activities_24h,\n        active_sessions_count=stats.active_sessions_count\n    )\n\n\n@router.get(\n    "/security/failed-logins",\n    response_model=list[FailedLoginResponse],\n    summary="Get Failed Login Attempts"\n)\n@limiter.limit("30/minute")\nasync def get_failed_logins(\n    request: Request,\n    hours: int = Query(default=24, ge=1, le=168),\n    limit: int = Query(default=100, ge=1, le=500),\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get recent failed login attempts\n    \n    Returns list of failed authentication attempts from audit logs\n    """\n    service = SecurityAdminService(db, cache_service)\n    failed_logins = await service.get_failed_logins(hours=hours, limit=limit)\n    \n    return [\n        FailedLoginResponse(\n            email=login.email,\n            ip_address=login.ip_address,\n            timestamp=login.timestamp,\n            reason=login.reason,\n            user_agent=login.user_agent\n        )\n        for login in failed_logins\n    ]\n\n\n@router.get(\n    "/security/blocked-ips",\n    response_model=list[BlockedIPResponse],\n    summary="Get Blocked IP Addresses"\n)\n@limiter.limit("30/minute")\nasync def get_blocked_ips(\n    request: Request,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get list of blocked IP addresses\n    \n    Returns all IPs on the blacklist with block reasons and expiration times\n    """\n    service = SecurityAdminService(db, cache_service)\n    blocked_ips = await service.get_blocked_ips()\n    \n    return [\n        BlockedIPResponse(\n            ip_address=ip.ip_address,\n            reason=ip.reason,\n            blocked_at=ip.blocked_at,\n            blocked_by_admin_id=ip.blocked_by_admin_id,\n            expires_at=ip.expires_at,\n            failed_attempts=ip.failed_attempts\n        )\n        for ip in blocked_ips\n    ]\n\n\n@router.post(\n    "/security/block-ip",\n    summary="Block IP Address"\n)\n@limiter.limit("20/hour")  # Limit IP blocking operations\nasync def block_ip_address(\n    request: Request,\n    block_request: BlockIPRequest,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Add IP address to blacklist\n    \n    - Requires step-up authentication\n    - Can be permanent or temporary (with duration)\n    - All blocks are audit logged\n    """\n    service = SecurityAdminService(db, cache_service)\n    \n    success = await service.block_ip(\n        ip_address=block_request.ip_address,\n        reason=block_request.reason,\n        admin_id=current_admin.id,\n        duration_hours=block_request.duration_hours\n    )\n    \n    return {\n        "success": True,\n        "ip_address": block_request.ip_address,\n        "message": f"IP {block_request.ip_address} has been blocked",\n        "expires_at": (datetime.utcnow() + timedelta(hours=block_request.duration_hours)).isoformat() \n            if block_request.duration_hours else None\n    }\n\n\n@router.delete(\n    "/security/unblock-ip",\n    summary="Unblock IP Address"\n)\n@limiter.limit("20/hour")\nasync def unblock_ip_address(\n    request: Request,\n    unblock_request: UnblockIPRequest,\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user_with_step_up)\n):\n    """\n    Remove IP address from blacklist\n    \n    - Requires step-up authentication\n    - All unblocks are audit logged\n    """\n    service = SecurityAdminService(db, cache_service)\n    \n    unblocked = await service.unblock_ip(\n        ip_address=unblock_request.ip_address,\n        admin_id=current_admin.id,\n        justification=unblock_request.justification\n    )\n    \n    if unblocked:\n        return {\n            "success": True,\n            "ip_address": unblock_request.ip_address,\n            "message": f"IP {unblock_request.ip_address} has been unblocked"\n        }\n    else:\n        return {\n            "success": False,\n            "ip_address": unblock_request.ip_address,\n            "message": f"IP {unblock_request.ip_address} was not blocked"\n        }\n\n\n@router.get(\n    "/security/active-sessions",\n    response_model=list[ActiveSessionResponse],\n    summary="Get Active Sessions"\n)\n@limiter.limit("30/minute")\nasync def get_active_sessions(\n    request: Request,\n    hours: int = Query(default=24, ge=1, le=168),\n    db: Session = Depends(get_db),\n    cache_service: CacheService = Depends(get_cache_service),\n    current_admin: models.User = Depends(get_admin_user)\n):\n    """\n    Get list of active user sessions\n    \n    Returns users who have logged in within the specified time window\n    """\n    service = SecurityAdminService(db, cache_service)\n    sessions = await service.get_active_sessions(hours=hours)\n    \n    return [\n        ActiveSessionResponse(\n            user_id=session.user_id,\n            user_email=session.user_email,\n            ip_address=session.ip_address,\n            last_activity=session.last_activity,\n            session_started=session.session_started,\n            user_agent=session.user_agent\n        )\n        for session in sessions\n    ]\n\n\n# ==================== GDPR COMPLIANCE TOOLS ====================\n# User data export and deletion requests for GDPR compliance
+from ....domain.admin.security_service import SecurityAdminService
+
+
+router = APIRouter(tags=["admin-security"])
+
+# Failed login tracking, IP blacklist management, session monitoring
+
+class SecurityStatsResponse(BaseModel):
+    failed_logins_24h: int
+    failed_logins_7d: int
+    blocked_ips_count: int
+    suspicious_activities_24h: int
+    active_sessions_count: int
+
+
+class FailedLoginResponse(BaseModel):
+    email: str
+    ip_address: str
+    timestamp: datetime
+    reason: str
+    user_agent: Optional[str]
+
+
+class BlockedIPResponse(BaseModel):
+    ip_address: str
+    reason: str
+    blocked_at: datetime
+    blocked_by_admin_id: Optional[str]
+    expires_at: Optional[datetime]
+    failed_attempts: int
+
+
+class ActiveSessionResponse(BaseModel):
+    user_id: str
+    user_email: str
+    ip_address: Optional[str]
+    last_activity: datetime
+    session_started: datetime
+    user_agent: Optional[str]
+
+
+class BlockIPRequest(BaseModel):
+    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    reason: str = Field(..., min_length=10, max_length=500)
+    duration_hours: Optional[int] = Field(default=None, ge=1, le=8760)  # Max 1 year
+
+
+class UnblockIPRequest(BaseModel):
+    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    justification: str = Field(..., min_length=10, max_length=500)
+
+
+@router.get(
+    "/security/stats",
+    response_model=SecurityStatsResponse,
+    summary="Get Security Statistics"
+)
+@limiter.limit("30/minute")
+async def get_security_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get comprehensive security statistics
+    
+    Returns failed login counts, blocked IPs, suspicious activities, and active sessions
+    """
+    service = SecurityAdminService(db, cache_service)
+    stats = await service.get_security_stats()
+    
+    return SecurityStatsResponse(
+        failed_logins_24h=stats.failed_logins_24h,
+        failed_logins_7d=stats.failed_logins_7d,
+        blocked_ips_count=stats.blocked_ips_count,
+        suspicious_activities_24h=stats.suspicious_activities_24h,
+        active_sessions_count=stats.active_sessions_count
+    )
+
+
+@router.get(
+    "/security/failed-logins",
+    response_model=list[FailedLoginResponse],
+    summary="Get Failed Login Attempts"
+)
+@limiter.limit("30/minute")
+async def get_failed_logins(
+    request: Request,
+    hours: int = Query(default=24, ge=1, le=168),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get recent failed login attempts
+    
+    Returns list of failed authentication attempts from audit logs
+    """
+    service = SecurityAdminService(db, cache_service)
+    failed_logins = await service.get_failed_logins(hours=hours, limit=limit)
+    
+    return [
+        FailedLoginResponse(
+            email=login.email,
+            ip_address=login.ip_address,
+            timestamp=login.timestamp,
+            reason=login.reason,
+            user_agent=login.user_agent
+        )
+        for login in failed_logins
+    ]
+
+
+@router.get(
+    "/security/blocked-ips",
+    response_model=list[BlockedIPResponse],
+    summary="Get Blocked IP Addresses"
+)
+@limiter.limit("30/minute")
+async def get_blocked_ips(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get list of blocked IP addresses
+    
+    Returns all IPs on the blacklist with block reasons and expiration times
+    """
+    service = SecurityAdminService(db, cache_service)
+    blocked_ips = await service.get_blocked_ips()
+    
+    return [
+        BlockedIPResponse(
+            ip_address=ip.ip_address,
+            reason=ip.reason,
+            blocked_at=ip.blocked_at,
+            blocked_by_admin_id=ip.blocked_by_admin_id,
+            expires_at=ip.expires_at,
+            failed_attempts=ip.failed_attempts
+        )
+        for ip in blocked_ips
+    ]
+
+
+@router.post(
+    "/security/block-ip",
+    summary="Block IP Address"
+)
+@limiter.limit("20/hour")  # Limit IP blocking operations
+async def block_ip_address(
+    request: Request,
+    block_request: BlockIPRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Add IP address to blacklist
+    
+    - Requires step-up authentication
+    - Can be permanent or temporary (with duration)
+    - All blocks are audit logged
+    """
+    service = SecurityAdminService(db, cache_service)
+    
+    success = await service.block_ip(
+        ip_address=block_request.ip_address,
+        reason=block_request.reason,
+        admin_id=current_admin.id,
+        duration_hours=block_request.duration_hours
+    )
+    
+    return {
+        "success": True,
+        "ip_address": block_request.ip_address,
+        "message": f"IP {block_request.ip_address} has been blocked",
+        "expires_at": (datetime.utcnow() + timedelta(hours=block_request.duration_hours)).isoformat() 
+            if block_request.duration_hours else None
+    }
+
+
+@router.delete(
+    "/security/unblock-ip",
+    summary="Unblock IP Address"
+)
+@limiter.limit("20/hour")
+async def unblock_ip_address(
+    request: Request,
+    unblock_request: UnblockIPRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Remove IP address from blacklist
+    
+    - Requires step-up authentication
+    - All unblocks are audit logged
+    """
+    service = SecurityAdminService(db, cache_service)
+    
+    unblocked = await service.unblock_ip(
+        ip_address=unblock_request.ip_address,
+        admin_id=current_admin.id,
+        justification=unblock_request.justification
+    )
+    
+    if unblocked:
+        return {
+            "success": True,
+            "ip_address": unblock_request.ip_address,
+            "message": f"IP {unblock_request.ip_address} has been unblocked"
+        }
+    else:
+        return {
+            "success": False,
+            "ip_address": unblock_request.ip_address,
+            "message": f"IP {unblock_request.ip_address} was not blocked"
+        }
+
+
+@router.get(
+    "/security/active-sessions",
+    response_model=list[ActiveSessionResponse],
+    summary="Get Active Sessions"
+)
+@limiter.limit("30/minute")
+async def get_active_sessions(
+    request: Request,
+    hours: int = Query(default=24, ge=1, le=168),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get list of active user sessions
+    
+    Returns users who have logged in within the specified time window
+    """
+    service = SecurityAdminService(db, cache_service)
+    sessions = await service.get_active_sessions(hours=hours)
+    
+    return [
+        ActiveSessionResponse(
+            user_id=session.user_id,
+            user_email=session.user_email,
+            ip_address=session.ip_address,
+            last_activity=session.last_activity,
+            session_started=session.session_started,
+            user_agent=session.user_agent
+        )
+        for session in sessions
+    ]
+
+
+# ==================== GDPR COMPLIANCE TOOLS ====================
+# User data export and deletion requests for GDPR compliance
