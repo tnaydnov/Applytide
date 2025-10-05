@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 import logging
 
-from app.db.models import User, Job, Application, Document, AdminAuditLog
+from app.db.models import User, Job, Application, Resume, AdminLog
 from .analytics_dto import (
     CohortRetentionDTO,
     CohortAnalysisResponseDTO,
@@ -277,12 +277,12 @@ class AnalyticsService:
 
             # Feature 2: Document Uploads
             doc_stmt = select(
-                func.count(func.distinct(Document.user_id)).label('total_users'),
+                func.count(func.distinct(Resume.user_id)).label('total_users'),
                 func.count(func.distinct(case(
-                    (Document.created_at >= thirty_days_ago, Document.user_id),
+                    (Resume.created_at >= thirty_days_ago, Resume.user_id),
                     else_=None
                 ))).label('active_users'),
-                func.count(Document.id).label('total_uses')
+                func.count(Resume.id).label('total_uses')
             ).select_from(Document)
 
             doc_result = self.db.execute(doc_stmt)
@@ -669,12 +669,12 @@ class AnalyticsService:
 
             # Feature 2: Document Uploads
             doc_stmt = select(
-                func.count(func.distinct(Document.user_id)).label('total_users'),
+                func.count(func.distinct(Resume.user_id)).label('total_users'),
                 func.count(func.distinct(case(
-                    (Document.created_at >= thirty_days_ago, Document.user_id),
+                    (Resume.created_at >= thirty_days_ago, Resume.user_id),
                     else_=None
                 ))).label('active_users'),
-                func.count(Document.id).label('total_uses')
+                func.count(Resume.id).label('total_uses')
             ).select_from(Document)
 
             doc_result = await self.db.execute(doc_stmt)
