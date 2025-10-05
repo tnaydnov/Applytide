@@ -302,3 +302,56 @@ class AdminLog(Base):
     ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
+
+
+# ---------- Application Logs ----------
+class ApplicationLog(Base):
+    """Track application events, errors, and user actions
+    
+    Stores structured application logs for debugging, monitoring, and analytics.
+    Separate from AdminLog which tracks admin-specific actions.
+    
+    Used for:
+    - Authentication events (login, logout, registration)
+    - Business operations (job created, application submitted)
+    - Errors and exceptions
+    - Performance monitoring
+    - Security events
+    """
+    __tablename__ = "application_logs"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
+    
+    # Log metadata
+    level: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    logger: Mapped[str] = mapped_column(String(255), nullable=False, index=True)  # Module name
+    message: Mapped[str] = mapped_column(Text, nullable=False)  # Log message
+    
+    # Request context (set by middleware)
+    request_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)  # For tracing requests
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    session_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
+    # HTTP request info
+    endpoint: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)  # API endpoint
+    method: Mapped[str | None] = mapped_column(String(10), nullable=True)  # GET, POST, etc.
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # HTTP status
+    
+    # Client info
+    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    
+    # Source code location
+    module: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    function: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    line_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    # Exception info (if error)
+    exception_type: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    exception_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Additional structured data
+    extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Any extra context
+

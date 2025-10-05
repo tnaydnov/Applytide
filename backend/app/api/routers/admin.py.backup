@@ -1,0 +1,2713 @@
+# backend/app/api/routers/admin.py
+from typing import Optional
+from uuid import UUID
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, Query, Request, HTTPException, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+import io
+import csv
+
+from ...db.session import get_db
+from ...db import models
+from ...domain.admin.repository import AdminRepository
+from ...domain.admin.service import AdminService
+from ...domain.admin.jobs_repository import JobsAdminRepository
+from ...domain.admin.jobs_service import JobsAdminService
+from ...domain.admin.applications_repository import ApplicationsAdminRepository
+from ...domain.admin.applications_service import ApplicationsAdminService
+from ...domain.admin.documents_repository import DocumentsAdminRepository
+from ...domain.admin.documents_service import DocumentsAdminService
+from ...domain.admin.database_service import DatabaseAdminService
+from ...domain.admin.cache_service import CacheAdminService
+from ...domain.admin.email_service import EmailAdminService
+from ...domain.admin.storage_service import StorageAdminService
+from ...domain.admin.security_service import SecurityAdminService
+from ...domain.admin.gdpr_service import GDPRAdminService
+from ..deps_auth import get_admin_user, get_admin_user_with_step_up
+from ...infra.security.passwords import verify_password
+from ...infra.cache.service import CacheService, get_cache_service
+
+
+router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+# Rate limiter for admin endpoints
+limiter = Limiter(key_func=get_remote_address)
+
+
+# ==================== PYDANTIC SCHEMAS ====================
+
+class UserSummaryResponse(BaseModel):
+    id: str
+    email: str
+    full_name: Optional[str]
+    is_premium: bool
+    is_admin: bool
+    is_oauth_user: bool
+    last_login_at: Optional[datetime]
+    created_at: datetime
+    total_applications: int
+    total_documents: int
+    total_jobs: int
+
+
+class UserDetailResponse(BaseModel):
+    id: str
+    email: str
+    full_name: Optional[str]
+    first_name: Optional[str]
+    last_name: Optional[str]
+    role: str
+    is_premium: bool
+    is_admin: bool
+    is_oauth_user: bool
+    google_id: Optional[str]
+    avatar_url: Optional[str]
+    bio: Optional[str]
+    phone: Optional[str]
+    location: Optional[str]
+    timezone: Optional[str]
+    website: Optional[str]
+    linkedin_url: Optional[str]
+    github_url: Optional[str]
+    email_verified_at: Optional[datetime]
+    last_login_at: Optional[datetime]
+    created_at: datetime
+    updated_at: datetime
+    total_applications: int
+    total_documents: int
+    total_jobs: int
+    total_reminders: int
+    recent_activity: list
+
+
+class UserListResponse(BaseModel):
+    users: list[UserSummaryResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class VerifyPasswordRequest(BaseModel):
+    """Request to verify password for step-up authentication"""
+    password: str = Field(..., min_length=1, description="User's current password")
+
+
+class VerifyPasswordResponse(BaseModel):
+    """Response after successful password verification"""
+    success: bool
+    message: str
+    expires_in_minutes: int
+
+
+class DashboardStatsResponse(BaseModel):
+    total_users: int
+    active_users_7d: int
+    active_users_30d: int
+    new_users_7d: int
+    premium_users: int
+    oauth_users: int
+    total_applications: int
+    applications_7d: int
+    applications_30d: int
+    total_documents: int
+    documents_analyzed: int
+    analysis_cache_hit_rate: float
+    total_jobs: int
+    jobs_7d: int
+    total_reminders: int
+    reminders_7d: int
+    avg_api_response_time: Optional[float] = None
+    error_rate_24h: Optional[float] = None
+
+
+class SystemHealthResponse(BaseModel):
+    llm_calls_24h: int
+    llm_calls_7d: int
+    llm_cost_24h: float
+    llm_cost_7d: float
+    llm_cost_30d: float
+    cache_hits_24h: int
+    cache_misses_24h: int
+    cache_hit_rate: float
+    cache_size_mb: float
+    db_size_mb: float
+    db_connection_pool_size: int
+    db_connection_pool_available: int
+    total_api_calls_24h: int
+    avg_response_time_ms: float
+    error_count_24h: int
+    error_rate: float
+    recent_errors: list
+
+
+class AnalyticsResponse(BaseModel):
+    feature_usage: dict
+    daily_active_users: list
+    weekly_active_users: list
+    application_statuses: dict
+    analysis_by_day: list
+    top_users: list
+
+
+class AdminLogResponse(BaseModel):
+    id: str
+    admin_id: Optional[str]  # Nullable - admin may have been deleted
+    admin_email: str  # Always preserved for audit trail
+    action: str
+    target_type: Optional[str]
+    target_id: Optional[str]
+    details: Optional[dict]
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    created_at: datetime
+
+
+class AdminLogsListResponse(BaseModel):
+    logs: list[AdminLogResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class UpdateAdminStatusRequest(BaseModel):
+    is_admin: bool
+    reason: str = Field(..., min_length=10, max_length=500, description="Justification for changing admin status (required for audit trail)")
+
+
+class UpdatePremiumStatusRequest(BaseModel):
+    is_premium: bool
+    expires_at: Optional[datetime] = None
+    reason: str = Field(..., min_length=10, max_length=500, description="Justification for changing premium status (required for audit trail)")
+
+
+# ==================== HELPER FUNCTIONS ====================
+
+def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
+    """Dependency to get admin service"""
+    repo = AdminRepository(db)
+    return AdminService(repo)
+
+
+def get_client_info(request: Request) -> tuple[Optional[str], Optional[str]]:
+    """Extract client IP and user agent"""
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return ip_address, user_agent
+
+
+# ==================== ENDPOINTS ====================
+
+@router.get("/dashboard/stats", response_model=DashboardStatsResponse)
+@limiter.limit("100/minute")  # Rate limit: 100 requests per minute
+async def get_dashboard_stats(
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """Get overview statistics for admin dashboard"""
+    ip_address, user_agent = get_client_info(request)
+    service.log_action(
+        admin_id=current_admin.id,
+        action="view_dashboard",
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    stats = service.get_dashboard_stats()
+    return DashboardStatsResponse(
+        total_users=stats.total_users,
+        active_users_7d=stats.active_users_7d,
+        active_users_30d=stats.active_users_30d,
+        new_users_7d=stats.new_users_7d,
+        premium_users=stats.premium_users,
+        oauth_users=stats.oauth_users,
+        total_applications=stats.total_applications,
+        applications_7d=stats.applications_7d,
+        applications_30d=stats.applications_30d,
+        total_documents=stats.total_documents,
+        documents_analyzed=stats.documents_analyzed,
+        analysis_cache_hit_rate=stats.analysis_cache_hit_rate,
+        total_jobs=stats.total_jobs,
+        jobs_7d=stats.jobs_7d,
+        total_reminders=stats.total_reminders,
+        reminders_7d=stats.reminders_7d,
+        avg_api_response_time=stats.avg_api_response_time,
+        error_rate_24h=stats.error_rate_24h
+    )
+
+
+# ==================== STEP-UP AUTHENTICATION ENDPOINT ====================
+
+@router.post("/verify-password")
+@limiter.limit("10/minute")  # Limit password verification attempts
+async def verify_password_for_step_up(
+    request: Request,
+    body: VerifyPasswordRequest,
+    current_user: models.User = Depends(get_admin_user),
+    cache: CacheService = Depends(get_cache_service)
+) -> VerifyPasswordResponse:
+    """
+    Verify admin's password for step-up authentication.
+    
+    This endpoint must be called before performing sensitive operations
+    like changing admin status. The verification is cached for 5 minutes.
+    
+    After calling this endpoint, sensitive endpoints will accept requests
+    for the next 5 minutes without requiring re-verification.
+    """
+    # Verify password
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid password"
+        )
+    
+    # Store step-up verification in cache (5 minutes)
+    cache_key = f"step_up:{current_user.id}"
+    await cache.set(
+        cache_key,
+        datetime.utcnow().isoformat(),
+        expire=300  # 5 minutes
+    )
+    
+    return VerifyPasswordResponse(
+        success=True,
+        message="Password verified. You can now perform sensitive operations.",
+        expires_in_minutes=5
+    )
+
+
+@router.get("/system/health", response_model=SystemHealthResponse)
+@limiter.limit("100/minute")
+async def get_system_health(
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """Get system health metrics"""
+    ip_address, user_agent = get_client_info(request)
+    service.log_action(
+        admin_id=current_admin.id,
+        action="view_system_health",
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    health = service.get_system_health()
+    return SystemHealthResponse(
+        llm_calls_24h=health.llm_calls_24h,
+        llm_calls_7d=health.llm_calls_7d,
+        llm_cost_24h=health.llm_cost_24h,
+        llm_cost_7d=health.llm_cost_7d,
+        llm_cost_30d=health.llm_cost_30d,
+        cache_hits_24h=health.cache_hits_24h,
+        cache_misses_24h=health.cache_misses_24h,
+        cache_hit_rate=health.cache_hit_rate,
+        cache_size_mb=health.cache_size_mb,
+        db_size_mb=health.db_size_mb,
+        db_connection_pool_size=health.db_connection_pool_size,
+        db_connection_pool_available=health.db_connection_pool_available,
+        total_api_calls_24h=health.total_api_calls_24h,
+        avg_response_time_ms=health.avg_response_time_ms,
+        error_count_24h=health.error_count_24h,
+        error_rate=health.error_rate,
+        recent_errors=health.recent_errors or []
+    )
+
+
+@router.get("/analytics", response_model=AnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_analytics(
+    request: Request,
+    days: int = Query(30, ge=1, le=90),
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """Get analytics data"""
+    ip_address, user_agent = get_client_info(request)
+    service.log_action(
+        admin_id=current_admin.id,
+        action="view_analytics",
+        details={"days": days},
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    analytics = service.get_analytics(days)
+    return AnalyticsResponse(
+        feature_usage=analytics.feature_usage,
+        daily_active_users=analytics.daily_active_users,
+        weekly_active_users=analytics.weekly_active_users,
+        application_statuses=analytics.application_statuses,
+        analysis_by_day=analytics.analysis_by_day,
+        top_users=analytics.top_users
+    )
+
+
+@router.get("/users", response_model=UserListResponse)
+@limiter.limit("100/minute")
+async def list_users(
+    request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    is_premium: Optional[bool] = Query(None),
+    is_admin: Optional[bool] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """List users with pagination and filters"""
+    ip_address, user_agent = get_client_info(request)
+    service.log_action(
+        admin_id=current_admin.id,
+        action="list_users",
+        details={
+            "page": page,
+            "search": search,
+            "filters": {"is_premium": is_premium, "is_admin": is_admin}
+        },
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    users, total = service.list_users(
+        page=page,
+        page_size=page_size,
+        search=search,
+        is_premium=is_premium,
+        is_admin=is_admin,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    total_pages = (total + page_size - 1) // page_size
+    
+    return UserListResponse(
+        users=[
+            UserSummaryResponse(
+                id=str(u.id),
+                email=u.email,
+                full_name=u.full_name,
+                is_premium=u.is_premium,
+                is_admin=u.is_admin,
+                is_oauth_user=u.is_oauth_user,
+                last_login_at=u.last_login_at,
+                created_at=u.created_at,
+                total_applications=u.total_applications,
+                total_documents=u.total_documents,
+                total_jobs=u.total_jobs
+            )
+            for u in users
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages
+    )
+
+
+@router.get("/users/{user_id}", response_model=UserDetailResponse)
+@limiter.limit("100/minute")
+async def get_user_detail(
+    user_id: UUID,
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """Get detailed user information"""
+    ip_address, user_agent = get_client_info(request)
+    service.log_action(
+        admin_id=current_admin.id,
+        action="view_user_detail",
+        target_type="user",
+        target_id=str(user_id),
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    user = service.get_user_detail(user_id)
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserDetailResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role=user.role,
+        is_premium=user.is_premium,
+        is_admin=user.is_admin,
+        is_oauth_user=user.is_oauth_user,
+        google_id=user.google_id,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        phone=user.phone,
+        location=user.location,
+        timezone=user.timezone,
+        website=user.website,
+        linkedin_url=user.linkedin_url,
+        github_url=user.github_url,
+        email_verified_at=user.email_verified_at,
+        last_login_at=user.last_login_at,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+        total_applications=user.total_applications,
+        total_documents=user.total_documents,
+        total_jobs=user.total_jobs,
+        total_reminders=user.total_reminders,
+        recent_activity=user.recent_activity or []
+    )
+
+
+@router.patch("/users/{user_id}/admin-status")
+@limiter.limit("20/minute")  # Stricter rate limit for sensitive action
+async def update_user_admin_status(
+    user_id: UUID,
+    payload: UpdateAdminStatusRequest,
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user_with_step_up),  # STEP-UP REQUIRED
+    service: AdminService = Depends(get_admin_service),
+):
+    """
+    Update user's admin status (requires justification + step-up auth).
+    
+    SECURITY: This endpoint requires step-up authentication.
+    Admins must call POST /admin/verify-password within the last 5 minutes
+    before this endpoint will accept requests.
+    """
+    ip_address, user_agent = get_client_info(request)
+    
+    success = service.update_user_admin_status(
+        admin_id=current_admin.id,
+        user_id=user_id,
+        is_admin=payload.is_admin,
+        reason=payload.reason,
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"success": True, "message": "Admin status updated"}
+
+
+@router.patch("/users/{user_id}/premium-status")
+@limiter.limit("50/minute")  # Moderate rate limit
+async def update_user_premium_status(
+    user_id: UUID,
+    payload: UpdatePremiumStatusRequest,
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+):
+    """Update user's premium status (requires justification)"""
+    ip_address, user_agent = get_client_info(request)
+    
+    success = service.update_user_premium_status(
+        admin_id=current_admin.id,
+        user_id=user_id,
+        is_premium=payload.is_premium,
+        expires_at=payload.expires_at,
+        reason=payload.reason,
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"success": True, "message": "Premium status updated"}
+
+
+@router.get("/logs", response_model=AdminLogsListResponse)
+@limiter.limit("100/minute")
+async def get_admin_logs(
+    request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    admin_id: Optional[UUID] = Query(None),
+    action: Optional[str] = Query(None),
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service)
+):
+    """Get admin action logs"""
+    logs, total = service.get_admin_logs(
+        page=page,
+        page_size=page_size,
+        admin_id=admin_id,
+        action=action
+    )
+    
+    return AdminLogsListResponse(
+        logs=[
+            AdminLogResponse(
+                id=str(log.id),
+                admin_id=str(log.admin_id),
+                admin_email=log.admin_email,
+                action=log.action,
+                target_type=log.target_type,
+                target_id=log.target_id,
+                details=log.details,
+                ip_address=log.ip_address,
+                user_agent=log.user_agent,
+                created_at=log.created_at
+            )
+            for log in logs
+        ],
+        total=total,
+        page=page,
+        page_size=page_size
+    )
+
+
+@router.get("/logs/export")
+@limiter.limit("10/minute")  # Strict limit for export operations
+async def export_admin_logs_csv(
+    request: Request,
+    days: int = Query(30, ge=1, le=365, description="Number of days of logs to export"),
+    admin_id: Optional[UUID] = Query(None),
+    action: Optional[str] = Query(None),
+    current_admin: models.User = Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service)
+):
+    """
+    Export admin logs as CSV file (last N days).
+    
+    Rate limited to 10 requests per minute due to resource intensity.
+    Returns a downloadable CSV file with all audit logs matching the criteria.
+    """
+    # Get all logs matching criteria (no pagination for export)
+    logs, _ = service.get_admin_logs(
+        page=1,
+        page_size=10000,  # Large limit for export
+        admin_id=admin_id,
+        action=action
+    )
+    
+    # Filter by date
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    filtered_logs = [log for log in logs if log.created_at >= cutoff]
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        "Timestamp", "Admin Email", "Admin ID", "Action", 
+        "Target Type", "Target ID", "Details", "IP Address", "User Agent"
+    ])
+    
+    # Write data
+    for log in filtered_logs:
+        writer.writerow([
+            log.created_at.isoformat(),
+            log.admin_email,
+            str(log.admin_id) if log.admin_id else "N/A",
+            log.action,
+            log.target_type or "",
+            log.target_id or "",
+            str(log.details) if log.details else "",
+            log.ip_address or "",
+            log.user_agent or ""
+        ])
+    
+    # Prepare response
+    output.seek(0)
+    filename = f"admin_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.delete("/logs/purge")
+@limiter.limit("5/hour")  # Very strict - only 5 purges per hour
+async def purge_old_logs(
+    request: Request,
+    days: int = Query(365, ge=30, le=3650, description="Delete logs older than N days (min 30, max 3650)"),
+    current_admin: models.User = Depends(get_admin_user_with_step_up),  # STEP-UP REQUIRED
+    service: AdminService = Depends(get_admin_service)
+):
+    """
+    Purge admin logs older than specified days (GDPR compliance).
+    
+    WARNING: This permanently deletes audit logs. Use with caution.
+    Minimum retention period is 30 days. Default is 365 days (1 year).
+    Rate limited to 5 requests per hour.
+    
+    SECURITY: This endpoint requires step-up authentication.
+    Admins must call POST /admin/verify-password within the last 5 minutes.
+    
+    The purge action itself is logged before deletion occurs.
+    """
+    ip_address, user_agent = get_client_info(request)
+    
+    # Log the purge action BEFORE purging
+    service.log_action(
+        admin_id=current_admin.id,
+        action="purge_audit_logs",
+        details={"days": days, "reason": "GDPR compliance / retention policy"},
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
+    
+    # Perform purge
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    deleted_count = service.repo.db.query(models.AdminLog).filter(
+        models.AdminLog.created_at < cutoff
+    ).delete()
+    
+    service.repo.db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Purged {deleted_count} log entries older than {days} days",
+        "deleted_count": deleted_count,
+        "cutoff_date": cutoff.isoformat()
+    }
+
+
+# ==================== JOB MANAGEMENT ====================
+
+class JobSummaryResponse(BaseModel):
+    id: str
+    title: str
+    location: Optional[str]
+    remote_type: Optional[str]
+    job_type: Optional[str]
+    source_url: Optional[str]
+    user_id: Optional[str]
+    company_id: Optional[str]
+    created_at: datetime
+    total_applications: int
+    company_name: Optional[str]
+
+
+class JobDetailResponse(BaseModel):
+    id: str
+    title: str
+    location: Optional[str]
+    remote_type: Optional[str]
+    job_type: Optional[str]
+    description: Optional[str]
+    requirements: list[str]
+    skills: list[str]
+    source_url: Optional[str]
+    user_id: Optional[str]
+    company_id: Optional[str]
+    created_at: datetime
+    total_applications: int
+    company_name: Optional[str]
+    applications: list
+
+
+class JobUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    location: Optional[str] = None
+    remote_type: Optional[str] = None
+    job_type: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[list[str]] = None
+    skills: Optional[list[str]] = None
+    source_url: Optional[str] = None
+    justification: str = Field(..., description="Reason for the update")
+
+
+class JobBulkDeleteRequest(BaseModel):
+    job_ids: list[str] = Field(..., description="List of job IDs to delete")
+    justification: str = Field(..., description="Reason for bulk deletion")
+
+
+class JobAnalyticsResponse(BaseModel):
+    total_jobs: int
+    jobs_7d: int
+    jobs_30d: int
+    jobs_with_applications: int
+    avg_applications_per_job: float
+    top_locations: list[dict]
+    top_remote_types: list[dict]
+    top_job_types: list[dict]
+    jobs_by_date: list[dict]
+
+
+@router.get("/jobs", response_model=dict)
+@limiter.limit("100/minute")
+async def list_jobs(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    location: Optional[str] = Query(None),
+    remote_type: Optional[str] = Query(None),
+    job_type: Optional[str] = Query(None),
+    has_applications: Optional[bool] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """List all jobs with pagination and filters"""
+    service = JobsAdminService(db)
+    jobs, total = await service.list_jobs(
+        skip=skip,
+        limit=limit,
+        search=search,
+        location=location,
+        remote_type=remote_type,
+        job_type=job_type,
+        has_applications=has_applications,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    return {
+        "jobs": [
+            {
+                "id": str(job.id),
+                "title": job.title,
+                "location": job.location,
+                "remote_type": job.remote_type,
+                "job_type": job.job_type,
+                "source_url": job.source_url,
+                "user_id": str(job.user_id) if job.user_id else None,
+                "company_id": str(job.company_id) if job.company_id else None,
+                "created_at": job.created_at.isoformat(),
+                "total_applications": job.total_applications,
+                "company_name": job.company_name
+            }
+            for job in jobs
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/jobs/{job_id}", response_model=JobDetailResponse)
+@limiter.limit("100/minute")
+async def get_job_detail(
+    request: Request,
+    job_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get detailed job information"""
+    service = JobsAdminService(db)
+    job = await service.get_job_detail(job_id)
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    return JobDetailResponse(
+        id=str(job.id),
+        title=job.title,
+        location=job.location,
+        remote_type=job.remote_type,
+        job_type=job.job_type,
+        description=job.description,
+        requirements=job.requirements,
+        skills=job.skills,
+        source_url=job.source_url,
+        user_id=str(job.user_id) if job.user_id else None,
+        company_id=str(job.company_id) if job.company_id else None,
+        created_at=job.created_at,
+        total_applications=job.total_applications,
+        company_name=job.company_name,
+        applications=job.applications or []
+    )
+
+
+@router.put("/jobs/{job_id}")
+@limiter.limit("20/minute")
+async def update_job(
+    request: Request,
+    job_id: UUID,
+    body: JobUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Update job details (requires step-up authentication)"""
+    service = JobsAdminService(db)
+    
+    success = await service.update_job(
+        job_id=job_id,
+        admin_id=current_admin.id,
+        justification=body.justification,
+        title=body.title,
+        location=body.location,
+        remote_type=body.remote_type,
+        job_type=body.job_type,
+        description=body.description,
+        requirements=body.requirements,
+        skills=body.skills,
+        source_url=body.source_url
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Job updated successfully",
+        "job_id": str(job_id)
+    }
+
+
+@router.delete("/jobs/{job_id}")
+@limiter.limit("20/minute")
+async def delete_job(
+    request: Request,
+    job_id: UUID,
+    justification: str = Query(..., description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Delete a job (requires step-up authentication)"""
+    service = JobsAdminService(db)
+    
+    success = await service.delete_job(
+        job_id=job_id,
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Job deleted successfully",
+        "job_id": str(job_id)
+    }
+
+
+@router.post("/jobs/bulk-delete")
+@limiter.limit("10/minute")
+async def bulk_delete_jobs(
+    request: Request,
+    body: JobBulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Bulk delete jobs (requires step-up authentication)"""
+    service = JobsAdminService(db)
+    
+    job_ids = [UUID(jid) for jid in body.job_ids]
+    deleted_count = await service.bulk_delete_jobs(
+        job_ids=job_ids,
+        admin_id=current_admin.id,
+        justification=body.justification
+    )
+    
+    return {
+        "success": True,
+        "message": f"Deleted {deleted_count} jobs",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/jobs/analytics/overview", response_model=JobAnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_job_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get job analytics"""
+    service = JobsAdminService(db)
+    analytics = await service.get_job_analytics()
+    
+    return JobAnalyticsResponse(
+        total_jobs=analytics.total_jobs,
+        jobs_7d=analytics.jobs_7d,
+        jobs_30d=analytics.jobs_30d,
+        jobs_with_applications=analytics.jobs_with_applications,
+        avg_applications_per_job=analytics.avg_applications_per_job,
+        top_locations=analytics.top_locations,
+        top_remote_types=analytics.top_remote_types,
+        top_job_types=analytics.top_job_types,
+        jobs_by_date=analytics.jobs_by_date
+    )
+
+
+# ==================== APPLICATION MANAGEMENT ====================
+
+class ApplicationSummaryResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    job_id: str
+    resume_id: Optional[str]
+    status: str
+    source: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    job_title: Optional[str]
+    company_name: Optional[str]
+
+
+class ApplicationDetailResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    job_id: str
+    resume_id: Optional[str]
+    status: str
+    source: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    user_name: Optional[str]
+    job_title: Optional[str]
+    job_location: Optional[str]
+    company_name: Optional[str]
+    resume_label: Optional[str]
+
+
+class ApplicationStatusUpdateRequest(BaseModel):
+    status: str = Field(..., description="New application status")
+    justification: str = Field(..., description="Reason for the status update")
+
+
+class ApplicationBulkDeleteRequest(BaseModel):
+    application_ids: list[str] = Field(..., description="List of application IDs to delete")
+    justification: str = Field(..., description="Reason for bulk deletion")
+
+
+class ApplicationAnalyticsResponse(BaseModel):
+    total_applications: int
+    apps_7d: int
+    apps_30d: int
+    by_status: list[dict]
+    by_source: list[dict]
+    conversion_funnel: list[dict]
+    apps_by_date: list[dict]
+
+
+@router.get("/applications", response_model=dict)
+@limiter.limit("100/minute")
+async def list_applications(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    job_id: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """List all applications with pagination and filters"""
+    service = ApplicationsAdminService(db)
+    
+    user_uuid = UUID(user_id) if user_id else None
+    job_uuid = UUID(job_id) if job_id else None
+    
+    applications, total = await service.list_applications(
+        skip=skip,
+        limit=limit,
+        search=search,
+        status=status,
+        source=source,
+        user_id=user_uuid,
+        job_id=job_uuid,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    return {
+        "applications": [
+            {
+                "id": str(app.id),
+                "user_id": str(app.user_id) if app.user_id else None,
+                "job_id": str(app.job_id),
+                "resume_id": str(app.resume_id) if app.resume_id else None,
+                "status": app.status,
+                "source": app.source,
+                "created_at": app.created_at.isoformat(),
+                "user_email": app.user_email,
+                "job_title": app.job_title,
+                "company_name": app.company_name
+            }
+            for app in applications
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/applications/{app_id}", response_model=ApplicationDetailResponse)
+@limiter.limit("100/minute")
+async def get_application_detail(
+    request: Request,
+    app_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get detailed application information"""
+    service = ApplicationsAdminService(db)
+    app = await service.get_application_detail(app_id)
+    
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return ApplicationDetailResponse(
+        id=str(app.id),
+        user_id=str(app.user_id) if app.user_id else None,
+        job_id=str(app.job_id),
+        resume_id=str(app.resume_id) if app.resume_id else None,
+        status=app.status,
+        source=app.source,
+        created_at=app.created_at,
+        user_email=app.user_email,
+        user_name=app.user_name,
+        job_title=app.job_title,
+        job_location=app.job_location,
+        company_name=app.company_name,
+        resume_label=app.resume_label
+    )
+
+
+@router.patch("/applications/{app_id}/status")
+@limiter.limit("20/minute")
+async def update_application_status(
+    request: Request,
+    app_id: UUID,
+    body: ApplicationStatusUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Update application status (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    success = await service.update_application_status(
+        app_id=app_id,
+        admin_id=current_admin.id,
+        status=body.status,
+        justification=body.justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Application status updated successfully",
+        "application_id": str(app_id),
+        "new_status": body.status
+    }
+
+
+@router.delete("/applications/{app_id}")
+@limiter.limit("20/minute")
+async def delete_application(
+    request: Request,
+    app_id: UUID,
+    justification: str = Query(..., description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Delete an application (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    success = await service.delete_application(
+        app_id=app_id,
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Application deleted successfully",
+        "application_id": str(app_id)
+    }
+
+
+@router.post("/applications/bulk-delete")
+@limiter.limit("10/minute")
+async def bulk_delete_applications(
+    request: Request,
+    body: ApplicationBulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Bulk delete applications (requires step-up authentication)"""
+    service = ApplicationsAdminService(db)
+    
+    app_ids = [UUID(aid) for aid in body.application_ids]
+    deleted_count = await service.bulk_delete_applications(
+        app_ids=app_ids,
+        admin_id=current_admin.id,
+        justification=body.justification
+    )
+    
+    return {
+        "success": True,
+        "message": f"Deleted {deleted_count} applications",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/applications/analytics/overview", response_model=ApplicationAnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_application_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get application analytics"""
+    service = ApplicationsAdminService(db)
+    analytics = await service.get_application_analytics()
+    
+    return ApplicationAnalyticsResponse(
+        total_applications=analytics.total_applications,
+        apps_7d=analytics.apps_7d,
+        apps_30d=analytics.apps_30d,
+        by_status=analytics.by_status,
+        by_source=analytics.by_source,
+        conversion_funnel=analytics.conversion_funnel,
+        apps_by_date=analytics.apps_by_date
+    )
+
+
+# ==================== DOCUMENT MANAGEMENT ====================
+
+class DocumentSummaryResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    label: str
+    file_path: str
+    created_at: datetime
+    user_email: Optional[str]
+    file_size: Optional[int]
+    file_type: Optional[str]
+
+
+class DocumentDetailResponse(BaseModel):
+    id: str
+    user_id: Optional[str]
+    label: str
+    file_path: str
+    text: Optional[str]
+    created_at: datetime
+    user_email: Optional[str]
+    user_name: Optional[str]
+    file_size: Optional[int]
+    file_type: Optional[str]
+    usage_count: int
+
+
+class DocumentAnalyticsResponse(BaseModel):
+    total_documents: int
+    documents_7d: int
+    documents_30d: int
+    total_storage_bytes: int
+    avg_document_size: float
+    by_file_type: list[dict]
+    by_user: list[dict]
+    orphaned_count: int
+    documents_by_date: list[dict]
+
+
+@router.get("/documents", response_model=dict)
+@limiter.limit("100/minute")
+async def list_documents(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    orphaned_only: bool = Query(False),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """List all documents with pagination and filters"""
+    service = DocumentsAdminService(db)
+    
+    user_uuid = UUID(user_id) if user_id else None
+    
+    documents, total = await service.list_documents(
+        skip=skip,
+        limit=limit,
+        search=search,
+        user_id=user_uuid,
+        orphaned_only=orphaned_only,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+    
+    return {
+        "documents": [
+            {
+                "id": str(doc.id),
+                "user_id": str(doc.user_id) if doc.user_id else None,
+                "label": doc.label,
+                "file_path": doc.file_path,
+                "created_at": doc.created_at.isoformat(),
+                "user_email": doc.user_email,
+                "file_size": doc.file_size,
+                "file_type": doc.file_type
+            }
+            for doc in documents
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@router.get("/documents/{doc_id}", response_model=DocumentDetailResponse)
+@limiter.limit("100/minute")
+async def get_document_detail(
+    request: Request,
+    doc_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get detailed document information"""
+    service = DocumentsAdminService(db)
+    doc = await service.get_document_detail(doc_id)
+    
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    return DocumentDetailResponse(
+        id=str(doc.id),
+        user_id=str(doc.user_id) if doc.user_id else None,
+        label=doc.label,
+        file_path=doc.file_path,
+        text=doc.text,
+        created_at=doc.created_at,
+        user_email=doc.user_email,
+        user_name=doc.user_name,
+        file_size=doc.file_size,
+        file_type=doc.file_type,
+        usage_count=doc.usage_count
+    )
+
+
+@router.delete("/documents/{doc_id}")
+@limiter.limit("20/minute")
+async def delete_document(
+    request: Request,
+    doc_id: UUID,
+    justification: str = Query(..., description="Reason for deletion"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Delete a document (requires step-up authentication)"""
+    service = DocumentsAdminService(db)
+    
+    success = await service.delete_document(
+        doc_id=doc_id,
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    return {
+        "success": True,
+        "message": "Document deleted successfully",
+        "document_id": str(doc_id)
+    }
+
+
+@router.get("/documents/orphaned/list", response_model=dict)
+@limiter.limit("100/minute")
+async def list_orphaned_documents(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get list of orphaned documents"""
+    service = DocumentsAdminService(db)
+    documents = await service.get_orphaned_documents()
+    
+    return {
+        "documents": [
+            {
+                "id": str(doc.id),
+                "label": doc.label,
+                "file_path": doc.file_path,
+                "created_at": doc.created_at.isoformat(),
+                "file_size": doc.file_size,
+                "file_type": doc.file_type
+            }
+            for doc in documents
+        ],
+        "total": len(documents)
+    }
+
+
+@router.delete("/documents/orphaned/cleanup")
+@limiter.limit("5/hour")
+async def cleanup_orphaned_documents(
+    request: Request,
+    justification: str = Query(..., description="Reason for cleanup"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """Cleanup all orphaned documents (requires step-up authentication)"""
+    service = DocumentsAdminService(db)
+    
+    deleted_count = await service.cleanup_orphaned_documents(
+        admin_id=current_admin.id,
+        justification=justification
+    )
+    
+    return {
+        "success": True,
+        "message": f"Cleaned up {deleted_count} orphaned documents",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/documents/analytics/overview", response_model=DocumentAnalyticsResponse)
+@limiter.limit("100/minute")
+async def get_document_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """Get document analytics"""
+    service = DocumentsAdminService(db)
+    analytics = await service.get_document_analytics()
+    
+    return DocumentAnalyticsResponse(
+        total_documents=analytics.total_documents,
+        documents_7d=analytics.documents_7d,
+        documents_30d=analytics.documents_30d,
+        total_storage_bytes=analytics.total_storage_bytes,
+        avg_document_size=analytics.avg_document_size,
+        by_file_type=analytics.by_file_type,
+        by_user=analytics.by_user,
+        orphaned_count=analytics.orphaned_count,
+        documents_by_date=analytics.documents_by_date
+    )
+
+
+# ==================== DATABASE QUERY INTERFACE ====================
+# Emergency SQL query tool for production debugging
+# Read-only queries with comprehensive safety checks
+
+class DatabaseQueryRequest(BaseModel):
+    query: str = Field(..., description="SQL query to execute (SELECT only)")
+    justification: str = Field(..., min_length=10, description="Reason for executing this query")
+
+
+class DatabaseQueryResponse(BaseModel):
+    columns: list[str]
+    rows: list[dict]
+    row_count: int
+    execution_time_ms: float
+    query: str
+
+
+class TableColumn(BaseModel):
+    column_name: str
+    data_type: str
+    is_nullable: bool
+    column_default: Optional[str]
+    max_length: Optional[int]
+
+
+class TableInfoResponse(BaseModel):
+    table_name: str
+    row_count: int
+    size_bytes: Optional[int]
+    columns: list[TableColumn]
+
+
+@router.post(
+    "/database/query",
+    response_model=DatabaseQueryResponse,
+    summary="Execute SQL Query"
+)
+@limiter.limit("10/minute")  # Very strict limit for database queries
+async def execute_database_query(
+    request: Request,
+    query_request: DatabaseQueryRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Execute read-only SQL query for debugging
+    
+    - Requires step-up authentication (recent password confirmation)
+    - Only SELECT and WITH queries allowed
+    - Comprehensive safety validation
+    - Automatic audit logging
+    - Query timing metrics
+    """
+    service = DatabaseAdminService(db)
+    
+    result = await service.execute_query(
+        query=query_request.query,
+        admin_id=current_admin.id,
+        justification=query_request.justification
+    )
+    
+    return DatabaseQueryResponse(
+        columns=result.columns,
+        rows=result.rows,
+        row_count=result.row_count,
+        execution_time_ms=result.execution_time_ms,
+        query=result.query
+    )
+
+
+@router.get(
+    "/database/tables",
+    response_model=list[TableInfoResponse],
+    summary="List Database Tables"
+)
+@limiter.limit("20/minute")
+async def list_database_tables(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List all database tables with row counts and column info
+    
+    Returns schema information for all tables in public schema
+    """
+    service = DatabaseAdminService(db)
+    tables = await service.list_tables()
+    
+    return [
+        TableInfoResponse(
+            table_name=table.table_name,
+            row_count=table.row_count,
+            size_bytes=table.size_bytes,
+            columns=[
+                TableColumn(
+                    column_name=col["column_name"],
+                    data_type=col["data_type"],
+                    is_nullable=col["is_nullable"],
+                    column_default=col.get("column_default"),
+                    max_length=col.get("max_length")
+                )
+                for col in table.columns
+            ]
+        )
+        for table in tables
+    ]
+
+
+@router.get(
+    "/database/schema/{table_name}",
+    response_model=TableInfoResponse,
+    summary="Get Table Schema"
+)
+@limiter.limit("30/minute")
+async def get_table_schema(
+    request: Request,
+    table_name: str,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get detailed schema for specific table
+    
+    Returns columns with types, nullable status, defaults, and constraints
+    """
+    service = DatabaseAdminService(db)
+    table_info = await service.get_table_schema(table_name)
+    
+    return TableInfoResponse(
+        table_name=table_info.table_name,
+        row_count=table_info.row_count,
+        size_bytes=table_info.size_bytes,
+        columns=[
+            TableColumn(
+                column_name=col["column_name"],
+                data_type=col["data_type"],
+                is_nullable=col["is_nullable"],
+                column_default=col.get("column_default"),
+                max_length=col.get("max_length")
+            )
+            for col in table_info.columns
+        ]
+    )
+
+
+# ==================== CACHE MANAGEMENT ====================
+# Redis cache browser and management
+
+class CacheStatsResponse(BaseModel):
+    total_keys: int
+    memory_usage_bytes: int
+    memory_usage_human: str
+    hit_rate: Optional[float]
+    connected_clients: int
+    uptime_seconds: int
+    used_memory_peak: int
+    expired_keys: int
+
+
+class CacheKeyResponse(BaseModel):
+    key: str
+    type: str
+    ttl: int
+    size_bytes: Optional[int]
+    value_preview: Optional[str]
+
+
+class CacheKeyDetailResponse(BaseModel):
+    key: str
+    type: str
+    ttl: int
+    size_bytes: int
+    value: str
+
+
+class DeleteKeyRequest(BaseModel):
+    key: str
+    justification: str = Field(..., min_length=10)
+
+
+class FlushPatternRequest(BaseModel):
+    pattern: str = Field(..., min_length=2, description="Redis pattern (e.g., 'session:*')")
+    justification: str = Field(..., min_length=10)
+    max_keys: int = Field(default=1000, ge=1, le=10000)
+
+
+@router.get(
+    "/cache/stats",
+    response_model=CacheStatsResponse,
+    summary="Get Cache Statistics"
+)
+@limiter.limit("30/minute")
+async def get_cache_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get comprehensive Redis cache statistics
+    
+    Returns memory usage, key count, hit rate, and performance metrics
+    """
+    service = CacheAdminService(db, cache_service)
+    stats = await service.get_cache_stats()
+    
+    return CacheStatsResponse(
+        total_keys=stats.total_keys,
+        memory_usage_bytes=stats.memory_usage_bytes,
+        memory_usage_human=stats.memory_usage_human,
+        hit_rate=stats.hit_rate,
+        connected_clients=stats.connected_clients,
+        uptime_seconds=stats.uptime_seconds,
+        used_memory_peak=stats.used_memory_peak,
+        expired_keys=stats.expired_keys
+    )
+
+
+@router.get(
+    "/cache/keys",
+    response_model=list[CacheKeyResponse],
+    summary="List Cache Keys"
+)
+@limiter.limit("30/minute")
+async def list_cache_keys(
+    request: Request,
+    pattern: str = Query(default="*", description="Redis pattern"),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List cache keys matching pattern
+    
+    Use patterns like:
+    - `user:*` - All user keys
+    - `session:*` - All session keys
+    - `*email*` - Keys containing "email"
+    """
+    service = CacheAdminService(db, cache_service)
+    keys = await service.list_keys(pattern=pattern, limit=limit)
+    
+    return [
+        CacheKeyResponse(
+            key=key.key,
+            type=key.type,
+            ttl=key.ttl,
+            size_bytes=key.size_bytes,
+            value_preview=key.value_preview
+        )
+        for key in keys
+    ]
+
+
+@router.get(
+    "/cache/keys/{key}",
+    response_model=CacheKeyDetailResponse,
+    summary="Get Cache Key Detail"
+)
+@limiter.limit("30/minute")
+async def get_cache_key_detail(
+    request: Request,
+    key: str,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get detailed information about a cache key
+    
+    Returns full value and metadata
+    """
+    service = CacheAdminService(db, cache_service)
+    detail = await service.get_key_detail(key)
+    
+    return CacheKeyDetailResponse(
+        key=detail.key,
+        type=detail.type,
+        ttl=detail.ttl,
+        size_bytes=detail.size_bytes,
+        value=detail.value
+    )
+
+
+@router.delete(
+    "/cache/keys",
+    summary="Delete Cache Key"
+)
+@limiter.limit("20/minute")
+async def delete_cache_key(
+    request: Request,
+    delete_request: DeleteKeyRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Delete a cache key
+    
+    Requires step-up authentication and justification
+    """
+    service = CacheAdminService(db, cache_service)
+    deleted = await service.delete_key(
+        key=delete_request.key,
+        admin_id=current_admin.id,
+        justification=delete_request.justification
+    )
+    
+    return {
+        "success": True,
+        "deleted": deleted,
+        "message": f"Key '{delete_request.key}' deleted" if deleted else f"Key '{delete_request.key}' not found"
+    }
+
+
+@router.post(
+    "/cache/flush",
+    summary="Flush Keys by Pattern"
+)
+@limiter.limit("5/hour")  # Very strict limit for bulk operations
+async def flush_cache_pattern(
+    request: Request,
+    flush_request: FlushPatternRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Delete all keys matching pattern
+    
+    DANGEROUS OPERATION - Use with extreme caution!
+    
+    - Requires step-up authentication
+    - Cannot flush all keys (pattern "*" is blocked)
+    - Limited to 10,000 keys per operation
+    - Rate limited to 5 per hour
+    """
+    service = CacheAdminService(db, cache_service)
+    deleted_count = await service.flush_pattern(
+        pattern=flush_request.pattern,
+        admin_id=current_admin.id,
+        justification=flush_request.justification,
+        max_keys=flush_request.max_keys
+    )
+    
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "pattern": flush_request.pattern,
+        "message": f"Deleted {deleted_count} keys matching pattern '{flush_request.pattern}'"
+    }
+
+
+# ==================== EMAIL MONITORING ====================
+# SMTP status checking and test email sending
+# Note: Full email logging requires database schema changes
+
+class EmailStatsResponse(BaseModel):
+    smtp_configured: bool
+    smtp_host: Optional[str]
+    smtp_port: Optional[int]
+    from_email: Optional[str]
+    last_test_sent_at: Optional[datetime]
+    test_emails_sent_today: int
+
+
+class SendTestEmailRequest(BaseModel):
+    to_email: str = Field(..., regex=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    subject: str = Field(default="Applytide Admin Test Email", max_length=200)
+    message: str = Field(default="This is a test email from the admin dashboard.", max_length=2000)
+    justification: str = Field(..., min_length=10, description="Reason for sending test email")
+
+
+@router.get(
+    "/email/stats",
+    response_model=EmailStatsResponse,
+    summary="Get Email System Stats"
+)
+@limiter.limit("30/minute")
+async def get_email_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get email system statistics
+    
+    Returns SMTP configuration status and recent test email activity
+    """
+    service = EmailAdminService(db)
+    stats = await service.get_email_stats()
+    
+    return EmailStatsResponse(
+        smtp_configured=stats.smtp_configured,
+        smtp_host=stats.smtp_host,
+        smtp_port=stats.smtp_port,
+        from_email=stats.from_email,
+        last_test_sent_at=stats.last_test_sent_at,
+        test_emails_sent_today=stats.test_emails_sent_today
+    )
+
+
+@router.get(
+    "/email/activity",
+    summary="Get Email Activity"
+)
+@limiter.limit("30/minute")
+async def get_email_activity(
+    request: Request,
+    days: int = Query(default=7, ge=1, le=90),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get email-related activity from audit logs
+    
+    Returns test email statistics for the specified time period
+    """
+    service = EmailAdminService(db)
+    activity = await service.get_email_activity(days=days)
+    
+    return {
+        "test_emails_sent": activity["test_emails_sent"],
+        "test_emails_failed": activity["test_emails_failed"],
+        "total_attempts": activity["total_attempts"],
+        "success_rate": activity["success_rate"],
+        "days": days
+    }
+
+
+@router.post(
+    "/email/test",
+    summary="Send Test Email"
+)
+@limiter.limit("10/hour")  # Strict limit for test emails
+async def send_test_email(
+    request: Request,
+    test_request: SendTestEmailRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Send a test email
+    
+    - Requires step-up authentication
+    - Rate limited to 10 per hour
+    - All test emails are audit logged
+    """
+    service = EmailAdminService(db)
+    
+    success = await service.send_test_email(
+        to_email=test_request.to_email,
+        subject=test_request.subject,
+        message=test_request.message,
+        admin_id=current_admin.id,
+        justification=test_request.justification
+    )
+    
+    if success:
+        return {
+            "success": True,
+            "message": f"Test email sent to {test_request.to_email}"
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send test email. Check SMTP configuration."
+        )
+
+
+# ==================== STORAGE MANAGEMENT ====================
+# Disk usage analysis and orphaned file cleanup
+
+class StorageStatsResponse(BaseModel):
+    total_documents: int
+    total_storage_bytes: int
+    total_storage_human: str
+    avg_document_size_bytes: int
+    largest_document_bytes: int
+    orphaned_files_count: int
+    orphaned_storage_bytes: int
+    storage_by_type: list[dict]
+
+
+class UserStorageResponse(BaseModel):
+    user_id: str
+    user_email: str
+    document_count: int
+    total_storage_bytes: int
+    total_storage_human: str
+    largest_document_bytes: int
+    avg_document_size_bytes: int
+
+
+class OrphanedFileResponse(BaseModel):
+    file_path: str
+    size_bytes: int
+    size_human: str
+    file_type: Optional[str]
+    reason: str
+
+
+class CleanupOrphanedRequest(BaseModel):
+    justification: str = Field(..., min_length=10)
+    max_files: int = Field(default=100, ge=1, le=1000)
+
+
+@router.get(
+    "/storage/stats",
+    response_model=StorageStatsResponse,
+    summary="Get Storage Statistics"
+)
+@limiter.limit("30/minute")
+async def get_storage_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get comprehensive storage statistics
+    
+    Returns disk usage, document counts, orphaned files, and storage by file type
+    """
+    service = StorageAdminService(db)
+    stats = await service.get_storage_stats()
+    
+    return StorageStatsResponse(
+        total_documents=stats.total_documents,
+        total_storage_bytes=stats.total_storage_bytes,
+        total_storage_human=stats.total_storage_human,
+        avg_document_size_bytes=stats.avg_document_size_bytes,
+        largest_document_bytes=stats.largest_document_bytes,
+        orphaned_files_count=stats.orphaned_files_count,
+        orphaned_storage_bytes=stats.orphaned_storage_bytes,
+        storage_by_type=stats.storage_by_type
+    )
+
+
+@router.get(
+    "/storage/by-user",
+    response_model=list[UserStorageResponse],
+    summary="Get Storage by User"
+)
+@limiter.limit("30/minute")
+async def get_storage_by_user(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=500),
+    sort_by: str = Query(default="storage", regex="^(storage|count)$"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get storage usage breakdown by user
+    
+    Returns top users by storage consumption or document count
+    """
+    service = StorageAdminService(db)
+    user_storage = await service.get_storage_by_user(limit=limit, sort_by=sort_by)
+    
+    return [
+        UserStorageResponse(
+            user_id=user.user_id,
+            user_email=user.user_email,
+            document_count=user.document_count,
+            total_storage_bytes=user.total_storage_bytes,
+            total_storage_human=user.total_storage_human,
+            largest_document_bytes=user.largest_document_bytes,
+            avg_document_size_bytes=user.avg_document_size_bytes
+        )
+        for user in user_storage
+    ]
+
+
+@router.get(
+    "/storage/orphaned",
+    response_model=list[OrphanedFileResponse],
+    summary="Find Orphaned Files"
+)
+@limiter.limit("20/minute")
+async def find_orphaned_files(
+    request: Request,
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Find files on disk without database records
+    
+    Returns list of orphaned files with size information
+    """
+    service = StorageAdminService(db)
+    orphaned = await service.find_orphaned_files(limit=limit)
+    
+    return [
+        OrphanedFileResponse(
+            file_path=file.file_path,
+            size_bytes=file.size_bytes,
+            size_human=file.size_human,
+            file_type=file.file_type,
+            reason=file.reason
+        )
+        for file in orphaned
+    ]
+
+
+@router.delete(
+    "/storage/orphaned/cleanup",
+    summary="Cleanup Orphaned Files"
+)
+@limiter.limit("5/hour")  # Very strict limit for file deletion
+async def cleanup_orphaned_files(
+    request: Request,
+    cleanup_request: CleanupOrphanedRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Delete orphaned files from disk
+    
+    DANGEROUS OPERATION - Permanently deletes files!
+    
+    - Requires step-up authentication
+    - Rate limited to 5 per hour
+    - Maximum 1000 files per operation
+    - All deletions are audit logged
+    """
+    service = StorageAdminService(db)
+    deleted_count = await service.cleanup_orphaned_files(
+        admin_id=current_admin.id,
+        justification=cleanup_request.justification,
+        max_files=cleanup_request.max_files
+    )
+    
+    return {
+        "success": True,
+        "files_deleted": deleted_count,
+        "message": f"Successfully deleted {deleted_count} orphaned files"
+    }
+
+
+# ==================== SECURITY MONITORING ====================
+# Failed login tracking, IP blacklist management, session monitoring
+
+class SecurityStatsResponse(BaseModel):
+    failed_logins_24h: int
+    failed_logins_7d: int
+    blocked_ips_count: int
+    suspicious_activities_24h: int
+    active_sessions_count: int
+
+
+class FailedLoginResponse(BaseModel):
+    email: str
+    ip_address: str
+    timestamp: datetime
+    reason: str
+    user_agent: Optional[str]
+
+
+class BlockedIPResponse(BaseModel):
+    ip_address: str
+    reason: str
+    blocked_at: datetime
+    blocked_by_admin_id: Optional[str]
+    expires_at: Optional[datetime]
+    failed_attempts: int
+
+
+class ActiveSessionResponse(BaseModel):
+    user_id: str
+    user_email: str
+    ip_address: Optional[str]
+    last_activity: datetime
+    session_started: datetime
+    user_agent: Optional[str]
+
+
+class BlockIPRequest(BaseModel):
+    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    reason: str = Field(..., min_length=10, max_length=500)
+    duration_hours: Optional[int] = Field(default=None, ge=1, le=8760)  # Max 1 year
+
+
+class UnblockIPRequest(BaseModel):
+    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    justification: str = Field(..., min_length=10, max_length=500)
+
+
+@router.get(
+    "/security/stats",
+    response_model=SecurityStatsResponse,
+    summary="Get Security Statistics"
+)
+@limiter.limit("30/minute")
+async def get_security_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get comprehensive security statistics
+    
+    Returns failed login counts, blocked IPs, suspicious activities, and active sessions
+    """
+    service = SecurityAdminService(db, cache_service)
+    stats = await service.get_security_stats()
+    
+    return SecurityStatsResponse(
+        failed_logins_24h=stats.failed_logins_24h,
+        failed_logins_7d=stats.failed_logins_7d,
+        blocked_ips_count=stats.blocked_ips_count,
+        suspicious_activities_24h=stats.suspicious_activities_24h,
+        active_sessions_count=stats.active_sessions_count
+    )
+
+
+@router.get(
+    "/security/failed-logins",
+    response_model=list[FailedLoginResponse],
+    summary="Get Failed Login Attempts"
+)
+@limiter.limit("30/minute")
+async def get_failed_logins(
+    request: Request,
+    hours: int = Query(default=24, ge=1, le=168),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get recent failed login attempts
+    
+    Returns list of failed authentication attempts from audit logs
+    """
+    service = SecurityAdminService(db, cache_service)
+    failed_logins = await service.get_failed_logins(hours=hours, limit=limit)
+    
+    return [
+        FailedLoginResponse(
+            email=login.email,
+            ip_address=login.ip_address,
+            timestamp=login.timestamp,
+            reason=login.reason,
+            user_agent=login.user_agent
+        )
+        for login in failed_logins
+    ]
+
+
+@router.get(
+    "/security/blocked-ips",
+    response_model=list[BlockedIPResponse],
+    summary="Get Blocked IP Addresses"
+)
+@limiter.limit("30/minute")
+async def get_blocked_ips(
+    request: Request,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get list of blocked IP addresses
+    
+    Returns all IPs on the blacklist with block reasons and expiration times
+    """
+    service = SecurityAdminService(db, cache_service)
+    blocked_ips = await service.get_blocked_ips()
+    
+    return [
+        BlockedIPResponse(
+            ip_address=ip.ip_address,
+            reason=ip.reason,
+            blocked_at=ip.blocked_at,
+            blocked_by_admin_id=ip.blocked_by_admin_id,
+            expires_at=ip.expires_at,
+            failed_attempts=ip.failed_attempts
+        )
+        for ip in blocked_ips
+    ]
+
+
+@router.post(
+    "/security/block-ip",
+    summary="Block IP Address"
+)
+@limiter.limit("20/hour")  # Limit IP blocking operations
+async def block_ip_address(
+    request: Request,
+    block_request: BlockIPRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Add IP address to blacklist
+    
+    - Requires step-up authentication
+    - Can be permanent or temporary (with duration)
+    - All blocks are audit logged
+    """
+    service = SecurityAdminService(db, cache_service)
+    
+    success = await service.block_ip(
+        ip_address=block_request.ip_address,
+        reason=block_request.reason,
+        admin_id=current_admin.id,
+        duration_hours=block_request.duration_hours
+    )
+    
+    return {
+        "success": True,
+        "ip_address": block_request.ip_address,
+        "message": f"IP {block_request.ip_address} has been blocked",
+        "expires_at": (datetime.utcnow() + timedelta(hours=block_request.duration_hours)).isoformat() 
+            if block_request.duration_hours else None
+    }
+
+
+@router.delete(
+    "/security/unblock-ip",
+    summary="Unblock IP Address"
+)
+@limiter.limit("20/hour")
+async def unblock_ip_address(
+    request: Request,
+    unblock_request: UnblockIPRequest,
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Remove IP address from blacklist
+    
+    - Requires step-up authentication
+    - All unblocks are audit logged
+    """
+    service = SecurityAdminService(db, cache_service)
+    
+    unblocked = await service.unblock_ip(
+        ip_address=unblock_request.ip_address,
+        admin_id=current_admin.id,
+        justification=unblock_request.justification
+    )
+    
+    if unblocked:
+        return {
+            "success": True,
+            "ip_address": unblock_request.ip_address,
+            "message": f"IP {unblock_request.ip_address} has been unblocked"
+        }
+    else:
+        return {
+            "success": False,
+            "ip_address": unblock_request.ip_address,
+            "message": f"IP {unblock_request.ip_address} was not blocked"
+        }
+
+
+@router.get(
+    "/security/active-sessions",
+    response_model=list[ActiveSessionResponse],
+    summary="Get Active Sessions"
+)
+@limiter.limit("30/minute")
+async def get_active_sessions(
+    request: Request,
+    hours: int = Query(default=24, ge=1, le=168),
+    db: Session = Depends(get_db),
+    cache_service: CacheService = Depends(get_cache_service),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get list of active user sessions
+    
+    Returns users who have logged in within the specified time window
+    """
+    service = SecurityAdminService(db, cache_service)
+    sessions = await service.get_active_sessions(hours=hours)
+    
+    return [
+        ActiveSessionResponse(
+            user_id=session.user_id,
+            user_email=session.user_email,
+            ip_address=session.ip_address,
+            last_activity=session.last_activity,
+            session_started=session.session_started,
+            user_agent=session.user_agent
+        )
+        for session in sessions
+    ]
+
+
+# ==================== GDPR COMPLIANCE TOOLS ====================
+# User data export and deletion requests for GDPR compliance
+
+class GDPRStatsResponse(BaseModel):
+    total_requests: int
+    pending_requests: int
+    completed_requests: int
+    failed_requests: int
+    export_requests: int
+    delete_requests: int
+
+
+class GDPRRequestResponse(BaseModel):
+    id: str
+    user_id: str
+    user_email: str
+    request_type: str
+    status: str
+    requested_at: datetime
+    completed_at: Optional[datetime]
+    processed_by_admin_id: Optional[str]
+    error_message: Optional[str]
+    file_path: Optional[str]
+
+
+class CreateExportRequest(BaseModel):
+    user_id: str = Field(..., description="User ID to export data for")
+    justification: str = Field(..., min_length=20, description="Detailed reason for export")
+
+
+class CreateDeleteRequest(BaseModel):
+    user_id: str = Field(..., description="User ID to delete")
+    justification: str = Field(..., min_length=50, description="Detailed reason for deletion (DANGEROUS OPERATION)")
+
+
+@router.get(
+    "/gdpr/stats",
+    response_model=GDPRStatsResponse,
+    summary="Get GDPR Statistics"
+)
+@limiter.limit("30/minute")
+async def get_gdpr_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get GDPR request statistics
+    
+    Returns counts of export/delete requests and their statuses
+    """
+    service = GDPRAdminService(db)
+    stats = await service.get_gdpr_stats()
+    
+    return GDPRStatsResponse(
+        total_requests=stats.total_requests,
+        pending_requests=stats.pending_requests,
+        completed_requests=stats.completed_requests,
+        failed_requests=stats.failed_requests,
+        export_requests=stats.export_requests,
+        delete_requests=stats.delete_requests
+    )
+
+
+@router.get(
+    "/gdpr/requests",
+    response_model=list[GDPRRequestResponse],
+    summary="List GDPR Requests"
+)
+@limiter.limit("30/minute")
+async def list_gdpr_requests(
+    request: Request,
+    request_type: Optional[str] = Query(default=None, regex="^(export|delete)$"),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    List GDPR requests from audit logs
+    
+    Returns history of data export and deletion requests
+    """
+    from ...domain.admin.gdpr_dto import GDPRRequestType
+    
+    service = GDPRAdminService(db)
+    req_type = GDPRRequestType(request_type) if request_type else None
+    requests = await service.list_gdpr_requests(request_type=req_type, limit=limit)
+    
+    return [
+        GDPRRequestResponse(
+            id=req.id,
+            user_id=req.user_id,
+            user_email=req.user_email,
+            request_type=req.request_type.value,
+            status=req.status.value,
+            requested_at=req.requested_at,
+            completed_at=req.completed_at,
+            processed_by_admin_id=req.processed_by_admin_id,
+            error_message=req.error_message,
+            file_path=req.file_path
+        )
+        for req in requests
+    ]
+
+
+@router.post(
+    "/gdpr/export",
+    summary="Create Data Export Request"
+)
+@limiter.limit("10/hour")  # Strict limit for GDPR operations
+async def create_export_request(
+    request: Request,
+    export_request: CreateExportRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Create and process user data export request
+    
+    - Requires step-up authentication
+    - Exports all user data to JSON file
+    - Includes jobs, applications, documents
+    - Rate limited to 10 per hour
+    """
+    service = GDPRAdminService(db)
+    
+    try:
+        request_id = await service.create_export_request(
+            user_id=export_request.user_id,
+            admin_id=current_admin.id,
+            justification=export_request.justification
+        )
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "message": f"Data export completed for user {export_request.user_id}"
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Export failed: {str(e)}"
+        )
+
+
+@router.post(
+    "/gdpr/delete",
+    summary="Create User Deletion Request"
+)
+@limiter.limit("5/hour")  # Very strict limit for deletions
+async def create_delete_request(
+    request: Request,
+    delete_request: CreateDeleteRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user_with_step_up)
+):
+    """
+    Create and process user deletion request
+    
+    EXTREMELY DANGEROUS OPERATION - Permanently deletes user and ALL data!
+    
+    - Requires step-up authentication
+    - Requires detailed justification (min 50 characters)
+    - Deletes user, jobs, applications, documents
+    - Cascades to all related records
+    - Rate limited to 5 per hour
+    - Permanently logged in audit trail
+    """
+    service = GDPRAdminService(db)
+    
+    try:
+        request_id = await service.create_delete_request(
+            user_id=delete_request.user_id,
+            admin_id=current_admin.id,
+            justification=delete_request.justification
+        )
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "message": f"User {delete_request.user_id} and all related data have been permanently deleted",
+            "warning": "This operation cannot be undone"
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Deletion failed: {str(e)}"
+        )
+
+
+# ==================== ENHANCED ANALYTICS ENDPOINTS ====================
+
+from app.domain.admin.analytics_service import AnalyticsService
+from app.domain.admin.analytics_dto import (
+    CohortAnalysisResponseDTO,
+    ChurnPredictionResponseDTO,
+    FeatureAdoptionResponseDTO,
+    ConversionFunnelResponseDTO,
+    ApplicationVelocityResponseDTO,
+)
+
+
+@router.get(
+    "/analytics/cohort-retention",
+    response_model=CohortAnalysisResponseDTO,
+    summary="Get Cohort Retention Analysis"
+)
+@limiter.limit("30/minute")
+async def get_cohort_retention(
+    request: Request,
+    months_back: int = Query(12, ge=1, le=24, description="Months of history to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Cohort retention analysis by signup month
+    
+    Shows what percentage of users from each cohort are still active over time.
+    Tracks retention at 1, 2, 3, 6, and 12 months.
+    
+    Perfect for understanding:
+    - User retention patterns
+    - Product-market fit
+    - Impact of onboarding changes
+    - Long-term user engagement
+    """
+    service = AnalyticsService(db)
+    return service.get_cohort_retention(months_back=months_back)
+
+
+@router.get(
+    "/analytics/churn-prediction",
+    response_model=ChurnPredictionResponseDTO,
+    summary="Predict User Churn Risk"
+)
+@limiter.limit("30/minute")
+async def predict_churn(
+    request: Request,
+    days_inactive: int = Query(30, ge=7, le=180, description="Days inactive threshold"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Identify users at risk of churning
+    
+    Calculates churn score (0-100) based on:
+    - Days since last login
+    - Application activity level
+    - Recent engagement
+    - Premium status
+    
+    Returns:
+    - High risk users (score >= 70)
+    - Medium risk users (score 40-69)
+    - Overall churn rate
+    
+    Use this to:
+    - Send re-engagement emails
+    - Offer premium trials
+    - Identify product issues
+    """
+    service = AnalyticsService(db)
+    return service.predict_churn(days_inactive_threshold=days_inactive)
+
+
+@router.get(
+    "/analytics/feature-adoption",
+    response_model=FeatureAdoptionResponseDTO,
+    summary="Track Feature Adoption Rates"
+)
+@limiter.limit("30/minute")
+async def get_feature_adoption(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Track adoption of key platform features
+    
+    Analyzes:
+    - Job applications usage
+    - Document uploads
+    - Premium subscriptions
+    - Feature usage patterns
+    
+    Shows:
+    - Total users who adopted feature
+    - Active users (last 30 days)
+    - Adoption rate (% of all users)
+    - Average usage per user
+    - Power users (>10 uses)
+    
+    Helps identify:
+    - Which features drive engagement
+    - Underutilized features
+    - Premium conversion opportunities
+    """
+    service = AnalyticsService(db)
+    return service.get_feature_adoption()
+
+
+@router.get(
+    "/analytics/conversion-funnel",
+    response_model=ConversionFunnelResponseDTO,
+    summary="Application Conversion Funnel"
+)
+@limiter.limit("30/minute")
+async def get_conversion_funnel(
+    request: Request,
+    days: int = Query(30, ge=7, le=180, description="Days of data to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Application conversion funnel analysis
+    
+    Tracks user journey:
+    1. Signed Up
+    2. Applied to Jobs
+    3. Got Interviews
+    4. Received Offers
+    5. Accepted Offers
+    
+    For each step shows:
+    - User count
+    - Conversion rate to next step
+    - Drop-off rate
+    
+    Identifies:
+    - Biggest friction points
+    - Optimization opportunities
+    - Overall conversion rate
+    """
+    service = AnalyticsService(db)
+    return service.get_application_funnel(days=days)
+
+
+@router.get(
+    "/analytics/application-velocity",
+    response_model=ApplicationVelocityResponseDTO,
+    summary="Application Processing Speed"
+)
+@limiter.limit("30/minute")
+async def get_application_velocity(
+    request: Request,
+    days: int = Query(30, ge=7, le=90, description="Days of data to analyze"),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Track how fast applications move through pipeline
+    
+    Daily metrics:
+    - Total applications
+    - Time to first action
+    - Time to interview
+    - Time to offer
+    - Conversion rates
+    
+    Overall metrics:
+    - Average time to interview
+    - Average time to offer
+    - Interview conversion rate
+    - Offer conversion rate
+    
+    Use to:
+    - Measure platform effectiveness
+    - Identify bottlenecks
+    - Track improvements over time
+    """
+    service = AnalyticsService(db)
+    return service.get_application_velocity(days=days)

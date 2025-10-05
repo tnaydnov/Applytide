@@ -21,11 +21,17 @@ from ...infra.security.tokens import (
 )
 from ...infra.security.rate_limiter import login_limiter, refresh_limiter, email_limiter
 from ...infra.notifications.email_service import email_service
+from ...infra.logging import get_logger
+from ...infra.logging.business_logger import BusinessEventLogger
 
 from ...config import settings
 from ...infra.external.google_oauth import OAuthService as GoogleOAuthService  # keep for now
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Initialize logging
+logger = get_logger(__name__)
+event_logger = BusinessEventLogger()
 
 class _Schemas:  # tiny helper to make type checkers happy in returns
     TokenPairOut = schemas.TokenPairOut

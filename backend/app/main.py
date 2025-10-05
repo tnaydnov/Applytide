@@ -11,6 +11,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+# Import logging infrastructure
+from .infra.logging import setup_logging, shutdown_logging, get_logger
+from .infra.logging.exception_handlers import setup_exception_handlers
+from .infra.middleware.logging_middleware import LoggingMiddleware
+
 
 # Try ProxyHeadersMiddleware from Starlette, then Uvicorn, else disable
 ProxyHeadersMiddleware = None
@@ -43,6 +48,12 @@ from .api.routers.auth import router as auth_router
 from .api.routers.admin import router as admin_router
 from .config import settings
 
+# Setup logging FIRST (before creating FastAPI app)
+setup_logging()
+
+# Create logger for this module
+logger = get_logger(__name__)
+
 # Initialize rate limiter for admin endpoints
 limiter = Limiter(key_func=get_remote_address)
 
@@ -50,7 +61,17 @@ app = FastAPI(title="Applytide API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Setup global exception handlers
+setup_exception_handlers(app)
+
 ENV = os.getenv("ENVIRONMENT", "development").lower()
+
+# --- Logging middleware (FIRST - before rate limiting and CORS)
+app.add_middleware(
+    LoggingMiddleware,
+    slow_request_threshold=1.0,  # Warn on requests > 1 second
+    skip_paths={"/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"}
+)
 
 # --- Rate limit (apply early)
 if settings.RATE_LIMIT_ENABLED:
@@ -141,23 +162,38 @@ log = logging.getLogger("uvicorn.error")
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info(
+        "Application starting",
+        extra={
+            "environment": settings.ENVIRONMENT,
+            "log_level": settings.LOG_LEVEL,
+            "log_to_console": settings.LOG_TO_CONSOLE,
+            "log_to_file": settings.LOG_TO_FILE,
+            "log_to_db": settings.LOG_TO_DB,
+            "security_headers": settings.SECURITY_HEADERS_ENABLED,
+            "rate_limit": settings.RATE_LIMIT_ENABLED,
+            "rate_limit_requests": settings.GLOBAL_RATE_LIMIT_REQUESTS,
+            "rate_limit_window": settings.GLOBAL_RATE_LIMIT_WINDOW,
+        }
+    )
+    
     app.state.scheduler = BackgroundScheduler(daemon=True)
     app.state.scheduler.start()
-    log.info(
-        "Boot: SecurityHeaders=%s RateLimit=%s limit=%s window=%ss ENV=%s",
-        settings.SECURITY_HEADERS_ENABLED,
-        settings.RATE_LIMIT_ENABLED,
-        settings.GLOBAL_RATE_LIMIT_REQUESTS,
-        settings.GLOBAL_RATE_LIMIT_WINDOW,
-        os.getenv("ENVIRONMENT", "development").lower(),
-    )
+    logger.info("Background scheduler started")
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    logger.info("Application shutting down")
+    
     try:
         app.state.scheduler.shutdown(wait=False)
-    except Exception:
-        pass
+        logger.info("Background scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")
+    
+    # Cleanup logging (flushes database handler)
+    shutdown_logging()
+    logger.info("Logging system shut down")
 
 @app.get("/")
 def root():

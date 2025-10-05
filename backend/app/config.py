@@ -85,8 +85,21 @@ class Settings:
     # Cross-origin isolation (off by default; can break embeds)
     ENABLE_CROSS_ORIGIN_ISOLATION: bool = os.getenv("ENABLE_CROSS_ORIGIN_ISOLATION", "false").lower() == "true"
     
-    # Logging
+    # Logging Configuration
     SECURITY_LOG_FILE: str = os.getenv("SECURITY_LOG_FILE", "/app/logs/security.log")
+    
+    # Application Logging
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "DEBUG" if ENVIRONMENT == "development" else "INFO")
+    LOG_TO_CONSOLE: bool = os.getenv("LOG_TO_CONSOLE", "true").lower() == "true"
+    LOG_TO_FILE: bool = os.getenv("LOG_TO_FILE", "true" if ENVIRONMENT == "production" else "false").lower() == "true"
+    LOG_TO_DB: bool = os.getenv("LOG_TO_DB", "true" if ENVIRONMENT == "production" else "false").lower() == "true"
+    LOG_DIR: str = os.getenv("LOG_DIR", "/app/logs" if ENVIRONMENT == "production" else "./logs")
+    LOG_FORMAT: str = os.getenv("LOG_FORMAT", "pretty" if ENVIRONMENT == "development" else "json")
+    LOG_MAX_BYTES: int = int(os.getenv("LOG_MAX_BYTES", "104857600"))  # 100MB
+    LOG_BACKUP_COUNT: int = int(os.getenv("LOG_BACKUP_COUNT", "30"))    # 30 days
+    DB_LOG_LEVEL: str = os.getenv("DB_LOG_LEVEL", "INFO")  # Only INFO+ to database
+    DB_LOG_BATCH_SIZE: int = int(os.getenv("DB_LOG_BATCH_SIZE", "100"))
+    DB_LOG_FLUSH_INTERVAL: int = int(os.getenv("DB_LOG_FLUSH_INTERVAL", "10"))  # seconds
     
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
