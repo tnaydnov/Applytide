@@ -32,7 +32,7 @@ class AnalyticsService:
 
     # ==================== COHORT RETENTION ANALYSIS ====================
 
-    def get_cohort_retention(
+    async def get_cohort_retention(
         self, months_back: int = 12
     ) -> CohortAnalysisResponseDTO:
         """
@@ -231,7 +231,7 @@ class AnalyticsService:
 
     # ==================== FEATURE ADOPTION ====================
 
-    def get_feature_adoption(self) -> FeatureAdoptionResponseDTO:
+    async def get_feature_adoption(self) -> FeatureAdoptionResponseDTO:
         """
         Track adoption of key features:
         - Job applications
@@ -332,7 +332,7 @@ class AnalyticsService:
 
     # ==================== CONVERSION FUNNELS ====================
 
-    def get_application_funnel(self, days: int = 30) -> ConversionFunnelResponseDTO:
+    async def get_application_funnel(self, days: int = 30) -> ConversionFunnelResponseDTO:
         """
         Application conversion funnel:
         1. Users signed up
@@ -450,7 +450,7 @@ class AnalyticsService:
 
     # ==================== APPLICATION VELOCITY ====================
 
-    def get_application_velocity(self, days: int = 30) -> ApplicationVelocityResponseDTO:
+    async def get_application_velocity(self, days: int = 30) -> ApplicationVelocityResponseDTO:
         """
         Track how fast applications move through the pipeline
         """
@@ -509,90 +509,6 @@ class AnalyticsService:
 
         except Exception as e:
             logger.error(f"Error in application velocity: {e}")
-            raise
-
-        """
-        Calculate cohort retention analysis by signup month
-        Shows what % of users from each cohort are still active over time
-        """
-        try:
-            cutoff_date = datetime.now() - timedelta(days=months_back * 30)
-
-            # Get all users with their cohort month
-            stmt = select(
-                func.date_trunc('month', User.created_at).label('cohort_month'),
-                User.id,
-                User.last_login_at
-            ).where(User.created_at >= cutoff_date)
-
-            result = await self.db.execute(stmt)
-            rows = result.all()
-
-            # Group users by cohort
-            cohorts: Dict[str, List[tuple]] = {}
-            for row in rows:
-                cohort_key = row.cohort_month.strftime('%Y-%m')
-                if cohort_key not in cohorts:
-                    cohorts[cohort_key] = []
-                cohorts[cohort_key].append((row.id, row.last_login_at, row.cohort_month))
-
-            cohort_data = []
-            retention_1m = []
-            retention_3m = []
-            retention_6m = []
-
-            for cohort_month, users in sorted(cohorts.items()):
-                cohort_size = len(users)
-                cohort_date = users[0][2]
-                now = datetime.now()
-
-                # Calculate retention for different periods
-                def calc_retention(months: int) -> Optional[float]:
-                    check_date = cohort_date + timedelta(days=months * 30)
-                    if check_date > now:
-                        return None
-                    active = sum(
-                        1 for _, last_login, _ in users
-                        if last_login and last_login >= check_date - timedelta(days=30)
-                    )
-                    return round((active / cohort_size) * 100, 1)
-
-                month_1 = calc_retention(1)
-                month_2 = calc_retention(2)
-                month_3 = calc_retention(3)
-                month_6 = calc_retention(6)
-                month_12 = calc_retention(12)
-
-                if month_1 is not None:
-                    retention_1m.append(month_1)
-                if month_3 is not None:
-                    retention_3m.append(month_3)
-                if month_6 is not None:
-                    retention_6m.append(month_6)
-
-                cohort_data.append(
-                    CohortRetentionDTO(
-                        cohort_month=cohort_month,
-                        cohort_size=cohort_size,
-                        month_0=100.0,
-                        month_1=month_1,
-                        month_2=month_2,
-                        month_3=month_3,
-                        month_6=month_6,
-                        month_12=month_12,
-                    )
-                )
-
-            return CohortAnalysisResponseDTO(
-                cohorts=cohort_data,
-                total_cohorts=len(cohort_data),
-                avg_retention_month_1=round(sum(retention_1m) / len(retention_1m), 1) if retention_1m else None,
-                avg_retention_month_3=round(sum(retention_3m) / len(retention_3m), 1) if retention_3m else None,
-                avg_retention_month_6=round(sum(retention_6m) / len(retention_6m), 1) if retention_6m else None,
-            )
-
-        except Exception as e:
-            logger.error(f"Error in cohort retention analysis: {e}")
             raise
 
     # ==================== CHURN PREDICTION ====================
