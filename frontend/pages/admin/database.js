@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminGuard from '../../components/guards/AdminGuard';
-import DashboardLayout from '../../components/layout/DashboardLayout';
-import { toast } from '../../lib/toast';
+import AppLayout from '../../components/layout/AppLayout';
+import toast from '../../lib/toast';
 import { 
   executeDatabaseQuery, 
   listDatabaseTables, 
@@ -180,7 +180,7 @@ export default function DatabaseQueryInterface() {
 
   return (
     <AdminGuard>
-      <DashboardLayout>
+      <AppLayout>
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="glass-card p-6">
@@ -571,7 +571,7 @@ export default function DatabaseQueryInterface() {
             </div>
           )}
         </div>
-      </DashboardLayout>
+      </AppLayout>
     </AdminGuard>
   );
 }

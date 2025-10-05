@@ -8,7 +8,7 @@ import {
   deleteApplication,
   bulkDeleteApplications
 } from '../../../services/admin';
-import { showToast } from '../../../lib/toast';
+import toast from '../../../lib/toast';
 
 export function useApplications(initialFilters = {}) {
   const [applications, setApplications] = useState([]);
@@ -36,7 +36,7 @@ export function useApplications(initialFilters = {}) {
       setTotal(data.total);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load applications: ${err.message}`);
+      toast.error(`Failed to load applications: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export function useApplicationDetail(applicationId) {
       setApplication(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load application: ${err.message}`);
+      toast.error(`Failed to load application: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ export function useApplicationAnalytics() {
       setAnalytics(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load analytics: ${err.message}`);
+      toast.error(`Failed to load analytics: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -146,10 +146,10 @@ export function useApplicationActions() {
     try {
       setActionLoading(true);
       await updateApplicationStatus({ applicationId, status, notes, justification, password });
-      showToast.success('Application status updated successfully');
+      toast.success('Application status updated successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to update status: ${err.message}`);
+      toast.error(`Failed to update status: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -160,10 +160,10 @@ export function useApplicationActions() {
     try {
       setActionLoading(true);
       await deleteApplication({ applicationId, justification, password });
-      showToast.success('Application deleted successfully');
+      toast.success('Application deleted successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to delete application: ${err.message}`);
+      toast.error(`Failed to delete application: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -174,10 +174,10 @@ export function useApplicationActions() {
     try {
       setActionLoading(true);
       const result = await bulkDeleteApplications({ applicationIds, justification, password });
-      showToast.success(`Successfully deleted ${result.deleted_count} applications`);
+      toast.success(`Successfully deleted ${result.deleted_count} applications`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to bulk delete: ${err.message}`);
+      toast.error(`Failed to bulk delete: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

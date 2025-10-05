@@ -1,7 +1,7 @@
 // frontend/features/admin/gdpr/hooks/useGDPR.js
 import { useState, useCallback } from 'react';
 import { getGDPRStats, listDataRequests, exportUserData, deleteUserData } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useGDPRStats() {
   const [stats, setStats] = useState(null);
@@ -16,7 +16,7 @@ export function useGDPRStats() {
       setStats(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load GDPR stats: ${err.message}`);
+      toast.error(`Failed to load GDPR stats: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export function useDataRequests() {
       setTotal(data.total);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load data requests: ${err.message}`);
+      toast.error(`Failed to load data requests: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -56,10 +56,10 @@ export function useGDPRActions() {
     try {
       setActionLoading(true);
       const result = await exportUserData({ userId, justification, password });
-      showToast.success('User data export initiated');
+      toast.success('User data export initiated');
       return result;
     } catch (err) {
-      showToast.error(`Failed to export data: ${err.message}`);
+      toast.error(`Failed to export data: ${err.message}`);
       return null;
     } finally {
       setActionLoading(false);
@@ -70,10 +70,10 @@ export function useGDPRActions() {
     try {
       setActionLoading(true);
       await deleteUserData({ userId, justification, password });
-      showToast.success('User data deleted successfully');
+      toast.success('User data deleted successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to delete data: ${err.message}`);
+      toast.error(`Failed to delete data: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

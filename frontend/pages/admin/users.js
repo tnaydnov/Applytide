@@ -7,7 +7,7 @@ import { useAdminUsers } from '../../features/admin/hooks/useAdminData';
 import UsersTable from '../../features/admin/components/UsersTable';
 import { Button } from '../../components/ui';
 import { getUserDetail, updateUserAdminStatus, updateUserPremiumStatus } from '../../services/admin';
-import { showToast } from '../../lib/toast';
+import toast from '../../lib/toast';
 
 export default function AdminUsers() {
   const [filters, setFilters] = useState({ page: 1, page_size: 50 });
@@ -21,35 +21,35 @@ export default function AdminUsers() {
       setSelectedUser(details);
       setDetailsOpen(true);
     } catch (err) {
-      showToast.error('Failed to load user details');
+      toast.error('Failed to load user details');
     }
   };
 
   const handleUpdateAdminStatus = async (userId, isAdmin) => {
     try {
       await updateUserAdminStatus(userId, isAdmin);
-      showToast.success('Admin status updated');
+      toast.success('Admin status updated');
       refresh();
       if (selectedUser?.id === userId) {
         const details = await getUserDetail(userId);
         setSelectedUser(details);
       }
     } catch (err) {
-      showToast.error('Failed to update admin status');
+      toast.error('Failed to update admin status');
     }
   };
 
   const handleUpdatePremiumStatus = async (userId, isPremium) => {
     try {
       await updateUserPremiumStatus(userId, isPremium);
-      showToast.success('Premium status updated');
+      toast.success('Premium status updated');
       refresh();
       if (selectedUser?.id === userId) {
         const details = await getUserDetail(userId);
         setSelectedUser(details);
       }
     } catch (err) {
-      showToast.error('Failed to update premium status');
+      toast.error('Failed to update premium status');
     }
   };
 

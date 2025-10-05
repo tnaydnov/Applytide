@@ -1,7 +1,7 @@
 // frontend/features/admin/email/hooks/useEmail.js
 import { useState, useCallback } from 'react';
 import { getEmailStats, listEmailLogs, testEmail } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useEmailStats() {
   const [stats, setStats] = useState(null);
@@ -16,7 +16,7 @@ export function useEmailStats() {
       setStats(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load email stats: ${err.message}`);
+      toast.error(`Failed to load email stats: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export function useEmailLogs(initialFilters = {}) {
       setTotal(data.total);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load email logs: ${err.message}`);
+      toast.error(`Failed to load email logs: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,10 @@ export function useEmailActions() {
     try {
       setActionLoading(true);
       await testEmail({ to, subject, body });
-      showToast.success(`Test email sent to ${to}`);
+      toast.success(`Test email sent to ${to}`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to send test email: ${err.message}`);
+      toast.error(`Failed to send test email: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

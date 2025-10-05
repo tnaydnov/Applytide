@@ -8,7 +8,7 @@ import {
   getActiveSessions,
   revokeSession
 } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useFailedLogins(limit = 100) {
   const [logs, setLogs] = useState([]);
@@ -23,7 +23,7 @@ export function useFailedLogins(limit = 100) {
       setLogs(data.failed_logins);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load failed logins: ${err.message}`);
+      toast.error(`Failed to load failed logins: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export function useIPBlacklist() {
       setIps(data.blocked_ips);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load blocked IPs: ${err.message}`);
+      toast.error(`Failed to load blocked IPs: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export function useActiveSessions() {
       setSessions(data.sessions);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load sessions: ${err.message}`);
+      toast.error(`Failed to load sessions: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -83,10 +83,10 @@ export function useSecurityActions() {
     try {
       setActionLoading(true);
       await blockIP({ ip, reason, justification, password });
-      showToast.success(`IP ${ip} blocked successfully`);
+      toast.success(`IP ${ip} blocked successfully`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to block IP: ${err.message}`);
+      toast.error(`Failed to block IP: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -97,10 +97,10 @@ export function useSecurityActions() {
     try {
       setActionLoading(true);
       await unblockIP({ ip, justification, password });
-      showToast.success(`IP ${ip} unblocked successfully`);
+      toast.success(`IP ${ip} unblocked successfully`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to unblock IP: ${err.message}`);
+      toast.error(`Failed to unblock IP: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -111,10 +111,10 @@ export function useSecurityActions() {
     try {
       setActionLoading(true);
       await revokeSession({ sessionId, justification, password });
-      showToast.success('Session revoked successfully');
+      toast.success('Session revoked successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to revoke session: ${err.message}`);
+      toast.error(`Failed to revoke session: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

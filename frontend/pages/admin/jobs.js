@@ -13,7 +13,7 @@ import {
   getJobAnalytics,
   verifyPassword
 } from '../../services/admin';
-import { showToast } from '../../lib/toast';
+import toast from '../../lib/toast';
 
 export default function AdminJobsPage() {
   const router = useRouter();
@@ -71,7 +71,7 @@ export default function AdminJobsPage() {
       setJobs(data.jobs);
       setTotal(data.total);
     } catch (error) {
-      showToast.error('Failed to load jobs');
+      toast.error('Failed to load jobs');
       console.error(error);
     } finally {
       setLoading(false);
@@ -92,7 +92,7 @@ export default function AdminJobsPage() {
       const job = await getJobDetail(jobId);
       setViewingJob(job);
     } catch (error) {
-      showToast.error('Failed to load job details');
+      toast.error('Failed to load job details');
     }
   };
 
@@ -102,7 +102,7 @@ export default function AdminJobsPage() {
 
   const handleSaveJob = async () => {
     if (!editingJob.justification) {
-      showToast.error('Please provide a justification for the update');
+      toast.error('Please provide a justification for the update');
       return;
     }
 
@@ -120,13 +120,13 @@ export default function AdminJobsPage() {
           source_url: editingJob.source_url,
           justification: editingJob.justification
         });
-        showToast.success('Job updated successfully');
+        toast.success('Job updated successfully');
         setEditingJob(null);
         loadJobs();
       });
       setShowPasswordPrompt(true);
     } catch (error) {
-      showToast.error('Failed to update job');
+      toast.error('Failed to update job');
     }
   };
 
@@ -137,14 +137,14 @@ export default function AdminJobsPage() {
 
   const confirmDeleteJob = async () => {
     if (!deleteJustification) {
-      showToast.error('Please provide a justification for deletion');
+      toast.error('Please provide a justification for deletion');
       return;
     }
 
     try {
       setPendingAction(() => async () => {
         await deleteJob(viewingJob.id, deleteJustification);
-        showToast.success('Job deleted successfully');
+        toast.success('Job deleted successfully');
         setShowDeleteConfirm(false);
         setViewingJob(null);
         setDeleteJustification('');
@@ -152,13 +152,13 @@ export default function AdminJobsPage() {
       });
       setShowPasswordPrompt(true);
     } catch (error) {
-      showToast.error('Failed to delete job');
+      toast.error('Failed to delete job');
     }
   };
 
   const handleBulkDelete = () => {
     if (selectedJobs.length === 0) {
-      showToast.error('Please select jobs to delete');
+      toast.error('Please select jobs to delete');
       return;
     }
     setShowBulkDeleteConfirm(true);
@@ -166,14 +166,14 @@ export default function AdminJobsPage() {
 
   const confirmBulkDelete = async () => {
     if (!deleteJustification) {
-      showToast.error('Please provide a justification for bulk deletion');
+      toast.error('Please provide a justification for bulk deletion');
       return;
     }
 
     try {
       setPendingAction(() => async () => {
         await bulkDeleteJobs(selectedJobs, deleteJustification);
-        showToast.success(`Deleted ${selectedJobs.length} jobs`);
+        toast.success(`Deleted ${selectedJobs.length} jobs`);
         setShowBulkDeleteConfirm(false);
         setSelectedJobs([]);
         setDeleteJustification('');
@@ -181,7 +181,7 @@ export default function AdminJobsPage() {
       });
       setShowPasswordPrompt(true);
     } catch (error) {
-      showToast.error('Failed to bulk delete jobs');
+      toast.error('Failed to bulk delete jobs');
     }
   };
 
@@ -195,7 +195,7 @@ export default function AdminJobsPage() {
         setPendingAction(null);
       }
     } catch (error) {
-      showToast.error('Invalid password');
+      toast.error('Invalid password');
     }
   };
 

@@ -8,7 +8,7 @@ import {
   deleteDocument,
   cleanupOrphanedDocuments
 } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useDocuments(initialFilters = {}) {
   const [documents, setDocuments] = useState([]);
@@ -38,7 +38,7 @@ export function useDocuments(initialFilters = {}) {
       setTotal(data.total);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load documents: ${err.message}`);
+      toast.error(`Failed to load documents: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export function useDocumentAnalytics() {
       setAnalytics(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load analytics: ${err.message}`);
+      toast.error(`Failed to load analytics: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ export function useOrphanedDocuments() {
       setOrphaned(data.orphaned_files);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load orphaned documents: ${err.message}`);
+      toast.error(`Failed to load orphaned documents: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -144,10 +144,10 @@ export function useDocumentActions() {
     try {
       setActionLoading(true);
       await deleteDocument({ documentId, justification, password });
-      showToast.success('Document deleted successfully');
+      toast.success('Document deleted successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to delete document: ${err.message}`);
+      toast.error(`Failed to delete document: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -158,10 +158,10 @@ export function useDocumentActions() {
     try {
       setActionLoading(true);
       const result = await cleanupOrphanedDocuments({ justification, password });
-      showToast.success(`Cleaned up ${result.deleted_count} orphaned files, freed ${result.space_freed} storage`);
+      toast.success(`Cleaned up ${result.deleted_count} orphaned files, freed ${result.space_freed} storage`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to cleanup: ${err.message}`);
+      toast.error(`Failed to cleanup: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

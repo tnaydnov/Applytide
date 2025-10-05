@@ -1,7 +1,7 @@
 // frontend/features/admin/cache/hooks/useCache.js
 import { useState, useCallback } from 'react';
 import { getCacheStats, listCacheKeys, getCacheValue, deleteCacheKey, flushCache } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useCacheStats() {
   const [stats, setStats] = useState(null);
@@ -16,7 +16,7 @@ export function useCacheStats() {
       setStats(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load cache stats: ${err.message}`);
+      toast.error(`Failed to load cache stats: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ export function useCacheKeys(pattern = '*') {
       setKeys(data.keys);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load cache keys: ${err.message}`);
+      toast.error(`Failed to load cache keys: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export function useCacheValue(key) {
       setValue(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load cache value: ${err.message}`);
+      toast.error(`Failed to load cache value: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -78,10 +78,10 @@ export function useCacheActions() {
     try {
       setActionLoading(true);
       await deleteCacheKey({ key, justification, password });
-      showToast.success(`Cache key "${key}" deleted successfully`);
+      toast.success(`Cache key "${key}" deleted successfully`);
       return true;
     } catch (err) {
-      showToast.error(`Failed to delete key: ${err.message}`);
+      toast.error(`Failed to delete key: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);
@@ -92,10 +92,10 @@ export function useCacheActions() {
     try {
       setActionLoading(true);
       await flushCache({ justification, password });
-      showToast.success('Cache flushed successfully');
+      toast.success('Cache flushed successfully');
       return true;
     } catch (err) {
-      showToast.error(`Failed to flush cache: ${err.message}`);
+      toast.error(`Failed to flush cache: ${err.message}`);
       return false;
     } finally {
       setActionLoading(false);

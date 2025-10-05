@@ -1,7 +1,7 @@
 // frontend/features/admin/storage/hooks/useStorage.js
 import { useState, useCallback } from 'react';
 import { getStorageStats, getStorageByUser } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useStorageStats() {
   const [stats, setStats] = useState(null);
@@ -16,7 +16,7 @@ export function useStorageStats() {
       setStats(data);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load storage stats: ${err.message}`);
+      toast.error(`Failed to load storage stats: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ export function useStorageByUser() {
       setUsers(data.users);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load user storage: ${err.message}`);
+      toast.error(`Failed to load user storage: ${err.message}`);
     } finally {
       setLoading(false);
     }

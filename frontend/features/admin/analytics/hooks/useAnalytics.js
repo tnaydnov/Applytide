@@ -7,7 +7,7 @@ import {
   getConversionFunnel,
   getApplicationVelocity
 } from '../../../../services/admin';
-import { showToast } from '../../../../lib/toast';
+import toast from '../../../../lib/toast';
 
 export function useCohortRetention() {
   const [data, setData] = useState(null);
@@ -22,7 +22,7 @@ export function useCohortRetention() {
       setData(result);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load cohort retention: ${err.message}`);
+      toast.error(`Failed to load cohort retention: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ export function useChurnPrediction() {
       setData(result);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to predict churn: ${err.message}`);
+      toast.error(`Failed to predict churn: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export function useFeatureAdoption() {
       setData(result);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load feature adoption: ${err.message}`);
+      toast.error(`Failed to load feature adoption: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export function useConversionFunnel() {
       setData(result);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load conversion funnel: ${err.message}`);
+      toast.error(`Failed to load conversion funnel: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export function useApplicationVelocity() {
       setData(result);
     } catch (err) {
       setError(err.message);
-      showToast.error(`Failed to load application velocity: ${err.message}`);
+      toast.error(`Failed to load application velocity: ${err.message}`);
     } finally {
       setLoading(false);
     }
