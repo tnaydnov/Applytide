@@ -16,6 +16,10 @@ from ....domain.admin.storage_service import StorageAdminService
 
 router = APIRouter(tags=["admin-storage"])
 
+# Disk usage analysis and orphaned file cleanup
+
+class StorageStatsResponse(BaseModel):
+    total_documents: int
     total_storage_bytes: int
     total_storage_human: str
     avg_document_size_bytes: int
