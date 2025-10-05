@@ -12,6 +12,7 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
 from ....domain.admin.cache_service import CacheAdminService
+from ....infra.cache.service import CacheService, get_cache_service
 
 
 router = APIRouter(tags=["admin-cache"])

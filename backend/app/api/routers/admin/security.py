@@ -2,7 +2,7 @@
 """Security monitoring"""
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -12,6 +12,7 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
 from ....domain.admin.security_service import SecurityAdminService
+from ....infra.cache.service import CacheService, get_cache_service
 
 
 router = APIRouter(tags=["admin-security"])
