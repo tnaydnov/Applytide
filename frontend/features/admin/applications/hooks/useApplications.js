@@ -7,8 +7,8 @@ import {
   updateApplicationStatus,
   deleteApplication,
   bulkDeleteApplications
-} from '../../../services/admin';
-import toast from '../../../lib/toast';
+} from '../../../../services/admin';
+import toast from '../../../../lib/toast';
 
 export function useApplications(initialFilters = {}) {
   const [applications, setApplications] = useState([]);
