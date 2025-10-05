@@ -92,7 +92,7 @@ async def get_storage_stats(
 async def get_storage_by_user(
     request: Request,
     limit: int = Query(default=50, ge=1, le=500),
-    sort_by: str = Query(default="storage", regex="^(storage|count)$"),
+    sort_by: str = Query(default="storage", pattern="^(storage|count)$"),
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_admin_user)
 ):

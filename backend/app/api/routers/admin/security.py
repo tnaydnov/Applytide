@@ -1,5 +1,8 @@
 # backend/app/api/routers/admin/security.py
-"""Security monitoring"""
+"""Securityclass BlockIPRequest(BaseModel):
+    ip_address: str = Field(..., pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    reason: Optional[str] = None
+    duration_hours: Optional[int] = Field(default=None, ge=1)itoring"""
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -54,13 +57,13 @@ class ActiveSessionResponse(BaseModel):
 
 
 class BlockIPRequest(BaseModel):
-    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    ip_address: str = Field(..., pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
     reason: str = Field(..., min_length=10, max_length=500)
     duration_hours: Optional[int] = Field(default=None, ge=1, le=8760)  # Max 1 year
 
 
 class UnblockIPRequest(BaseModel):
-    ip_address: str = Field(..., regex=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+    ip_address: str = Field(..., pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
     justification: str = Field(..., min_length=10, max_length=500)
 
 

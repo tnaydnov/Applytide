@@ -86,7 +86,7 @@ async def get_gdpr_stats(
 @limiter.limit("30/minute")
 async def list_gdpr_requests(
     request: Request,
-    request_type: Optional[str] = Query(default=None, regex="^(export|delete)$"),
+    request_type: Optional[str] = Query(default=None, pattern="^(export|delete)$"),
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_admin_user)
