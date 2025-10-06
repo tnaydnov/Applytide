@@ -266,7 +266,9 @@ class StorageAdminService:
                 deleted_bytes += orphaned_file.size_bytes
                 deleted_files.append(orphaned_file.file_path)
             except OSError as e:
-                print(f"Failed to delete {orphaned_file.file_path}: {e}")
+                from ...infra.logging import get_logger
+                logger = get_logger(__name__)
+                logger.error("Failed to delete orphaned file", extra={"file_path": orphaned_file.file_path, "error": str(e)}, exc_info=True)
         
         # Log the action
         await AdminService.log_action(

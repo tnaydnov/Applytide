@@ -7,6 +7,12 @@ const RUNNING_BY_TAB = new Map(); // tabId -> boolean
 const CAPTURE_CACHE = new Map();  // url -> { ts: number, capture }
 const CAPTURE_TTL_MS = 60_000;
 
+// Production-safe console wrapper - disable logs in production builds
+const originalConsoleLog = console.log;
+if (!DEV) {
+  console.log = function () { /* Production: logs disabled */ };
+}
+
 let ACCESS = null;   // short-lived extension access token (Authorization: Bearer …)
 
 chrome.runtime.onStartup.addListener(() => {
@@ -71,30 +77,10 @@ async function ensureAccessToken() {
 
 // -------- API calls needed for Flow 1 --------
 async function apiExtract(payload) {
-  console.log('\n--- apiExtract START ---');
-  console.log('[API] Making request to backend extraction endpoint');
-  console.log('[API] Target:', API_HOST + '/ai/extract');
-  console.log('[API] Payload keys:', Object.keys(payload));
-  console.log('[API] Payload summary:', {
-    url: payload.url,
-    url_length: payload.url?.length,
-    html_length: (payload.html || '').length,
-    html_preview: (payload.html || '').substring(0, 150) + '...',
-    manual_text_length: (payload.manual_text || '').length,
-    jsonld_count: (payload.jsonld || []).length,
-    jsonld_types: (payload.jsonld || []).map(j => j?.['@type']).filter(Boolean),
-    has_readable: !!payload.readable,
-    readable_title: payload.readable?.title,
-    has_metas: !!payload.metas,
-    metas_keys: Object.keys(payload.metas || {}).slice(0, 10),
-    xhrLogs_count: (payload.xhrLogs || []).length,
-    quick_hints: payload.quick
-  });
+  /* Production: console removed - API extract starting */
 
-  console.log('[API] Ensuring access token...');
   await ensureAccessToken();
-  console.log('[API] Access token ready, making fetch request...');
-  
+
   const fetchStart = Date.now();
   const res = await fetch(`${API_HOST}/ai/extract`, {
     method: "POST",
@@ -103,12 +89,7 @@ async function apiExtract(payload) {
   });
 
   const fetchTime = Date.now() - fetchStart;
-  console.log('[API] Response received in', fetchTime + 'ms');
-  console.log('[API] Response status:', res.status, res.statusText);
-  console.log('[API] Response headers:', {
-    contentType: res.headers.get('content-type'),
-    contentLength: res.headers.get('content-length')
-  });
+  /* Production: console removed - response details */
 
   if (!res.ok) {
     console.error('[API] ✗ API request failed!');
@@ -121,7 +102,7 @@ async function apiExtract(payload) {
 
       // Check if it's debug info from backend
       if (errorMsg.includes('DEBUG_INFO:')) {
-        console.log('[API] BACKEND DEBUG INFO RECEIVED:', errorMsg);
+        /* Production: console removed - debug info */
       }
     } catch (e) {
       console.error('[API] Failed to parse error response:', e);
@@ -129,23 +110,15 @@ async function apiExtract(payload) {
       errorMsg = res.statusText || errorMsg;
     }
     console.error('[API] Final error message:', errorMsg);
-    console.log('--- apiExtract ERROR ---\n');
+    /* Production: console removed - error section */
     throw new Error(errorMsg);
   }
 
-  console.log('[API] ✓ API request successful (status 200)');
-  console.log('[API] Parsing JSON response...');
-  
+  /* Production: console removed - API success */
+
   const responseData = await res.json();
-  console.log('[API] Response parsed successfully');
-  console.log('[API] Response data:', {
-    has_job: !!responseData.job,
-    job_keys: Object.keys(responseData.job || {}),
-    job_title: responseData.job?.title,
-    job_company: responseData.job?.company_name,
-    job_desc_length: responseData.job?.description?.length
-  });
-  console.log('--- apiExtract SUCCESS ---\n');
+  /* Production: console removed - response parsed */
+  /* Production: console removed - API success complete */
 
   return responseData;
 }
@@ -170,16 +143,9 @@ async function apiSaveJob(jobPayload) {
     throw new Error(errorMsg);
   }
 
-  console.log('[bg] DEBUG: API request successful, parsing response');
+  /* Production: console removed - save job success */
   const result = await res.json();
-  console.log('[bg] DEBUG: API response parsed successfully');
-  console.log('[bg] DEBUG: Response job summary=', {
-    title: result?.title || 'None',
-    company: result?.company_name || 'None',
-    desc_len: (result?.description || '').length,
-    requirements_count: (result?.requirements || []).length,
-    skills_count: (result?.skills || []).length
-  });
+  /* Production: console removed - response summary */
   return result;
 }
 
@@ -192,9 +158,9 @@ async function getRenderedCapture(tabId, {
 } = {}) {
 
   // Wait for initial page load and JavaScript execution
-  console.log(`[CAPTURE] Waiting ${initialDelayMs}ms for dynamic content to load...`);
+  /* Production: console removed - initial delay */
   await new Promise(r => setTimeout(r, initialDelayMs));
-  console.log(`[CAPTURE] Initial delay complete, starting capture attempts`);
+  /* Production: console removed - delay complete */
 
   // This function is stringified & executed in the page context
   function INJECTED_CAPTURE() {
@@ -204,93 +170,129 @@ async function getRenderedCapture(tabId, {
     function tryExpandAll() {
       const candidates = Array.from(document.querySelectorAll([
         'button',
+        'summary',                   // for <details>
+        'details:not([open])',
+        // anchors that act like buttons, but we’ll filter them further
         'a[role="button"]',
         'div[role="button"]',
-        '[data-testid*="expand"]',
-        '[data-control-name*="expand"]',
+        // common expanders
         '[aria-controls]',
         '[aria-expanded="false"]',
-        // Angular Material specific
         '[data-collapsible="false"]',
         '.mat-expansion-panel-header',
         '.mat-accordion button',
-        // Bootstrap accordion
         '[data-toggle="collapse"]',
         '[data-bs-toggle="collapse"]',
         '.accordion-button.collapsed',
-        // Generic accordion patterns
         '[class*="accordion"]',
         '[class*="collapse"]',
         '[class*="expand"]',
-        // Job board specific
+        // job-board-ish
+        '[data-testid*="expand"]',
+        '[data-control-name*="expand"]',
         '[data-testid*="overview"]',
-        '[data-testid*="section"]',
-        '[class*="job-"]',
-        'details:not([open])'
+        '[data-testid*="section"]'
       ].join(',')));
 
-      const txtRe = /\b(show|see|read|view|open)\s+(more|details|all|description|requirements|responsibilities)|expand|more|overview|description|requirements|responsibilities|\u2026|…/i;
+      const txtRe = /\b(show|see|read|view|open)\s+(more|details|all|description|requirements|responsibilities)|\bexpand\b|more|overview|description|requirements|responsibilities|\u2026|…/i;
 
-      console.log('[INJECTED] tryExpandAll: Found', candidates.length, 'potential expand buttons');
+      const isVisible = (el) => {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+      };
+
+      const inViewport = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.right > 0 && r.top < (window.innerHeight || document.documentElement.clientHeight);
+      };
+
+      const shouldSkipAnchor = (a) => {
+        const href = (a.getAttribute('href') || '').trim();
+        if (!href || href === '#' || href.startsWith('#')) return false; // local
+        if (a.getAttribute('target') === '_blank') return true;
+        const lower = href.toLowerCase();
+        if (lower.startsWith('mailto:') || lower.startsWith('tel:')) return true;
+        if (/(privacy|cookie|policy|share|social)/i.test(lower)) return true;
+        // external domain?
+        try {
+          const u = new URL(href, location.href);
+          if (u.origin !== location.origin) return true;
+        } catch { /* ignore */ }
+        return false;
+      };
+
       let expanded = 0;
 
       for (const el of candidates) {
-        const label = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').trim().toLowerCase();
-        const dataAttrs = Array.from(el.attributes || [])
-          .map(a => a.name + '=' + a.value)
-          .join(' ')
-          .toLowerCase();
-        
-        const isLikely = txtRe.test(label) || 
-                        txtRe.test(dataAttrs) ||
-                        el.getAttribute('aria-expanded') === 'false' ||
-                        el.getAttribute('data-collapsible') === 'false' ||
-                        (el.tagName === 'DETAILS' && !el.hasAttribute('open'));
-        
+        if (el.__applytideClicked) continue;               // click once
+        if (!isVisible(el) || !inViewport(el)) continue;
+
+        // eliminate anchors that are real links
+        if (el.tagName === 'A' && shouldSkipAnchor(el)) continue;
+
+        const label = (el.innerText || el.textContent || el.getAttribute('aria-label') || '').trim();
+        const dataAttrs = Array.from(el.attributes || []).map(a => `${a.name}=${a.value}`).join(' ');
+        const isLikely =
+          txtRe.test(label) ||
+          txtRe.test(dataAttrs) ||
+          el.getAttribute('aria-expanded') === 'false' ||
+          el.getAttribute('data-collapsible') === 'false' ||
+          el.tagName === 'SUMMARY' ||
+          el.tagName === 'DETAILS';
+
         if (!isLikely) continue;
-        
+
         try {
-          // For <details> elements, just set the open attribute
           if (el.tagName === 'DETAILS') {
             el.setAttribute('open', '');
+            el.__applytideClicked = true;
             expanded++;
             continue;
           }
-          
-          // Try multiple interaction methods
-          el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }));
-          el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-          el.click();
-          el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-          el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
-          
-          // For aria-expanded, try to set it directly
+          if (el.tagName === 'SUMMARY') {
+            el.parentElement?.setAttribute('open', '');
+            el.__applytideClicked = true;
+            expanded++;
+            continue;
+          }
+
+          // favor safe interaction; avoid default navigation for anchors
+          if (el.tagName === 'A') {
+            el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }));
+            el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+            el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+            // synthesize a click but let page handlers toggle aria-expanded; default nav is already avoided by filter
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          } else {
+            el.click();
+          }
+
+          // if it exposes aria-expanded, set true as a hint (no-op for anchors)
           if (el.getAttribute('aria-expanded') === 'false') {
             el.setAttribute('aria-expanded', 'true');
           }
-          
-          expanded++;
-        } catch (e) {
-          console.warn('[INJECTED] Failed to expand element:', e);
-        }
-      }
 
-      console.log('[INJECTED] tryExpandAll: Attempted to expand', expanded, 'elements');
+          el.__applytideClicked = true;
+          expanded++;
+        } catch { /* ignore single element failures */ }
+      }
+      // optional: console.log('[INJECTED] tryExpandAll expanded', expanded);
     }
+
 
     // 2) Scroll/overscan (helps virtualized lists render)
     async function overscanScroll() {
       try {
         const target = document.scrollingElement || document.documentElement || document.body;
         if (!target) return; // No scrollable element
-        
+
         const total = target.scrollHeight - target.clientHeight;
         if (total <= 0) return; // Nothing to scroll
-        
+
         const steps = Math.max(6, (window.__APPLYTIDE_SCROLL_STEPS__ || 10));
         const pauseMs = window.__APPLYTIDE_PAUSE_MS__ || 300;
-        
+
         // Scroll down
         for (let i = 1; i <= steps; i++) {
           try {
@@ -302,7 +304,7 @@ async function getRenderedCapture(tabId, {
             break; // Exit on error
           }
         }
-        
+
         // Scroll back to top (some sites lazy-mount on reverse)
         for (let i = steps; i >= 0; i--) {
           try {
@@ -421,13 +423,13 @@ async function getRenderedCapture(tabId, {
         s.src = 'https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.min.js';
         s.crossOrigin = 'anonymous';
         document.documentElement.appendChild(s);
-        
+
         // Add timeout to prevent hanging
         await Promise.race([
           new Promise(r => s.onload = r),
           new Promise(r => setTimeout(r, 3000)) // 3 second timeout
         ]);
-        
+
         // Check if Readability loaded
         if (window.Readability) {
           const article = new Readability(document.cloneNode(true)).parse();
@@ -507,124 +509,168 @@ async function getRenderedCapture(tabId, {
       return window.__applytideLogs;
     }
 
-    // 7) Comprehensive content accessibility detection
+    /** Vendor adapters: tiny, optional helpers. **/
+    function decodeChain(v) { let o = v; for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(o); if (d === o) break; o = d; } catch { break } } return o; }
+
+    const VENDORS = [
+      {
+        name: 'comeet',
+        test(u) { const h = u.hostname.replace(/^www\./, ''); return h.includes('comeet.co') || h.includes('comeet.com'); },
+        normalizeUrl(u) {
+          const sp = u.searchParams, p = u.pathname || '';
+          const pageUrl = sp.get('pageUrl') || sp.get('pageurl') || sp.get('page_url');
+          if (pageUrl) {
+            const dec = decodeChain(pageUrl);
+            if (/^https?:\/\//i.test(dec)) return dec;
+          }
+          const companyName = sp.get('company-name') || '';
+          const companyUid = sp.get('company-uid') || (p.split('/')[2] || '');
+          const positionUid = sp.get('position-uid') || (p.split('/')[3] || '');
+          if (companyUid && positionUid) {
+            const nameSeg = companyName ? `${companyName}/` : '';
+            return `https://www.comeet.com/jobs/${nameSeg}${companyUid}/${positionUid}`;
+          }
+          return u.href;
+        },
+        /** Only flag real job iframes; ignore social/thankyou/privacy widgets */
+        shouldFlagIframe(u) {
+          const path = (u.pathname || '').toLowerCase();
+          if (path.includes('/social') || path.includes('/thankyou') || path.includes('/privacy') || path.includes('/policy') || path.includes('/terms')) return false;
+          const sp = u.searchParams;
+          const hasIds = (sp.get('position-uid') && (sp.get('company-uid') || sp.get('company-name')))
+            || /\/jobs\/[^/]+\/[^/]+/i.test(path);
+          return !!hasIds;
+        },
+        /** Optional: add selectors and/or return a better readable object */
+        extraSelectors: [
+          '.userDesignedContent.company-description',
+          '[ng-bind-html="position.description"]',
+          '[ng-repeat^="field in position.customFields.details"]',
+          '.positionInfo'
+        ],
+        enrichReadable(doc) {
+          try {
+            const root = doc.querySelector('[ng-controller="CareerPositionCtrl"]')
+              || doc.querySelector('[ng-app="comeetCareers"]') || doc.body;
+            const blocks = [];
+            const extractedElements = new Set(); // Track extracted elements to avoid duplicates
+            
+            // Extract main description (only once)
+            const desc = root.querySelector('.userDesignedContent.company-description, [ng-bind-html="position.description"]');
+            if (desc) {
+              const t = (desc.innerText || desc.textContent || '').trim();
+              if (t) {
+                blocks.push('Description\n' + t);
+                extractedElements.add(desc);
+              }
+            }
+            
+            // Extract custom field details (but avoid re-extracting the description)
+            root.querySelectorAll('[ng-repeat^="field in position.customFields.details"]').forEach(row => {
+              const heading = row.querySelector('.positionSubtitle, .smallTitle, h2, h3, h4')?.innerText?.trim();
+              const val = row.querySelector('[ng-bind-html="field.value"], .userDesignedContent.company-description');
+              
+              // Skip if we already extracted this element
+              if (val && !extractedElements.has(val)) {
+                const text = (val?.innerText || val?.textContent || '').trim();
+                if (text) {
+                  blocks.push((heading && heading.length < 120 ? heading + '\n' : '') + text);
+                  extractedElements.add(val);
+                }
+              }
+            });
+            
+            // Fallback: generic position info only if content is insufficient
+            if (blocks.join('\n').length < 400) {
+              const info = root.querySelector('.positionInfo, .careerCard .positionInfo');
+              if (info && !extractedElements.has(info)) {
+                const t = (info?.innerText || info?.textContent || '').trim();
+                if (t) blocks.push(t);
+              }
+            }
+            
+            const combined = blocks.filter(Boolean).join('\n\n').trim();
+            if (combined.length > 400) {
+              const title = doc.querySelector('h1')?.innerText?.trim() || document.title || '';
+              return { title, textContent: combined, excerpt: combined.slice(0, 200) };
+            }
+          } catch { }
+          return null;
+        }
+      },
+
+      // Example placeholder adapters you can fill later:
+      { name: 'greenhouse', test: u => /greenhouse\.io$/.test(u.hostname), normalizeUrl: u => u.href, shouldFlagIframe: () => true, extraSelectors: [], enrichReadable: () => null },
+      { name: 'lever', test: u => /jobs\.lever\.co$/.test(u.hostname), normalizeUrl: u => u.href, shouldFlagIframe: () => true, extraSelectors: [], enrichReadable: () => null },
+      { name: 'workday', test: u => /myworkdayjobs\.com$/.test(u.hostname), normalizeUrl: u => u.href, shouldFlagIframe: () => true, extraSelectors: [], enrichReadable: () => null },
+    ];
+
+    function matchVendor(url) {
+      try { const u = new URL(url, location.href); return VENDORS.find(v => v.test(u)) || null; } catch { return null; }
+    }
+    function normalizeByVendor(url) {
+      try { const u = new URL(url, location.href); const v = VENDORS.find(v => v.test(u)); return v ? v.normalizeUrl(u) : u.href; } catch { return url; }
+    }
+
+
     function detectContentAccessibility() {
       const issues = [];
-      
-      // A) Iframe detection
+      const hereNoQ = (() => { try { const u = new URL(location.href); return (u.origin + u.pathname).replace(/\/+$/, ''); } catch { return location.href; } })();
+
+      // Iframes → normalize + vendor gating
       const iframes = Array.from(document.querySelectorAll('iframe'));
       for (const iframe of iframes) {
-        const src = iframe.src || '';
-        const id = iframe.id || '';
-        
-        // Known job board iframes
-        if (src.includes('jobs.ashbyhq.com') || src.includes('ashbyhq') || id.includes('ashby')) {
-          issues.push({ type: 'iframe', subtype: 'ashby', url: src, action: 'redirect' });
-          continue;
-        }
-        if (src.includes('boards.greenhouse.io') || src.includes('greenhouse') || id.includes('greenhouse')) {
-          issues.push({ type: 'iframe', subtype: 'greenhouse', url: src, action: 'redirect' });
-          continue;
-        }
-        if (src.includes('jobs.lever.co') || src.includes('lever') || id.includes('lever')) {
-          issues.push({ type: 'iframe', subtype: 'lever', url: src, action: 'redirect' });
-          continue;
-        }
-        if (src.includes('myworkdayjobs.com') || src.includes('workday')) {
-          issues.push({ type: 'iframe', subtype: 'workday', url: src, action: 'redirect' });
-          continue;
-        }
-        
-        // Generic large job iframe
+        const src = (iframe.getAttribute('src') || '').trim(); if (!src) continue;
+        const v = matchVendor(src);
+        let subtype = v?.name || null;
+
+        // generic heuristics
         const isLarge = iframe.offsetHeight > 500 || iframe.offsetWidth > 500;
-        const hasJobKeyword = src.toLowerCase().includes('job') || src.toLowerCase().includes('career') || 
-                            id.toLowerCase().includes('job') || id.toLowerCase().includes('career');
-        if (isLarge && hasJobKeyword && src) {
-          issues.push({ type: 'iframe', subtype: 'generic', url: src, action: 'redirect' });
+        const hasJobKeyword = /job|career|position/i.test(src + ' ' + (iframe.id || ''));
+
+        // vendor-specific allow/skip
+        if (v) {
+          let u; try { u = new URL(src, location.href); } catch { }
+          if (!u || (v.shouldFlagIframe && !v.shouldFlagIframe(u))) continue;
+          const canon = normalizeByVendor(src);
+          try {
+            const cu = new URL(canon); const canonNoQ = (cu.origin + cu.pathname).replace(/\/+$/, '');
+            if (canonNoQ === hereNoQ) continue; // already on canonical page
+          } catch { }
+          issues.push({ type: 'iframe', subtype, url: canon, rawUrl: src, action: 'redirect' });
+          continue;
+        }
+
+        if (isLarge && hasJobKeyword) {
+          issues.push({ type: 'iframe', subtype: 'generic', url: src, rawUrl: src, action: 'redirect' });
         }
       }
-      
-      // B) Shadow DOM detection
-      const elementsWithShadow = [];
-      document.querySelectorAll('*').forEach(el => {
-        if (el.shadowRoot) {
-          elementsWithShadow.push({ element: el.tagName, mode: 'open' });
-        } else if (el.shadowRoot === null && el.attachShadow) {
-          // Closed shadow root (we can't be 100% sure, but check for common patterns)
-          const hasClosedShadow = el.innerHTML === '' && el.childNodes.length === 0 && 
-                                 (el.classList.toString().includes('job') || el.id.includes('job'));
-          if (hasClosedShadow) {
-            elementsWithShadow.push({ element: el.tagName, mode: 'closed' });
-          }
-        }
-      });
-      
-      if (elementsWithShadow.length > 0) {
-        const hasClosedShadow = elementsWithShadow.some(s => s.mode === 'closed');
-        issues.push({ 
-          type: 'shadow-dom', 
-          count: elementsWithShadow.length,
-          hasClosed: hasClosedShadow,
-          action: hasClosedShadow ? 'paste-only' : 'auto-extract'
-        });
-      }
-      
-      // C) PDF embed detection
-      const pdfEmbeds = document.querySelectorAll('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
-      if (pdfEmbeds.length > 0) {
-        const pdfUrl = pdfEmbeds[0].src || pdfEmbeds[0].getAttribute('data');
-        issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' });
-      }
-      
-      // D) Canvas detection (text rendering)
-      const canvasElements = Array.from(document.querySelectorAll('canvas'));
-      const hasLargeCanvas = canvasElements.some(c => c.width > 500 && c.height > 500);
-      if (hasLargeCanvas) {
-        issues.push({ type: 'canvas', action: 'paste-only' });
-      }
-      
-      // E) Authentication wall detection
-      const authIndicators = [
-        'login', 'sign-in', 'signin', 'log-in', 'authenticate', 
-        'register', 'signup', 'sign-up', 'create-account'
-      ];
+
+      // Shadow DOM
+      let shadowCount = 0; document.querySelectorAll('*').forEach(el => { if (el.shadowRoot) shadowCount++; });
+      if (shadowCount > 0) issues.push({ type: 'shadow-dom', count: shadowCount, hasClosed: false, action: 'auto-extract' });
+
+      // PDF / Canvas / Auth
+      const pdf = document.querySelector('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
+      if (pdf) { const pdfUrl = pdf.src || pdf.getAttribute('data'); issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' }); }
+      const hasLargeCanvas = Array.from(document.querySelectorAll('canvas')).some(c => c.width > 500 && c.height > 500);
+      if (hasLargeCanvas) issues.push({ type: 'canvas', action: 'paste-only' });
+
       const bodyText = (document.body?.innerText || '').toLowerCase();
-      const hasAuthWall = authIndicators.some(keyword => {
-        const regex = new RegExp(`(${keyword}\\s+to\\s+(view|see|access)|please\\s+${keyword})`, 'i');
-        return regex.test(bodyText);
-      });
-      
-      const hasLoginForm = document.querySelector('form[action*="login"], input[type="password"]');
-      const contentLength = (document.body?.innerText || '').trim().length;
-      
-      if ((hasAuthWall || hasLoginForm) && contentLength < 500) {
-        issues.push({ type: 'auth-wall', action: 'paste-only' });
-      }
-      
-      // F) Minimal/empty content detection (might be fully dynamic)
-      if (contentLength < 200 && !hasAuthWall && iframes.length === 0) {
-        issues.push({ type: 'minimal-content', length: contentLength, action: 'warn' });
-      }
-      
-      // G) Third-party widget detection
-      const widgetScripts = Array.from(document.querySelectorAll('script[src]'))
-        .map(s => s.src)
-        .filter(src => 
-          src.includes('greenhouse') || 
-          src.includes('lever') || 
-          src.includes('ashby') ||
-          src.includes('workday') ||
-          src.includes('bamboohr') ||
-          src.includes('jobvite')
-        );
-      
-      if (widgetScripts.length > 0 && iframes.length === 0) {
-        issues.push({ type: 'third-party-widget', scripts: widgetScripts, action: 'warn' });
-      }
-      
-      return issues.length > 0 ? issues : null;
+      const hasAuth = /(login|sign-in|signin)\s+to\s+(view|see|access)|please\s+(login|sign-in)/.test(bodyText)
+        || !!document.querySelector('form[action*="login"], input[type="password"]');
+      const contentLen = (document.body?.innerText || '').trim().length;
+      if (hasAuth && contentLen < 500) issues.push({ type: 'auth-wall', action: 'paste-only' });
+
+      if (contentLen < 200 && !hasAuth && iframes.length === 0) issues.push({ type: 'minimal-content', length: contentLen, action: 'warn' });
+
+      return issues.length ? issues : null;
     }
-    
+
+
+
+
+
     // Extract content from open shadow DOMs
     function extractFromShadowDOM() {
       let shadowContent = '';
@@ -641,6 +687,62 @@ async function getRenderedCapture(tabId, {
       return shadowContent;
     }
 
+    // Vendor-specific deep extraction (Comeet)
+    function extractComeetRichText() {
+      try {
+        const host = location.hostname.replace(/^www\./, '');
+        if (!(host.includes('comeet.com') || host.includes('comeet.co'))) return null;
+
+        // Use the main position container
+        const container =
+          document.querySelector('[ng-controller="CareerPositionCtrl"]') ||
+          document.querySelector('[ng-app="comeetCareers"]') ||
+          document.body;
+
+        const blocks = [];
+
+        // 1) Primary description
+        const desc =
+          container.querySelector('.userDesignedContent.company-description') ||
+          container.querySelector('[ng-bind-html="position.description"]') ||
+          container.querySelector('.company-description');
+        if (desc) {
+          const t = (desc.innerText || desc.textContent || '').trim();
+          if (t) blocks.push('Description\n' + t);
+        }
+
+        // 2) Dynamic sections (Requirements, What will you do, Advantages, etc.)
+        const detailRows = container.querySelectorAll('[ng-repeat^="field in position.customFields.details"]');
+        detailRows.forEach(row => {
+          const heading =
+            row.querySelector('.positionSubtitle, .smallTitle, h2, h3, h4')?.innerText?.trim();
+          const val =
+            row.querySelector('.userDesignedContent, .company-description, [ng-bind-html="field.value"]');
+          const text = (val?.innerText || val?.textContent || '').trim();
+          if (text) {
+            blocks.push((heading && heading.length < 120 ? heading + '\n' : '') + text);
+          }
+        });
+
+        // 3) Fallback: generic position info group
+        if (blocks.join('\n').length < 600) {
+          const info = container.querySelector('.positionInfo, .careerCard .positionInfo');
+          if (info) {
+            const t = (info.innerText || info.textContent || '').trim();
+            if (t) blocks.push(t);
+          }
+        }
+
+        const combined = blocks.filter(Boolean).join('\n\n').trim();
+        if (combined.length > 400) {
+          const title = document.querySelector('h1')?.innerText?.trim() || document.title || '';
+          return { title, textContent: combined, excerpt: combined.slice(0, 200) };
+        }
+      } catch { /* ignore */ }
+      return null;
+    }
+
+
     /* ---------- main flow ---------- */
     window.__APPLYTIDE_SCROLL_STEPS__ = 12;
     window.__APPLYTIDE_PAUSE_MS__ = 300;
@@ -650,7 +752,7 @@ async function getRenderedCapture(tabId, {
 
     // Detect all content accessibility issues
     const accessibilityIssues = detectContentAccessibility();
-    
+
     // Extract shadow DOM content if available
     const shadowContent = extractFromShadowDOM();
 
@@ -669,85 +771,84 @@ async function getRenderedCapture(tabId, {
         console.warn('[INJECTED] Overscan scroll failed or timed out:', e.message);
         // Continue anyway
       }
-      
+
       // One more expand pass after scroll
       tryExpandAll();
-      
-      console.log('[INJECTED] Serializing HTML...');
+
+      /* Production: console removed - serializing HTML */
       const html = serializeWithShadow(document);
-      console.log('[INJECTED] HTML serialized:', html.length, 'chars');
-      
-      console.log('[INJECTED] Harvesting JSON-LD...');
+      /* Production: console removed - HTML serialized */
+
+      /* Production: console removed - harvesting JSON-LD */
       const jsonld = harvestJSONLD();
-      console.log('[INJECTED] JSON-LD items:', jsonld.length);
-      
-      console.log('[INJECTED] Harvesting metas...');
+      /* Production: console removed - JSON-LD items */
+
+      /* Production: console removed - harvesting metas */
       const metas = harvestMetas();
-      console.log('[INJECTED] Metas:', Object.keys(metas).length);
-      
-      console.log('[INJECTED] Getting Readability...');
+      /* Production: console removed - metas count */
+
+      /* Production: console removed - getting Readability */
       let readable = null;
       try {
         readable = await Promise.race([
           getReadable(),
           new Promise(r => setTimeout(() => r(null), 5000)) // 5 second timeout
         ]);
-        console.log('[INJECTED] Readability complete:', !!readable);
-        console.log('[INJECTED] Readability text length:', readable?.textContent?.length || 0);
+        /* Production: console removed - Readability complete */
       } catch (e) {
         console.warn('[INJECTED] Readability failed:', e.message);
         readable = null;
       }
-      
+
       // Clean common UI chrome from Readability output
       if (readable && readable.textContent) {
         const originalText = readable.textContent;
         let cleanedText = originalText;
-        
+
         // Remove common job board UI patterns at the start
         // Pattern: Short lines (< 50 chars) at the very beginning that are likely UI elements
         const lines = cleanedText.split('\n');
         let firstContentIndex = 0;
-        
+
         // Skip initial short lines that look like UI chrome
         for (let i = 0; i < Math.min(10, lines.length); i++) {
           const line = lines[i].trim();
-          
+
           // Stop when we hit substantial content (descriptions usually start with longer text)
           if (line.length > 80) {
             firstContentIndex = i;
             break;
           }
-          
+
           // Skip lines that are clearly UI chrome
-          const isUIChrome = 
+          const isUIChrome =
             line.length === 0 || // Empty line
             /^(overview|application|description|requirements|benefits|apply|details|back|close|save|share)$/i.test(line) || // Tab/button names
             (line.length < 50 && /^[A-Z][a-z]+(\s+[A-Z][a-z]+){0,5}$/.test(line) && i === 0) || // Title-case at very start (likely duplicate title)
             /^(posted|updated|created|expires|deadline|closing):/i.test(line); // Date labels
-          
+
           if (!isUIChrome && line.length > 20) {
             // This looks like actual content, stop skipping
             firstContentIndex = i;
             break;
           }
         }
-        
+
         // Remove lines from the end that are likely UI chrome
         let lastContentIndex = lines.length;
         for (let i = lines.length - 1; i >= 0 && i > lastContentIndex - 10; i--) {
           const line = lines[i].trim();
-          
-          const isUIChrome = 
+
+          const isUIChrome =
             line.length === 0 ||
             /^(apply|apply now|apply for this job|submit|submit application|easy apply|quick apply|learn more|view details|go back|back to|return to)$/i.test(line);
-          
+
           if (!isUIChrome && line.length > 20) {
             lastContentIndex = i + 1;
             break;
           }
         }
-        
+
         // Reconstruct the cleaned text
         if (firstContentIndex > 0 || lastContentIndex < lines.length) {
           cleanedText = lines.slice(firstContentIndex, lastContentIndex).join('\n').trim();
@@ -756,7 +857,7 @@ async function getRenderedCapture(tabId, {
           console.log('[INJECTED] - Removed', lines.length - lastContentIndex, 'lines from end');
           console.log('[INJECTED] - Original length:', originalText.length);
           console.log('[INJECTED] - Cleaned length:', cleanedText.length);
-          
+
           // Only use cleaned version if we didn't remove too much (safety check)
           if (cleanedText.length > originalText.length * 0.7) {
             readable.textContent = cleanedText;
@@ -765,30 +866,27 @@ async function getRenderedCapture(tabId, {
           }
         }
       }
-      
+
       // Fallback: If Readability failed or returned minimal content, try direct extraction
       if (!readable || !readable.textContent || readable.textContent.length < 1000) {
         console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
-        
+
         // Try to find main content containers
+        const vendorSelectors = (matchVendor(location.href)?.extraSelectors || []);
         const contentSelectors = [
-          '[data-testid*="overview"]',
-          '[data-testid*="section"]',
-          '[data-testid*="description"]',
-          '[data-testid*="requirement"]',
-          '[data-testid*="responsibility"]',
-          '[data-testid*="benefit"]',
-          'main',
-          'article',
-          '[role="main"]',
-          '[class*="job-description"]',
-          '[class*="job-detail"]',
-          '[class*="job-content"]',
-          '[class*="content"]',
-          '[id*="job"]',
-          '[id*="description"]'
+          '[data-testid*="overview"]', '[data-testid*="section"]', '[data-testid*="description"]',
+          '[data-testid*="requirement"]', '[data-testid*="responsibility"]', '[data-testid*="benefit"]',
+          'main', 'article', '[role="main"]', '[class*="job-description"]', '[class*="job-detail"]',
+          '[class*="requirements"]',
+          '[class*="responsibilities"]',
+          '[class*="qualifications"]',
+          'h2, h3 ~ ul', // headers with following list
+          '.job-description ul',
+          '.job-content ul',
+          '[class*="job-content"]', '[class*="content"]', '[id*="job"]', '[id*="description"]',
+          ...vendorSelectors
         ];
-        
+
         let directText = '';
         for (const selector of contentSelectors) {
           const elements = document.querySelectorAll(selector);
@@ -800,9 +898,9 @@ async function getRenderedCapture(tabId, {
           }
           if (directText.length > 2000) break; // Stop when we have enough
         }
-        
+
         console.log('[INJECTED] Direct extraction got:', directText.length, 'chars');
-        
+
         // If direct extraction worked better, use it
         if (directText.length > (readable?.textContent?.length || 0)) {
           readable = {
@@ -813,19 +911,27 @@ async function getRenderedCapture(tabId, {
           console.log('[INJECTED] Using direct extraction instead of Readability');
         }
       }
-      
+
+      const vend = matchVendor(location.href);
+      if (vend && typeof vend.enrichReadable === 'function') {
+        const better = vend.enrichReadable(document);
+        if (better && better.textContent?.length > (readable?.textContent?.length || 0)) {
+          readable = better;
+        }
+      }
+
       const textLen = (document.body?.innerText || '').length + shadowContent.length;
       const xhrLogs = (window.__applytideLogs || []);
-      
+
       console.log('[INJECTED] Accessibility issues detected:', accessibilityIssues);
       console.log('[INJECTED] Capture complete, returning data');
-      return { 
-        html, 
-        jsonld, 
-        metas, 
-        readable, 
-        textLen, 
-        xhrLogs, 
+      return {
+        html,
+        jsonld,
+        metas,
+        readable,
+        textLen,
+        xhrLogs,
         accessibilityIssues,
         shadowContent
       };
@@ -840,37 +946,37 @@ async function getRenderedCapture(tabId, {
   while (Date.now() - start < timeoutMs) {
     attempt++;
     console.log(`[CAPTURE] Attempt ${attempt}...`);
-    
+
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
       world: 'MAIN',           // run in page world so hooks & clicks work
       func: INJECTED_CAPTURE
     });
     last = result;
-    
+
     // Check if we detected a job iframe
     if (result?.jobIframe) {
       console.log(`[CAPTURE] ⚠️  Detected job posting in iframe!`);
       console.log(`[CAPTURE] Iframe type: ${result.jobIframe.type}`);
       console.log(`[CAPTURE] Iframe URL: ${result.jobIframe.url}`);
       console.log(`[CAPTURE] Suggestion: Navigate directly to ${result.jobIframe.url} for better extraction`);
-      
+
       // Store iframe info in result for potential use
       last.iframeDetected = true;
       last.iframeUrl = result.jobIframe.url;
       last.iframeType = result.jobIframe.type;
     }
-    
+
     const jlCount = Array.isArray(result?.jsonld) ? result.jsonld.length : 0;
     notifyProgress('capture:pass', { textLen: result?.textLen || 0, jsonld: jlCount });
-    
+
     // Heuristic: either enough text or we got JSON-LD JobPosting
     const hasJobPosting = Array.isArray(result?.jsonld) && result.jsonld.some(
       x => String(x?.['@type'] || '').toLowerCase().includes('jobposting')
     );
     const textEnough = (result?.textLen || 0) >= 1400; // a tad safer for SPAs
     const hasReadable = !!result?.readable?.textContent && result.readable.textContent.length > 800;
-    
+
     console.log(`[CAPTURE] Attempt ${attempt} results:`);
     console.log(`  - Text length: ${result?.textLen || 0}`);
     console.log(`  - Readable text: ${result?.readable?.textContent?.length || 0}`);
@@ -880,12 +986,12 @@ async function getRenderedCapture(tabId, {
     console.log(`  - Readable enough (≥800): ${hasReadable}`);
     console.log(`  - Title: ${result?.readable?.title || 'none'}`);
     console.log(`  - Text preview: ${(result?.readable?.textContent || '').substring(0, 200)}...`);
-    
+
     if (hasJobPosting || hasReadable || textEnough) {
       console.log(`[CAPTURE] ✓ Capture criteria met after ${attempt} attempts`);
       break;
     }
-    
+
     console.log(`[CAPTURE] Criteria not met, waiting 600ms before retry...`);
     await new Promise(r => setTimeout(r, 600));
   }
@@ -894,7 +1000,7 @@ async function getRenderedCapture(tabId, {
   console.log(`[CAPTURE] Final content length: ${last?.textLen || 0}`);
   console.log(`[CAPTURE] Final readable length: ${last?.readable?.textContent?.length || 0}`);
   console.log(`[CAPTURE] Final title: ${last?.readable?.title || 'none'}`);
-  
+
   notifyProgress('capture:done', { ok: !!last, textLen: last?.textLen || 0 });
   return last || { html: '', jsonld: [], metas: {}, readable: null, textLen: 0, xhrLogs: [] };
 }
@@ -1013,7 +1119,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Tell popup which mode to show
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           const mode = tab?.url ? classifyPage(tab.url) : 'restricted';
-          
+
           // Run comprehensive accessibility check on current page
           let accessibilityIssues = null;
           if (tab?.id && mode === 'allowed') {
@@ -1021,80 +1127,58 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const result = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                  // Inline detection function (same logic as INJECTED_CAPTURE)
+                  function decodeChain(v) { let o = v; for (let i = 0; i < 3; i++) { try { const d = decodeURIComponent(o); if (d === o) break; o = d; } catch { break } } return o; }
+                  const ADAPTERS = [{
+                    name: 'comeet', test: u => u.hostname.replace(/^www\./, '').includes('comeet'),
+                    normalize(u) {
+                      const sp = u.searchParams, p = u.pathname || ''; const pageUrl = sp.get('pageUrl') || sp.get('pageurl') || sp.get('page_url');
+                      if (pageUrl) { const d = decodeChain(pageUrl); if (/^https?:\/\//i.test(d)) return d; }
+                      const companyName = sp.get('company-name') || '', companyUid = sp.get('company-uid') || (p.split('/')[2] || ''), positionUid = sp.get('position-uid') || (p.split('/')[3] || '');
+                      if (companyUid && positionUid) { const nameSeg = companyName ? `${companyName}/` : ''; return `https://www.comeet.com/jobs/${nameSeg}${companyUid}/${positionUid}`; }
+                      return u.href;
+                    },
+                    shouldFlag(u) {
+                      const path = (u.pathname || '').toLowerCase(); if (path.includes('/social') || path.includes('/thankyou') || path.includes('/privacy') || path.includes('/policy') || path.includes('/terms')) return false;
+                      const sp = u.searchParams; return !!((sp.get('position-uid') && (sp.get('company-uid') || sp.get('company-name'))) || /\/jobs\/[^/]+\/[^/]+/i.test(path));
+                    }
+                  }];
+                  const hereNoQ = (() => { try { const u = new URL(location.href); return (u.origin + u.pathname).replace(/\/+$/, '') } catch { return location.href } })();
                   const issues = [];
-                  
-                  // A) Iframe detection
-                  const iframes = Array.from(document.querySelectorAll('iframe'));
-                  for (const iframe of iframes) {
-                    const src = iframe.src || '';
-                    const id = iframe.id || '';
-                    
-                    if (src.includes('jobs.ashbyhq.com') || src.includes('ashbyhq') || id.includes('ashby')) {
-                      issues.push({ type: 'iframe', subtype: 'ashby', url: src, action: 'redirect' });
-                      continue;
-                    }
-                    if (src.includes('boards.greenhouse.io') || src.includes('greenhouse') || id.includes('greenhouse')) {
-                      issues.push({ type: 'iframe', subtype: 'greenhouse', url: src, action: 'redirect' });
-                      continue;
-                    }
-                    if (src.includes('jobs.lever.co') || src.includes('lever') || id.includes('lever')) {
-                      issues.push({ type: 'iframe', subtype: 'lever', url: src, action: 'redirect' });
-                      continue;
-                    }
-                    if (src.includes('myworkdayjobs.com') || src.includes('workday')) {
-                      issues.push({ type: 'iframe', subtype: 'workday', url: src, action: 'redirect' });
-                      continue;
-                    }
-                    
-                    const isLarge = iframe.offsetHeight > 500 || iframe.offsetWidth > 500;
-                    const hasJobKeyword = src.toLowerCase().includes('job') || src.toLowerCase().includes('career') || 
-                                        id.toLowerCase().includes('job') || id.toLowerCase().includes('career');
-                    if (isLarge && hasJobKeyword && src) {
-                      issues.push({ type: 'iframe', subtype: 'generic', url: src, action: 'redirect' });
-                    }
-                  }
-                  
-                  // B) Shadow DOM detection
-                  let shadowCount = 0;
-                  let hasClosedShadow = false;
-                  document.querySelectorAll('*').forEach(el => {
-                    if (el.shadowRoot) {
-                      shadowCount++;
+
+                  Array.from(document.querySelectorAll('iframe')).forEach(f => {
+                    const src = (f.getAttribute('src') || '').trim(); if (!src) return;
+                    let u; try { u = new URL(src, location.href); } catch { return; }
+                    const a = ADAPTERS.find(x => x.test(u));
+                    if (a) {
+                      if (!a.shouldFlag(u)) return;
+                      const canon = a.normalize(u);
+                      try { const cu = new URL(canon); if ((cu.origin + cu.pathname).replace(/\/+$/, '') === hereNoQ) return; } catch { }
+                      issues.push({ type: 'iframe', subtype: a.name, url: canon, rawUrl: src, action: 'redirect' });
+                    } else {
+                      const big = f.offsetHeight > 500 || f.offsetWidth > 500;
+                      const hasJob = /job|career|position/i.test(src + ' ' + (f.id || ''));
+                      if (big && hasJob) issues.push({ type: 'iframe', subtype: 'generic', url: src, rawUrl: src, action: 'redirect' });
                     }
                   });
-                  if (shadowCount > 0) {
-                    issues.push({ type: 'shadow-dom', count: shadowCount, hasClosed: hasClosedShadow, action: 'auto-extract' });
-                  }
-                  
-                  // C) PDF detection
-                  const pdfEmbeds = document.querySelectorAll('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
-                  if (pdfEmbeds.length > 0) {
-                    const pdfUrl = pdfEmbeds[0].src || pdfEmbeds[0].getAttribute('data');
-                    issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' });
-                  }
-                  
-                  // D) Canvas detection
-                  const canvasElements = Array.from(document.querySelectorAll('canvas'));
-                  const hasLargeCanvas = canvasElements.some(c => c.width > 500 && c.height > 500);
-                  if (hasLargeCanvas) {
-                    issues.push({ type: 'canvas', action: 'paste-only' });
-                  }
-                  
-                  // E) Auth wall detection
-                  const bodyText = (document.body?.innerText || '').toLowerCase();
-                  const hasAuthKeywords = /(login|sign-in|signin)\\s+to\\s+(view|see|access)|please\\s+(login|sign-in)/.test(bodyText);
-                  const hasLoginForm = document.querySelector('form[action*="login"], input[type="password"]');
-                  const contentLength = (document.body?.innerText || '').trim().length;
-                  
-                  if ((hasAuthKeywords || hasLoginForm) && contentLength < 500) {
-                    issues.push({ type: 'auth-wall', action: 'paste-only' });
-                  }
-                  
-                  return issues.length > 0 ? issues : null;
+
+                  // pdf/canvas/auth checks kept minimal
+                  const pdf = document.querySelector('embed[src*=".pdf"], object[data*=".pdf"], iframe[src*=".pdf"]');
+                  if (pdf) { const pdfUrl = pdf.src || pdf.getAttribute('data'); issues.push({ type: 'pdf', url: pdfUrl, action: 'paste-only' }); }
+                  const hasLargeCanvas = Array.from(document.querySelectorAll('canvas')).some(c => c.width > 500 && c.height > 500);
+                  if (hasLargeCanvas) issues.push({ type: 'canvas', action: 'paste-only' });
+
+                  const body = (document.body?.innerText || '').toLowerCase();
+                  const hasAuth = /(login|sign-in|signin)\s+to\s+(view|see|access)|please\s+(login|sign-in)/.test(body)
+                    || !!document.querySelector('form[action*="login"], input[type="password"]');
+                  const len = (document.body?.innerText || '').trim().length;
+                  if (hasAuth && len < 500) issues.push({ type: 'auth-wall', action: 'paste-only' });
+
+                  return issues.length ? issues : null;
                 }
+
+
               });
-              
+
               if (result?.[0]?.result) {
                 accessibilityIssues = result[0].result;
                 console.log('[bg] Detected accessibility issues:', accessibilityIssues);
@@ -1103,7 +1187,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               console.log('[bg] Could not run accessibility check:', err);
             }
           }
-          
+
           sendResponse({ ok: true, authenticated: !!ok, mode, accessibilityIssues });
           break;
         }
@@ -1182,11 +1266,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[BACKGROUND] FLOW START - APPLYTIDE_RUN_FLOW1');
           console.log('[BACKGROUND] Timestamp:', new Date().toISOString());
           console.log('========================================');
-          
+
           console.log('[BACKGROUND] Step 1: Ensuring access token...');
           await ensureAccessToken();
           console.log('[BACKGROUND] Step 1: Access token ready');
-          
+
           console.log('[BACKGROUND] Step 2: Getting active tab...');
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (!tab?.id) {
@@ -1210,7 +1294,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ ok: false, error: 'Auto-save is disabled on this site. Use paste instead.' });
             break;
           }
-          
+
           if (RUNNING_BY_TAB.get(tab.id)) {
             console.warn('[BACKGROUND] WARNING: Already processing this tab');
             sendResponse({ ok: false, error: 'Already working on this tab. Please wait.' });
@@ -1232,7 +1316,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               ttl: CAPTURE_TTL_MS,
               isValid: cached && cacheAge < CAPTURE_TTL_MS
             });
-            
+
             if (cached && cacheAge < CAPTURE_TTL_MS) {
               console.log('[BACKGROUND] Step 4: ✓ Using cached capture (age: ' + cacheAge + 'ms)');
               console.log('[BACKGROUND] Cached data summary:', {
@@ -1244,11 +1328,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 shadowContent_len: (cached.capture?.shadowContent || '').length
               });
               notifyProgress('capture:cache_hit', { url });
-              
+
               // Prepare payload with shadow DOM content if available
-              const payload = { 
-                url, 
-                ...cached.capture, 
+              const payload = {
+                url,
+                ...cached.capture,
                 quick: {},
                 // Append shadow DOM content to readable if available
                 readable: cached.capture.shadowContent && cached.capture.shadowContent.length > 100 ? {
@@ -1256,7 +1340,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   textContent: (cached.capture.readable?.textContent || '') + '\n\n--- Shadow DOM Content ---\n' + cached.capture.shadowContent
                 } : cached.capture.readable
               };
-              
+
               console.log('[BACKGROUND] Step 5: Preparing payload from cache:', {
                 url: payload.url,
                 html_len: (payload.html || '').length,
@@ -1267,7 +1351,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 xhrLogs_count: (payload.xhrLogs || []).length,
                 shadowContent_included: !!(cached.capture.shadowContent && cached.capture.shadowContent.length > 100)
               });
-              
+
               console.log('[BACKGROUND] Step 6: Calling apiExtract with cached data...');
               const { job } = await apiExtract(payload);
               console.log('[BACKGROUND] Step 7: apiExtract returned:', {
@@ -1278,10 +1362,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 requirementsCount: job?.requirements?.length,
                 skillsCount: job?.skills?.length
               });
-              
+
               if (!(job?.title?.trim()) && !(job?.company_name?.trim()) &&
                 !((job?.description || '').trim().length >= 30)) {
-                  
+
                 // Provide context based on cached accessibility issues
                 let errorMsg = 'Could not extract meaningful job details.';
                 if (cached.capture.accessibilityIssues && cached.capture.accessibilityIssues.length > 0) {
@@ -1290,7 +1374,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 } else {
                   errorMsg += ' Try paste text instead.';
                 }
-                
+
                 notifyProgress('backend:error');
                 throw new Error(errorMsg);
               }
@@ -1298,8 +1382,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               notifyProgress('backend:save');
               const saved = await apiSaveJob(job);
               notifyProgress('flow:done', { savedId: saved?.id });
-              sendResponse({ 
-                ok: true, 
+              sendResponse({
+                ok: true,
                 saved,
                 accessibilityIssues: cached.capture.accessibilityIssues || null
               });
@@ -1308,12 +1392,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             console.log('[BACKGROUND] Step 4: ✗ No valid cache, starting fresh capture');
             notifyProgress('capture:run');
-            
+
             console.log('[BACKGROUND] Step 5: Calling getRenderedCapture for tab', tab.id);
             const captureStart = Date.now();
             const capture = await getRenderedCapture(tab.id);
             const captureTime = Date.now() - captureStart;
-            
+
             console.log('[BACKGROUND] Step 6: ✓ Capture completed in', captureTime + 'ms');
             console.log('[BACKGROUND] Capture data summary:', {
               html_len: (capture.html || '').length,
@@ -1332,25 +1416,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               accessibilityIssues: capture.accessibilityIssues,
               shadowContent_len: (capture.shadowContent || '').length
             });
-            
+
             // Check for accessibility issues that require special handling
             if (capture.accessibilityIssues && capture.accessibilityIssues.length > 0) {
               console.log('[BACKGROUND] ⚠️ Accessibility issues detected:', capture.accessibilityIssues);
-              
+
               // If iframe detected, check if we should redirect
               const iframeIssue = capture.accessibilityIssues.find(i => i.type === 'iframe');
               if (iframeIssue && iframeIssue.url) {
                 console.log('[BACKGROUND] ⚠️ Job posting detected in iframe');
                 console.log('[BACKGROUND] For better extraction, user should navigate to:', iframeIssue.url);
-                
+
                 // If content is minimal, suggest iframe URL
-                const hasMinimalContent = (capture.textLen || 0) < 2000 || 
-                                         !(capture.readable?.textContent || '').length > 1000;
-                
+                const hasMinimalContent = (capture.textLen || 0) < 2000 ||
+                  !(capture.readable?.textContent || '').length > 1000;
+
                 if (hasMinimalContent) {
                   console.log('[BACKGROUND] ⚠️ Content appears minimal, iframe URL recommended');
-                  sendResponse({ 
-                    ok: false, 
+                  sendResponse({
+                    ok: false,
                     error: 'Job posting is in an iframe and cannot be extracted from this page.',
                     iframeDetected: true,
                     iframeUrl: iframeIssue.url,
@@ -1360,35 +1444,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   return;
                 }
               }
-              
+
               // Check for other blocking issues
               const pdfIssue = capture.accessibilityIssues.find(i => i.type === 'pdf');
               const authIssue = capture.accessibilityIssues.find(i => i.type === 'auth-wall');
               const canvasIssue = capture.accessibilityIssues.find(i => i.type === 'canvas');
-              
+
               if (pdfIssue || authIssue || canvasIssue) {
                 const issueType = pdfIssue ? 'PDF document' : authIssue ? 'authentication wall' : 'canvas rendering';
                 console.log(`[BACKGROUND] ⚠️ ${issueType} detected - auto-extraction may fail`);
-                
+
                 // Continue with extraction attempt, but log the limitation
                 console.log('[BACKGROUND] Attempting extraction despite accessibility issues...');
               }
-              
+
               // If shadow DOM content available, include it
               if (capture.shadowContent && capture.shadowContent.length > 100) {
                 console.log('[BACKGROUND] ✓ Including shadow DOM content:', capture.shadowContent.length, 'chars');
               }
             }
-            
+
             console.log('[BACKGROUND] Step 7: Capture cached for future use');
             CAPTURE_CACHE.set(url, { ts: Date.now(), capture });
 
             notifyProgress('backend:extract');
-            
+
             // Prepare payload with shadow DOM content if available
-            const payload = { 
-              url, 
-              ...capture, 
+            const payload = {
+              url,
+              ...capture,
               quick: {},
               // Append shadow DOM content to readable if available
               readable: capture.shadowContent && capture.shadowContent.length > 100 ? {
@@ -1396,7 +1480,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 textContent: (capture.readable?.textContent || '') + '\n\n--- Shadow DOM Content ---\n' + capture.shadowContent
               } : capture.readable
             };
-            
+
             console.log('[BACKGROUND] Step 8: Preparing payload for backend:', {
               url: payload.url,
               html_len: (payload.html || '').length,
@@ -1409,7 +1493,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const extractStart = Date.now();
             const { job } = await apiExtract(payload);
             const extractTime = Date.now() - extractStart;
-            
+
             console.log('[BACKGROUND] Step 10: ✓ apiExtract completed in', extractTime + 'ms');
             console.log('[BACKGROUND] Extracted job data:', {
               title: job?.title,
@@ -1423,33 +1507,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               skills_count: (job?.skills || []).length,
               skills: job?.skills
             });
-            
+
             // Validate extraction quality
             const hasTitle = !!(job?.title?.trim());
             const hasCompany = !!(job?.company_name?.trim());
             const hasDescription = ((job?.description || '').trim().length >= 30);
-            
+
             console.log('[BACKGROUND] Validation check:', {
               hasTitle,
               hasCompany,
               hasDescription,
               isValid: hasTitle || hasCompany || hasDescription
             });
-            
+
             if (!hasTitle && !hasCompany && !hasDescription) {
               console.error('[BACKGROUND] ERROR: Extraction validation failed - insufficient data');
-              
+
               // Provide more context based on detected issues
               let errorMsg = 'Could not extract meaningful job details.';
-              
+
               if (capture.accessibilityIssues && capture.accessibilityIssues.length > 0) {
                 const issues = capture.accessibilityIssues.map(i => i.type).join(', ');
                 console.error('[BACKGROUND] Detected issues may have affected extraction:', issues);
-                
+
                 const pdfIssue = capture.accessibilityIssues.find(i => i.type === 'pdf');
                 const authIssue = capture.accessibilityIssues.find(i => i.type === 'auth-wall');
                 const canvasIssue = capture.accessibilityIssues.find(i => i.type === 'canvas');
-                
+
                 if (pdfIssue) {
                   errorMsg = 'This appears to be a PDF document. Please copy the text and use paste mode.';
                 } else if (authIssue) {
@@ -1462,7 +1546,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               } else {
                 errorMsg += ' Try paste text instead.';
               }
-              
+
               notifyProgress('backend:error');
               throw new Error(errorMsg);
             }
@@ -1472,7 +1556,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const saveStart = Date.now();
             const saved = await apiSaveJob(job);
             const saveTime = Date.now() - saveStart;
-            
+
             console.log('[BACKGROUND] Step 12: ✓ Job saved successfully in', saveTime + 'ms');
             console.log('[BACKGROUND] Saved job info:', {
               id: saved?.id,
@@ -1485,8 +1569,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.log('[BACKGROUND] Total flow time:', Date.now() - new Date(console.log.timestamp || Date.now()).getTime());
             console.log('[BACKGROUND] Sending success response to popup');
             console.log('========================================\n');
-            sendResponse({ 
-              ok: true, 
+            sendResponse({
+              ok: true,
               saved,
               iframeDetected: !!(capture.accessibilityIssues?.find(i => i.type === 'iframe')),
               iframeUrl: capture.accessibilityIssues?.find(i => i.type === 'iframe')?.url || null,

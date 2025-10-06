@@ -9,6 +9,9 @@ Used for:
 
 from typing import Optional
 from .redis_client import get_redis
+from ..logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class CacheService:
@@ -22,7 +25,7 @@ class CacheService:
         try:
             return self.redis.get(key)
         except Exception as e:
-            print(f"Cache GET error for key {key}: {e}")
+            logger.error("Cache GET error", extra={"key": key, "error": str(e)}, exc_info=True)
             return None
     
     async def set(self, key: str, value: str, expire: Optional[int] = None) -> bool:
@@ -44,7 +47,7 @@ class CacheService:
                 self.redis.set(key, value)
             return True
         except Exception as e:
-            print(f"Cache SET error for key {key}: {e}")
+            logger.error("Cache SET error", extra={"key": key, "error": str(e)}, exc_info=True)
             return False
     
     async def delete(self, key: str) -> bool:
@@ -53,7 +56,7 @@ class CacheService:
             self.redis.delete(key)
             return True
         except Exception as e:
-            print(f"Cache DELETE error for key {key}: {e}")
+            logger.error("Cache DELETE error", extra={"key": key, "error": str(e)}, exc_info=True)
             return False
     
     async def exists(self, key: str) -> bool:
@@ -61,7 +64,7 @@ class CacheService:
         try:
             return bool(self.redis.exists(key))
         except Exception as e:
-            print(f"Cache EXISTS error for key {key}: {e}")
+            logger.error("Cache EXISTS error", extra={"key": key, "error": str(e)}, exc_info=True)
             return False
 
 

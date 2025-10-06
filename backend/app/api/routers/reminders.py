@@ -10,8 +10,10 @@ from ..deps_auth import get_current_user
 from ...api.schemas.auth import UserInfo as User
 from ...domain.reminders.service import ReminderService
 from ..deps import get_reminder_service
+from ...infra.logging import get_logger
 
 router = APIRouter(prefix="/api/calendars", tags=["calendars"])
+logger = get_logger(__name__)
 
 # ---------- Schemas (kept compatible with your existing ones) ----------
 class ReminderNoteCreate(BaseModel):

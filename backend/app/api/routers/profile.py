@@ -13,8 +13,10 @@ import json
 from ...db.session import get_db
 from ...api.deps_auth import get_current_user
 from ...db.models import User, UserProfile
+from ...infra.logging import get_logger
 
 router = APIRouter(prefix="/api/profile", tags=["User Profile"])
+logger = get_logger(__name__)
 
 # Pydantic models for request/response
 class LocationRequest(BaseModel):
@@ -91,21 +93,33 @@ async def get_user_profile(
     db: Session = Depends(get_db)
 ):
     """Get current user's profile"""
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    if not profile:
-        return {
-            "id": "",
-            "user_id": str(current_user.id),
-            "preferred_locations": [],
-            "country": "",
-            "remote_preference": "",
-            "target_roles": [],
-            "target_industries": [],
-            "experience_level": "",
-            "career_goals": [],
-            "skills": []
-        }
-    return profile
+    try:
+        logger.debug("Retrieving user profile", extra={"user_id": current_user.id})
+        
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+        if not profile:
+            logger.debug("No profile found, returning empty", extra={"user_id": current_user.id})
+            return {
+                "id": "",
+                "user_id": str(current_user.id),
+                "preferred_locations": [],
+                "country": "",
+                "remote_preference": "",
+                "target_roles": [],
+                "target_industries": [],
+                "experience_level": "",
+                "career_goals": [],
+                "skills": []
+            }
+        
+        logger.debug("Profile retrieved", extra={"user_id": current_user.id, "profile_id": str(profile.id)})
+        return profile
+    except Exception as e:
+        logger.error("Failed to retrieve user profile", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        }, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve profile")
 
 @router.put("/")
 async def update_user_profile(
@@ -115,46 +129,70 @@ async def update_user_profile(
 ):
     """Create or update user profile"""
     try:
+        logger.debug("Updating user profile", extra={"user_id": current_user.id})
+        
         body = await request.body()
         raw_data = json.loads(body.decode())
 
         profile_data = ProfileRequest(**raw_data)
     except ValidationError as e:
+        logger.warning("Profile validation error", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        })
         raise HTTPException(status_code=422, detail=f"Validation error: {e}")
     except Exception as e:
+        logger.error("Profile request parsing error", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        }, exc_info=True)
         raise HTTPException(status_code=400, detail=f"Error: {e}")
 
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-
-    if profile:
-        profile.preferred_locations = profile_data.preferred_locations
-        profile.country = profile_data.country
-        profile.remote_preference = profile_data.remote_preference
-        profile.target_roles = profile_data.target_roles
-        profile.target_industries = profile_data.target_industries
-        profile.experience_level = profile_data.experience_level
-        profile.skills = profile_data.core_skills
-        profile.career_goals = profile_data.career_goals
-    else:
-        profile = UserProfile(
-            user_id=current_user.id,
-            preferred_locations=profile_data.preferred_locations,
-            country=profile_data.country,
-            remote_preference=profile_data.remote_preference,
-            target_roles=profile_data.target_roles,
-            target_industries=profile_data.target_industries,
-            experience_level=profile_data.experience_level,
-            skills=profile_data.core_skills,
-            career_goals=profile_data.career_goals
-        )
-        db.add(profile)
-
     try:
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+
+        if profile:
+            logger.debug("Updating existing profile", extra={
+                "user_id": current_user.id,
+                "profile_id": str(profile.id)
+            })
+            profile.preferred_locations = profile_data.preferred_locations
+            profile.country = profile_data.country
+            profile.remote_preference = profile_data.remote_preference
+            profile.target_roles = profile_data.target_roles
+            profile.target_industries = profile_data.target_industries
+            profile.experience_level = profile_data.experience_level
+            profile.skills = profile_data.core_skills
+            profile.career_goals = profile_data.career_goals
+        else:
+            logger.debug("Creating new profile", extra={"user_id": current_user.id})
+            profile = UserProfile(
+                user_id=current_user.id,
+                preferred_locations=profile_data.preferred_locations,
+                country=profile_data.country,
+                remote_preference=profile_data.remote_preference,
+                target_roles=profile_data.target_roles,
+                target_industries=profile_data.target_industries,
+                experience_level=profile_data.experience_level,
+                skills=profile_data.core_skills,
+                career_goals=profile_data.career_goals
+            )
+            db.add(profile)
+
         db.commit()
         db.refresh(profile)
+        
+        logger.info("Profile updated successfully", extra={
+            "user_id": current_user.id,
+            "profile_id": str(profile.id)
+        })
         return profile
     except Exception as e:
         db.rollback()
+        logger.error("Failed to save profile", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        }, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save profile: {str(e)}"
@@ -236,9 +274,29 @@ async def delete_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
-    db.delete(profile)
-    db.commit()
-    return {"message": "Profile deleted successfully"}
+    try:
+        logger.warning("Deleting user profile", extra={"user_id": current_user.id})
+        
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+        if not profile:
+            logger.warning("Profile not found for deletion", extra={"user_id": current_user.id})
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        
+        profile_id = str(profile.id)
+        db.delete(profile)
+        db.commit()
+        
+        logger.warning("Profile deleted successfully", extra={
+            "user_id": current_user.id,
+            "profile_id": profile_id
+        })
+        return {"message": "Profile deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to delete profile", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        }, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete profile")

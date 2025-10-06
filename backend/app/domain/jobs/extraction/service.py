@@ -1,19 +1,20 @@
 from __future__ import annotations
 import re
-import logging
 from typing import Dict, Any, Optional, List
 from .ports import (
     MainContentExtractor, TitleCompanyExtractor, StructuredDataExtractor,
     LLMExtractor, RequirementStripper
 )
 import json as _json
+from ....infra.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class JobExtractionService:
     """
-    Orchestrates job extraction: DOM hints → structured data → main text → (optional) LLM →
+    Orchestrates job extraction: DOM hints → structured data         if not main_text and xhr_logs:
+            logger.debug("Main text empty, checking XHR logs", extra={"xhr_count": len(xhr_logs)})ain text → (optional) LLM →
     requirement cleanup. Never throws on best-effort branches; returns a complete dict.
     """
     def __init__(
@@ -275,60 +276,30 @@ class JobExtractionService:
         xhr_logs: Optional[List[Dict[str, Any]]] = None,
         manual_text: Optional[str] = None,
     ) -> Dict[str, Any]:
-        print("\n" + "="*80)
-        print("=== EXTRACTION SERVICE START ===")
-        print(f"Timestamp: {__import__('datetime').datetime.now().isoformat()}")
-        print("="*80)
-        print(f"\n[SERVICE] INPUT PARAMETERS:")
-        print(f"  URL: {url[:150] if url else 'None'}")
-        print(f"  HTML length: {len(html or '')} chars")
-        print(f"  HTML preview: {(html or '')[:200]}..." if html else "  HTML preview: None")
-        print(f"  Manual text length: {len(manual_text or '')} chars")
-        print(f"  Manual text preview: {repr((manual_text or '')[:200])}..." if manual_text else "  Manual text: None")
-        print(f"  JSON-LD items: {len(jsonld or [])}")
-        if jsonld:
-            print(f"  JSON-LD types: {[j.get('@type') for j in jsonld if isinstance(j, dict)]}")
-        print(f"  Has Readable: {bool(readable)}")
-        if readable:
-            print(f"  Readable title: {readable.get('title')}")
-            print(f"  Readable text length: {len(readable.get('textContent', ''))}")
-        print(f"  Hints provided: {list(hints.keys()) if hints else []}")
-        print(f"  Hints values: {hints}" if hints else "")
-        print(f"  Metas count: {len(metas or {})}")
-        print(f"  XHR logs count: {len(xhr_logs or [])}")
-        print(f"  LLM available: {self.llm is not None}")
-        print(f"  LLM type: {type(self.llm).__name__ if self.llm else 'None'}")
+        logger.info("Job extraction started", extra={
+            "url": url[:150] if url else None,
+            "html_length": len(html or ''),
+            "manual_text_length": len(manual_text or ''),
+            "jsonld_items": len(jsonld or []),
+            "has_readable": bool(readable),
+            "has_hints": bool(hints),
+            "llm_available": self.llm is not None
+        })
         
         hints = hints or {}
         
-        # Check each path explicitly
-        print("\n" + "-"*80)
-        print("--- EXTRACTION PATH DETECTION ---")
-        print("-"*80)
-        print(f"\n[PATH CHECK] Manual Text:")
-        print(f"  is not None: {manual_text is not None}")
-        if manual_text is not None:
-            print(f"  length: {len(manual_text)}")
-            print(f"  stripped length: {len(manual_text.strip())}")
-            print(f"  is empty after strip: {not manual_text.strip()}")
-            print(f"  preview (first 300 chars): {repr(manual_text[:300])}")
-        
         # Manual text path - Early return to avoid duplicate processing
         if manual_text and manual_text.strip():
-            print("\n" + "*"*80)
-            print("*** DECISION: TAKING MANUAL TEXT PATH ***")
-            print("*"*80)
-            print(f"\n[MANUAL TEXT] Processing pasted text")
-            print(f"  Text length: {len(manual_text)}")
-            print(f"  Stripped length: {len(manual_text.strip())}")
-            print(f"  Text preview:\n{manual_text.strip()[:500]}...\n")
+            logger.info("Using manual text extraction path", extra={
+                "text_length": len(manual_text),
+                "stripped_length": len(manual_text.strip())
+            })
             
             if not self.llm:
-                print("\n[ERROR] LLM service is not available for manual text", flush=True)
-                print("[ERROR] Cannot proceed with manual text extraction", flush=True)
+                logger.error("LLM service not available for manual text extraction")
                 raise ValueError("LLM service is not available - cannot extract job from text")
             
-            print("Manual text LLM extraction starting...", flush=True)
+            logger.debug("Starting manual text LLM extraction")
             try:
                 full_raw = self._clean_text(manual_text)
                 derived = self._hints_from_raw_paste(full_raw)
@@ -339,8 +310,10 @@ class JobExtractionService:
 
                 text = self._preclean_noise(full_raw)  # then run your current LLM call
                 job = self.llm.extract_job(url=url, text=text, hints=hints) or {}
-                print(f"LLM extraction completed successfully", flush=True)
-                print(f"LLM result: title='{job.get('title', '')[:50]}', company='{job.get('company_name', '')}'", flush=True)
+                logger.info("LLM extraction completed successfully", extra={
+                    "title": job.get('title', '')[:50],
+                    "company": job.get('company_name', '')
+                })
                 
                 # 1) Start from the exact user text as description
                 desc_raw = self._clean_text(text)
@@ -371,130 +344,112 @@ class JobExtractionService:
                 result["remote_type"] = result["remote_type"] or hints.get("remote_type", "")
                 result["job_type"] = result["job_type"] or hints.get("job_type", "")
 
-                print(f"Manual text extraction completed successfully", flush=True)
-                print("=== EXTRACTION SERVICE SUCCESS ===", flush=True)
+                logger.info("Manual text extraction completed successfully", extra={
+                    "title": result["title"][:50] if result["title"] else None,
+                    "company": result["company_name"]
+                })
                 return result
             except Exception as e:
-                print(f"\n[MANUAL TEXT] ✗✗✗ ERROR during extraction", flush=True)
-                print(f"[MANUAL TEXT] Error type: {type(e).__name__}", flush=True)
-                print(f"[MANUAL TEXT] Error message: {str(e)}", flush=True)
-                print(f"[MANUAL TEXT] Error details:", flush=True)
-                import traceback
-                traceback.print_exc()
-                print("="*80, flush=True)
-                print("=== EXTRACTION SERVICE ERROR ===", flush=True)
-                print("="*80, flush=True)
+                logger.error("Manual text extraction failed", extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }, exc_info=True)
                 raise ValueError(f"Failed to extract job from text: {str(e)}")
         
         # Regular HTML processing path - Only if no manual_text
-        print("\n" + "*"*80)
-        print("*** DECISION: TAKING HTML PROCESSING PATH ***")
-        print("*"*80)
-        print(f"\n[HTML PATH] Starting HTML-based extraction")
-        print(f"[HTML PATH] HTML length: {len(html or '')} chars")
-        print(f"[HTML PATH] HTML preview (first 300 chars):\n{(html or '')[:300]}...\n")
+        logger.info("Using HTML processing path", extra={
+            "html_length": len(html or '')
+        })
         
         if not html or len(html.strip()) < 50:
-            print(f"\n[HTML PATH] ✗ ERROR: Insufficient HTML content", flush=True)
-            print(f"[HTML PATH] HTML length: {len(html or '')} chars", flush=True)
-            print(f"[HTML PATH] Minimum required: 50 chars", flush=True)
+            logger.error("Insufficient HTML content", extra={
+                "html_length": len(html or '')
+            })
             raise ValueError("No content available for extraction - please try text selection instead")
         
-        print(f"[HTML PATH] ✓ HTML validation passed")
-        print(f"[HTML PATH] Proceeding with extraction...\n")
+        logger.debug("HTML validation passed, starting extraction")
 
         # 0) Quick DOM hints
-        print(f"\n[HTML PATH] === PHASE 0: Quick DOM hints ===")
-        print(f"[HTML PATH] Extracting title/company from DOM...")
+        logger.debug("Phase 0: Extracting title/company from DOM")
         t_c = {}
         try:
             t_c = self.title_company.extract(html) or {}
-            print(f"[HTML PATH] ✓ DOM extraction successful:")
-            print(f"  title: {t_c.get('title', 'None')}")
-            print(f"  company_name: {t_c.get('company_name', 'None')}")
+            logger.debug("DOM extraction successful", extra={
+                "title": t_c.get('title'),
+                "company_name": t_c.get('company_name')
+            })
         except Exception as e:
-            print(f"[HTML PATH] ✗ DOM extraction failed: {str(e)}")
+            logger.warning("DOM extraction failed", extra={"error": str(e)})
             t_c = {}
 
         # 1) Structured data
-        print(f"\n[HTML PATH] === PHASE 1: Structured data extraction ===")
-        print(f"[HTML PATH] Looking for JSON-LD JobPosting...")
+        logger.debug("Phase 1: Starting structured data extraction")
+        logger.debug("Looking for JSON-LD JobPosting...")
         mapped: Dict[str, Any] = {}
         jd = self._find_job_from_jsonld(jsonld or [])
         if jd:
-            print(f"[HTML PATH] ✓ Found JSON-LD JobPosting!")
-            print(f"[HTML PATH] JSON-LD data: {jd}")
             mapped = self._map_job_jsonld(jd, url)
-            print(f"[HTML PATH] Mapped JSON-LD to:")
-            print(f"  title: {mapped.get('title')}")
-            print(f"  company_name: {mapped.get('company_name')}")
-            print(f"  location: {mapped.get('location')}")
-            print(f"  remote_type: {mapped.get('remote_type')}")
-            print(f"  job_type: {mapped.get('job_type')}")
+            logger.debug("Found JSON-LD JobPosting", extra={"title": mapped.get('title'), "company_name": mapped.get('company_name'), "location": mapped.get('location'), "remote_type": mapped.get('remote_type'), "job_type": mapped.get('job_type')})
         else:
-            print(f"[HTML PATH] No JSON-LD JobPosting found, trying server-side structured extraction...")
+            logger.debug("No JSON-LD JobPosting found, trying server-side structured extraction...")
             # fall back to server-side structured extraction
             try:
                 obj = self.structured.find_job(html, url)
                 if obj:
-                    print(f"[HTML PATH] ✓ Server-side structured data found")
+                    logger.debug("Server-side structured data found")
                     mapped = self.structured.map_job(obj, url) or {}
-                    print(f"[HTML PATH] Mapped structured data: {mapped}")
+                    logger.debug("Mapped structured data", extra={"mapped_keys": list(mapped.keys())})
                 else:
-                    print(f"[HTML PATH] No server-side structured data found")
+                    logger.debug("No server-side structured data found")
             except Exception as e:
-                print(f"[HTML PATH] ✗ Server-side structured extraction failed: {str(e)}")
+                logger.warning("Server-side structured extraction failed", extra={"error": str(e)})
                 mapped = {}
 
         readable_title = ""
         readable_site  = ""
         # 2) Main content text (for LLM and fallback)
-        print(f"\n[HTML PATH] === PHASE 2: Main content text extraction ===")
-        print(f"[HTML PATH] Readable object provided: {readable is not None}")
+        logger.debug("Phase 2: Main content text extraction")
+        logger.debug("Readable object check", extra={"readable_provided": readable is not None})
         try:
             if readable and isinstance(readable, dict):
-                print(f"[HTML PATH] Using Readability content...")
+                logger.debug("Using Readability content")
                 readable_title = (readable.get('title') or '').strip()
                 readable_site  = (readable.get('siteName') or '').strip()
-                print(f"[HTML PATH] Readability metadata:")
-                print(f"  title: {readable_title}")
-                print(f"  siteName: {readable_site}")
+                logger.debug("Readability metadata", extra={"title": readable_title, "siteName": readable_site})
                 # Prefer Readability's textContent, else strip tags from 'content'
                 main_text = readable.get('textContent') or ''
                 if not main_text and readable.get('content'):
-                    print(f"[HTML PATH] No textContent, extracting from HTML content...")
+                    logger.debug("No textContent, extracting from HTML content")
                     main_text = self._clean_text(re.sub(r"<[^>]+>", "", readable['content']))
-                print(f"[HTML PATH] ✓ Readability text extracted: {len(main_text)} chars")
+                logger.debug("Readability text extracted", extra={"text_length": len(main_text)})
             else:
-                print(f"[HTML PATH] No Readability, using main_content extractor...")
+                logger.debug("No Readability, using main_content extractor")
                 main_text = self.main_content.extract(html)
-                print(f"[HTML PATH] ✓ Main content extracted: {len(main_text)} chars")
+                logger.debug("Main content extracted", extra={"text_length": len(main_text)})
         except Exception as e:
-            print(f"[HTML PATH] ✗ Main content extraction failed: {str(e)}")
-            logger.warning(f"Failed to extract main content from HTML: {str(e)}")
+            logger.warning("Main content extraction failed", extra={"error": str(e)}, exc_info=True)
             main_text = ""
 
             
         if not main_text and xhr_logs:
-            print(f"\n[HTML PATH] Main text empty, checking XHR logs...")
-            print(f"[HTML PATH] XHR logs available: {len(xhr_logs)} entries")
+            logger.debug("Main text empty, checking XHR logs", extra={"xhr_count": len(xhr_logs)})
             try:
                 for i, entry in enumerate(xhr_logs):
                     body = entry.get('body') or ''
                     if not body:
                         continue
-                    print(f"[HTML PATH] Checking XHR entry {i+1}: body length = {len(body)}")
+                    logger.debug(f"Checking XHR entry {i+1}", extra={"body_length": len(body)})
                     text_candidate = ""
                     # Try JSON parse
                     try:
                         j = _json.loads(body)
-                        print(f"[HTML PATH] XHR entry {i+1} is valid JSON")
+                        logger.debug(f"XHR entry {i+1} is valid JSON")
                         # walk shallowly for common fields
                         keys = ['jobDescription','description','job_desc','content','responsibilities','qualifications']
                         for k in keys:
                             if isinstance(j, dict) and k in j and isinstance(j[k], str):
                                 text_candidate = j[k]
-                                print(f"[HTML PATH] Found job content in key '{k}'")
+                                logger.debug(f"Found job content in key '{k}'")
                                 break
                         # Sometimes nested one level
                         if not text_candidate and isinstance(j, dict):
@@ -503,11 +458,11 @@ class JobExtractionService:
                                     for k in keys:
                                         if k in v and isinstance(v[k], str):
                                             text_candidate = v[k]
-                                            print(f"[HTML PATH] Found job content in nested key '{k}'")
+                                            logger.debug(f"Found job content in nested key '{k}'")
                                             break
                                 if text_candidate: break
                     except Exception:
-                        print(f"[HTML PATH] XHR entry {i+1} is not JSON, using as plain text")
+                        logger.debug(f"XHR entry {i+1} is not JSON, using as plain text")
                         pass
                     # Fallback: as-is text
                     if not text_candidate:
@@ -517,27 +472,26 @@ class JobExtractionService:
                         txt = re.sub(r'<[^>]+>', ' ', text_candidate)
                         if len(txt) > 800:
                             main_text = self._clean_text(txt)
-                            print(f"[HTML PATH] ✓ Found suitable job content in XHR: {len(main_text)} chars")
+                            logger.debug("Found suitable job content in XHR", extra={"text_length": len(main_text)})
                             break
             except Exception as e:
-                print(f"[HTML PATH] ✗ XHR fallback failed: {str(e)}")
-                pass
+                logger.warning("XHR fallback failed", extra={"error": str(e)})
         
-        print(f"\n[HTML PATH] Pre-cleaning main text noise...")
+        logger.debug("Pre-cleaning main text noise")
         main_text = self._preclean_noise(main_text)
-        print(f"[HTML PATH] Main text after pre-clean: {len(main_text)} chars")
+        logger.debug("Main text after pre-clean", extra={"text_length": len(main_text)})
 
         # 3) Fallbacks from raw text
-        print(f"\n[HTML PATH] === PHASE 3: Extracting location and remote type ===")
+        logger.debug("Phase 3: Extracting location and remote type")
         raw_text = self._clean_text(re.sub(r"<[^>]+>", "", html or ""))
-        print(f"[HTML PATH] Raw text length: {len(raw_text)} chars")
+        logger.debug("Raw text length", extra={"length": len(raw_text)})
         loc_fallback = self._extract_location_freeform(raw_text)
-        print(f"[HTML PATH] Location fallback: {loc_fallback}")
+        logger.debug("Location fallback extracted", extra={"location": loc_fallback})
         rem_fallback = self._extract_remote_type(main_text, hints.get("remote_type", ""), mapped.get("remote_type", ""))
-        print(f"[HTML PATH] Remote type fallback: {rem_fallback}")
+        logger.debug("Remote type fallback extracted", extra={"remote_type": rem_fallback})
 
         # 4) Build LLM hints
-        print(f"\n[HTML PATH] === PHASE 4: Building LLM hints ===")
+        logger.debug("Phase 4: Building LLM hints")
         llm_hints = {
             "title": t_c.get("title") or mapped.get("title") or "",
             "company_name": t_c.get("company_name") or mapped.get("company_name") or "",
@@ -546,70 +500,80 @@ class JobExtractionService:
             "job_type": mapped.get("job_type") or "",
         }
         llm_hints.update({k: v for k, v in hints.items() if v})
-        print(f"[HTML PATH] LLM hints prepared:")
-        for key, val in llm_hints.items():
-            print(f"  {key}: {val}")
+        logger.debug("LLM hints prepared", extra={"hints": llm_hints})
 
         # 5) Ask LLM (optional)
-        print(f"\n[HTML PATH] === PHASE 5: LLM extraction (optional) ===")
+        logger.debug("Phase 5: LLM extraction (optional)")
         llm_job: Dict[str, Any] = {}
         if self.llm and main_text.strip():
-            print(f"[HTML PATH] LLM available: {self.llm is not None}")
-            print(f"[HTML PATH] Main text available: {len(main_text)} chars")
-            print(f"[HTML PATH] Calling LLM extractor...")
+            logger.debug("LLM check", extra={"llm_available": True, "text_length": len(main_text)})
+            logger.debug("Calling LLM extractor")
             try:
                 logger.info(f"Processing regular extraction with LLM: {len(main_text)} chars")
                 llm_start = __import__('time').time()
                 llm_job = self.llm.extract_job(url=url, text=main_text, hints=llm_hints) or {}
                 llm_time = __import__('time').time() - llm_start
-                logger.info(f"LLM extraction completed for regular extraction")
-                print(f"[HTML PATH] ✓ LLM extraction completed in {llm_time:.2f}s")
-                print(f"[HTML PATH] LLM returned:")
-                print(f"  title: {llm_job.get('title')}")
-                print(f"  company_name: {llm_job.get('company_name')}")
-                print(f"  location: {llm_job.get('location')}")
-                print(f"  remote_type: {llm_job.get('remote_type')}")
-                print(f"  job_type: {llm_job.get('job_type')}")
-                print(f"  requirements: {len(llm_job.get('requirements', []))} items")
-                print(f"  skills: {len(llm_job.get('skills', []))} items")
+                logger.info("LLM extraction completed for regular extraction", extra={
+                    "duration": f"{llm_time:.2f}s",
+                    "title": llm_job.get('title'),
+                    "company_name": llm_job.get('company_name'),
+                    "location": llm_job.get('location'),
+                    "remote_type": llm_job.get('remote_type'),
+                    "job_type": llm_job.get('job_type'),
+                    "requirements_count": len(llm_job.get('requirements', [])),
+                    "skills_count": len(llm_job.get('skills', []))
+                })
             except Exception as e:
                 logger.warning(f"LLM extraction failed for regular extraction: {str(e)}")
-                print(f"[HTML PATH] ✗ LLM extraction failed: {str(e)}")
                 llm_job = {}  # For regular extraction, we can fall back to structured data
         else:
-            print(f"[HTML PATH] Skipping LLM extraction:")
-            print(f"  LLM available: {self.llm is not None}")
-            print(f"  Main text available: {bool(main_text.strip())}")
+            logger.debug("Skipping LLM extraction", extra={"llm_available": self.llm is not None, "has_text": bool(main_text.strip())})
 
-        # 6) Start from main_text as the source-of-truth description
-        print(f"\n[HTML PATH] === PHASE 6: Description processing ===")
-        desc_raw = self._clean_text(main_text)
-        print(f"[HTML PATH] Raw description: {len(desc_raw)} chars")
-
+        # 6) Description processing - prefer LLM's cleaned description
+        logger.debug("Phase 6: Description processing")
+        
+        # Use LLM's description if available (it's already cleaned and filtered)
+        if llm_job.get("description"):
+            description = self._clean_text(llm_job.get("description"))
+            logger.debug("Using LLM-extracted description", extra={"length": len(description)})
+        else:
+            # Fallback to raw text if LLM didn't provide description
+            description = self._clean_text(main_text)
+            logger.debug("Using raw main_text as description (LLM didn't provide)", extra={"length": len(description)})
+        
         requirements = llm_job.get("requirements") or []
         skills = llm_job.get("skills") or []
-        print(f"[HTML PATH] Requirements from LLM: {len(requirements)} items")
-        print(f"[HTML PATH] Skills from LLM: {len(skills)} items")
+        logger.debug("LLM results summary", extra={"requirements_count": len(requirements), "skills_count": len(skills)})
 
-        # 7) Backstop: regex splitter + dedupe
-        print(f"\n[HTML PATH] === PHASE 7: Requirement splitting ===")
-        try:
-            print(f"[HTML PATH] Running requirement splitter...")
-            description, extra_reqs = self.req_splitter.split(desc_raw, requirements)
-            print(f"[HTML PATH] Splitter extracted {len(extra_reqs)} additional requirements")
-            requirements = list(dict.fromkeys((requirements or []) + (extra_reqs or [])))
-            print(f"[HTML PATH] Total requirements after merge: {len(requirements)}")
+        # 7) Backstop: regex splitter ONLY if LLM didn't extract (fallback mode)
+        logger.debug("Phase 7: Requirement splitting (fallback)")
+        if not llm_job.get("description") or not requirements:
+            # LLM failed or didn't run - use regex splitter as backup
+            logger.debug("Running regex requirement splitter as fallback")
+            try:
+                desc_raw = self._clean_text(main_text)
+                description, extra_reqs = self.req_splitter.split(desc_raw, requirements)
+                logger.debug("Splitter results", extra={"extra_requirements": len(extra_reqs)})
+                requirements = list(dict.fromkeys((requirements or []) + (extra_reqs or [])))
+                logger.debug("Total requirements after merge", extra={"count": len(requirements)})
+                req_set = {r.strip() for r in requirements}
+                if description:
+                    description = "\n".join([ln for ln in description.split("\n") if ln.strip() not in req_set])
+                logger.debug("Final description length", extra={"length": len(description)})
+            except Exception as e:
+                logger.warning("Requirement splitting failed", extra={"error": str(e)})
+                description = self._clean_text(main_text)
+        else:
+            logger.debug("Skipping regex splitter - using LLM results directly")
+            # Remove any requirement duplicates that somehow ended up in description
             req_set = {r.strip() for r in requirements}
             if description:
                 description = "\n".join([ln for ln in description.split("\n") if ln.strip() not in req_set])
-            print(f"[HTML PATH] Final description: {len(description)} chars")
-        except Exception as e:
-            print(f"[HTML PATH] ✗ Requirement splitting failed: {str(e)}")
-            description = desc_raw
+            logger.debug("Final description length after deduplication", extra={"length": len(description)})
 
 
 
-        print(f"\n[HTML PATH] === PHASE 8: Final result assembly ===")
+        logger.debug("Phase 8: Final result assembly")
         final_result = {
             "title": (llm_job.get("title") or mapped.get("title") or t_c.get("title") or readable_title or "").strip(),
             "company_name": (llm_job.get("company_name") or mapped.get("company_name") or t_c.get("company_name") or readable_site or "").strip(),
@@ -622,30 +586,30 @@ class JobExtractionService:
             "skills": [x.strip() for x in (skills or []) if x and x.strip()],
         }
         
-        print(f"[HTML PATH] Final result assembled:")
-        print(f"  title: {final_result['title']}")
-        print(f"  company_name: {final_result['company_name']}")
-        print(f"  location: {final_result['location']}")
-        print(f"  remote_type: {final_result['remote_type']}")
-        print(f"  job_type: {final_result['job_type']}")
-        print(f"  description length: {len(final_result['description'])}")
-        print(f"  requirements: {len(final_result['requirements'])} items")
-        print(f"  skills: {len(final_result['skills'])} items")
+        logger.debug("Final result assembled", extra={
+            "title": final_result['title'],
+            "company_name": final_result['company_name'],
+            "location": final_result['location'],
+            "remote_type": final_result['remote_type'],
+            "job_type": final_result['job_type'],
+            "description_length": len(final_result['description']),
+            "requirements_count": len(final_result['requirements']),
+            "skills_count": len(final_result['skills'])
+        })
         
         # For regular extraction, we're more lenient but still log issues
-        print(f"\n[HTML PATH] Validating result...")
+        logger.debug("Validating result")
         try:
             self._validate_job_content(final_result, "regular extraction")
-            print(f"[HTML PATH] ✓ Validation passed")
+            logger.debug("Validation passed")
         except ValueError as e:
             logger.warning(f"Regular extraction produced minimal content: {str(e)}")
-            print(f"[HTML PATH] ⚠ Validation warning: {str(e)}")
             # Don't fail for regular extraction, but warn
         
-        print(f"\n[HTML PATH] ✓✓✓ SUCCESS - Returning result")
-        print("="*80)
-        print("=== EXTRACTION SERVICE SUCCESS ===")
-        print("="*80 + "\n")
+        logger.info("Extraction service completed successfully", extra={
+            "title": final_result['title'],
+            "company": final_result['company_name']
+        })
         return final_result
 
 # --- default requirement stripper (regex-based, safe fallback) ---

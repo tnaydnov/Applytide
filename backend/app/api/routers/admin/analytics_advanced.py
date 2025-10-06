@@ -19,9 +19,11 @@ from ....domain.admin.analytics_dto import (
     ConversionFunnelResponseDTO,
     ApplicationVelocityResponseDTO,
 )
+from ....infra.logging import get_logger
 
 
 router = APIRouter(tags=["admin-analytics-advanced"])
+logger = get_logger(__name__)
 
 
 from app.domain.admin.analytics_service import AnalyticsService

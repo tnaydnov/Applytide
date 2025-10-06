@@ -12,9 +12,12 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
 from ....domain.admin.database_service import DatabaseAdminService
+from ....infra.logging import get_logger
+from ....infra.logging.security_logger import log_security_event
 
 
 router = APIRouter(tags=["admin-database"])
+logger = get_logger(__name__)
 
 # Emergency SQL query tool for production debugging
 # Read-only queries with comprehensive safety checks
@@ -68,21 +71,84 @@ async def execute_database_query(
     - Automatic audit logging
     - Query timing metrics
     """
-    service = DatabaseAdminService(db)
+    try:
+        ip_address, user_agent = get_client_info(request)
+        
+        # Log this EXTREMELY SENSITIVE database query operation
+        logger.critical(
+            "Admin executing direct database query",
+            extra={
+                "admin_id": str(current_admin.id),
+                "admin_email": current_admin.email,
+                "query": query_request.query,
+                "justification": query_request.justification,
+                "admin_ip": ip_address
+            }
+        )
+        
+        # Critical security event
+        log_security_event(
+            event_type="database_query_executed",
+            details={
+                "admin_id": str(current_admin.id),
+                "query_preview": query_request.query[:100],
+                "justification": query_request.justification
+            },
+            request=request
+        )
+        
+        service = DatabaseAdminService(db)
+        
+        result = await service.execute_query(
+            query=query_request.query,
+            admin_id=current_admin.id,
+            justification=query_request.justification
+        )
+        
+        logger.info(
+            "Database query executed successfully",
+            extra={
+                "admin_id": str(current_admin.id),
+                "row_count": result.row_count,
+                "execution_time_ms": result.execution_time_ms
+            }
+        )
+        
+        return DatabaseQueryResponse(
+            columns=result.columns,
+            rows=result.rows,
+            row_count=result.row_count,
+            execution_time_ms=result.execution_time_ms,
+            query=result.query
+        )
     
-    result = await service.execute_query(
-        query=query_request.query,
-        admin_id=current_admin.id,
-        justification=query_request.justification
-    )
-    
-    return DatabaseQueryResponse(
-        columns=result.columns,
-        rows=result.rows,
-        row_count=result.row_count,
-        execution_time_ms=result.execution_time_ms,
-        query=result.query
-    )
+    except ValueError as e:
+        logger.error(
+            "Database query validation failed",
+            extra={
+                "admin_id": str(current_admin.id),
+                "query": query_request.query,
+                "error": str(e)
+            }
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(
+            "Database query execution failed",
+            extra={
+                "admin_id": str(current_admin.id),
+                "query": query_request.query,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to execute database query"
+        )
 
 
 @router.get(

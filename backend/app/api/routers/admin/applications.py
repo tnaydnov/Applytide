@@ -12,9 +12,11 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
 from ....domain.admin.applications_service import ApplicationsAdminService
+from ....infra.logging import get_logger
 
 
 router = APIRouter(tags=["admin-applications"])
+logger = get_logger(__name__)
 
 
 class ApplicationSummaryResponse(BaseModel):

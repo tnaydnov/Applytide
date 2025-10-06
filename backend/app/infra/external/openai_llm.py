@@ -1,9 +1,10 @@
 from __future__ import annotations
-import os, json, logging
+import os, json
 from openai import OpenAI
 from ...domain.jobs.extraction.ports import LLMExtractor
+from ..logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # System prompt for TEXT-based extraction (when user pastes text)
 _EXTRACT_TEXT_SYSTEM = """
@@ -33,32 +34,35 @@ FIELD GUIDELINES:
 description:
 - Include ALL job-relevant text (job details, company info, responsibilities, etc)
 - CRITICALLY IMPORTANT: NEVER remove ANY section headers - headers like "About the Company", "Position Overview", "Key Responsibilities", "Advantages", "Work Environment", etc. MUST remain in the description
-- Keep any "nice-to-have" skills, "preferred qualifications", "advantages", "bonus" items in the description (including their headers). use your judgment to decide what is "nice-to-have".
-- Only remove lines that are core mandatory requirements (these go in requirements array)
+- REMOVE section headers for Requirements/Qualifications sections ONLY if ALL lines under them are extracted to requirements[]
+- Keep any lines with explicit nice-to-have indicators ("advantage", "preferred", "plus", "bonus", "nice to have", "helpful", "ideal") in the description, even if they're under a requirements section
 - Keep EXACT original wording - do not rewrite or rephrase
 - Add TWO line breaks (\\n\\n) before section headers
 - Preserve bullet points and list formatting
 
 requirements[]:
 - CRITICAL: Read the ENTIRE job posting first to understand its structure and context before extracting
-- Extract ONLY CORE/MANDATORY qualifications that candidates MUST have to be considered
-- Use your judgment to identify requirement sections (commonly: "Requirements", "Qualifications", "What You Bring", "Must Have", "Essential Skills")
-- Distinguish between requirement types:
-  * CORE/MANDATORY: "5+ years experience", "Bachelor's degree required", "Must have X", "Proficient in Y"
-    → These are dealbreakers - extract to requirements[]
-  * NICE-TO-HAVE: "X is a plus", "preferred", "bonus points", "familiarity with Y is helpful"
-    → These increase chances but aren't required - KEEP in description
-  * CULTURE/BENEFITS: "Collaborative team", "Great benefits", "Work-life balance", "Learning opportunities"
-    → These describe the workplace - KEEP in description
-- Look for requirement indicators: "required", "must have", "essential", "minimum", "X+ years", "proficient", "strong experience"
+- Identify requirement sections by their headers: "Requirements", "Qualifications", "What You Bring", "Must Have", "Essential Skills", "Required Skills", "Minimum Qualifications", "What You'll Need", etc.
+- LOCATION-BASED EXTRACTION RULE:
+  * If a line appears UNDER a requirements/qualifications header → Extract it to requirements[] (it's mandatory by default)
+  * EXCEPTION: If the line EXPLICITLY contains nice-to-have indicators ("advantage", "preferred", "plus", "bonus", "nice to have", "helpful", "ideal", "great if"), keep it in description instead
+  * Lines in OTHER sections (Responsibilities, About Us, Benefits, etc.) → DO NOT extract to requirements, keep in description
+- Extract ALL lines from requirements sections UNLESS they explicitly say nice-to-have
+- Examples:
+  * "5+ years experience" under Qualifications → EXTRACT (no nice-to-have indicator)
+  * "Strong attention to design" under Qualifications → EXTRACT (no nice-to-have indicator)  
+  * "Previous experience in fintech - advantage" → KEEP in description (explicitly says "advantage")
+  * "Familiarity with X is a plus" → KEEP in description (explicitly says "plus")
+  * "Strong communication skills" in Responsibilities section → KEEP in description (wrong section)
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols (•, -, *, etc.) but preserve the full text
 - Remove duplicates (case-insensitive comparison)
 - Skip empty strings or strings shorter than 5 characters
-- CRITICAL: When you extract requirements from a section, you MUST do BOTH:
-  1. Add the requirement lines to requirements[] array
-  2. REMOVE those exact lines AND the section header from description
-  → This prevents duplicate content and orphaned headers
+- CRITICAL EXTRACTION RULE:
+  * If you extract a line to requirements[], REMOVE it from description
+  * If you DON'T extract a line (explicitly nice-to-have or wrong section), KEEP it in description
+  * NEVER delete content - it must go to either requirements[] OR stay in description
+  * When ALL lines from a requirements section are extracted, remove the section header too
 
 skills[]:
 - Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE in the job posting
@@ -106,42 +110,44 @@ class OpenAILLMExtractor(LLMExtractor):
         self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
         self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o-mini")  # Use mini by default for cost efficiency
         # To upgrade image model: set JOB_EXTRACT_IMAGE_MODEL=gpt-4o in environment
-        print(f"OpenAI LLM: Using text_model='{self.text_model}', image_model='{self.image_model}'")
+        logger.info("OpenAI LLM initialized", extra={
+            "text_model": self.text_model,
+            "image_model": self.image_model
+        })
 
     def extract_job(self, url: str, text: str, hints=None) -> dict:
-        print("\n" + "#"*80)
-        print("### OPENAI LLM EXTRACTOR START ###")
-        print("#"*80)
-        
         hints = hints or {}
         text_len = len(text)
         
-        print(f"\n[LLM] INPUT PARAMETERS:")
-        print(f"  URL: {url}")
-        print(f"  Text length: {text_len} characters")
-        print(f"  Text is empty: {not text}")
-        print(f"  Text preview (first 500 chars):\n{repr(text[:500])}...\n")
-        print(f"  Model: {self.text_model}")
-        print(f"  Hints provided: {list(hints.keys())}")
-        print(f"  Hints values: {hints}")
+        logger.info("OpenAI LLM extraction started", extra={
+            "url": url[:100] if url else None,
+            "text_length": text_len,
+            "has_hints": bool(hints)
+        })
+        logger.debug("Text validation", extra={
+            "text_length": text_len,
+            "text_empty": not text,
+            "text_preview": repr(text[:500]) if text else None,
+            "model": self.text_model,
+            "hints_keys": list(hints.keys()) if hints else []
+        })
         
         if text_len < 50:
-            print(f"\n[LLM] ✗ ERROR: Text too short: {text_len} characters")
-            print(f"[LLM] Minimum required: 50 characters")
+            logger.error("Text too short for extraction", extra={"text_length": text_len, "minimum_required": 50})
             raise ValueError(f"Text too short for extraction: {text_len} characters")
         
-        print(f"\n[LLM] ✓ Text length validation passed")
+        logger.debug("Text length validation passed")
 
         # Build two views: raw (for exact description) and numbered (for line-pointer extraction)
-        print(f"\n[LLM] Preparing text for LLM...")
+        logger.debug("Preparing text for LLM")
         lines = (text or "").splitlines()
         numbered = "\n".join(f"{i+1:05d} {ln}" for i, ln in enumerate(lines))
-        print(f"[LLM] Text split into {len(lines)} lines")
+        logger.debug("Text split into lines", extra={"line_count": len(lines)})
 
-        print(f"\n[LLM] Building message array...")
+        logger.debug("Building message array")
         messages = [{"role": "system", "content": _EXTRACT_TEXT_SYSTEM}]
         if hints:
-            print(f"[LLM] Adding hints message")
+            logger.debug("Adding hints message", extra={"hints": hints})
             messages.append({"role": "user", "content": f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
         
         user_content = (
@@ -155,17 +161,17 @@ class OpenAILLMExtractor(LLMExtractor):
         )
         messages.append({"role": "user", "content": user_content})
         
-        print(f"[LLM] Message array prepared: {len(messages)} messages")
-        print(f"[LLM] Message sizes:")
-        for i, msg in enumerate(messages):
-            print(f"  Message {i}: {len(msg['content'])} chars")
-        print(f"[LLM] Total prompt size: {sum(len(m['content']) for m in messages)} chars")
+        logger.debug("Message array prepared", extra={
+            "message_count": len(messages),
+            "total_prompt_size": sum(len(m['content']) for m in messages)
+        })
 
-        print(f"\n[LLM] Making OpenAI API call...")
-        print(f"[LLM] Model: {self.text_model}")
-        print(f"[LLM] Temperature: 0.1")
-        print(f"[LLM] Max tokens: 2500")
-        print(f"[LLM] Response format: json_object")
+        logger.debug("Making OpenAI API call", extra={
+            "model": self.text_model,
+            "temperature": 0.1,
+            "max_tokens": 2500,
+            "response_format": "json_object"
+        })
 
         try:
             api_start = __import__('time').time()
@@ -178,43 +184,43 @@ class OpenAILLMExtractor(LLMExtractor):
             )
             api_time = __import__('time').time() - api_start
             
-            print(f"\n[LLM] ✓ API call successful in {api_time:.2f}s")
-            print(f"[LLM] Response metadata:")
-            print(f"  Model: {resp.model}")
-            print(f"  Finish reason: {resp.choices[0].finish_reason if resp.choices else 'None'}")
-            print(f"  Total tokens: {resp.usage.total_tokens if resp.usage else 'Unknown'}")
-            print(f"  Prompt tokens: {resp.usage.prompt_tokens if resp.usage else 'Unknown'}")
-            print(f"  Completion tokens: {resp.usage.completion_tokens if resp.usage else 'Unknown'}")
+            logger.info("OpenAI API call successful", extra={
+                "duration": f"{api_time:.2f}s",
+                "model": resp.model,
+                "finish_reason": resp.choices[0].finish_reason if resp.choices else None,
+                "total_tokens": resp.usage.total_tokens if resp.usage else None,
+                "prompt_tokens": resp.usage.prompt_tokens if resp.usage else None,
+                "completion_tokens": resp.usage.completion_tokens if resp.usage else None
+            })
 
             if not resp.choices or not resp.choices[0].message.content:
-                print(f"\n[LLM] ✗ ERROR: OpenAI returned empty response")
-                print(f"[LLM] Response object: {resp}")
+                logger.error("OpenAI returned empty response", extra={"response": str(resp)})
                 raise ValueError("OpenAI returned empty response")
 
             raw_content = resp.choices[0].message.content
-            print(f"\n[LLM] Response content length: {len(raw_content)} chars")
-            print(f"[LLM] Response preview (first 300 chars):\n{raw_content[:300]}...\n")
-            print(f"[LLM] Parsing JSON response...")
+            logger.debug("Response received", extra={
+                "content_length": len(raw_content),
+                "content_preview": raw_content[:300]
+            })
+            logger.debug("Parsing JSON response")
             
             data = json.loads(raw_content)
             job = data.get("job") or data
             
-            print(f"\n[LLM] ✓ JSON parsed successfully")
-            print(f"[LLM] Extracted fields from LLM:")
-            print(f"  title: {job.get('title', 'None')}")
-            print(f"  company_name: {job.get('company_name', 'None')}")
-            print(f"  location: {job.get('location', 'None')}")
-            print(f"  remote_type: {job.get('remote_type', 'None')}")
-            print(f"  job_type: {job.get('job_type', 'None')}")
-            print(f"  description length: {len(job.get('description', ''))}")
-            print(f"  requirements count: {len(job.get('requirements', []))}")
-            print(f"  requirements: {job.get('requirements', [])}")
-            print(f"  skills count: {len(job.get('skills', []))}")
-            print(f"  skills: {job.get('skills', [])}")
+            logger.debug("JSON parsed successfully")
+            logger.debug("Extracted fields from LLM", extra={
+                "title": job.get('title'),
+                "company_name": job.get('company_name'),
+                "location": job.get('location'),
+                "remote_type": job.get('remote_type'),
+                "job_type": job.get('job_type'),
+                "description_length": len(job.get('description', '')),
+                "requirements_count": len(job.get('requirements', [])),
+                "skills_count": len(job.get('skills', []))
+            })
 
             # Force description to the exact raw input (do NOT trust model echoing)
-            print(f"\n[LLM] Post-processing...")
-            print(f"[LLM] Forcing description to use original text (not LLM echo)")
+            logger.debug("Post-processing: using original text as description")
             job["description"] = (text or "").strip()
 
             # Trust LLM to return properly formatted, deduplicated arrays
@@ -223,45 +229,29 @@ class OpenAILLMExtractor(LLMExtractor):
             if not job.get("source_url"):
                 job["source_url"] = url
 
-            print(f"\n[LLM] FINAL RESULT:")
-            print(f"  title: {job.get('title')}")
-            print(f"  company_name: {job.get('company_name')}")
-            print(f"  location: {job.get('location')}")
-            print(f"  remote_type: {job.get('remote_type')}")
-            print(f"  job_type: {job.get('job_type')}")
-            print(f"  source_url: {job.get('source_url')}")
-            print(f"  description length: {len(job.get('description', ''))}")
-            print(f"  description preview: {job.get('description', '')[:200]}...")
-            print(f"  requirements count: {len(job['requirements'])}")
-            print(f"  requirements: {job['requirements']}")
-            print(f"  skills count: {len(job['skills'])}")
-            print(f"  skills: {job['skills'][:20]}..." if len(job['skills']) > 20 else f"  skills: {job['skills']}")
-            
-            print(f"\n[LLM] ✓✓✓ EXTRACTION SUCCESSFUL")
-            print("#"*80)
-            print("### OPENAI LLM EXTRACTOR SUCCESS ###")
-            print("#"*80 + "\n")
+            logger.info("OpenAI LLM extraction successful", extra={
+                "title": job.get('title'),
+                "company_name": job.get('company_name'),
+                "location": job.get('location'),
+                "remote_type": job.get('remote_type'),
+                "job_type": job.get('job_type'),
+                "description_length": len(job.get('description', '')),
+                "requirements_count": len(job['requirements']),
+                "skills_count": len(job['skills'])
+            })
             return job
 
         except json.JSONDecodeError as e:
-            print(f"\n[LLM] ✗✗✗ JSON DECODE ERROR")
-            print(f"[LLM] Error: {str(e)}")
-            print(f"[LLM] Raw response content:")
-            print(raw_content if 'raw_content' in locals() else 'Response not available')
-            print("#"*80)
-            print("### OPENAI LLM EXTRACTOR ERROR ###")
-            print("#"*80)
+            logger.error("JSON decode error from OpenAI response", extra={
+                "error": str(e),
+                "raw_content": raw_content if 'raw_content' in locals() else 'Response not available'
+            }, exc_info=True)
             raise ValueError(f"OpenAI returned invalid JSON response: {str(e)}")
         except Exception as e:
-            print(f"\n[LLM] ✗✗✗ API ERROR")
-            print(f"[LLM] Error type: {type(e).__name__}")
-            print(f"[LLM] Error message: {str(e)}")
-            import traceback
-            print(f"[LLM] Stack trace:")
-            traceback.print_exc()
-            print("#"*80)
-            print("### OPENAI LLM EXTRACTOR ERROR ###")
-            print("#"*80)
+            logger.error("OpenAI API error", extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             
             error_msg = str(e).lower()
             if "rate limit" in error_msg:

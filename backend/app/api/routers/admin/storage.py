@@ -12,9 +12,12 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
 from ....domain.admin.storage_service import StorageAdminService
+from ....infra.logging import get_logger
+from ....infra.logging.security_logger import log_security_event
 
 
 router = APIRouter(tags=["admin-storage"])
+logger = get_logger(__name__)
 
 # Disk usage analysis and orphaned file cleanup
 
@@ -68,19 +71,49 @@ async def get_storage_stats(
     
     Returns disk usage, document counts, orphaned files, and storage by file type
     """
-    service = StorageAdminService(db)
-    stats = await service.get_storage_stats()
+    try:
+        logger.info(
+            "Admin requesting storage statistics",
+            extra={"admin_id": str(current_admin.id)}
+        )
+        
+        service = StorageAdminService(db)
+        stats = await service.get_storage_stats()
+        
+        logger.info(
+            "Storage statistics retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "total_documents": stats.total_documents,
+                "total_storage": stats.total_storage_human,
+                "orphaned_files": stats.orphaned_files_count
+            }
+        )
+        
+        return StorageStatsResponse(
+            total_documents=stats.total_documents,
+            total_storage_bytes=stats.total_storage_bytes,
+            total_storage_human=stats.total_storage_human,
+            avg_document_size_bytes=stats.avg_document_size_bytes,
+            largest_document_bytes=stats.largest_document_bytes,
+            orphaned_files_count=stats.orphaned_files_count,
+            orphaned_storage_bytes=stats.orphaned_storage_bytes,
+            storage_by_type=stats.storage_by_type
+        )
     
-    return StorageStatsResponse(
-        total_documents=stats.total_documents,
-        total_storage_bytes=stats.total_storage_bytes,
-        total_storage_human=stats.total_storage_human,
-        avg_document_size_bytes=stats.avg_document_size_bytes,
-        largest_document_bytes=stats.largest_document_bytes,
-        orphaned_files_count=stats.orphaned_files_count,
-        orphaned_storage_bytes=stats.orphaned_storage_bytes,
-        storage_by_type=stats.storage_by_type
-    )
+    except Exception as e:
+        logger.error(
+            "Error retrieving storage statistics",
+            extra={
+                "admin_id": str(current_admin.id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve storage statistics"
+        )
 
 
 @router.get(
@@ -135,19 +168,52 @@ async def find_orphaned_files(
     
     Returns list of orphaned files with size information
     """
-    service = StorageAdminService(db)
-    orphaned = await service.find_orphaned_files(limit=limit)
-    
-    return [
-        OrphanedFileResponse(
-            file_path=file.file_path,
-            size_bytes=file.size_bytes,
-            size_human=file.size_human,
-            file_type=file.file_type,
-            reason=file.reason
+    try:
+        logger.info(
+            "Admin searching for orphaned files",
+            extra={
+                "admin_id": str(current_admin.id),
+                "limit": limit
+            }
         )
-        for file in orphaned
-    ]
+        
+        service = StorageAdminService(db)
+        orphaned = await service.find_orphaned_files(limit=limit)
+        
+        result = [
+            OrphanedFileResponse(
+                file_path=file.file_path,
+                size_bytes=file.size_bytes,
+                size_human=file.size_human,
+                file_type=file.file_type,
+                reason=file.reason
+            )
+            for file in orphaned
+        ]
+        
+        logger.info(
+            "Orphaned files search completed",
+            extra={
+                "admin_id": str(current_admin.id),
+                "orphaned_count": len(result)
+            }
+        )
+        
+        return result
+    
+    except Exception as e:
+        logger.error(
+            "Error finding orphaned files",
+            extra={
+                "admin_id": str(current_admin.id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to find orphaned files"
+        )
 
 
 @router.delete(
@@ -171,18 +237,68 @@ async def cleanup_orphaned_files(
     - Maximum 1000 files per operation
     - All deletions are audit logged
     """
-    service = StorageAdminService(db)
-    deleted_count = await service.cleanup_orphaned_files(
-        admin_id=current_admin.id,
-        justification=cleanup_request.justification,
-        max_files=cleanup_request.max_files
-    )
+    try:
+        ip_address, user_agent = get_client_info(request)
+        
+        # Log this DANGEROUS file deletion operation
+        logger.warning(
+            "Admin initiating orphaned files cleanup",
+            extra={
+                "admin_id": str(current_admin.id),
+                "admin_email": current_admin.email,
+                "max_files": cleanup_request.max_files,
+                "justification": cleanup_request.justification,
+                "admin_ip": ip_address
+            }
+        )
+        
+        # Security event logging
+        log_security_event(
+            event_type="storage_cleanup",
+            details={
+                "admin_id": str(current_admin.id),
+                "max_files": cleanup_request.max_files,
+                "justification": cleanup_request.justification
+            },
+            request=request
+        )
+        
+        service = StorageAdminService(db)
+        deleted_count = await service.cleanup_orphaned_files(
+            admin_id=current_admin.id,
+            justification=cleanup_request.justification,
+            max_files=cleanup_request.max_files
+        )
+        
+        logger.warning(
+            "Orphaned files cleanup completed",
+            extra={
+                "admin_id": str(current_admin.id),
+                "files_deleted": deleted_count,
+                "max_files": cleanup_request.max_files
+            }
+        )
+        
+        return {
+            "success": True,
+            "files_deleted": deleted_count,
+            "message": f"Successfully deleted {deleted_count} orphaned files"
+        }
     
-    return {
-        "success": True,
-        "files_deleted": deleted_count,
-        "message": f"Successfully deleted {deleted_count} orphaned files"
-    }
+    except Exception as e:
+        logger.error(
+            "Error during orphaned files cleanup",
+            extra={
+                "admin_id": str(current_admin.id),
+                "max_files": cleanup_request.max_files,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to cleanup orphaned files"
+        )
 
 
 # ==================== SECURITY MONITORING ====================

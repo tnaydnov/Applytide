@@ -148,7 +148,8 @@ class DatabaseHandler(logging.Handler):
                 
             except Exception as e:
                 # Log error but continue
-                print(f"Error in database logging thread: {e}")
+                import sys
+                sys.stderr.write(f"Error in database logging thread: {e}\n")
         
         # Final flush on shutdown
         if batch:
@@ -198,7 +199,8 @@ class DatabaseHandler(logging.Handler):
                 
         except Exception as e:
             # Don't crash on database errors
-            print(f"Failed to write logs to database: {e}")
+            import sys
+            sys.stderr.write(f"Failed to write logs to database: {e}\n")
     
     def flush(self):
         """Force flush of pending logs"""

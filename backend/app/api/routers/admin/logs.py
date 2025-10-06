@@ -13,9 +13,11 @@ from ._schemas import AdminLogsListResponse, AdminLogResponse
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db import models
 from ....domain.admin.service import AdminService
+from ....infra.logging import get_logger
 
 
 router = APIRouter(tags=["admin-logs"])
+logger = get_logger(__name__)
 
 
 @router.get("/logs", response_model=AdminLogsListResponse)
@@ -142,28 +144,50 @@ async def purge_old_logs(
     
     The purge action itself is logged before deletion occurs.
     """
-    ip_address, user_agent = get_client_info(request)
-    
-    # Log the purge action BEFORE purging
-    service.log_action(
-        admin_id=current_admin.id,
-        action="purge_audit_logs",
-        details={"days": days, "reason": "GDPR compliance / retention policy"},
-        ip_address=ip_address,
-        user_agent=user_agent
-    )
-    
-    # Perform purge
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    deleted_count = service.repo.db.query(models.AdminLog).filter(
-        models.AdminLog.created_at < cutoff
-    ).delete()
-    
-    service.repo.db.commit()
-    
-    return {
-        "success": True,
-        "message": f"Purged {deleted_count} log entries older than {days} days",
-        "deleted_count": deleted_count,
-        "cutoff_date": cutoff.isoformat()
-    }
+    try:
+        ip_address, user_agent = get_client_info(request)
+        
+        logger.critical("Admin log purge initiated", extra={
+            "admin_id": current_admin.id,
+            "admin_email": current_admin.email,
+            "days": days,
+            "ip_address": ip_address
+        })
+        
+        # Log the purge action BEFORE purging
+        service.log_action(
+            admin_id=current_admin.id,
+            action="purge_audit_logs",
+            details={"days": days, "reason": "GDPR compliance / retention policy"},
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        
+        # Perform purge
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        deleted_count = service.repo.db.query(models.AdminLog).filter(
+            models.AdminLog.created_at < cutoff
+        ).delete()
+        
+        service.repo.db.commit()
+        
+        logger.critical("Admin log purge completed", extra={
+            "admin_id": current_admin.id,
+            "deleted_count": deleted_count,
+            "days": days,
+            "cutoff_date": cutoff.isoformat()
+        })
+        
+        return {
+            "success": True,
+            "message": f"Purged {deleted_count} log entries older than {days} days",
+            "deleted_count": deleted_count,
+            "cutoff_date": cutoff.isoformat()
+        }
+    except Exception as e:
+        logger.error("Failed to purge admin logs", extra={
+            "admin_id": current_admin.id,
+            "days": days,
+            "error": str(e)
+        }, exc_info=True)
+        raise

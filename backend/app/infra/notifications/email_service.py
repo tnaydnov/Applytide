@@ -4,6 +4,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from ...config import settings
 
+from ...infra.logging import get_logger
+
+logger = get_logger(__name__)
+
 class EmailService:
     def __init__(self):
         self.smtp_host = settings.SMTP_HOST
@@ -28,7 +32,11 @@ class EmailService:
                 server.send_message(msg)
             return True
         except Exception as e:
-            print(f"Failed to send email: {e}")
+            logger.error("Failed to send email", extra={
+                "to": to,
+                "subject": subject,
+                "error": str(e)
+            }, exc_info=True)
             return False
 
     def send_verification_email(self, to_email: str, token: str):

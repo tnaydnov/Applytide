@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Dict, Any
 import json
 import re
+from ..logging import get_logger
+
+logger = get_logger(__name__)
 
 UPLOAD_ROOT = Path("/app/uploads/documents")
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
@@ -43,5 +46,7 @@ class DocumentStore:
         try:
             meta_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         except Exception as e:
-            # non-fatal; log if you like
-            print(f"[document_store] failed writing sidecar: {e}")
+            logger.error("Failed to write sidecar file", extra={
+                "file_path": str(file_path),
+                "error": str(e)
+            })

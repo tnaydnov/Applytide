@@ -10,8 +10,10 @@ from ...api.deps_auth import get_current_user
 from ...db.models import User
 from ...domain.analytics.service import AnalyticsService, time_range_start
 from ..deps import get_analytics_service
+from ...infra.logging import get_logger
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+logger = get_logger(__name__)
 
 @router.get("")
 def get_analytics(
@@ -19,7 +21,20 @@ def get_analytics(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
-    return svc.get_analytics(user_id=user.id, range_param=range_param)
+    try:
+        logger.debug(
+            "User requesting analytics",
+            extra={"user_id": str(user.id), "range": range_param}
+        )
+        result = svc.get_analytics(user_id=user.id, range_param=range_param)
+        return result
+    except Exception as e:
+        logger.error(
+            "Error retrieving analytics",
+            extra={"user_id": str(user.id), "error": str(e)},
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to retrieve analytics")
 
 @router.get("/export/csv")
 def export_analytics_csv(
@@ -27,9 +42,15 @@ def export_analytics_csv(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
-    data = svc.get_analytics(user_id=user.id, range_param=range_param)
-    temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv", newline="")
     try:
+        logger.info("Generating CSV analytics export", extra={
+            "user_id": user.id,
+            "range": range_param
+        })
+        
+        data = svc.get_analytics(user_id=user.id, range_param=range_param)
+        temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".csv", newline="")
+        
         w = csv.writer(temp_file)
 
         # Overview
@@ -110,9 +131,20 @@ def export_analytics_csv(
             for h in bt.get("byHour", []): w.writerow([h.get("label",""), h.get("value",0)])
 
         temp_file.close()
+        
+        logger.info("CSV export generated successfully", extra={
+            "user_id": user.id,
+            "range": range_param
+        })
+        
         return FileResponse(temp_file.name, media_type="text/csv", filename=f"analytics-data-{range_param}.csv")
     except Exception as e:
         temp_file.close()
+        logger.error("Failed to generate CSV export", extra={
+            "user_id": user.id,
+            "range": range_param,
+            "error": str(e)
+        }, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {e}")
 
 @router.get("/export/pdf")
@@ -121,8 +153,13 @@ def export_analytics_pdf(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
-    data = svc.get_analytics(user_id=user.id, range_param=range_param)
     try:
+        logger.info("Generating PDF analytics export", extra={
+            "user_id": user.id,
+            "range": range_param
+        })
+        
+        data = svc.get_analytics(user_id=user.id, range_param=range_param)
         from reportlab.lib.pagesizes import LETTER
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -186,18 +223,43 @@ def export_analytics_pdf(
             table("By Hour", [["Hour","Score"]] + [[h.get("label",""), h.get("value",0)] for h in bt.get("byHour", [])])
 
         doc.build(story); buf.seek(0)
+        
+        logger.info("PDF export generated successfully", extra={
+            "user_id": user.id,
+            "range": range_param
+        })
+        
         return StreamingResponse(buf, media_type="application/pdf",
                                  headers={"Content-Disposition": f"attachment; filename=analytics-report-{range_param}.pdf"})
-    except Exception:
+    except Exception as e:
+        logger.warning("PDF generation failed, falling back to text", extra={
+            "user_id": user.id,
+            "range": range_param,
+            "error": str(e)
+        })
         # simple text fallback
-        tmp = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt")
-        tmp.write("Applytide Analytics Report\n=========================\n\n")
-        tmp.write(f"Range: {range_param}\n\n")
-        ov = data.get("overview", {})
-        tmp.write("Overview:\n")
-        tmp.write(f"- Total Applications: {ov.get('totalApplications',0)}\n")
-        tmp.write(f"- Interview Rate: {ov.get('interviewRate',0)}%\n")
-        tmp.write(f"- Offer Rate: {ov.get('offerRate',0)}%\n")
-        tmp.write(f"- Avg Response Time: {ov.get('avgResponseTime',0)} days\n")
-        tmp.close()
-        return FileResponse(tmp.name, media_type="text/plain", filename=f"analytics-report-{range_param}.txt")
+        try:
+            tmp = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt")
+            tmp.write("Applytide Analytics Report\n=========================\n\n")
+            tmp.write(f"Range: {range_param}\n\n")
+            ov = data.get("overview", {})
+            tmp.write("Overview:\n")
+            tmp.write(f"- Total Applications: {ov.get('totalApplications',0)}\n")
+            tmp.write(f"- Interview Rate: {ov.get('interviewRate',0)}%\n")
+            tmp.write(f"- Offer Rate: {ov.get('offerRate',0)}%\n")
+            tmp.write(f"- Avg Response Time: {ov.get('avgResponseTime',0)} days\n")
+            tmp.close()
+            
+            logger.info("Text fallback export generated", extra={
+                "user_id": user.id,
+                "range": range_param
+            })
+            
+            return FileResponse(tmp.name, media_type="text/plain", filename=f"analytics-report-{range_param}.txt")
+        except Exception as fallback_error:
+            logger.error("Failed to generate fallback text export", extra={
+                "user_id": user.id,
+                "range": range_param,
+                "error": str(fallback_error)
+            }, exc_info=True)
+            raise HTTPException(status_code=500, detail="Failed to generate analytics export")

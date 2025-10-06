@@ -170,7 +170,9 @@ class DocumentsAdminRepository:
             try:
                 os.remove(file_path)
             except Exception as e:
-                print(f"Failed to delete file {file_path}: {e}")
+                from ...infra.logging import get_logger
+                logger = get_logger(__name__)
+                logger.error("Failed to delete file", extra={"file_path": file_path, "error": str(e)}, exc_info=True)
         
         return delete_result.rowcount > 0, file_path
     
@@ -220,7 +222,9 @@ class DocumentsAdminRepository:
                 try:
                     os.remove(file_path)
                 except Exception as e:
-                    print(f"Failed to delete file {file_path}: {e}")
+                    from ...infra.logging import get_logger
+                    logger = get_logger(__name__)
+                    logger.error("Failed to delete file", extra={"file_path": file_path, "error": str(e)}, exc_info=True)
         
         return delete_result.rowcount
     

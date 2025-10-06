@@ -1,8 +1,5 @@
 # backend/app/api/routers/admin/security.py
-"""Securityclass BlockIPRequest(BaseModel):
-    ip_address: str = Field(..., pattern=r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
-    reason: Optional[str] = None
-    duration_hours: Optional[int] = Field(default=None, ge=1)itoring"""
+"""Security monitoring"""
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -16,9 +13,12 @@ from ....db.session import get_db
 from ....db import models
 from ....domain.admin.security_service import SecurityAdminService
 from ....infra.cache.service import CacheService, get_cache_service
+from ....infra.logging import get_logger
+from ....infra.logging.security_logging import log_security_event
 
 
 router = APIRouter(tags=["admin-security"])
+logger = get_logger(__name__)
 
 # Failed login tracking, IP blacklist management, session monitoring
 
@@ -84,50 +84,107 @@ async def get_security_stats(
     
     Returns failed login counts, blocked IPs, suspicious activities, and active sessions
     """
-    service = SecurityAdminService(db, cache_service)
-    stats = await service.get_security_stats()
+    try:
+        logger.info(
+            "Admin requesting security statistics",
+            extra={"admin_id": str(current_admin.id)}
+        )
+        
+        service = SecurityAdminService(db, cache_service)
+        stats = await service.get_security_stats()
+        
+        logger.info(
+            "Security statistics retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "failed_logins_24h": stats.failed_logins_24h,
+                "blocked_ips_count": stats.blocked_ips_count
+            }
+        )
+        
+        return SecurityStatsResponse(
+            failed_logins_24h=stats.failed_logins_24h,
+            failed_logins_7d=stats.failed_logins_7d,
+            blocked_ips_count=stats.blocked_ips_count,
+            suspicious_activities_24h=stats.suspicious_activities_24h,
+            active_sessions_count=stats.active_sessions_count
+        )
     
-    return SecurityStatsResponse(
-        failed_logins_24h=stats.failed_logins_24h,
-        failed_logins_7d=stats.failed_logins_7d,
-        blocked_ips_count=stats.blocked_ips_count,
-        suspicious_activities_24h=stats.suspicious_activities_24h,
-        active_sessions_count=stats.active_sessions_count
-    )
+    except Exception as e:
+        logger.error(
+            "Error retrieving security statistics",
+            extra={
+                "admin_id": str(current_admin.id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve security statistics"
+        )
 
 
 @router.get(
     "/security/failed-logins",
-    response_model=list[FailedLoginResponse],
+    response_model=List[FailedLoginResponse],
     summary="Get Failed Login Attempts"
 )
-@limiter.limit("30/minute")
+@limiter.limit("60/minute")
 async def get_failed_logins(
     request: Request,
-    hours: int = Query(default=24, ge=1, le=168),
-    limit: int = Query(default=100, ge=1, le=500),
+    hours: int = Query(24, ge=1, le=168, description="Hours to look back"),
+    limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
     cache_service: CacheService = Depends(get_cache_service),
     current_admin: models.User = Depends(get_admin_user)
 ):
     """
     Get recent failed login attempts
-    
-    Returns list of failed authentication attempts from audit logs
+    - Shows suspicious activity
+    - Helps identify attack patterns
     """
-    service = SecurityAdminService(db, cache_service)
-    failed_logins = await service.get_failed_logins(hours=hours, limit=limit)
-    
-    return [
-        FailedLoginResponse(
-            email=login.email,
-            ip_address=login.ip_address,
-            timestamp=login.timestamp,
-            reason=login.reason,
-            user_agent=login.user_agent
+    try:
+        logger.info(
+            "Admin requesting failed login attempts",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours,
+                "limit": limit
+            }
         )
-        for login in failed_logins
-    ]
+        
+        service = SecurityAdminService(db, cache_service)
+        failed_logins = await service.get_failed_logins(
+            hours=hours,
+            limit=limit
+        )
+        
+        logger.info(
+            "Failed login attempts retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours,
+                "count": len(failed_logins)
+            }
+        )
+        
+        return failed_logins
+    
+    except Exception as e:
+        logger.error(
+            "Error retrieving failed login attempts",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve login attempts"
+        )
 
 
 @router.get(
@@ -147,20 +204,50 @@ async def get_blocked_ips(
     
     Returns all IPs on the blacklist with block reasons and expiration times
     """
-    service = SecurityAdminService(db, cache_service)
-    blocked_ips = await service.get_blocked_ips()
-    
-    return [
-        BlockedIPResponse(
-            ip_address=ip.ip_address,
-            reason=ip.reason,
-            blocked_at=ip.blocked_at,
-            blocked_by_admin_id=ip.blocked_by_admin_id,
-            expires_at=ip.expires_at,
-            failed_attempts=ip.failed_attempts
+    try:
+        logger.info(
+            "Admin requesting blocked IPs",
+            extra={"admin_id": str(current_admin.id)}
         )
-        for ip in blocked_ips
-    ]
+        
+        service = SecurityAdminService(db, cache_service)
+        blocked_ips = await service.get_blocked_ips()
+        
+        result = [
+            BlockedIPResponse(
+                ip_address=ip.ip_address,
+                reason=ip.reason,
+                blocked_at=ip.blocked_at,
+                blocked_by_admin_id=ip.blocked_by_admin_id,
+                expires_at=ip.expires_at,
+                failed_attempts=ip.failed_attempts
+            )
+            for ip in blocked_ips
+        ]
+        
+        logger.info(
+            "Blocked IPs retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "count": len(result)
+            }
+        )
+        
+        return result
+    
+    except Exception as e:
+        logger.error(
+            "Error retrieving blocked IPs",
+            extra={
+                "admin_id": str(current_admin.id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve blocked IPs"
+        )
 
 
 @router.post(
@@ -182,22 +269,87 @@ async def block_ip_address(
     - Can be permanent or temporary (with duration)
     - All blocks are audit logged
     """
-    service = SecurityAdminService(db, cache_service)
+    try:
+        ip_address, user_agent = get_client_info(request)
+        
+        logger.warning(
+            "Admin blocking IP address",
+            extra={
+                "admin_id": str(current_admin.id),
+                "admin_email": current_admin.email,
+                "target_ip": block_request.ip_address,
+                "reason": block_request.reason,
+                "duration_hours": block_request.duration_hours,
+                "admin_ip": ip_address
+            }
+        )
+        
+        log_security_event(
+            event_type="ip_blocked",
+            details={
+                "admin_id": str(current_admin.id),
+                "target_ip": block_request.ip_address,
+                "reason": block_request.reason,
+                "duration_hours": block_request.duration_hours
+            },
+            request=request
+        )
+        
+        service = SecurityAdminService(db, cache_service)
+        
+        success = await service.block_ip(
+            ip_address=block_request.ip_address,
+            reason=block_request.reason,
+            admin_id=current_admin.id,
+            duration_hours=block_request.duration_hours
+        )
+        
+        if not success:
+            logger.error(
+                "Failed to block IP address",
+                extra={
+                    "admin_id": str(current_admin.id),
+                    "target_ip": block_request.ip_address
+                }
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to block IP address"
+            )
+        
+        logger.info(
+            "IP address blocked successfully",
+            extra={
+                "admin_id": str(current_admin.id),
+                "target_ip": block_request.ip_address,
+                "duration_hours": block_request.duration_hours
+            }
+        )
+        
+        return {
+            "success": True,
+            "ip_address": block_request.ip_address,
+            "message": f"IP {block_request.ip_address} has been blocked",
+            "expires_at": (datetime.utcnow() + timedelta(hours=block_request.duration_hours)).isoformat() 
+                if block_request.duration_hours else None
+        }
     
-    success = await service.block_ip(
-        ip_address=block_request.ip_address,
-        reason=block_request.reason,
-        admin_id=current_admin.id,
-        duration_hours=block_request.duration_hours
-    )
-    
-    return {
-        "success": True,
-        "ip_address": block_request.ip_address,
-        "message": f"IP {block_request.ip_address} has been blocked",
-        "expires_at": (datetime.utcnow() + timedelta(hours=block_request.duration_hours)).isoformat() 
-            if block_request.duration_hours else None
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error blocking IP address",
+            extra={
+                "admin_id": str(current_admin.id),
+                "target_ip": block_request.ip_address,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to block IP address"
+        )
 
 
 @router.delete(
@@ -218,26 +370,79 @@ async def unblock_ip_address(
     - Requires step-up authentication
     - All unblocks are audit logged
     """
-    service = SecurityAdminService(db, cache_service)
+    try:
+        ip_address, user_agent = get_client_info(request)
+        
+        logger.warning(
+            "Admin unblocking IP address",
+            extra={
+                "admin_id": str(current_admin.id),
+                "admin_email": current_admin.email,
+                "target_ip": unblock_request.ip_address,
+                "justification": unblock_request.justification,
+                "admin_ip": ip_address
+            }
+        )
+        
+        log_security_event(
+            event_type="ip_unblocked",
+            details={
+                "admin_id": str(current_admin.id),
+                "target_ip": unblock_request.ip_address,
+                "justification": unblock_request.justification
+            },
+            request=request
+        )
+        
+        service = SecurityAdminService(db, cache_service)
+        
+        unblocked = await service.unblock_ip(
+            ip_address=unblock_request.ip_address,
+            admin_id=current_admin.id,
+            justification=unblock_request.justification
+        )
+        
+        if unblocked:
+            logger.info(
+                "IP address unblocked successfully",
+                extra={
+                    "admin_id": str(current_admin.id),
+                    "target_ip": unblock_request.ip_address
+                }
+            )
+            return {
+                "success": True,
+                "ip_address": unblock_request.ip_address,
+                "message": f"IP {unblock_request.ip_address} has been unblocked"
+            }
+        else:
+            logger.warning(
+                "Attempted to unblock IP that was not blocked",
+                extra={
+                    "admin_id": str(current_admin.id),
+                    "target_ip": unblock_request.ip_address
+                }
+            )
+            return {
+                "success": False,
+                "ip_address": unblock_request.ip_address,
+                "message": f"IP {unblock_request.ip_address} was not blocked"
+            }
     
-    unblocked = await service.unblock_ip(
-        ip_address=unblock_request.ip_address,
-        admin_id=current_admin.id,
-        justification=unblock_request.justification
-    )
-    
-    if unblocked:
-        return {
-            "success": True,
-            "ip_address": unblock_request.ip_address,
-            "message": f"IP {unblock_request.ip_address} has been unblocked"
-        }
-    else:
-        return {
-            "success": False,
-            "ip_address": unblock_request.ip_address,
-            "message": f"IP {unblock_request.ip_address} was not blocked"
-        }
+    except Exception as e:
+        logger.error(
+            "Error unblocking IP address",
+            extra={
+                "admin_id": str(current_admin.id),
+                "target_ip": unblock_request.ip_address,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unblock IP address"
+        )
 
 
 @router.get(
@@ -258,20 +463,55 @@ async def get_active_sessions(
     
     Returns users who have logged in within the specified time window
     """
-    service = SecurityAdminService(db, cache_service)
-    sessions = await service.get_active_sessions(hours=hours)
-    
-    return [
-        ActiveSessionResponse(
-            user_id=session.user_id,
-            user_email=session.user_email,
-            ip_address=session.ip_address,
-            last_activity=session.last_activity,
-            session_started=session.session_started,
-            user_agent=session.user_agent
+    try:
+        logger.info(
+            "Admin requesting active sessions",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours
+            }
         )
-        for session in sessions
-    ]
+        
+        service = SecurityAdminService(db, cache_service)
+        sessions = await service.get_active_sessions(hours=hours)
+        
+        result = [
+            ActiveSessionResponse(
+                user_id=session.user_id,
+                user_email=session.user_email,
+                ip_address=session.ip_address,
+                last_activity=session.last_activity,
+                session_started=session.session_started,
+                user_agent=session.user_agent
+            )
+            for session in sessions
+        ]
+        
+        logger.info(
+            "Active sessions retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours,
+                "count": len(result)
+            }
+        )
+        
+        return result
+    
+    except Exception as e:
+        logger.error(
+            "Error retrieving active sessions",
+            extra={
+                "admin_id": str(current_admin.id),
+                "hours": hours,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve active sessions"
+        )
 
 
 # ==================== GDPR COMPLIANCE TOOLS ====================

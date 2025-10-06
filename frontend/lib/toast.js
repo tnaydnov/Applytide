@@ -81,9 +81,9 @@ const Toast = ({ toast, onRemove }) => {
 
 // Simple toast function for compatibility
 const toast = {
-  success: (message) => console.log('✅', message),
+  success: (message) => { /* Production: console removed */ },
   error: (message) => console.error('❌', message),
-  info: (message) => console.log('ℹ️', message),
+  info: (message) => { /* Production: console removed */ },
 };
 
 export default toast;

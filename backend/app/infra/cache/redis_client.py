@@ -11,5 +11,7 @@ def check_redis_health():
     try:
         return r.ping()
     except Exception as e:
-        print(f"Redis connection error: {e}")
+        # Log to stderr since this is initialization
+        import sys
+        sys.stderr.write(f"Redis connection error: {e}\n")
         return False

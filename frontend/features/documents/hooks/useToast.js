@@ -1,7 +1,7 @@
 export default function useToast() {
   return {
-    success: (m) => console.log("[toast:success]", m),
+    success: (m) => { /* Production: console removed */ },
     error: (m) => console.error("[toast:error]", m),
-    info: (m) => console.log("[toast:info]", m),
+    info: (m) => { /* Production: console removed */ },
   };
 }

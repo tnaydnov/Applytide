@@ -15,11 +15,14 @@ from fastapi import HTTPException
 from ...db import models
 from ...infra.files.document_store import DocumentStore, sanitize_display_name
 from ...infra.extractors.text_extractor import TextExtractor, SAFE_BULLET
+from ...infra.logging import get_logger
 from ...api.schemas.documents import (
     DocumentType, DocumentStatus, DocumentFormat,
     DocumentAnalysis, ATSScore, CoverLetterRequest, DocumentOptimizationRequest,
     DocumentResponse, DocumentListResponse
 )
+
+logger = get_logger(__name__)
 
 # Optional OpenAI (sync) for resume analysis details
 try:
@@ -46,16 +49,18 @@ class DocumentService:
         try:
             from ...infra.external.ai_cover_letter_provider import AICoverLetterService
             self.ai_cover_letter_service = AICoverLetterService()
+            logger.info("AI cover letter service initialized")
         except Exception as e:
-            print(f"[documents] AI cover letter unavailable: {e}")
+            logger.warning("AI cover letter service unavailable", extra={"error": str(e)})
 
         # optional LLM
         self._llm = None
         if OpenAI and _OPENAI_API_KEY:
             try:
                 self._llm = OpenAI(api_key=_OPENAI_API_KEY)
+                logger.info("OpenAI LLM initialized for document service")
             except Exception as e:
-                print(f"[documents] OpenAI init failed: {e}")
+                logger.warning("OpenAI LLM initialization failed", extra={"error": str(e)})
                 self._llm = None
 
     # ---------------- Core helpers ----------------
@@ -290,7 +295,10 @@ class DocumentService:
                     html_content = self._generate_html_via_openai(doc.text or "")
                     return "html", {"content": html_content}
                 except Exception as e:
-                    print(f"[documents] Failed to generate HTML preview via OpenAI: {e}")
+                    logger.warning("Failed to generate HTML preview via OpenAI", extra={
+                        "document_id": str(doc.id),
+                        "error": str(e)
+                    })
 
             try:
                 processed = (doc.text or "")
@@ -409,38 +417,44 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
             cache = side.get("analysis_cache", {})
             
             if not cache:
-                print(f"[cache] MISS: No cache found for {file_path.name}")
+                logger.debug("Cache miss: No cache found", extra={"file": file_path.name})
                 return None
                 
             stored_key = cache.get("cache_key")
             if stored_key != cache_key:
-                print(f"[cache] MISS: Key mismatch for {file_path.name}")
-                print(f"[cache]   Expected: {cache_key[:50]}...")
-                print(f"[cache]   Found: {stored_key[:50] if stored_key else 'None'}...")
+                logger.debug("Cache miss: Key mismatch", extra={
+                    "file": file_path.name,
+                    "expected_key": cache_key[:50],
+                    "found_key": stored_key[:50] if stored_key else None
+                })
                 return None
             
             cached_data = cache.get("data")
             if not cached_data:
-                print(f"[cache] MISS: No data in cache for {file_path.name}")
+                logger.debug("Cache miss: No data", extra={"file": file_path.name})
                 return None
                 
             # Validate it has minimum required structure
             if not isinstance(cached_data, dict):
-                print(f"[cache] MISS: Invalid cache data type for {file_path.name}")
+                logger.debug("Cache miss: Invalid data type", extra={"file": file_path.name})
                 return None
                 
             if "ats_score" not in cached_data:
-                print(f"[cache] MISS: Missing ats_score in cache for {file_path.name}")
+                logger.debug("Cache miss: Missing ats_score", extra={"file": file_path.name})
                 return None
             
             cached_at = cache.get("cached_at")
-            print(f"[cache] HIT: Loaded from cache (cached at: {cached_at})")
+            logger.debug("Cache hit", extra={
+                "file": file_path.name,
+                "cached_at": cached_at
+            })
             return cached_data
             
         except Exception as e:
-            print(f"[cache] ERROR: Cache read failed: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error("Cache read failed", extra={
+                "file": file_path.name,
+                "error": str(e)
+            }, exc_info=True)
         return None
 
     def _write_analysis_cache(self, file_path: Path, cache_key: str, analysis_data: Dict[str, Any]) -> None:
@@ -455,11 +469,15 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 "cached_at": datetime.now().isoformat()
             }
             self._write_sidecar(file_path, side)
-            print(f"[cache] WRITE: Cached analysis for {file_path.name}")
-            print(f"[cache]   Key: {cache_key[:50]}...")
+            logger.debug("Cache write successful", extra={
+                "file": file_path.name,
+                "cache_key": cache_key[:50]
+            })
         except Exception as e:
-            print(f"[cache] ERROR: Cache write failed: {e}")
-            import traceback
+            logger.error("Cache write failed", extra={
+                "file": file_path.name,
+                "error": str(e)
+            }, exc_info=True)
             traceback.print_exc()
 
     def _llm_analyze_job_first(self, *, resume_text: str, job_meta: str,
@@ -725,7 +743,7 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 f.write(f"{resume_text}\n\n")
             return str(log_file)
         except Exception as e:
-            print(f"Error writing analysis to log file: {str(e)}")
+            logger.error("Failed to write analysis log file", extra={"error": str(e)})
             return None
 
     def _extract_keywords_from_job(self, job) -> List[str]:
@@ -777,7 +795,7 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 j = self._llm_analyze_general_first(resume_text=text_content or "")
                 return j
             except Exception as e:
-                print(f"[documents] LLM-first general analysis failed, using fallback: {e}")
+                logger.warning("LLM general analysis failed, using fallback", extra={"error": str(e)})
 
         # ---- Fallback to your previous heuristic version ----
         lines = text_content.split("\n")
@@ -855,7 +873,10 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                     extra_keywords=extra_keywords,
                 )
             except Exception as e:
-                print(f"[documents] LLM-first job analysis failed, using fallback: {e}")
+                logger.warning("LLM job analysis failed, using fallback", extra={
+                    "error": str(e),
+                    "job_meta_length": len(job_meta)
+                })
 
         # ---- Fallback to your existing deterministic approach (unchanged) ----
         text_lower = resume_text.lower()
@@ -1080,7 +1101,10 @@ h1 {{ font-size:18px; font-weight:bold; border-bottom:1px solid #ddd; padding-bo
                 if result.get("success"):
                     return result
             except Exception as e:
-                print(f"[documents] AI cover letter failed, falling back: {e}")
+                logger.warning("AI cover letter generation failed, using template fallback", extra={
+                    "job_id": request.job_id,
+                    "error": str(e)
+                })
         return self._generate_template_cover_letter(db, request, resume_content)
 
     def _generate_template_cover_letter(self, db: Session, request: CoverLetterRequest, resume_content: str) -> dict:

@@ -3,40 +3,44 @@ import re
 from bs4 import BeautifulSoup
 from readability import Document
 from ...domain.jobs.extraction.ports import MainContentExtractor
+from ..logging import get_logger
+
+logger = get_logger(__name__)
 
 class ReadabilityMainContent(MainContentExtractor):
     def extract(self, html: str) -> str:
-        print("\n=== HTML MAIN CONTENT EXTRACTOR ===")
-        print(f"HTML Extractor: Received HTML length = {len(html or '')}")
+        html_len = len(html or '')
+        logger.debug("HTML content extraction started", extra={"html_length": html_len})
         
         # Handle empty or minimal HTML content
         if not html or len(html.strip()) < 10:
-            print("HTML Extractor: HTML is empty or too short, returning empty string")
+            logger.debug("HTML too short, returning empty string", extra={"html_length": html_len})
             return ""
         
-        print(f"HTML Extractor: Attempting readability extraction...")
+        logger.debug("Attempting readability extraction")
         try:
             doc = Document(html)
             summary_html = doc.summary(html_partial=True)
             soup = BeautifulSoup(summary_html, "lxml")
             text = soup.get_text("\n")
-            print(f"HTML Extractor: Readability extraction successful, text length = {len(text)}")
+            logger.debug("Readability extraction successful", extra={"text_length": len(text)})
         except Exception as e:
-            print(f"HTML Extractor ERROR: Readability extraction failed: {str(e)}")
-            print(f"HTML Extractor: Falling back to BeautifulSoup...")
+            logger.warning("Readability extraction failed, falling back to BeautifulSoup", extra={"error": str(e)})
             try:
                 soup = BeautifulSoup(html, "lxml")
                 text = soup.get_text("\n")
-                print(f"HTML Extractor: BeautifulSoup extraction successful, text length = {len(text)}")
+                logger.debug("BeautifulSoup extraction successful", extra={"text_length": len(text)})
             except Exception as e2:
-                print(f"HTML Extractor ERROR: BeautifulSoup extraction also failed: {str(e2)}")
+                logger.error("BeautifulSoup extraction also failed", extra={"error": str(e2)})
                 return ""
         
         text = text.replace("\u00A0", " ")
         text = re.sub(r"[ \t]+\n", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
         result = text.strip()
-        print(f"HTML Extractor: Final cleaned text length = {len(result)}")
-        print(f"HTML Extractor: Text preview = {repr(result[:200])}")
-        print("=== HTML EXTRACTOR COMPLETE ===")
+        
+        logger.debug("HTML extraction complete", extra={
+            "final_length": len(result),
+            "preview": result[:200]
+        })
         return result

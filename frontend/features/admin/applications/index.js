@@ -158,8 +158,8 @@ export default function ApplicationsPage() {
               applications={applications}
               selectedIds={selectedIds}
               onSelectIds={setSelectedIds}
-              onViewDetails={(id) => console.log('View details:', id)}
-              onUpdateStatus={(app) => console.log('Update status:', app)}
+              onViewDetails={(id) => { /* Production: console removed */ }}
+              onUpdateStatus={(app) => { /* Production: console removed */ }}
               onDelete={handleDeleteSingle}
             />
 

@@ -1,6 +1,5 @@
 <!doctype html>
 <html>
-
 <head>
   <meta charset="utf-8" />
   <title>Applytide</title>
@@ -14,19 +13,8 @@
       min-height: 400px;
       overflow: hidden;
     }
-
-    .wrap {
-      padding: 16px;
-    }
-
-    h1 {
-      margin: 0 0 16px;
-      font-size: 20px;
-      font-weight: 700;
-      text-align: center;
-      color: #4f46e5;
-    }
-
+    .wrap { padding: 16px; }
+    h1 { margin: 0 0 16px; font-size: 20px; font-weight: 700; text-align: center; color: #4f46e5; }
     .card {
       border: 1px solid rgba(255, 255, 255, .12);
       border-radius: 12px;
@@ -34,7 +22,6 @@
       background: #111827;
       margin-bottom: 12px;
     }
-
     .btn {
       border: 1px solid rgba(148, 163, 184, .3);
       background: #1f2937;
@@ -49,199 +36,52 @@
       align-items: center;
       gap: 8px;
     }
-
-    .btn:hover {
-      background: #374151;
-      transform: translateY(-1px);
-    }
-
-    .btn.primary {
-      background: #4f46e5;
-      border-color: #4338ca;
-    }
-
-    .btn.primary:hover {
-      background: #4338ca;
-    }
-
-    .btn.block {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    .muted {
-      color: #94a3b8;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
+    .btn:hover { background: #374151; transform: translateY(-1px); }
+    .btn.primary { background: #4f46e5; border-color: #4338ca; }
+    .btn.primary:hover { background: #4338ca; }
+    .btn.block { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    .muted { color: #94a3b8; font-size: 13px; line-height: 1.5; }
     .status {
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      text-align: center;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      font-size: 12px; padding: 8px 12px; border-radius: 8px; text-align: center;
+      margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;
     }
+    .status.loading { background: rgba(79, 70, 229, 0.1); color: #a5b4fc; border: 1px solid rgba(79, 70, 229, 0.2); }
+    .status.success { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .status.error { background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
 
-    .status.loading {
-      background: rgba(79, 70, 229, 0.1);
-      color: #a5b4fc;
-      border: 1px solid rgba(79, 70, 229, 0.2);
+    input, textarea {
+      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, .3);
+      background: #0b1220; color: #e5e7eb; font-size: 14px; transition: border-color 0.2s ease; box-sizing: border-box;
     }
+    input:focus, textarea:focus { outline: none; border-color: #4f46e5; }
+    label { display: block; margin: 0 0 6px; font-weight: 500; color: #f1f5f9; }
 
-    .status.success {
-      background: rgba(16, 185, 129, 0.1);
-      color: #6ee7b7;
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%; border-top-color: #4f46e5; animation: spin 1s ease-in-out infinite; }
+    .spinner.large { width: 24px; height: 24px; border-width: 3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .status.error {
-      background: rgba(239, 68, 68, 0.1);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
 
-    /* Input styles */
-    input,
-    textarea {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid rgba(148, 163, 184, .3);
-      background: #0b1220;
-      color: #e5e7eb;
-      font-size: 14px;
-      transition: border-color 0.2s ease;
-      box-sizing: border-box;
-    }
+    .progress-container { background: rgba(148, 163, 184, 0.2); border-radius: 6px; height: 6px; margin: 16px 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed); border-radius: 6px; transition: width 0.3s ease; width: 0%; }
+    .progress-bar.error { background: #ef4444; }
 
-    input:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #4f46e5;
-    }
+    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-row .btn { flex: 1; }
 
-    label {
-      display: block;
-      margin: 0 0 6px;
-      font-weight: 500;
-      color: #f1f5f9;
-    }
-
-    /* Loading spinner */
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: #4f46e5;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    .spinner.large {
-      width: 24px;
-      height: 24px;
-      border-width: 3px;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* Hide/show sections */
-    .section {
-      display: none;
-    }
-
-    .section.active {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Progress bar */
-    .progress-container {
-      background: rgba(148, 163, 184, 0.2);
-      border-radius: 6px;
-      height: 6px;
-      margin: 16px 0;
-      overflow: hidden;
-    }
-
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #4f46e5, #7c3aed);
-      border-radius: 6px;
-      transition: width 0.3s ease;
-      width: 0%;
-    }
-
-    .progress-bar.error {
-      background: #ef4444;
-    }
-
-    /* Compact layout */
-    .btn-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .btn-row .btn {
-      flex: 1;
-    }
-
-    /* Success/error results */
-    .result-success {
-      text-align: center;
-      color: #10b981;
-    }
-
-    .result-error {
-      text-align: center;
-      color: #ef4444;
-    }
-
-    .result-details {
-      font-size: 12px;
-      color: #94a3b8;
-      margin-top: 8px;
-      padding: 8px;
-      background: rgba(148, 163, 184, 0.1);
-      border-radius: 6px;
-    }
+    .result-success { text-align: center; color: #10b981; }
+    .result-error { text-align: center; color: #ef4444; }
+    .result-details { font-size: 12px; color: #94a3b8; margin-top: 8px; padding: 8px; background: rgba(148, 163, 184, 0.1); border-radius: 6px; }
   </style>
 </head>
-
 <body>
   <div class="wrap">
     <h1>🎯 Applytide</h1>
 
-    <!-- Status indicator - hidden by default -->
     <div id="status" class="status loading" style="display: none;">
       <span class="spinner"></span>
       Checking session...
@@ -261,29 +101,23 @@
         <input id="password" type="password" placeholder="Enter your password" />
 
         <div class="btn-row">
-          <button id="loginBtn" class="btn primary">
-            Sign In
-          </button>
-          <button id="googleBtn" class="btn">
-            🔐 Google
-          </button>
+          <button id="loginBtn" class="btn primary">Sign In</button>
+          <button id="googleBtn" class="btn">🔐 Google</button>
         </div>
       </div>
     </div>
 
     <!-- Main Action Section -->
     <div id="mainSection" class="section">
-      <!-- Quick save for supported sites -->
+      <!-- Quick save -->
       <div id="quickSaveCard" class="card" style="display: none;">
         <div style="text-align: center;">
-          <button id="saveJobBtn" class="btn primary block">
-            💾 Save Current Job
-          </button>
+          <button id="saveJobBtn" class="btn primary block">💾 Save Current Job</button>
           <div class="muted" style="margin-top: 8px;">Automatic extraction available</div>
         </div>
       </div>
 
-      <!-- Manual extraction needed -->
+      <!-- Manual extraction -->
       <div id="manualCard" class="card" style="display: none;">
         <div style="text-align: center; margin-bottom: 16px;">
           <div style="font-size: 16px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
@@ -296,19 +130,13 @@
           </div>
         </div>
 
-        <textarea id="pasteBox" rows="6"
-          placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
-
-        <button id="usePastedBtn" class="btn primary block" style="margin-top: 12px;">
-          ✨ Extract Job
-        </button>
+        <textarea id="pasteBox" rows="6" placeholder="Paste the complete job posting text here (title, company, description, requirements, etc.)"></textarea>
+        <button id="usePastedBtn" class="btn primary block" style="margin-top: 12px;">✨ Extract Job</button>
       </div>
 
-      <!-- User info and logout -->
+      <!-- User info -->
       <div id="userInfo" style="display: none; text-align: center; margin-top: 12px;">
-        <button id="logoutBtn" class="btn" style="font-size: 12px; padding: 6px 12px;">
-          Sign Out
-        </button>
+        <button id="logoutBtn" class="btn" style="font-size: 12px; padding: 6px 12px;">Sign Out</button>
       </div>
     </div>
 
@@ -316,9 +144,7 @@
     <div id="processingSection" class="section">
       <div class="card">
         <div style="text-align: center;">
-          <div style="margin-bottom: 16px;">
-            <span class="spinner large"></span>
-          </div>
+          <div style="margin-bottom: 16px;"><span class="spinner large"></span></div>
           <div style="font-weight: 600; margin-bottom: 8px;">Processing Job...</div>
           <div id="processingStatus" class="muted">Starting extraction process...</div>
 
@@ -342,17 +168,16 @@
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #ef4444; font-size: 16px; font-weight: 700;">Job in Embedded Frame Detected</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;">
-              This page embeds the job in an iframe. For better extraction quality, navigate directly to the job posting URL.
-            </p>
+            <p class="muted" style="margin: 0; line-height: 1.5;">This page embeds the job in an iframe. For better extraction quality, navigate directly to the job posting URL.</p>
+            <p class="muted" id="iframeType" style="margin: 6px 0 0 0; font-size: 12px;"></p>
           </div>
         </div>
-        
+
         <div style="background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
           <p class="muted" style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600;">Direct Job URL:</p>
           <p id="iframeUrl" style="color: #60a5fa; font-size: 13px; margin: 0; font-family: monospace; word-break: break-all; line-height: 1.4;"></p>
         </div>
-        
+
         <button id="openDirectLinkBtn" class="btn primary block">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
@@ -369,17 +194,16 @@
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
           <svg width="24" height="24" fill="#f59e0b" viewBox="0 0 16 16" style="flex-shrink: 0; margin-top: 2px;">
             <path d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5z"/>
-            <path d="M1.6 11.85H0v3.999h.791v-1.342h.803c.287 0 .531-.057.732-.173.203-.117.358-.275.463-.474a1.42 1.42 0 0 0 .161-.677c0-.25-.053-.476-.158-.677a1.176 1.176 0 0 0-.46-.477c-.2-.12-.443-.179-.732-.179z"/>
+            <path d="M1.6 11.85H0v3.999h.791v-1.342h.803c.287 0 .531-.057.732-.173.203-.117.358-.275.463-.474a1.42 1.42 0 0 0 .161-.677c0-.25-.53-.476-.158-.677a1.176 1.176 0 0 0-.46-.477c-.2-.12-.443-.179-.732-.179z"/>
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #f59e0b; font-size: 16px; font-weight: 700;">PDF Document Detected</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;">
-              This job posting is in PDF format. Automatic extraction is not available for PDF documents.
-            </p>
+            <p class="muted" style="margin: 0; line-height: 1.5;">This job posting is in PDF format. Automatic extraction is not available for PDF documents.</p>
           </div>
         </div>
         <div style="background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
           <p class="muted" style="margin: 0; font-size: 13px;">Please copy and paste the job details below:</p>
+          <p id="pdfUrl" class="muted" style="margin: 6px 0 0 0; font-size: 12px;"></p>
         </div>
         <textarea id="pasteBoxPDF" rows="8" placeholder="Copy the job posting text from the PDF and paste here..."></textarea>
         <button id="usePastedPDFBtn" class="btn primary block" style="margin-top: 12px;">✨ Extract Job from Text</button>
@@ -395,9 +219,7 @@
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #f59e0b; font-size: 16px; font-weight: 700;">Canvas-Rendered Content Detected</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;">
-              This page renders content as images. Text cannot be extracted automatically from pixel-based rendering.
-            </p>
+            <p class="muted" style="margin: 0; line-height: 1.5;">This page renders content as images. Text cannot be extracted automatically from pixel-based rendering.</p>
           </div>
         </div>
         <div style="background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
@@ -417,9 +239,7 @@
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #ef4444; font-size: 16px; font-weight: 700;">Login Required</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;">
-              This job posting is behind an authentication wall. Please log in to the site first, then use the paste method to extract the job.
-            </p>
+            <p class="muted" style="margin: 0; line-height: 1.5;">This job posting is behind an authentication wall. Please log in to the site first, then use the paste method to extract the job.</p>
           </div>
         </div>
         <div style="background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
@@ -439,9 +259,7 @@
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #f59e0b; font-size: 16px; font-weight: 700;">Encapsulated Content Detected</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;">
-              This page uses web components with closed shadow DOM. Some content may not be accessible for automatic extraction.
-            </p>
+            <p class="muted" style="margin: 0; line-height: 1.5;">This page uses web components with closed shadow DOM. Some content may not be accessible for automatic extraction.</p>
           </div>
         </div>
         <div style="background: #1f2937; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
@@ -461,7 +279,7 @@
           </svg>
           <div>
             <h3 style="margin: 0 0 8px 0; color: #f59e0b; font-size: 16px; font-weight: 700;">Extraction May Not Work</h3>
-            <p class="muted" style="margin: 0; line-height: 1.5;" id="genericWarningText">
+            <p class="muted" id="genericWarningText" style="margin: 0; line-height: 1.5;">
               This page has special content that may not be extractable automatically.
             </p>
           </div>
@@ -479,14 +297,11 @@
     <div id="resultSection" class="section">
       <div class="card">
         <div id="resultContent"></div>
-        <button id="extractAnotherBtn" class="btn primary block" style="margin-top: 16px;">
-          Extract Another Job
-        </button>
+        <button id="extractAnotherBtn" class="btn primary block" style="margin-top: 16px;">Extract Another Job</button>
       </div>
     </div>
   </div>
 
   <script src="popup.js"></script>
 </body>
-
 </html>

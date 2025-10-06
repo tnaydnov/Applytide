@@ -16,10 +16,12 @@ from ....db import models
 from ....domain.admin.service import AdminService
 from ....infra.security.passwords import verify_password
 from ....infra.cache.service import CacheService, get_cache_service
+from ....infra.logging import get_logger
 from fastapi import HTTPException, status
 
 
 router = APIRouter(tags=["admin-dashboard"])
+logger = get_logger(__name__)
 
 
 @router.get("/dashboard/stats", response_model=DashboardStatsResponse)

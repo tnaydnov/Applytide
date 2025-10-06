@@ -156,7 +156,9 @@ def setup_logging():
             root_logger.addHandler(db_handler)
         except Exception as e:
             # Don't fail startup if DB handler fails
-            print(f"Warning: Could not setup database logging: {e}")
+            # Use basic logging since this is the logging setup itself
+            import sys
+            sys.stderr.write(f"Warning: Could not setup database logging: {e}\n")
     
     # 4. Separate Security Logger
     security_logger = logging.getLogger("security")

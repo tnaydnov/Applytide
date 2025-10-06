@@ -1,6 +1,22 @@
+// Production-safe console wrapper - disable logs in production
+(function () {
+  try {
+    const m = chrome.runtime.getManifest();
+    const DEV = (m.version_name && m.version_name.includes('dev')) || (m.name || '').includes('(Dev)');
+    if (!DEV) {
+      // keep warn/error for visibility in prod
+      const originalLog = console.log;
+      console.log = function () { /* Production: logs disabled */ };
+    }
+  } catch {
+    // If manifest isn't available for any reason, disable logs to be safe
+    console.log = function () { /* Production: logs disabled */ };
+  }
+})();
+
 const bg = chrome.runtime;
 
-// DOM Elements
+// ---------- DOM ----------
 const statusEl = document.getElementById('status');
 const authSection = document.getElementById('authSection');
 const mainSection = document.getElementById('mainSection');
@@ -24,7 +40,7 @@ const processingStatus = document.getElementById('processingStatus');
 const progressBar = document.getElementById('progressBar');
 const resultContent = document.getElementById('resultContent');
 
-// State
+// ---------- State ----------
 let currentUser = null;
 
 // Progress tracking
@@ -38,33 +54,29 @@ const progressSteps = {
   'flow:done': 100
 };
 
-// UI Navigation
+// ---------- UI helpers ----------
 function showSection(sectionName) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(sectionName + 'Section').classList.add('active');
+  const el = document.getElementById(sectionName + 'Section');
+  if (el) el.classList.add('active');
 }
 
 function setStatus(type, message) {
   statusEl.className = `status ${type}`;
-  statusEl.innerHTML = type === 'loading' ?
-    `<span class="spinner"></span> ${message}` : message;
+  statusEl.innerHTML = type === 'loading'
+    ? `<span class="spinner"></span> ${message}`
+    : message;
 
-  // Only show status for errors, hide for success/loading
+  // Only show for errors; hide for success/loading to keep UI clean
   statusEl.style.display = type === 'error' ? 'block' : 'none';
 }
 
 function setProgress(phase, message = null) {
   const pct = Math.max(0, Math.min(100, progressSteps[phase] ?? 0));
   progressBar.style.width = pct + '%';
-
-  if (message) {
-    processingStatus.textContent = message;
-  }
-
+  if (message) processingStatus.textContent = message;
   if (pct >= 100) {
-    setTimeout(() => {
-      progressBar.style.width = '0%';
-    }, 1000);
+    setTimeout(() => { progressBar.style.width = '0%'; }, 1000);
   }
 }
 
@@ -73,30 +85,25 @@ function resetProgressBar() {
   progressBar.style.width = '0%';
 }
 
-// Navigation handlers
+// ---------- Navigation ----------
 extractAnotherBtn.addEventListener('click', () => {
-  // Reset state
   pasteBox.value = '';
   resetProgressBar();
-
-  // Check mode and show appropriate section
-  checkModeAndShow();
+  checkModeAndShow(); // re-evaluate for current tab
 });
 
-// Progress updates from background
+// ---------- Progress updates from background ----------
 if (!window.__APPLYTIDE_PROGRESS_BOUND__) {
   window.__APPLYTIDE_PROGRESS_BOUND__ = true;
-
-  bg.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'APPLYTIDE_PROGRESS') {
+  bg.onMessage.addListener((message) => {
+    if (message?.type === 'APPLYTIDE_PROGRESS') {
       const { phase, status } = message;
-      console.log(`[popup] Progress update: ${phase} - ${status}`);
-      setProgress(phase, status);
+      setProgress(phase, status || null);
     }
   });
 }
 
-// Authentication
+// ---------- Auth ----------
 async function checkAuth() {
   try {
     setStatus('loading', 'Checking session...');
@@ -105,15 +112,14 @@ async function checkAuth() {
     if (response?.ok && response?.authenticated) {
       currentUser = { email: response.email || 'User' };
       setStatus('success', 'Ready');
-      
-      // Handle accessibility issues immediately
-      if (response.mode === 'allowed' && response?.accessibilityIssues && response.accessibilityIssues.length > 0) {
-        console.log('[POPUP] Accessibility issues detected:', response.accessibilityIssues);
+
+      // If we already know about accessibility issues, steer the user now
+      if (response.mode === 'allowed' && Array.isArray(response.accessibilityIssues) && response.accessibilityIssues.length > 0) {
         handleAccessibilityIssues(response.accessibilityIssues);
         userInfo.style.display = 'block';
         return;
       }
-      
+
       showSection('main');
       checkModeAndShow(response.mode);
     } else {
@@ -127,53 +133,9 @@ async function checkAuth() {
   }
 }
 
-// Handle all types of accessibility issues
-function handleAccessibilityIssues(issues) {
-  // Priority order: iframe > pdf > canvas > auth-wall > shadow-dom
-  
-  // 1. Iframe - highest priority, requires redirect
-  const iframeIssue = issues.find(i => i.type === 'iframe');
-  if (iframeIssue && iframeIssue.url) {
-    showIframeWarning(iframeIssue.url, iframeIssue.subtype || 'generic');
-    return;
-  }
-  
-  // 2. PDF - cannot extract, must paste
-  const pdfIssue = issues.find(i => i.type === 'pdf');
-  if (pdfIssue) {
-    showPDFWarning(pdfIssue.url);
-    return;
-  }
-  
-  // 3. Canvas - cannot extract text from pixels
-  const canvasIssue = issues.find(i => i.type === 'canvas');
-  if (canvasIssue) {
-    showCanvasWarning();
-    return;
-  }
-  
-  // 4. Auth wall - content behind login
-  const authIssue = issues.find(i => i.type === 'auth-wall');
-  if (authIssue) {
-    showAuthWallWarning();
-    return;
-  }
-  
-  // 5. Shadow DOM - we can auto-extract open shadow roots
-  const shadowIssue = issues.find(i => i.type === 'shadow-dom');
-  if (shadowIssue && shadowIssue.hasClosed) {
-    showShadowDOMWarning();
-    return;
-  }
-  
-  // 6. Other issues - show generic warning
-  showGenericWarning(issues);
-}
-
 async function login() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
-
   if (!email || !password) {
     setStatus('error', 'Please enter email and password');
     return;
@@ -244,77 +206,52 @@ async function logout() {
   }
 }
 
-// Mode detection and UI setup
+// ---------- Mode detection ----------
 function checkModeAndShow(mode) {
-  // Use the mode passed from the status check, or default to 'restricted'
   const currentMode = mode || 'restricted';
-
   if (currentMode === 'allowed') {
-    // Show quick save option
     quickSaveCard.style.display = 'block';
     manualCard.style.display = 'none';
     userInfo.style.display = 'block';
   } else {
-    // Show manual extraction (paste only)
     quickSaveCard.style.display = 'none';
     manualCard.style.display = 'block';
     userInfo.style.display = 'block';
   }
 }
 
-// Job extraction methods
+// ---------- Actions (auto-extract) ----------
 async function saveCurrentJob() {
   try {
-    console.log('========================================');
-    console.log('[POPUP] Step 1: User clicked Save Current Job');
-    console.log('[POPUP] Timestamp:', new Date().toISOString());
-    console.log('========================================');
-    
     showSection('processing');
     setProgress('flow:begin', 'Starting job extraction...');
     resetProgressBar();
 
-    console.log('[POPUP] Step 2: Sending APPLYTIDE_RUN_FLOW1 message to background...');
     const response = await bg.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
-    console.log('[POPUP] Step 3: Received response from background:', {
-      ok: response?.ok,
-      hasJob: !!response?.saved,
-      jobTitle: response?.saved?.title,
-      jobCompany: response?.saved?.company_name,
-      error: response?.error
-    });
 
     if (response?.ok) {
-      console.log('[POPUP] Step 4: SUCCESS - Job extracted and saved!');
-      console.log('[POPUP] Saved job details:', {
-        id: response.saved?.id,
-        title: response.saved?.title,
-        company: response.saved?.company_name,
-        location: response.saved?.location,
-        descriptionLength: response.saved?.description?.length
-      });
       setProgress('flow:done', 'Job saved successfully!');
       showResult(true, 'Job saved successfully!', response.saved);
     } else {
-      console.error('[POPUP] Step 4: FAILED - Job extraction failed');
-      console.error('[POPUP] Error message:', response?.error);
       showResult(false, response?.error || 'Failed to save job');
     }
   } catch (error) {
-    console.error('[POPUP] Step 4: EXCEPTION caught:', error);
-    console.error('[POPUP] Error stack:', error.stack);
+    console.error('saveCurrentJob failed:', error);
     showResult(false, 'Failed to save job');
   }
 }
 
+// ---------- Actions (paste) ----------
 async function extractFromText() {
   const text = pasteBox.value.trim();
+  await extractFromPastedText(text);
+}
 
-  if (!text) {
+async function extractFromPastedText(text) {
+  if (!text || !text.trim()) {
     setStatus('error', 'Please paste some job text first');
     return;
   }
-
   if (text.length < 100) {
     setStatus('error', 'Please paste more job details');
     return;
@@ -325,15 +262,13 @@ async function extractFromText() {
     setProgress('flow:begin', 'Processing pasted text...');
     resetProgressBar();
 
-    usePastedBtn.disabled = true;
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const url = tab?.url || '';
 
     const response = await bg.sendMessage({
       type: 'APPLYTIDE_USE_PASTED',
-      text: text,
-      url: url
+      text,
+      url
     });
 
     if (response?.ok) {
@@ -345,23 +280,19 @@ async function extractFromText() {
   } catch (error) {
     console.error('Text extraction failed:', error);
     showResult(false, 'Text extraction failed');
-  } finally {
-    usePastedBtn.disabled = false;
   }
 }
 
-// Result display
+// ---------- Result ----------
 function showResult(success, message, jobData = null) {
   showSection('result');
 
   let html = '';
-
   if (success) {
     html += `<div class="result-success">
       <div style="font-size: 24px; margin-bottom: 12px;">✅</div>
       <div style="font-weight: 600; margin-bottom: 8px;">${message}</div>
     </div>`;
-
     if (jobData) {
       html += `<div class="result-details">
         <strong>ID:</strong> ${jobData.id || 'N/A'}<br>
@@ -381,42 +312,47 @@ function showResult(success, message, jobData = null) {
   resultContent.innerHTML = html;
 }
 
-// Iframe warning handlers
+// ---------- Accessibility warnings ----------
+function handleAccessibilityIssues(issues) {
+  // priority: iframe > pdf > canvas > auth-wall > shadow-dom > generic
+  const iframeIssue = issues.find(i => i.type === 'iframe');
+  if (iframeIssue?.url) { showIframeWarning(iframeIssue.url, iframeIssue.subtype || 'generic'); return; }
+
+  const pdfIssue = issues.find(i => i.type === 'pdf');
+  if (pdfIssue) { showPDFWarning(pdfIssue.url); return; }
+
+  const canvasIssue = issues.find(i => i.type === 'canvas');
+  if (canvasIssue) { showCanvasWarning(); return; }
+
+  const authIssue = issues.find(i => i.type === 'auth-wall');
+  if (authIssue) { showAuthWallWarning(); return; }
+
+  const shadowIssue = issues.find(i => i.type === 'shadow-dom');
+  if (shadowIssue?.hasClosed) { showShadowDOMWarning(); return; }
+
+  showGenericWarning(issues);
+}
+
 function showIframeWarning(url, type) {
   document.getElementById('iframeUrl').textContent = url;
-  const typeText = type.charAt(0).toUpperCase() + type.slice(1);
-  const iframeTypeEl = document.getElementById('iframeType');
-  if (iframeTypeEl) iframeTypeEl.textContent = typeText;
+  const el = document.getElementById('iframeType');
+  if (el) el.textContent = (type[0]?.toUpperCase() || '') + type.slice(1);
   showSection('iframeWarning');
-  
-  // Store for button handlers
+
   window.__iframeUrl = url;
   window.__iframeType = type;
 }
 
-// PDF warning
 function showPDFWarning(url) {
-  const pdfUrlEl = document.getElementById('pdfUrl');
-  if (pdfUrlEl) pdfUrlEl.textContent = url || 'PDF document detected';
+  const el = document.getElementById('pdfUrl');
+  if (el) el.textContent = url || 'PDF document detected';
   showSection('pdfWarning');
 }
 
-// Canvas warning  
-function showCanvasWarning() {
-  showSection('canvasWarning');
-}
+function showCanvasWarning() { showSection('canvasWarning'); }
+function showAuthWallWarning() { showSection('authWallWarning'); }
+function showShadowDOMWarning() { showSection('shadowDOMWarning'); }
 
-// Auth wall warning
-function showAuthWallWarning() {
-  showSection('authWallWarning');
-}
-
-// Shadow DOM warning
-function showShadowDOMWarning() {
-  showSection('shadowDOMWarning');
-}
-
-// Generic unsupported warning
 function showGenericWarning(issues) {
   const issueTypes = issues.map(i => i.type).join(', ');
   const genericTextEl = document.getElementById('genericWarningText');
@@ -426,106 +362,86 @@ function showGenericWarning(issues) {
   showSection('genericWarning');
 }
 
+// ---------- Events ----------
 document.getElementById('openDirectLinkBtn')?.addEventListener('click', async () => {
-  if (window.__iframeUrl) {
-    console.log('[POPUP] Redirecting to direct URL:', window.__iframeUrl);
-    
+  if (!window.__iframeUrl) return;
+
+  const normalize = (u) => {
     try {
-      // Get current tab and redirect immediately
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      await chrome.tabs.update(tab.id, { url: window.__iframeUrl });
-      
-      // Close the popup explicitly
-      window.close();
-      
-    } catch (error) {
-      console.error('[POPUP] Error redirecting:', error);
-      showResult(false, 'Failed to open direct link');
+      // decode a couple of times, strip hash/query, drop trailing slash
+      let s = u;
+      for (let i = 0; i < 2; i++) { try { s = decodeURIComponent(s); } catch { break; } }
+      const url = new URL(s);
+      return (url.origin + url.pathname).replace(/\/+$/, '');
+    } catch {
+      return (u || '').replace(/[#?].*$/, '').replace(/\/+$/, '');
     }
+  };
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const currentUrl = tab?.url || '';
+    const targetUrl = window.__iframeUrl;
+
+    if (normalize(currentUrl) === normalize(targetUrl)) {
+      // We're already on the canonical page — just extract.
+      showSection('processing');
+      setProgress('flow:begin', 'Starting job extraction...');
+      resetProgressBar();
+      const resp = await chrome.runtime.sendMessage({ type: 'APPLYTIDE_RUN_FLOW1' });
+      if (resp?.ok) {
+        setProgress('flow:done', 'Job saved successfully!');
+        showResult(true, 'Job saved successfully!', resp.saved);
+      } else {
+        showResult(false, resp?.error || 'Failed to save job');
+      }
+      return;
+    }
+
+    await chrome.tabs.update(tab.id, { url: targetUrl });
+    window.close();
+  } catch (error) {
+    console.error('[POPUP] Error redirecting:', error);
+    showResult(false, 'Failed to open direct link');
   }
 });
 
-// Event listeners
+
 loginBtn.addEventListener('click', login);
 googleBtn.addEventListener('click', loginWithGoogle);
 logoutBtn.addEventListener('click', logout);
 saveJobBtn.addEventListener('click', saveCurrentJob);
 usePastedBtn.addEventListener('click', extractFromText);
 
-// Paste button handlers for all warning screens
 document.getElementById('usePastedPDFBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxPDF').value;
   extractFromPastedText(text);
 });
-
 document.getElementById('usePastedCanvasBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxCanvas').value;
   extractFromPastedText(text);
 });
-
 document.getElementById('usePastedAuthBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxAuth').value;
   extractFromPastedText(text);
 });
-
 document.getElementById('usePastedShadowBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxShadow').value;
   extractFromPastedText(text);
 });
-
 document.getElementById('usePastedGenericBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxGeneric').value;
   extractFromPastedText(text);
 });
 
 document.getElementById('tryExtractAnywayBtn')?.addEventListener('click', () => {
-  saveCurrentJob(); // Try extraction despite warnings
+  saveCurrentJob(); // Try despite warnings
 });
-
-// Unified paste extraction function
-async function extractFromPastedText(text) {
-  if (!text || !text.trim()) {
-    setStatus('error', 'Please paste some job text first');
-    return;
-  }
-
-  if (text.length < 100) {
-    setStatus('error', 'Please paste more job details');
-    return;
-  }
-
-  try {
-    showSection('processing');
-    setProgress('flow:begin', 'Processing pasted text...');
-    resetProgressBar();
-
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab?.url || '';
-
-    const response = await bg.sendMessage({
-      type: 'APPLYTIDE_USE_PASTED',
-      text: text,
-      url: url
-    });
-
-    if (response?.ok) {
-      setProgress('flow:done', 'Job extracted successfully!');
-      showResult(true, 'Job extracted from text!', response.saved);
-    } else {
-      showResult(false, response?.error || 'Text extraction failed');
-    }
-  } catch (error) {
-    console.error('Text extraction failed:', error);
-    showResult(false, 'Text extraction failed');
-  }
-}
 
 // Handle Enter key in password field
 document.getElementById('password').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    login();
-  }
+  if (e.key === 'Enter') login();
 });
 
-// Initialize
+// ---------- Init ----------
 checkAuth();

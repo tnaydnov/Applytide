@@ -8,8 +8,10 @@ import os
 import uuid
 from ...config import settings
 from ...infra.notifications.email_service import email_service
+from ...infra.logging import get_logger
 
 router = APIRouter(prefix="/api", tags=["feedback"])
+logger = get_logger(__name__)
 
 def _feedback_html(name: str, email: str, feedback_type: str, message: str, has_screenshot: bool) -> str:
     feedback_types = {
@@ -52,12 +54,27 @@ async def submit_feedback(
 
     screenshot_path = None
     try:
+        logger.info("Processing feedback submission", extra={
+            "feedback_type": type,
+            "has_screenshot": bool(screenshot),
+            "user_name": name,
+            "user_email": email
+        })
+        
         # Save screenshot (if any)
         if screenshot:
             if not screenshot.content_type.startswith('image/'):
+                logger.warning("Invalid file type for screenshot", extra={
+                    "content_type": screenshot.content_type,
+                    "filename": screenshot.filename
+                })
                 raise HTTPException(status_code=400, detail="Only image files are allowed")
             content = await screenshot.read()
             if len(content) > 5 * 1024 * 1024:
+                logger.warning("Screenshot file too large", extra={
+                    "size": len(content),
+                    "filename": screenshot.filename
+                })
                 raise HTTPException(status_code=400, detail="File size must be less than 5MB")
 
             upload_dir = "/tmp/feedback_uploads"
@@ -67,6 +84,7 @@ async def submit_feedback(
             screenshot_path = os.path.join(upload_dir, unique)
             with open(screenshot_path, "wb") as f:
                 f.write(content)
+            logger.debug("Screenshot saved", extra={"path": screenshot_path})
 
         # Build email
         to = settings.SUPPORT_EMAIL
@@ -79,11 +97,26 @@ async def submit_feedback(
 
         # cleanup
         if screenshot_path and os.path.exists(screenshot_path):
-            try: os.remove(screenshot_path)
-            except Exception: pass
+            try: 
+                os.remove(screenshot_path)
+                logger.debug("Screenshot cleaned up", extra={"path": screenshot_path})
+            except Exception as cleanup_err:
+                logger.warning("Failed to cleanup screenshot", extra={
+                    "path": screenshot_path,
+                    "error": str(cleanup_err)
+                })
 
         if ok:
+            logger.info("Feedback submitted successfully", extra={
+                "feedback_type": type,
+                "user_email": email
+            })
             return JSONResponse(status_code=200, content={"message": "Feedback submitted successfully"})
+        
+        logger.error("Failed to send feedback email", extra={
+            "feedback_type": type,
+            "to_email": to
+        })
         raise HTTPException(status_code=500, detail="Failed to send feedback")
     except HTTPException:
         # cleanup on explicit errors
@@ -95,5 +128,8 @@ async def submit_feedback(
         if screenshot_path and os.path.exists(screenshot_path):
             try: os.remove(screenshot_path)
             except Exception: pass
-        print(f"Feedback submission error: {e}")
+        logger.error("Feedback submission error", extra={
+            "feedback_type": type,
+            "error": str(e)
+        }, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

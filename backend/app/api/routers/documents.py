@@ -15,8 +15,10 @@ from ..schemas.documents import (
 )
 from ..deps import get_document_service
 from ...domain.documents.service import DocumentService
+from ...infra.logging import get_logger
 
 router = APIRouter(prefix="/api/documents", tags=["documents"], redirect_slashes=False)
+logger = get_logger(__name__)
 
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
@@ -28,35 +30,101 @@ async def upload_document(
     current_user: User = Depends(get_current_user),
     svc: DocumentService = Depends(get_document_service),
 ):
-    allowed = {".pdf", ".docx", ".doc", ".txt", ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"}
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Missing filename")
-    ext = "." + file.filename.split(".")[-1].lower()
-    if ext not in allowed:
-        raise HTTPException(status_code=400, detail="Unsupported file format")
+    try:
+        allowed = {".pdf", ".docx", ".doc", ".txt", ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"}
+        if not file.filename:
+            logger.warning(
+                "Upload attempt with missing filename",
+                extra={"user_id": str(current_user.id)}
+            )
+            raise HTTPException(status_code=400, detail="Missing filename")
+        
+        ext = "." + file.filename.split(".")[-1].lower()
+        if ext not in allowed:
+            logger.warning(
+                "Upload attempt with unsupported file format",
+                extra={
+                    "user_id": str(current_user.id),
+                    "filename": file.filename,
+                    "extension": ext
+                }
+            )
+            raise HTTPException(status_code=400, detail="Unsupported file format")
 
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="Empty file")
+        logger.info(
+            "Starting document upload",
+            extra={
+                "user_id": str(current_user.id),
+                "filename": file.filename,
+                "document_type": document_type,
+                "extension": ext
+            }
+        )
 
-    meta_dict: Dict[str, Any] = {}
-    if metadata:
-        try:
-            import json
-            meta_dict = json.loads(metadata)
-        except Exception:
-            meta_dict = {}
+        content = await file.read()
+        if not content:
+            logger.warning(
+                "Upload attempt with empty file",
+                extra={
+                    "user_id": str(current_user.id),
+                    "filename": file.filename
+                }
+            )
+            raise HTTPException(status_code=400, detail="Empty file")
 
-    row = svc.upload_document(
-        db=db,
-        user_id=str(current_user.id),
-        file_content=content,
-        filename=file.filename,
-        document_type=document_type,
-        display_name=name,
-        metadata=meta_dict,
-    )
-    return svc.resolve_document_response(row)
+        meta_dict: Dict[str, Any] = {}
+        if metadata:
+            try:
+                import json
+                meta_dict = json.loads(metadata)
+            except Exception as json_error:
+                logger.warning(
+                    "Failed to parse metadata JSON",
+                    extra={
+                        "user_id": str(current_user.id),
+                        "error": str(json_error)
+                    }
+                )
+                meta_dict = {}
+
+        row = svc.upload_document(
+            db=db,
+            user_id=str(current_user.id),
+            file_content=content,
+            filename=file.filename,
+            document_type=document_type,
+            display_name=name,
+            metadata=meta_dict,
+        )
+        
+        logger.info(
+            "Document uploaded successfully",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": str(row.id),
+                "filename": file.filename,
+                "size_bytes": len(content)
+            }
+        )
+        
+        return svc.resolve_document_response(row)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error uploading document",
+            extra={
+                "user_id": str(current_user.id),
+                "filename": file.filename if file.filename else "unknown",
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to upload document"
+        )
 
 @router.get("/", response_model=DocumentListResponse)
 def list_documents(
@@ -86,7 +154,37 @@ def get_document(
     current_user: User = Depends(get_current_user),
     svc: DocumentService = Depends(get_document_service),
 ):
-    return svc.get_document(db=db, user_id=str(current_user.id), document_id=document_id)
+    try:
+        logger.debug(
+            "Getting document",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id
+            }
+        )
+        
+        return svc.get_document(db=db, user_id=str(current_user.id), document_id=document_id)
+    
+    except ValueError:
+        logger.warning(
+            "Document not found",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id
+            }
+        )
+        raise HTTPException(status_code=404, detail="Document not found")
+    except Exception as e:
+        logger.error(
+            "Error getting document",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to retrieve document")
 
 @router.delete("/{document_id}")
 def delete_document(
@@ -95,8 +193,47 @@ def delete_document(
     current_user: User = Depends(get_current_user),
     svc: DocumentService = Depends(get_document_service),
 ):
-    svc.delete_document(db=db, user_id=str(current_user.id), document_id=document_id)
-    return {"message": "Document deleted successfully"}
+    try:
+        logger.info(
+            "Deleting document",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id
+            }
+        )
+        
+        svc.delete_document(db=db, user_id=str(current_user.id), document_id=document_id)
+        
+        logger.info(
+            "Document deleted successfully",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id
+            }
+        )
+        
+        return {"message": "Document deleted successfully"}
+    
+    except ValueError:
+        logger.warning(
+            "Document not found for deletion",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id
+            }
+        )
+        raise HTTPException(status_code=404, detail="Document not found")
+    except Exception as e:
+        logger.error(
+            "Error deleting document",
+            extra={
+                "user_id": str(current_user.id),
+                "document_id": document_id,
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to delete document")
 
 @router.put("/{document_id}/status", response_model=DocumentResponse)
 def set_document_status(
