@@ -13,7 +13,7 @@ from ....db.session import get_db
 from ....db import models
 from ....domain.admin.database_service import DatabaseAdminService
 from ....infra.logging import get_logger
-from ....infra.logging.security_logger import log_security_event
+from ....infra.logging.security_logging import log_security_event
 
 
 router = APIRouter(tags=["admin-database"])

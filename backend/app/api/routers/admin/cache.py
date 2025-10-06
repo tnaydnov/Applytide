@@ -14,7 +14,7 @@ from ....db import models
 from ....domain.admin.cache_service import CacheAdminService
 from ....infra.cache.service import CacheService, get_cache_service
 from ....infra.logging import get_logger
-from ....infra.logging.security_logger import log_security_event
+from ....infra.logging.security_logging import log_security_event
 
 
 router = APIRouter(tags=["admin-cache"])

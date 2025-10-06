@@ -16,7 +16,7 @@ from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db import models
 from ....domain.admin.service import AdminService
 from ....infra.logging import get_logger
-from ....infra.logging.security_logger import log_security_event
+from ....infra.logging.security_logging import log_security_event
 
 
 router = APIRouter(tags=["admin-users"])
