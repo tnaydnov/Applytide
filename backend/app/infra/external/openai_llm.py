@@ -139,11 +139,8 @@ class OpenAILLMExtractor(LLMExtractor):
         
         logger.debug("Text length validation passed")
 
-        # Build two views: raw (for exact description) and numbered (for line-pointer extraction)
+        # Prepare text for LLM (single view - no line numbering needed since LLM handles text removal directly)
         logger.debug("Preparing text for LLM")
-        lines = (text or "").splitlines()
-        numbered = "\n".join(f"{i+1:05d} {ln}" for i, ln in enumerate(lines))
-        logger.debug("Text split into lines", extra={"line_count": len(lines)})
 
         logger.debug("Building message array")
         messages = [{"role": "system", "content": _EXTRACT_TEXT_SYSTEM}]
@@ -153,12 +150,10 @@ class OpenAILLMExtractor(LLMExtractor):
         
         user_content = (
             f"Source URL: {url}\n\n"
-            "RAW_DESCRIPTION (use this text verbatim for the JSON 'description' field):\n"
-            "<<<BEGIN_RAW>>>\n"
+            "JOB POSTING TEXT:\n"
+            "<<<BEGIN_TEXT>>>\n"
             f"{text}\n"
-            "<<<END_RAW>>>\n\n"
-            "DESCRIPTION_LINES (1-based; use this ONLY to decide remove_lines[]):\n"
-            f"{numbered}"
+            "<<<END_TEXT>>>"
         )
         messages.append({"role": "user", "content": user_content})
         
