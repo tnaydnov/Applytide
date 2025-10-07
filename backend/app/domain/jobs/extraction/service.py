@@ -532,8 +532,12 @@ class JobExtractionService:
         # 6) Description processing - prefer LLM's cleaned description
         logger.debug("Phase 6: Description processing")
         
-        # Check if LLM successfully extracted
-        llm_succeeded = bool(llm_job and llm_job.get("description") is not None)
+        # Check if LLM successfully extracted with non-empty description
+        llm_succeeded = bool(
+            llm_job 
+            and llm_job.get("description") is not None 
+            and llm_job.get("description").strip()
+        )
         
         # Use LLM's description if available (it's already cleaned and filtered)
         if llm_succeeded:

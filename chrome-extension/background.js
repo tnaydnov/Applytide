@@ -549,52 +549,81 @@ async function getRenderedCapture(tabId, {
           '.positionInfo'
         ],
         enrichReadable(doc) {
+          console.log('[Comeet enrichReadable] Starting extraction...');
           try {
             const root = doc.querySelector('[ng-controller="CareerPositionCtrl"]')
               || doc.querySelector('[ng-app="comeetCareers"]') || doc.body;
+            console.log('[Comeet enrichReadable] Root element:', root?.tagName);
+            
             const blocks = [];
             const extractedElements = new Set(); // Track extracted elements to avoid duplicates
+            const seenText = new Set(); // Track text content to avoid duplicates
             
             // Extract main description (only once)
             const desc = root.querySelector('.userDesignedContent.company-description, [ng-bind-html="position.description"]');
+            console.log('[Comeet enrichReadable] Description element found:', !!desc);
             if (desc) {
               const t = (desc.innerText || desc.textContent || '').trim();
-              if (t) {
-                blocks.push('Description\n' + t);
+              console.log('[Comeet enrichReadable] Description text length:', t.length);
+              if (t && !seenText.has(t)) {
+                blocks.push('DESCRIPTION\n' + t);
                 extractedElements.add(desc);
+                seenText.add(t);
               }
             }
             
             // Extract custom field details (but avoid re-extracting the description)
-            root.querySelectorAll('[ng-repeat^="field in position.customFields.details"]').forEach(row => {
+            const customFields = root.querySelectorAll('[ng-repeat^="field in position.customFields.details"]');
+            console.log('[Comeet enrichReadable] Custom fields found:', customFields.length);
+            
+            customFields.forEach((row, idx) => {
               const heading = row.querySelector('.positionSubtitle, .smallTitle, h2, h3, h4')?.innerText?.trim();
               const val = row.querySelector('[ng-bind-html="field.value"], .userDesignedContent.company-description');
               
-              // Skip if we already extracted this element
+              console.log(`[Comeet enrichReadable] Field ${idx}: heading="${heading}", has value element: ${!!val}`);
+              
+              // Skip if we already extracted this element OR if we've seen this text before
               if (val && !extractedElements.has(val)) {
                 const text = (val?.innerText || val?.textContent || '').trim();
-                if (text) {
+                console.log(`[Comeet enrichReadable] Field ${idx} text length: ${text.length}`);
+                
+                if (text && !seenText.has(text)) {
                   blocks.push((heading && heading.length < 120 ? heading + '\n' : '') + text);
                   extractedElements.add(val);
+                  seenText.add(text);
+                } else if (seenText.has(text)) {
+                  console.log(`[Comeet enrichReadable] Field ${idx} SKIPPED - duplicate text`);
                 }
               }
             });
             
             // Fallback: generic position info only if content is insufficient
             if (blocks.join('\n').length < 400) {
+              console.log('[Comeet enrichReadable] Content insufficient, trying fallback...');
               const info = root.querySelector('.positionInfo, .careerCard .positionInfo');
               if (info && !extractedElements.has(info)) {
                 const t = (info?.innerText || info?.textContent || '').trim();
-                if (t) blocks.push(t);
+                if (t && !seenText.has(t)) {
+                  blocks.push(t);
+                  seenText.add(t);
+                }
               }
             }
             
             const combined = blocks.filter(Boolean).join('\n\n').trim();
+            console.log('[Comeet enrichReadable] Final combined length:', combined.length);
+            console.log('[Comeet enrichReadable] Combined preview:', combined.substring(0, 300));
+            
             if (combined.length > 400) {
               const title = doc.querySelector('h1')?.innerText?.trim() || document.title || '';
+              console.log('[Comeet enrichReadable] Returning result with title:', title);
               return { title, textContent: combined, excerpt: combined.slice(0, 200) };
+            } else {
+              console.log('[Comeet enrichReadable] Combined text too short, returning null');
             }
-          } catch { }
+          } catch (e) {
+            console.error('[Comeet enrichReadable] ERROR:', e);
+          }
           return null;
         }
       },

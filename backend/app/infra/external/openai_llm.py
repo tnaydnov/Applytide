@@ -215,10 +215,10 @@ class OpenAILLMExtractor(LLMExtractor):
                 "skills_count": len(job.get('skills', []))
             })
 
-            # Force description to the exact raw input (do NOT trust model echoing)
-            logger.debug("Post-processing: using original text as description")
-            job["description"] = (text or "").strip()
-
+            # Trust LLM completely - use its cleaned description
+            logger.debug("Using LLM's cleaned description directly (NO override)")
+            # job["description"] is already set from LLM response
+            
             # Trust LLM to return properly formatted, deduplicated arrays
             job["requirements"] = job.get("requirements") or []
             job["skills"] = job.get("skills") or []
