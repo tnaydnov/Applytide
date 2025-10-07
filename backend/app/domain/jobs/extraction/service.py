@@ -532,8 +532,11 @@ class JobExtractionService:
         # 6) Description processing - prefer LLM's cleaned description
         logger.debug("Phase 6: Description processing")
         
+        # Check if LLM successfully extracted
+        llm_succeeded = bool(llm_job and llm_job.get("description") is not None)
+        
         # Use LLM's description if available (it's already cleaned and filtered)
-        if llm_job.get("description"):
+        if llm_succeeded:
             description = self._clean_text(llm_job.get("description"))
             logger.debug("Using LLM-extracted description", extra={"length": len(description)})
         else:
@@ -547,7 +550,7 @@ class JobExtractionService:
 
         # 7) Backstop: regex splitter ONLY if LLM didn't extract (fallback mode)
         logger.debug("Phase 7: Requirement splitting (fallback)")
-        if not llm_job.get("description") or not requirements:
+        if not llm_succeeded:
             # LLM failed or didn't run - use regex splitter as backup
             logger.debug("Running regex requirement splitter as fallback")
             try:
@@ -564,12 +567,7 @@ class JobExtractionService:
                 logger.warning("Requirement splitting failed", extra={"error": str(e)})
                 description = self._clean_text(main_text)
         else:
-            logger.debug("Skipping regex splitter - using LLM results directly")
-            # Remove any requirement duplicates that somehow ended up in description
-            req_set = {r.strip() for r in requirements}
-            if description:
-                description = "\n".join([ln for ln in description.split("\n") if ln.strip() not in req_set])
-            logger.debug("Final description length after deduplication", extra={"length": len(description)})
+            logger.debug("Using LLM results directly - NO post-processing")
 
 
 

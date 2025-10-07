@@ -49,20 +49,21 @@ requirements[]:
   * Lines in OTHER sections (Responsibilities, About Us, Benefits, etc.) → DO NOT extract to requirements, keep in description
 - Extract ALL lines from requirements sections UNLESS they explicitly say nice-to-have
 - Examples:
-  * "5+ years experience" under Qualifications → EXTRACT (no nice-to-have indicator)
-  * "Strong attention to design" under Qualifications → EXTRACT (no nice-to-have indicator)  
-  * "Previous experience in fintech - advantage" → KEEP in description (explicitly says "advantage")
-  * "Familiarity with X is a plus" → KEEP in description (explicitly says "plus")
-  * "Strong communication skills" in Responsibilities section → KEEP in description (wrong section)
+  * "5+ years experience" under Qualifications → EXTRACT to requirements[], REMOVE from description
+  * "Strong attention to design" under Qualifications → EXTRACT to requirements[], REMOVE from description
+  * "Previous experience in fintech - advantage" → KEEP in description (explicitly says "advantage"), do NOT extract
+  * "Familiarity with X is a plus" → KEEP in description (explicitly says "plus"), do NOT extract
+  * "Strong communication skills" in Responsibilities section → KEEP in description (wrong section), do NOT extract
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols (•, -, *, etc.) but preserve the full text
 - Remove duplicates (case-insensitive comparison)
 - Skip empty strings or strings shorter than 5 characters
-- CRITICAL EXTRACTION RULE:
-  * If you extract a line to requirements[], REMOVE it from description
-  * If you DON'T extract a line (explicitly nice-to-have or wrong section), KEEP it in description
-  * NEVER delete content - it must go to either requirements[] OR stay in description
-  * When ALL lines from a requirements section are extracted, remove the section header too
+- ABSOLUTELY CRITICAL REMOVAL RULE (READ THIS TWICE):
+  * Step 1: Extract requirement lines to requirements[] array
+  * Step 2: REMOVE those EXACT lines from the description field
+  * Step 3: If ALL lines under a requirements section header were extracted, also REMOVE the section header
+  * The description field must NOT contain any text that appears in requirements[]
+  * Double-check your final description - if you see requirement lines in it, you made a mistake
 
 skills[]:
 - Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE in the job posting
