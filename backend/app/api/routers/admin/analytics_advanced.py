@@ -11,7 +11,7 @@ from ._deps import limiter, get_client_info
 from ...deps_auth import get_admin_user, get_admin_user_with_step_up
 from ....db.session import get_db
 from ....db import models
-from ....domain.admin.analytics_service import AnalyticsService
+from ....domain.admin.analytics import AnalyticsService
 from ....domain.admin.analytics_dto import (
     CohortAnalysisResponseDTO,
     ChurnPredictionResponseDTO,
@@ -24,16 +24,6 @@ from ....infra.logging import get_logger
 
 router = APIRouter(tags=["admin-analytics-advanced"])
 logger = get_logger(__name__)
-
-
-from app.domain.admin.analytics_service import AnalyticsService
-from app.domain.admin.analytics_dto import (
-    CohortAnalysisResponseDTO,
-    ChurnPredictionResponseDTO,
-    FeatureAdoptionResponseDTO,
-    ConversionFunnelResponseDTO,
-    ApplicationVelocityResponseDTO,
-)
 
 
 @router.get(
