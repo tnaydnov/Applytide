@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from ...deps_auth import get_current_user
 from ...utils.pagination import PaginationParams, PaginatedResponse
 from ....db import models
-from ..schemas.applications import ApplicationCreate, ApplicationOut, ApplicationUpdate
+from ...schemas.applications import ApplicationCreate, ApplicationOut, ApplicationUpdate
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import logger, event_logger, paginate, broadcast_event

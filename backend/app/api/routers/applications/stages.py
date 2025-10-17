@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from ...deps_auth import get_current_user
 from ....db import models
-from ..schemas.applications import StageCreate, StageOut, StageUpdate
+from ...schemas.applications import StageCreate, StageOut, StageUpdate
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event

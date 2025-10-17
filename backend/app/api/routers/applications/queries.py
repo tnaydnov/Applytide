@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from ...deps_auth import get_current_user
 from ....db import models
-from ..schemas.applications import (
+from ...schemas.applications import (
     ApplicationCard, JobMini, ApplicationDetail, JobDetailMini,
     ApplicationOut, StageOut, NoteOut, AttachmentOut
 )

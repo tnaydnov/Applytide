@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from ...deps_auth import get_current_user
 from ....db import models
-from ..schemas.applications import NoteCreate, NoteOut
+from ...schemas.applications import NoteCreate, NoteOut
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event
