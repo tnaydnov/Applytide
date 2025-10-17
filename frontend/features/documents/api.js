@@ -3,8 +3,8 @@
  * Extracted from lib/api.js during refactoring
  */
 
-import { apiFetch, API_BASE } from '../api/core';
-import { toQuery } from '../api/utils';
+import { apiFetch, API_BASE } from '../../lib/api/core';
+import { toQuery } from '../../lib/api/utils';
 
 /**
  * Documents API endpoints

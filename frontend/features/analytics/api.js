@@ -3,7 +3,7 @@
  * Extracted from lib/api.js during refactoring
  */
 
-import { apiFetch, API_BASE } from '../api/core';
+import { apiFetch, API_BASE } from '../../lib/api/core';
 
 /**
  * Analytics API endpoints

@@ -3,7 +3,7 @@
  * Extracted from lib/api.js during refactoring
  */
 
-import { apiFetch, login, logout } from '../api/core';
+import { apiFetch, login, logout } from '../../lib/api/core';
 
 /**
  * Authentication API endpoints

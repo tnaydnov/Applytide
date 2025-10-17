@@ -3,7 +3,7 @@
  * Extracted from lib/api.js during refactoring
  */
 
-import { apiFetch } from '../api/core';
+import { apiFetch } from '../../lib/api/core';
 
 /**
  * Search API endpoints
