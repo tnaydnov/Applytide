@@ -6,21 +6,21 @@ from . import crud, queries, stages, notes, attachments
 # Create main router
 router = APIRouter(prefix="/api/applications", tags=["applications"])
 
-# Include all sub-routers with empty prefix (inherits main router's prefix)
+# Include all sub-routers
 # CRUD operations
-router.include_router(crud.router, prefix="")
+router.include_router(crud.router)
 
 # Query endpoints
-router.include_router(queries.router, prefix="")
+router.include_router(queries.router)
 
 # Stage management
-router.include_router(stages.router, prefix="")
+router.include_router(stages.router)
 
 # Note management
-router.include_router(notes.router, prefix="")
+router.include_router(notes.router)
 
 # Attachment management
-router.include_router(attachments.router, prefix="")
+router.include_router(attachments.router)
 
 # Export main router
 __all__ = ['router']
