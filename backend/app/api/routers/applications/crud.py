@@ -13,7 +13,7 @@ from .utils import logger, event_logger, paginate, broadcast_event
 router = APIRouter()
 
 
-@router.post("/", response_model=ApplicationOut)
+@router.post("", response_model=ApplicationOut)
 def create_application(
     payload: ApplicationCreate,
     svc: ApplicationService = Depends(get_application_service),
@@ -81,7 +81,7 @@ def create_application(
         )
 
 
-@router.get("/", response_model=PaginatedResponse[ApplicationOut])
+@router.get("", response_model=PaginatedResponse[ApplicationOut])
 def list_applications(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
