@@ -66,7 +66,7 @@ class DocumentService:
         self.utils = DocumentUtils(store=store, llm=self._llm)
         self.cache = AnalysisCache(utils=self.utils)
         self.crud = DocumentCRUD(store=store, extractor=extractor, utils=self.utils)
-        self.preview = DocumentPreview(llm=self._llm, utils=self.utils)
+        self.preview = DocumentPreview(utils=self.utils)
         self.analysis_module = DocumentAnalysisModule(utils=self.utils, cache=self.cache)
         self.generation = DocumentGeneration(ai_cover_letter_service=ai_cover_letter_service)
     
