@@ -70,6 +70,48 @@ class UpdatePremiumStatusRequest(BaseModel):
     reason: str = Field(..., min_length=10, max_length=500, description="Justification for changing premium status (required for audit trail)")
 
 
+class BanUserRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=1000, description="Reason for banning the user")
+    revoke_sessions: bool = Field(True, description="Terminate all active sessions")
+
+
+class UnbanUserRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=500, description="Reason for unbanning the user")
+
+
+class DeleteUserRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=1000, description="Reason for deleting the user")
+    hard_delete: bool = Field(False, description="Permanently delete all user data (cannot be undone)")
+    confirm_email: str = Field(..., description="User's email for confirmation")
+
+
+class ResetUserPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=8, max_length=100, description="New password for the user")
+    reason: str = Field(..., min_length=10, max_length=500, description="Reason for resetting password")
+    revoke_sessions: bool = Field(True, description="Terminate all active sessions after reset")
+
+
+class TerminateSessionRequest(BaseModel):
+    reason: str = Field(..., min_length=5, max_length=500, description="Reason for terminating session")
+
+
+class ActiveSessionResponse(BaseModel):
+    id: str
+    user_id: str
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    device_info: Optional[str]
+    location: Optional[str]
+    last_activity_at: datetime
+    created_at: datetime
+    expires_at: datetime
+
+
+class UserSessionsResponse(BaseModel):
+    sessions: List[ActiveSessionResponse]
+    total: int
+
+
 # ==================== AUTHENTICATION SCHEMAS ====================
 
 class VerifyPasswordRequest(BaseModel):

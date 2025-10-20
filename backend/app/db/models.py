@@ -87,6 +87,12 @@ class User(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+    
+    # Account Security
+    is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    banned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ban_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banned_by_admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class OAuthToken(Base):
@@ -232,7 +238,44 @@ class RefreshToken(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+
+# ---------- Active Sessions ----------
+class ActiveSession(Base):
+    """Track active user sessions for admin monitoring and control"""
+    __tablename__ = "active_sessions"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)  # Hash of the JWT jti
+    refresh_token_jti: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)  # Link to refresh token
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    device_info: Mapped[str | None] = mapped_column(String(200), nullable=True)  # Extracted device type
+    location: Mapped[str | None] = mapped_column(String(100), nullable=True)  # Approximate location from IP
+    last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+
+# ---------- Email History ----------
+class EmailHistory(Base):
+    """Complete email history for admin monitoring"""
+    __tablename__ = "email_history"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    recipient_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    email_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # verification, password_reset, welcome, etc.
+    subject: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # sent, failed, bounced
+    provider_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # If tracking enabled
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # If tracking enabled
+
 
 class EmailAction(Base):
     __tablename__ = "email_actions"

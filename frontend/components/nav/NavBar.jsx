@@ -106,7 +106,10 @@ export default function NavBar() {
     }] : []),
   ];
 
-  const links = loading || !isAuthenticated ? publicLinks : authenticatedLinks;
+  // Determine which links to show based on auth state
+  // While loading, show empty array (minimal UI)
+  // When loaded, show appropriate links
+  const links = loading ? [] : (isAuthenticated && user ? authenticatedLinks : publicLinks);
 
   function handleLogout() {
     authLogout();

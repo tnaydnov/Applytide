@@ -85,17 +85,23 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Check auth on mount + every 5 min on non-public (and home) pages
+  // Check auth on mount + every 5 min on ALL pages
+  // We ALWAYS need to know if user is logged in, even on public pages
   useEffect(() => {
-    // Only check auth status if we're on a private route or the home page
-    if (!isPublicRoute(router.pathname) || router.pathname === '/') {
+    // Always check auth status on initial mount
+    checkAuthStatus();
+    
+    // Set up periodic checks (every 5 minutes)
+    const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []); // Run only once on mount
+  
+  // Separate effect to handle route changes
+  useEffect(() => {
+    // On route change, if we don't have user data yet, check auth
+    if (!loading && user === null && !error) {
       checkAuthStatus();
-      const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
-      return () => clearInterval(interval);
-    } else {
-      // On public routes, just set loading to false without making API calls
-      setLoading(false);
-      setUser(null);
     }
   }, [router.pathname]);
 
@@ -201,6 +207,7 @@ export function AuthProvider({ children }) {
     checkAuthStatus,
     silentRefresh,
     isAuthenticated: !!user,
+    refreshUser: checkAuthStatus, // Alias for backward compatibility
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
