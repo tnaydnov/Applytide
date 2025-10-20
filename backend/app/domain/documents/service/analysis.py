@@ -10,14 +10,14 @@ import json
 import os
 
 from ....db import models
-from ....api.schemas.documents import DocumentAnalysis, ATSScore
+from ....api.schemas.documents import DocumentAnalysis as DocumentAnalysisSchema, ATSScore
 from ....infra.logging import get_logger
 from ....infra.extractors.text_extractor import SAFE_BULLET
 
 logger = get_logger(__name__)
 
 
-class DocumentAnalysis:
+class DocumentAnalysisModule:
     """Handles AI-powered document analysis and ATS scoring."""
     
     def __init__(self, utils, cache):
@@ -521,7 +521,7 @@ Rules:
             # Reconstruct nested ATSScore model from dict
             if isinstance(cached.get("ats_score"), dict):
                 cached["ats_score"] = ATSScore(**cached["ats_score"])
-            return DocumentAnalysis(**cached)
+            return DocumentAnalysisSchema(**cached)
         
         # Cache miss - NOW extract keywords (after cache check to avoid unnecessary LLM calls)
         if job_id and job:
@@ -556,7 +556,7 @@ Rules:
                 suggestions=analysis["recommendations"],
             )
             
-            result = DocumentAnalysis(
+            result = DocumentAnalysisSchema(
                 word_count=analysis["word_count"],
                 keyword_density=analysis.get("keyword_analysis", {}).get("keyword_density", {}),
                 readability_score=analysis["readability_score"],
@@ -583,7 +583,7 @@ Rules:
                 suggestions=gen["suggestions"],
             )
             
-            result = DocumentAnalysis(
+            result = DocumentAnalysisSchema(
                 word_count=gen["word_count"],
                 keyword_density={},
                 readability_score=gen["readability_score"],

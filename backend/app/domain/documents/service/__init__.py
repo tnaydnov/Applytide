@@ -20,7 +20,7 @@ from .utils import DocumentUtils
 from .cache import AnalysisCache
 from .crud import DocumentCRUD
 from .preview import DocumentPreview
-from .analysis import DocumentAnalysis as DocumentAnalysisModule
+from .analysis import DocumentAnalysisModule
 from .generation import DocumentGeneration
 
 logger = get_logger(__name__)
