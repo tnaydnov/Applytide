@@ -40,7 +40,7 @@ def create_application(
         
         event_logger.log_application_submitted(
             user_id=current_user.id,
-            app_id=dto.id,
+            application_id=dto.id,
             job_id=payload.job_id
         )
         

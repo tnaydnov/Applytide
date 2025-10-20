@@ -78,7 +78,7 @@ class DocumentCRUD:
             "document_id": str(file_id),
             "user_id": user_id,
             "type": document_type.value,
-            "filename": filename
+            "file_name": filename
         })
         
         return row

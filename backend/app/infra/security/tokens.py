@@ -96,7 +96,8 @@ def decode_refresh(token: str) -> dict:
                     raise JWTError("Token revoked")
                 if db_token.expires_at < _now():
                     raise JWTError("Token expired")
-            update_user_session(jti, _now())
+            # Update session last accessed time if needed
+            # update_user_session(jti, _now())
 
         return data
     except JWTError:
