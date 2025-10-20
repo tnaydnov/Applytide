@@ -45,7 +45,7 @@ async def upload_document(
                 "Upload attempt with unsupported file format",
                 extra={
                     "user_id": str(current_user.id),
-                    "filename": file.filename,
+                    "file_name": file.filename,
                     "extension": ext
                 }
             )
@@ -55,7 +55,7 @@ async def upload_document(
             "Starting document upload",
             extra={
                 "user_id": str(current_user.id),
-                "filename": file.filename,
+                "file_name": file.filename,
                 "document_type": document_type,
                 "extension": ext
             }
@@ -67,7 +67,7 @@ async def upload_document(
                 "Upload attempt with empty file",
                 extra={
                     "user_id": str(current_user.id),
-                    "filename": file.filename
+                    "file_name": file.filename
                 }
             )
             raise HTTPException(status_code=400, detail="Empty file")
@@ -102,7 +102,7 @@ async def upload_document(
             extra={
                 "user_id": str(current_user.id),
                 "document_id": str(row.id),
-                "filename": file.filename,
+                "file_name": file.filename,
                 "size_bytes": len(content)
             }
         )
@@ -116,7 +116,7 @@ async def upload_document(
             "Error uploading document",
             extra={
                 "user_id": str(current_user.id),
-                "filename": file.filename if file.filename else "unknown",
+                "file_name": file.filename if file.filename else "unknown",
                 "error": str(e)
             },
             exc_info=True
