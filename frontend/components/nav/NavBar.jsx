@@ -8,7 +8,6 @@ import UserMenu, { UserMenuMobile } from "./UserMenu";
 
 const publicLinks = [
   { label: "Pricing", href: "/pricing", icon: "pricing" },
-  { label: "Sign In", href: "/login", icon: "login" },
 ];
 
 export default function NavBar() {
