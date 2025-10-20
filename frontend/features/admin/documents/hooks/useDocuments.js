@@ -1,5 +1,5 @@
 // frontend/features/admin/documents/hooks/useDocuments.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   listDocuments, 
   getDocumentDetail,
@@ -29,6 +29,9 @@ export function useDocuments(initialFilters = {}) {
     ...initialFilters
   });
 
+  // Create stable filter key for dependency tracking
+  const filterKey = useMemo(() => JSON.stringify(filters), [JSON.stringify(filters)]);
+
   const loadDocuments = useCallback(async () => {
     try {
       setLoading(true);
@@ -42,11 +45,11 @@ export function useDocuments(initialFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filterKey]); // Use stable filterKey instead of filters object
 
   useEffect(() => {
     loadDocuments();
-  }, [loadDocuments]);
+  }, [filterKey]); // Depend on filterKey, not loadDocuments
 
   const updateFilters = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -100,7 +103,7 @@ export function useDocumentAnalytics() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [loadAnalytics]);
+  }, []); // Only load once on mount
 
   return {
     analytics,

@@ -96,14 +96,6 @@ export function AuthProvider({ children }) {
     
     return () => clearInterval(interval);
   }, []); // Run only once on mount
-  
-  // Separate effect to handle route changes
-  useEffect(() => {
-    // On route change, if we don't have user data yet, check auth
-    if (!loading && user === null && !error) {
-      checkAuthStatus();
-    }
-  }, [router.pathname]);
 
   // Proactive refresh 2 min before expiry
   useEffect(() => {

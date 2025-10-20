@@ -58,7 +58,7 @@ export default function useAnalytics(initialRange = "6m") {
     return () => {
       cancelled = true;
     };
-  }, [timeRange, toast, isAuthenticated]);
+  }, [timeRange, isAuthenticated]); // Removed toast dependency
 
   // ---- Export helpers ------------------------------------------------------
 

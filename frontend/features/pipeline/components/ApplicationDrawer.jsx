@@ -255,7 +255,7 @@ export default function ApplicationDrawer({ application, onClose }) {
         loadAttachments();
         loadReminders();
         loadStages();
-    }, [appId, loadAttachments, loadReminders, loadStages]);
+    }, [appId]); // Only depend on appId, not the callback functions
 
     /* --------------------------------- Render -------------------------------- */
     return (

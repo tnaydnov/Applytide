@@ -90,13 +90,13 @@ export function useJobs(options = {}) {
     } finally {
       setLoading(false);
     }
-  }, [params, pagination.page_size]);
+  }, [params]); // Removed pagination.page_size dependency to prevent loops
 
   // Debounced reload whenever params change (also runs on mount)
   useEffect(() => {
     const t = setTimeout(() => { loadJobs(1); }, options.debounce ?? 300);
     return () => clearTimeout(t);
-  }, [params, loadJobs, options.debounce]);
+  }, [params]); // Removed loadJobs and options.debounce dependencies
 
   // Cleanup on unmount
   useEffect(() => () => { if (abortRef.current) abortRef.current.abort(); }, []);

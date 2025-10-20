@@ -1,5 +1,5 @@
 // frontend/features/admin/hooks/useAdminData.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import * as adminService from '../../../services/admin';
 
 export function useAdminDashboard() {
@@ -72,7 +72,7 @@ export function useAnalytics(days = 30) {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [days]);
+  }, [days]); // Only re-fetch when days changes
 
   return { analytics, loading, error, refresh: fetchAnalytics };
 }
@@ -83,6 +83,9 @@ export function useAdminUsers(filters = {}) {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Create stable filter string for dependency tracking
+  const filterKey = useMemo(() => JSON.stringify(filters), [JSON.stringify(filters)]);
 
   const fetchUsers = async (newFilters = {}) => {
     setLoading(true);
@@ -101,7 +104,8 @@ export function useAdminUsers(filters = {}) {
 
   useEffect(() => {
     fetchUsers();
-  }, [JSON.stringify(filters)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]); // Only when filter values actually change
 
   return { 
     users, 
@@ -119,6 +123,9 @@ export function useAdminLogs(filters = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Create stable filter string for dependency tracking
+  const filterKey = useMemo(() => JSON.stringify(filters), [JSON.stringify(filters)]);
+
   const fetchLogs = async (newFilters = {}) => {
     setLoading(true);
     setError(null);
@@ -135,7 +142,8 @@ export function useAdminLogs(filters = {}) {
 
   useEffect(() => {
     fetchLogs();
-  }, [JSON.stringify(filters)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]); // Only when filter values actually change
 
   return { logs, total, loading, error, refresh: fetchLogs };
 }

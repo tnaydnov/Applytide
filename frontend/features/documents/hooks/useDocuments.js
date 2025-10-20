@@ -38,10 +38,11 @@ export default function useDocuments() {
         }
     }, []);
 
+    // Load documents only once on mount
     useEffect(() => {
         refresh();
         return () => abortRef.current?.abort();
-    }, [refresh]);
+    }, []); // Empty dependency - only run once on mount
 
     const docs = useMemo(() => {
         let out = [...all];

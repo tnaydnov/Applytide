@@ -162,8 +162,11 @@ export function usePipelineData() {
                 conversionRate,
                 topCompanies,
             });
-        } catch {
-            toast.error('Failed to load pipeline data');
+        } catch (err) {
+            // Only show error toast if it's not a 401 (auth will handle that)
+            if (err?.response?.status !== 401) {
+                toast.error('Failed to load pipeline data');
+            }
             setColumns({});
             setStats({
                 totalApps: 0,
@@ -178,11 +181,12 @@ export function usePipelineData() {
         } finally {
             setLoading(false);
         }
-    }, [currentStages, toast]);
+    }, [currentStages]); // Removed toast from dependencies
 
+    // Load on mount and when currentStages changes
     useEffect(() => {
         load();
-    }, [load]);
+    }, [currentStages]); // Direct dependency instead of load callback
 
     /* --------------------------------- Filter --------------------------------- */
     useEffect(() => {

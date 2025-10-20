@@ -1,5 +1,5 @@
 // frontend/features/admin/hooks/useApplications.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   listApplications, 
   getApplicationDetail,
@@ -27,6 +27,9 @@ export function useApplications(initialFilters = {}) {
     ...initialFilters
   });
 
+  // Create stable filter key for dependency tracking
+  const filterKey = useMemo(() => JSON.stringify(filters), [JSON.stringify(filters)]);
+
   const loadApplications = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,11 +43,11 @@ export function useApplications(initialFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filterKey]); // Use stable filterKey
 
   useEffect(() => {
     loadApplications();
-  }, [loadApplications]);
+  }, [filterKey]); // Depend on filterKey, not loadApplications
 
   const updateFilters = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -98,7 +101,7 @@ export function useApplicationDetail(applicationId) {
 
   useEffect(() => {
     loadApplication();
-  }, [loadApplication]);
+  }, [applicationId]); // Depend on applicationId, not loadApplication
 
   return {
     application,
@@ -129,7 +132,7 @@ export function useApplicationAnalytics() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [loadAnalytics]);
+  }, []); // Only load once on mount
 
   return {
     analytics,

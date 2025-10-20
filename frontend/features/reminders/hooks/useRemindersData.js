@@ -70,12 +70,12 @@ export default function useRemindersData(opts = {}) {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []); // Removed toast dependency to prevent infinite loops
 
-  // Initial load
+  // Initial load - only once on mount
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, []); // Empty dependency - only run once
 
   /** Derived: google event ids set (used to de-dupe import list). */
   const googleEventIds = useMemo(() => {
