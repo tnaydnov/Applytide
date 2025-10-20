@@ -1,7 +1,7 @@
 """add_enhanced_admin_features
 
 Revision ID: 20251020_180650
-Revises: 
+Revises: h8i9j0k1l2m3
 Create Date: 2025-10-20 18:06:50
 
 Adds:
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '20251020_180650'
-down_revision = None  # Update this to your latest migration
+down_revision = 'h8i9j0k1l2m3'
 branch_labels = None
 depends_on = None
 
