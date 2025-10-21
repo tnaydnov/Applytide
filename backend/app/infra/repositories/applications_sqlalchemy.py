@@ -129,9 +129,11 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
             .where(models.Application.user_id == user_id)
             .order_by(models.Application.created_at.desc())
         )
-        # Only exclude archived if show_archived is False
-        if not show_archived:
-            stmt = stmt.where(models.Application.is_archived == False)
+        # Filter based on archived state
+        # False = show only active (not archived)
+        # True = show only archived
+        stmt = stmt.where(models.Application.is_archived == show_archived)
+        
         if status:
             stmt = stmt.where(models.Application.status == status)
         rows = self.db.execute(stmt).all()

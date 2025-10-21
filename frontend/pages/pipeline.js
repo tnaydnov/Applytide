@@ -148,6 +148,7 @@ export default function PipelinePage() {
     setSelectedFilter("all");
     setSortBy("recent");
     setQuickStatusFilter(null);
+    setShowArchived(false);
   };
 
   return (
@@ -208,7 +209,9 @@ export default function PipelinePage() {
                   onChange={(e) => setShowArchived(e.target.checked)}
                   className="w-4 h-4 rounded border-white/20 bg-white/10 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
                 />
-                <span className="text-sm text-white/90">📦 Archived</span>
+                <span className="text-sm text-white/90">
+                  {showArchived ? '📦 Show Active' : '📦 Show Archived'}
+                </span>
               </label>
               <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">Reset</Button>
             </div>

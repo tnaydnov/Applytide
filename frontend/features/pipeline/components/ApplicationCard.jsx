@@ -167,18 +167,19 @@ export default function ApplicationCard({
 
                 {/* Action buttons - cleaner positioning */}
                 <div className={`absolute ${viewMode === "board" ? "top-3 right-3" : "top-4 right-4"} flex gap-2 z-10`}>
-                    {/* Archive button */}
+                    {/* Archive/Unarchive button - changes based on archived state */}
                     <button
                         onClick={handleArchive}
                         disabled={isArchiving}
-                        className="group/btn inline-flex items-center justify-center
+                        className={`group/btn inline-flex items-center justify-center
                             w-7 h-7 rounded-lg
-                            text-slate-400 hover:text-amber-400
-                            bg-slate-800/60 hover:bg-amber-500/20
-                            border border-slate-700/50 hover:border-amber-500/50
                             backdrop-blur-sm transition-all duration-200
                             disabled:opacity-50 disabled:cursor-not-allowed
-                            hover:scale-110 active:scale-95"
+                            hover:scale-110 active:scale-95
+                            ${application.is_archived
+                                ? 'text-amber-400 hover:text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400/50'
+                                : 'text-slate-400 hover:text-amber-400 bg-slate-800/60 hover:bg-amber-500/20 border border-slate-700/50 hover:border-amber-500/50'
+                            }`}
                         title={application.is_archived ? "Unarchive application" : "Archive application"}
                         aria-label={application.is_archived ? "Unarchive" : "Archive"}
                         type="button"
@@ -188,8 +189,17 @@ export default function ApplicationCard({
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                             </svg>
+                        ) : application.is_archived ? (
+                            // Unarchive icon - box with arrow pointing out
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 8v13H3V8"/>
+                                <path d="M1 3h22v5H1z"/>
+                                <path d="M12 12v6"/>
+                                <path d="M9 15l3-3 3 3"/>
+                            </svg>
                         ) : (
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            // Archive icon - simple box
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 8v13H3V8"/>
                                 <path d="M1 3h22v5H1z"/>
                                 <path d="M10 12h4"/>
