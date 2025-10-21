@@ -11,7 +11,7 @@ from ...db.models import User
 from ..schemas.documents import (
     DocumentType, DocumentStatus, DocumentResponse, DocumentListResponse,
     DocumentOptimizationRequest, DocumentAnalysis,
-    TemplateListResponse, DocumentTemplate
+    TemplateListResponse, DocumentTemplate, CoverLetterRequest
 )
 from ..deps import get_document_service
 from ...domain.documents.service import DocumentService
@@ -318,3 +318,22 @@ async def preview_document(
     if mode == "html":
         return HTMLResponse(content=payload["content"])
     return PlainTextResponse(payload["text"])
+
+@router.post("/cover-letter/generate")
+async def generate_cover_letter(
+    request: CoverLetterRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    svc: DocumentService = Depends(get_document_service),
+):
+    """Generate a cover letter using AI or template."""
+    logger.info(
+        "Generating cover letter",
+        extra={
+            "user_id": str(current_user.id),
+            "job_id": request.job_id,
+            "resume_id": request.resume_id
+        }
+    )
+    result = await svc.generate_cover_letter(db, str(current_user.id), request)
+    return result
