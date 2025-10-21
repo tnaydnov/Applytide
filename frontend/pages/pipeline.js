@@ -22,6 +22,12 @@ const ApplicationDrawer = dynamic(
 export default function PipelinePage() {
   const router = useRouter();
 
+  // ---------------- UI state ----------------
+  const [view, setView] = useState("board"); // "board" | "cards"
+  const [showSettings, setShowSettings] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+
   // ---------------- Data layer ----------------
   const {
     currentStages,
@@ -47,13 +53,7 @@ export default function PipelinePage() {
     move,
     deleteApplication,
     archiveApplication,
-  } = usePipelineData();
-
-  // ---------------- UI state ----------------
-  const [view, setView] = useState("board"); // "board" | "cards"
-  const [showSettings, setShowSettings] = useState(false);
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
+  } = usePipelineData(showArchived);
 
   // Drawer state from ?app=ID
   const [activeApp, setActiveApp] = useState(null);

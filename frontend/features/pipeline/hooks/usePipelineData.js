@@ -11,8 +11,10 @@ import { DEFAULT_STAGES } from '../utils/status';
  * - Exposes filtered views (search/filter/sort/quick status)
  * - Listens to WS events to auto-refresh
  * - Move/Delete actions with safe error handling
+ * 
+ * @param {boolean} showArchived - Whether to include archived applications
  */
-export function usePipelineData() {
+export function usePipelineData(showArchived = false) {
     const toast = useToast();
     const wsRef = useRef(null);
 
@@ -109,7 +111,7 @@ export function usePipelineData() {
             await Promise.all(
                 (currentStages || []).map(async (status) => {
                     try {
-                        const data = await api.listCardsByStatus(status);
+                        const data = await api.listCardsByStatus(status, showArchived);
                         result[status] = Array.isArray(data) ? data : [];
                     } catch {
                         result[status] = [];
@@ -181,12 +183,12 @@ export function usePipelineData() {
         } finally {
             setLoading(false);
         }
-    }, [currentStages]); // Removed toast from dependencies
+    }, [currentStages, showArchived]); // Added showArchived dependency
 
-    // Load on mount and when currentStages changes
+    // Load on mount and when currentStages or showArchived changes
     useEffect(() => {
         load();
-    }, [currentStages]); // Direct dependency instead of load callback
+    }, [currentStages, showArchived]); // Added showArchived dependency
 
     /* --------------------------------- Filter --------------------------------- */
     useEffect(() => {

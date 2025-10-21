@@ -27,10 +27,16 @@ export const applicationsApi = {
   /**
    * List application cards by status
    * @param {string} status - Application status
+   * @param {boolean} showArchived - Include archived applications
    * @returns {Promise<Array>} Application cards for kanban view
    */
-  listCardsByStatus: (status) =>
-    apiFetch(`/applications/cards?status=${encodeURIComponent(status)}`).then((r) => r.json()),
+  listCardsByStatus: (status, showArchived = false) => {
+    const params = new URLSearchParams({ status });
+    if (showArchived) {
+      params.append('show_archived', 'true');
+    }
+    return apiFetch(`/applications/cards?${params.toString()}`).then((r) => r.json());
+  },
 
   /**
    * Move application to different status
