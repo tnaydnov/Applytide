@@ -161,19 +161,19 @@ export default function NavBar() {
 
           {/* Mobile actions */}
           <div className="md:hidden flex items-center space-x-2">
-            {!loading && isAuthenticated && user && (
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="tap-target flex items-center text-gray-300 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all duration-200"
-                data-user-menu
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
-                  </span>
-                </div>
-              </button>
-            )}
+            {/* Use UserMenu component for mobile too - it handles all states */}
+            <div className="flex items-center">
+              <UserMenu
+                user={user}
+                loading={loading}
+                isAuthenticated={!!isAuthenticated}
+                isUserMenuOpen={isUserMenuOpen}
+                setIsUserMenuOpen={setIsUserMenuOpen}
+                onLogout={handleLogout}
+                userBtnRef={userBtnRef}
+                userMenuRef={userMenuRef}
+              />
+            </div>
 
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
