@@ -117,7 +117,7 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
         stmt = select(models.Application.status).where(models.Application.user_id == user_id).distinct().order_by(models.Application.status)
         return list(self.db.execute(stmt).scalars().all())
 
-    def list_cards(self, user_id: UUID, status: Optional[str]) -> List[CardRowDTO]:
+    def list_cards(self, user_id: UUID, status: Optional[str], show_archived: bool = False) -> List[CardRowDTO]:
         j = join(models.Application, models.Job, models.Application.job_id == models.Job.id)
         j = join(j, models.Company, models.Job.company_id == models.Company.id, isouter=True)
         stmt = (
@@ -127,9 +127,11 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
                 models.Job.id.label("job_id"), models.Job.title, models.Company.name.label("company_name")
             ).select_from(j)
             .where(models.Application.user_id == user_id)
-            .where(models.Application.is_archived == False)  # Exclude archived applications
             .order_by(models.Application.created_at.desc())
         )
+        # Only exclude archived if show_archived is False
+        if not show_archived:
+            stmt = stmt.where(models.Application.is_archived == False)
         if status:
             stmt = stmt.where(models.Application.status == status)
         rows = self.db.execute(stmt).all()

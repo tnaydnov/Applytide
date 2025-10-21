@@ -54,8 +54,8 @@ class ApplicationService:
     def get_used_statuses(self, *, user_id: UUID) -> List[str]:
         return self.apps.get_used_statuses(user_id)
 
-    def list_cards(self, *, user_id: UUID, status: Optional[str]) -> List[CardRowDTO]:
-        return self.apps.list_cards(user_id, status)
+    def list_cards(self, *, user_id: UUID, status: Optional[str], show_archived: bool = False) -> List[CardRowDTO]:
+        return self.apps.list_cards(user_id, status, show_archived)
 
     def get_owned_app(self, *, app_id: UUID, user_id: UUID) -> ApplicationDTO:
         try:

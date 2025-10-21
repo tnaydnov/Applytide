@@ -47,11 +47,12 @@ def get_used_statuses(
 @router.get("/cards", response_model=List[ApplicationCard])
 def list_cards(
     status: Optional[str] = Query(None),
+    show_archived: bool = Query(False),
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user)
 ):
     """Get applications in card format."""
-    rows = svc.list_cards(user_id=current_user.id, status=status)
+    rows = svc.list_cards(user_id=current_user.id, status=status, show_archived=show_archived)
     return [
         ApplicationCard(
             id=r.id,
