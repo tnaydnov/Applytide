@@ -48,8 +48,8 @@ class ApplicationService:
             return self.apps.update(existing.id, {"status": new_status, "resume_id": resume_id, "source": source})
         return self.apps.create(user_id=user_id, job_id=job_id, resume_id=resume_id, status=status or "Applied", source=source)
 
-    def list_paginated(self, *, user_id: UUID, status: Optional[str], q: str, sort: str, order: str, page: int, page_size: int) -> Tuple[List[ApplicationDTO], int]:
-        return self.apps.list_paginated(user_id=user_id, status=status, q=q, sort=sort, order=order, page=page, page_size=page_size)
+    def list_paginated(self, *, user_id: UUID, status: Optional[str], q: str, sort: str, order: str, page: int, page_size: int, show_archived: bool = False) -> Tuple[List[ApplicationDTO], int]:
+        return self.apps.list_paginated(user_id=user_id, status=status, q=q, sort=sort, order=order, page=page, page_size=page_size, show_archived=show_archived)
 
     def get_used_statuses(self, *, user_id: UUID) -> List[str]:
         return self.apps.get_used_statuses(user_id)
@@ -163,3 +163,15 @@ class ApplicationService:
         try: os.unlink(a.file_path)
         except Exception: pass
         self.attachments.delete(attachment_id)
+
+    # ---- Archive ----
+    def toggle_archive(self, *, user_id: UUID, app_id: UUID) -> ApplicationDTO:
+        """Toggle archive status of an application while preserving its status."""
+        app = self.get_owned_app(app_id=app_id, user_id=user_id)
+        from datetime import datetime, timezone
+        new_archived = not app.is_archived
+        updates = {
+            "is_archived": new_archived,
+            "archived_at": datetime.now(timezone.utc) if new_archived else None
+        }
+        return self.apps.update(app_id, updates)

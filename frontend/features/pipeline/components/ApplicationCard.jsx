@@ -24,6 +24,7 @@ export default function ApplicationCard({
     onMove,
     onDelete,
     onUpdate,
+    onArchive,
     statuses = [],
     onDragStart,
     onDragEnd,
@@ -34,6 +35,7 @@ export default function ApplicationCard({
     const [showMoveModal, setShowMoveModal] = useState(false);
     const [search, setSearch] = useState("");
     const [mounted, setMounted] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
 
     useEffect(() => setMounted(true), []);
 
@@ -95,6 +97,22 @@ export default function ApplicationCard({
         [application.id, onDelete]
     );
 
+    const handleArchive = useCallback(
+        async (e) => {
+            e?.stopPropagation?.();
+            if (isArchiving) return;
+            setIsArchiving(true);
+            try {
+                if (onArchive) {
+                    await onArchive(application.id);
+                }
+            } finally {
+                setIsArchiving(false);
+            }
+        },
+        [application.id, onArchive, isArchiving]
+    );
+
     const handleView = useCallback(
         (e) => {
             e?.stopPropagation?.();
@@ -128,8 +146,13 @@ export default function ApplicationCard({
     return (
         <>
             <Card
-                className={`glass-card group hover:border-white/20 transition-all duration-300 animate-slideIn overflow-hidden relative ${viewMode === "board" ? "text-sm" : ""
-                    }`}
+                className={`group relative overflow-hidden transition-all duration-300 animate-slideIn
+                    ${viewMode === "board" 
+                        ? "hover:shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1" 
+                        : "hover:shadow-xl hover:shadow-indigo-500/20 hover:border-indigo-400/40"
+                    }
+                    border border-white/10 bg-gradient-to-br from-slate-800/90 via-slate-900/90 to-slate-800/90
+                    backdrop-blur-sm hover:border-white/20`}
                 style={{
                     animationDelay: `${Math.random() * 200}ms`,
                     userSelect: "none",
@@ -139,101 +162,146 @@ export default function ApplicationCard({
                 }}
                 padding={false}
             >
-                {/* Delete */}
-                <button
-                    onClick={handleDelete}
-                    className={`absolute delete-app-btn ${viewMode === "board" ? "top-2 left-2" : "top-2 right-2"}
-                    inline-flex items-center justify-center
-                    w-10 h-10 rounded-full
-                    text-red-400 hover:text-red-300
-                    bg-black/20 hover:bg-red-500/15
-                    border-2 border-red-400/40 hover:border-red-300/60
-                    shadow-sm backdrop-blur-sm z-10 transition`}
-                    title="Delete application"
-                    aria-label="Delete application"
-                    type="button"
-                >
-                    <svg className="w-6 h-6 scale-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                        <path d="M10 11v6M14 11v6" />
-                    </svg>
-                </button>
+                {/* Subtle gradient overlay for depth */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none" />
 
+                {/* Action buttons - cleaner positioning */}
+                <div className={`absolute ${viewMode === "board" ? "top-3 right-3" : "top-4 right-4"} flex gap-2 z-10`}>
+                    {/* Archive button */}
+                    <button
+                        onClick={handleArchive}
+                        disabled={isArchiving}
+                        className="group/btn inline-flex items-center justify-center
+                            w-7 h-7 rounded-lg
+                            text-slate-400 hover:text-amber-400
+                            bg-slate-800/60 hover:bg-amber-500/20
+                            border border-slate-700/50 hover:border-amber-500/50
+                            backdrop-blur-sm transition-all duration-200
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            hover:scale-110 active:scale-95"
+                        title={application.is_archived ? "Unarchive application" : "Archive application"}
+                        aria-label={application.is_archived ? "Unarchive" : "Archive"}
+                        type="button"
+                    >
+                        {isArchiving ? (
+                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                            </svg>
+                        ) : (
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 8v13H3V8"/>
+                                <path d="M1 3h22v5H1z"/>
+                                <path d="M10 12h4"/>
+                            </svg>
+                        )}
+                    </button>
+                    
+                    {/* Delete button */}
+                    <button
+                        onClick={handleDelete}
+                        className="group/btn inline-flex items-center justify-center
+                            w-7 h-7 rounded-lg
+                            text-slate-400 hover:text-red-400
+                            bg-slate-800/60 hover:bg-red-500/20
+                            border border-slate-700/50 hover:border-red-500/50
+                            backdrop-blur-sm transition-all duration-200
+                            hover:scale-110 active:scale-95"
+                        title="Delete application"
+                        aria-label="Delete application"
+                        type="button"
+                    >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <path d="M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            <path d="M10 11v6M14 11v6" />
+                        </svg>
+                    </button>
+                </div>
 
-                <div className={viewMode === "board" ? "p-3 pt-8" : "p-6"}>
-                    {/* Header */}
-                    <div className="mb-4">
-                        <div className={`${viewMode === "board" ? "mb-3 text-center" : "mb-3"}`}>
+                <div className={viewMode === "board" ? "p-4" : "p-5"}>
+                    {/* Header - Clean and professional */}
+                    <div className="space-y-3 mb-4">
+                        {/* Job Title */}
+                        <div>
                             <h3
-                                className={`font-bold text-slate-100 group-hover:text-indigo-400 transition-colors leading-tight ${viewMode === "board" ? "text-base line-clamp-2 px-2 max-w-[85%]" : "text-xl"
-                                    }`}
+                                className={`font-semibold text-white group-hover:text-indigo-300 transition-colors duration-200 leading-snug
+                                    ${viewMode === "board" ? "text-[15px] line-clamp-2 pr-16" : "text-lg pr-20"}`}
                                 title={title}
                             >
                                 {title}
                             </h3>
                         </div>
 
-                        {company && (
-                            <div className={`${viewMode === "board" ? "mb-3 text-center" : "mb-3"}`}>
-                                <div className={`flex items-center space-x-1 ${viewMode === "board" ? "justify-center px-2" : ""}`}>
-                                    <span className={viewMode === "board" ? "text-sm" : ""}>🏢</span>
-                                    <span
-                                        className={`font-medium text-indigo-400 ${viewMode === "board" ? "text-sm truncate max-w-[120px]" : "text-sm truncate"
-                                            }`}
-                                        title={company}
-                                    >
+                        {/* Company and metadata */}
+                        <div className="flex items-start gap-3 text-sm">
+                            {company && (
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <div className="flex-shrink-0 w-5 h-5 rounded bg-indigo-500/20 flex items-center justify-center">
+                                        <svg className="w-3 h-3 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <span className="font-medium text-slate-300 truncate" title={company}>
                                         {company}
                                     </span>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {viewMode !== "board" && location && (
-                            <div className="flex items-center flex-wrap gap-2 text-sm text-slate-300">
-                                <div className="flex items-center space-x-1">
-                                    <span>📍</span>
-                                    <span>{location}</span>
+                            {viewMode !== "board" && location && (
+                                <div className="flex items-center gap-1.5 text-slate-400 flex-shrink-0">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span className="text-xs truncate">{location}</span>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
-                        {/* Source */}
+                        {/* Source badge - more subtle */}
                         {application.source && (
-                            <div className={`${viewMode === "board" ? "text-center mb-2" : "mb-2"}`}>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/50 ${viewMode === "board" ? "text-xs" : "text-xs"}`}>
-                                    🧭 {application.source}
+                            <div>
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium 
+                                    bg-slate-700/40 text-slate-400 border border-slate-600/30">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    {application.source}
                                 </span>
                             </div>
                         )}
                     </div>
 
-                    {/* Drag handle & mobile move */}
+                    {/* Drag handle & mobile move - sleeker design */}
                     {viewMode === "board" && (
-                        <div className="flex items-center justify-center mb-3 gap-2">
-                            {/* Desktop drag handle */}
+                        <div className="flex items-center justify-center mb-3">
+                            {/* Desktop drag handle - modern minimal */}
                             <div
                                 className="drag-handle-btn hidden md:inline-flex items-center justify-center
-                                text-white/70 hover:text-white cursor-grab active:cursor-grabbing
-                                w-9 h-9 rounded-lg border border-white/10 hover:bg-white/10 transition"
+                                text-slate-400 hover:text-slate-300 cursor-grab active:cursor-grabbing
+                                w-full py-1.5 rounded-lg border border-slate-700/50 hover:border-slate-600/50 
+                                bg-slate-800/30 hover:bg-slate-700/30 transition-all duration-200"
                                 title="Drag to move"
                                 draggable
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                                 aria-label="Drag to move application"
                             >
-                                <svg className="w-5 h-5 scale-125" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <circle cx="6" cy="5" r="1.5" /><circle cx="14" cy="5" r="1.5" />
+                                <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <circle cx="6" cy="6" r="1.5" /><circle cx="14" cy="6" r="1.5" />
                                     <circle cx="6" cy="10" r="1.5" /><circle cx="14" cy="10" r="1.5" />
-                                    <circle cx="6" cy="15" r="1.5" /><circle cx="14" cy="15" r="1.5" />
+                                    <circle cx="6" cy="14" r="1.5" /><circle cx="14" cy="14" r="1.5" />
                                 </svg>
                             </div>
 
-
-                            {/* Mobile move button */}
+                            {/* Mobile move button - cleaner */}
                             <button
-                                className="drag-handle-btn md:hidden tap-target text-gray-400 hover:text-gray-300 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                                className="drag-handle-btn md:hidden w-full py-2 flex items-center justify-center gap-2
+                                text-slate-400 hover:text-slate-300 hover:bg-slate-700/40 
+                                rounded-lg transition-all border border-slate-700/50 hover:border-slate-600/50
+                                bg-slate-800/30 text-sm font-medium"
                                 title="Move to different stage"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -241,69 +309,104 @@ export default function ApplicationCard({
                                 }}
                                 type="button"
                             >
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                                    <path
-                                        fillRule="evenodd"
-                                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                        clipRule="evenodd"
-                                    />
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
+                                Move Stage
                             </button>
                         </div>
                     )}
 
-                    {/* Actions */}
-                    <div className={`${viewMode === "board" ? "pt-2 border-t border-white/10" : "pt-4 border-t border-white/10"}`}>
+                    {/* Actions - Modern, professional buttons */}
+                    <div className={`${viewMode === "board" ? "pt-3 mt-3 border-t border-slate-700/50" : "pt-4 mt-4 border-t border-slate-700/50"}`}>
                         {viewMode === "board" ? (
-                            <div className="space-y-2">
-                                <div className="text-xs text-slate-300 text-center">{getDaysAgo(application.created_at)}</div>
-                                <div className="flex flex-col space-y-1.5">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition text-[11px] py-1 w-full"
+                            <div className="space-y-2.5">
+                                {/* Date info - subtle */}
+                                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {getDaysAgo(application.created_at)}
+                                </div>
+
+                                {/* Action buttons - refined */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
                                         onClick={handleView}
+                                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg
+                                            text-sm font-medium text-slate-200
+                                            bg-slate-700/50 hover:bg-slate-700/70
+                                            border border-slate-600/50 hover:border-slate-500/50
+                                            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        👁️ View
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 border border-purple-400/50 text-white hover:from-purple-500 hover:to-pink-500 transition text-[11px] py-1 w-full"
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        View
+                                    </button>
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation?.();
                                             setShowNoteModal(true);
                                         }}
+                                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg
+                                            text-sm font-medium text-white
+                                            bg-gradient-to-br from-indigo-500/90 to-purple-500/90 hover:from-indigo-500 hover:to-purple-500
+                                            border border-indigo-400/30 hover:border-indigo-400/50
+                                            shadow-sm hover:shadow-md hover:shadow-indigo-500/25
+                                            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        📝 Note
-                                    </Button>
-
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Note
+                                    </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm text-slate-300 flex-shrink-0">{getDaysAgo(application.created_at)}</div>
+                            <div className="flex items-center justify-between gap-4">
+                                {/* Date info */}
+                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {getDaysAgo(application.created_at)}
+                                </div>
 
-                                <div className="flex items-center space-x-2 ml-4">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-cyan-400 border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300 flex-shrink-0"
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-2">
+                                    <button
                                         onClick={handleView}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg
+                                            text-sm font-medium text-slate-200
+                                            bg-slate-700/50 hover:bg-slate-700/70
+                                            border border-slate-600/50 hover:border-slate-500/50
+                                            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        <span className="mr-1">👁️</span>
-                                        View
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 border border-purple-400/50 text-white hover:from-purple-500 hover:to-pink-500 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 flex-shrink-0"
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        View Details
+                                    </button>
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation?.();
                                             setShowNoteModal(true);
                                         }}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg
+                                            text-sm font-medium text-white
+                                            bg-gradient-to-br from-indigo-500/90 to-purple-500/90 hover:from-indigo-500 hover:to-purple-500
+                                            border border-indigo-400/30 hover:border-indigo-400/50
+                                            shadow-sm hover:shadow-lg hover:shadow-indigo-500/25
+                                            transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        <span className="mr-1">📝</span>
-                                        Note
-                                    </Button>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Add Note
+                                    </button>
                                 </div>
                             </div>
                         )}

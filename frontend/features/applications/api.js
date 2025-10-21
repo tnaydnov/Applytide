@@ -59,6 +59,14 @@ export const applicationsApi = {
     apiFetch(`/applications/${id}`, { method: "DELETE" }),
 
   /**
+   * Toggle archive status of application
+   * @param {number} id - Application ID
+   * @returns {Promise<Object>} Updated application
+   */
+  toggleArchiveApp: (id) =>
+    apiFetch(`/applications/${id}/archive`, { method: "PUT" }).then((r) => r.json()),
+
+  /**
    * Get application details
    * @param {number} id - Application ID
    * @returns {Promise<Object>} Application details

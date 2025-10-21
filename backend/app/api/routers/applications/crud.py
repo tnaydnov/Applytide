@@ -89,6 +89,7 @@ def list_applications(
     q: str = Query(""),
     sort: str = Query("created_at"),
     order: str = Query("desc"),
+    show_archived: bool = Query(False),
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -101,7 +102,8 @@ def list_applications(
                 "page": page,
                 "page_size": page_size,
                 "status": status,
-                "query": q[:50] if q else None
+                "query": q[:50] if q else None,
+                "show_archived": show_archived
             }
         )
         
@@ -112,7 +114,8 @@ def list_applications(
             sort=sort,
             order=order,
             page=page,
-            page_size=page_size
+            page_size=page_size,
+            show_archived=show_archived
         )
         
         pages, has_next, has_prev = paginate(total, page, page_size)
@@ -230,6 +233,54 @@ def update_application(
         raise HTTPException(
             status_code=500,
             detail="Failed to update application"
+        )
+
+
+@router.put("/{app_id}/archive", response_model=ApplicationOut)
+def toggle_archive_application(
+    app_id: uuid.UUID,
+    svc: ApplicationService = Depends(get_application_service),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Toggle archive status of an application."""
+    try:
+        logger.info(
+            "Toggling archive status",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id)
+            }
+        )
+        
+        app = svc.toggle_archive(user_id=current_user.id, app_id=app_id)
+        
+        logger.info(
+            "Archive status toggled",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app.id),
+                "is_archived": app.is_archived
+            }
+        )
+        
+        # Best-effort WebSocket broadcast
+        broadcast_event("application_archived", str(app.id), is_archived=app.is_archived)
+        
+        return ApplicationOut(**app.__dict__)
+    
+    except Exception as e:
+        logger.error(
+            "Failed to toggle archive",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to toggle archive status"
         )
 
 

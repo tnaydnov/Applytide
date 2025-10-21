@@ -15,7 +15,8 @@ from ...domain.applications.dto import (
 def _app_to_dto(a: models.Application) -> ApplicationDTO:
     return ApplicationDTO(
         id=a.id, user_id=a.user_id, job_id=a.job_id, resume_id=a.resume_id,
-        status=a.status, source=a.source, created_at=a.created_at, updated_at=a.updated_at
+        status=a.status, source=a.source, is_archived=a.is_archived, archived_at=a.archived_at,
+        created_at=a.created_at, updated_at=a.updated_at
     )
 
 def _stage_to_dto(s: models.Stage) -> StageDTO:
@@ -71,7 +72,7 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
         return _app_to_dto(row)
 
     def list_paginated(
-        self, *, user_id: UUID, status: Optional[str], q: str, sort: str, order: str, page: int, page_size: int
+        self, *, user_id: UUID, status: Optional[str], q: str, sort: str, order: str, page: int, page_size: int, show_archived: bool = False
     ) -> Tuple[List[ApplicationDTO], int]:
         query = (
             select(models.Application)
@@ -79,6 +80,10 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
             .join(models.Company, models.Job.company_id == models.Company.id, isouter=True)
             .where(models.Application.user_id == user_id)
         )
+        # Filter by archive status - show only non-archived by default
+        if not show_archived:
+            query = query.where(models.Application.is_archived == False)
+        
         if status:
             query = query.where(models.Application.status == status)
         if q.strip():
@@ -95,6 +100,10 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
             .join(models.Company, models.Job.company_id == models.Company.id, isouter=True)
             .where(models.Application.user_id == user_id)
         )
+        # Apply same archive filter to count query
+        if not show_archived:
+            total_q = total_q.where(models.Application.is_archived == False)
+            
         if status:
             total_q = total_q.where(models.Application.status == status)
         if q.strip():
@@ -118,6 +127,7 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
                 models.Job.id.label("job_id"), models.Job.title, models.Company.name.label("company_name")
             ).select_from(j)
             .where(models.Application.user_id == user_id)
+            .where(models.Application.is_archived == False)  # Exclude archived applications
             .order_by(models.Application.created_at.desc())
         )
         if status:

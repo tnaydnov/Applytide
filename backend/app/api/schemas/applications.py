@@ -16,6 +16,8 @@ class ApplicationOut(BaseModel):
     resume_id: Optional[uuid.UUID] = None
     status: str
     source: Optional[str] = None
+    is_archived: bool = False
+    archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     class Config:
@@ -46,6 +48,8 @@ class ApplicationCard(BaseModel):
     job: JobMini
     resume_id: Optional[uuid.UUID] = None
     source: Optional[str] = None
+    is_archived: bool = False
+    archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

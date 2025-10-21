@@ -46,13 +46,14 @@ export default function PipelinePage() {
     reload,
     move,
     deleteApplication,
+    archiveApplication,
   } = usePipelineData();
 
   // ---------------- UI state ----------------
   const [view, setView] = useState("board"); // "board" | "cards"
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Drawer state from ?app=ID
   const [activeApp, setActiveApp] = useState(null);
@@ -135,6 +136,13 @@ export default function PipelinePage() {
     [deleteApplication]
   );
 
+  const handleArchive = useCallback(
+    async (id) => {
+      await archiveApplication(id);
+    },
+    [archiveApplication]
+  );
+
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedFilter("all");
@@ -154,13 +162,6 @@ export default function PipelinePage() {
             <div className="flex items-center gap-2">
               <Button variant={view === "cards" ? "default" : "outline"} onClick={() => setView("cards")}>Cards</Button>
               <Button variant={view === "board" ? "default" : "outline"} onClick={() => setView("board")}>Board</Button>
-              <Button
-                variant={showAnalytics ? "default" : "outline"}
-                onClick={() => setShowAnalytics((v) => !v)}
-                className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
-              >
-                Analytics
-              </Button>
               <Button variant="outline" onClick={() => setShowSettings(true)}>Customize Pipeline</Button>
             </div>
           }
@@ -175,51 +176,6 @@ export default function PipelinePage() {
           <BigStat label="7d New" value={stats.recentApps} color="cyan" icon="✨" />
           <BigStat label="Rejected" value={stats.rejections} color="rose" icon="⛔" />
         </div>
-
-        {/* DETAILED analytics – appears only when the "Analytics" pill is ON */}
-        {showAnalytics && (
-          <Card className="mb-6 bg-[#0b1222]/80 border-white/10 shadow-[0_0_0_1px_rgba(255,255,255,.06)]">
-            <div className="text-sm text-white/70 mb-2">Detailed Analytics</div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2 space-y-2">
-                <div className="text-xs text-white/60">Conversion Rate</div>
-                <div className="h-2 bg-white/10 rounded">
-                  <div style={{ width: `${stats.conversionRate || 0}%` }} className="h-2 rounded bg-gradient-to-r from-cyan-400 to-blue-500"></div>
-                </div>
-                <div className="text-xs text-white/60">Success Rate</div>
-                <div className="h-2 bg-white/10 rounded">
-                  <div style={{ width: `${stats.successRate || 0}%` }} className="h-2 rounded bg-gradient-to-r from-violet-400 to-fuchsia-500"></div>
-                </div>
-                <div className="grid grid-cols-3 gap-3 pt-3">
-                  <MiniStat label="Total" value={stats.totalApps} />
-                  <MiniStat label="Active" value={stats.activeApps} />
-                  <MiniStat label="7d New" value={stats.recentApps} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-xs text-white/60">Top Companies</div>
-                <div className="glass-card border border-white/10 rounded-lg p-3">
-                  {(stats.topCompanies || []).length === 0 ? (
-                    <div className="text-xs text-white/50">—</div>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {stats.topCompanies.map(([name, count]) => (
-                        <li key={name} className="flex items-center justify-between">
-                          <span className="truncate">{name}</span>
-                          <span className="text-white/60">{count}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div className="text-xs text-white/60">Insights</div>
-                <div className="glass-card border border-white/10 rounded-lg p-3 text-xs text-white/70">
-                  You’ve added {stats.recentApps} application{stats.recentApps === 1 ? '' : 's'} this week.
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Controls */}
         <div className="rounded-xl border border-white/15 bg-[#0b1222]/80 shadow-[0_0_0_1px_rgba(255,255,255,.06)] p-3 md:p-4 mb-5">
@@ -245,6 +201,15 @@ export default function PipelinePage() {
               </Select>
             </div>
             <div className="flex items-center justify-start md:justify-end gap-2">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-white/90">📦 Archived</span>
+              </label>
               <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">Reset</Button>
             </div>
           </div>
@@ -264,6 +229,7 @@ export default function PipelinePage() {
                 application={app}
                 onMove={handleMove}
                 onDelete={handleDelete}
+                onArchive={handleArchive}
                 onUpdate={reload}
                 statuses={currentStages}
                 onDragStart={setDraggedItem}
@@ -286,6 +252,7 @@ export default function PipelinePage() {
                   items={filteredColumns?.[status] || []}
                   onMove={handleMove}
                   onDelete={handleDelete}
+                  onArchive={handleArchive}
                   onUpdate={reload}
                   availableStatuses={currentStages}
                   draggedItem={draggedItem}

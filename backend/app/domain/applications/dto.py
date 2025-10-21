@@ -12,6 +12,8 @@ class ApplicationDTO:
     resume_id: Optional[UUID]
     status: str
     source: Optional[str]
+    is_archived: bool
+    archived_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 

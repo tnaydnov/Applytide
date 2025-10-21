@@ -24,6 +24,7 @@ export default function Column({
     onMove,
     onDelete,
     onUpdate,
+    onArchive,
     availableStatuses = [],
     draggedItem = null,
     onDragStart,
@@ -229,6 +230,7 @@ export default function Column({
                                         onMove={onMove}
                                         onDelete={onDelete}
                                         onUpdate={onUpdate}
+                                        onArchive={onArchive}
                                         statuses={availableStatuses}
                                         onDragStart={onDragStart}
                                         onDragEnd={onDragEnd}

@@ -303,6 +303,26 @@ export function usePipelineData() {
         [load, toast]
     );
 
+    const archiveApplication = useCallback(
+        async (id) => {
+            if (!id) return false;
+            try {
+                const response = await api.toggleArchiveApp(id);
+                await load();
+                toast.success(
+                    response.is_archived 
+                        ? 'Application archived successfully' 
+                        : 'Application unarchived successfully'
+                );
+                return true;
+            } catch {
+                toast.error('Failed to toggle archive status');
+                return false;
+            }
+        },
+        [load, toast]
+    );
+
     /* --------------------------------- Return -------------------------------- */
     return {
         // data
@@ -331,6 +351,7 @@ export function usePipelineData() {
         reload: load,
         move,
         deleteApplication,
+        archiveApplication,
     };
 }
 

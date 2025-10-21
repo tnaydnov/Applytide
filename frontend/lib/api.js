@@ -80,6 +80,7 @@ export const api = {
   moveApp: applicationsApi.moveApp,
   updateApplication: applicationsApi.updateApplication,
   deleteApp: applicationsApi.deleteApp,
+  toggleArchiveApp: applicationsApi.toggleArchiveApp,
   getAppDetail: applicationsApi.getAppDetail,
   addStage: applicationsApi.addStage,
   getStages: applicationsApi.getStages,
