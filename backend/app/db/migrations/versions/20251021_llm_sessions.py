@@ -65,10 +65,9 @@ def upgrade():
     op.add_column('active_sessions', sa.Column('browser', sa.String(100), nullable=True))
     op.add_column('active_sessions', sa.Column('os', sa.String(100), nullable=True))
     
-    # 5. Drop columns we don't need
+    # 5. Drop columns we don't need (dropping column auto-drops its indexes)
     op.drop_column('active_sessions', 'device_info')
-    op.drop_column('active_sessions', 'refresh_token_jti')
-    op.drop_index('ix_active_sessions_refresh_token_jti', table_name='active_sessions')
+    op.drop_column('active_sessions', 'refresh_token_jti')  # This auto-drops ix_active_sessions_refresh_token_jti
     
     # 6. Add index on ip_address
     op.create_index(op.f('ix_active_sessions_ip_address'), 'active_sessions', ['ip_address'], unique=False)
