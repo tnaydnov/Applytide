@@ -301,4 +301,84 @@ async def cleanup_orphaned_files(
         )
 
 
+# ==================== DISK USAGE ====================
+
+class DiskUsageResponse(BaseModel):
+    path: str
+    total_gb: float
+    used_gb: float
+    free_gb: float
+    usage_percent: float
+    status: str
+    documents_mb: Optional[float] = None
+    attachments_mb: Optional[float] = None
+    total_uploads_mb: Optional[float] = None
+
+
+@router.get(
+    "/storage/disk-usage",
+    response_model=DiskUsageResponse,
+    summary="Get Disk Usage"
+)
+@limiter.limit("60/minute")
+async def get_disk_usage(
+    request: Request,
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get disk usage statistics for the application storage
+    
+    Returns total, used, free space and usage percentage
+    """
+    try:
+        from ....infra.files.storage_stats import get_disk_usage, get_storage_breakdown
+        
+        logger.info(
+            "Admin requesting disk usage statistics",
+            extra={"admin_id": str(current_admin.id)}
+        )
+        
+        # Get basic disk usage
+        disk_stats = get_disk_usage("/app/uploads")
+        
+        # Get directory breakdown
+        breakdown = get_storage_breakdown()
+        
+        logger.info(
+            "Disk usage statistics retrieved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "used_gb": disk_stats["used_gb"],
+                "free_gb": disk_stats["free_gb"],
+                "usage_percent": disk_stats["usage_percent"]
+            }
+        )
+        
+        return DiskUsageResponse(
+            path=disk_stats["path"],
+            total_gb=disk_stats["total_gb"],
+            used_gb=disk_stats["used_gb"],
+            free_gb=disk_stats["free_gb"],
+            usage_percent=disk_stats["usage_percent"],
+            status=disk_stats["status"],
+            documents_mb=breakdown.get("documents_mb"),
+            attachments_mb=breakdown.get("attachments_mb"),
+            total_uploads_mb=breakdown.get("total_uploads_mb")
+        )
+    
+    except Exception as e:
+        logger.error(
+            "Error getting disk usage",
+            extra={
+                "admin_id": str(current_admin.id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get disk usage statistics"
+        )
+
+
 # ==================== SECURITY MONITORING ====================

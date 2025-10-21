@@ -43,12 +43,12 @@ def get_job_service(db: Session = Depends(get_db)) -> JobService:
     search = SearchGateway(db)
     return JobService(jobs=jobs, companies=companies, search=search)
 
-async def get_document_service() -> AsyncGenerator[DocumentService, None]:
+async def get_document_service(db: Session = Depends(get_db)) -> AsyncGenerator[DocumentService, None]:
     pdf_extractor = PDFExtractor()
     extractor: TextExtractorPort = TextExtractorImpl(pdf_extractor=pdf_extractor)
     store: DocumentStorePort = FSDocumentStore(root=Path("/app/uploads/documents"))
 
-    svc = DocumentService(store=store, extractor=extractor)
+    svc = DocumentService(store=store, extractor=extractor, db_session=db)
     try:
         yield svc
     finally:
@@ -74,7 +74,7 @@ def get_application_service(
     )
 
 
-def get_job_extraction_service() -> JobExtractionService:
+def get_job_extraction_service(db: Session = Depends(get_db)) -> JobExtractionService:
     from ..infra.logging import get_logger
     logger = get_logger(__name__)
     logger.info("Initializing job extraction service")
@@ -89,7 +89,7 @@ def get_job_extraction_service() -> JobExtractionService:
     if OpenAILLMExtractor:
         try:
             logger.debug("Attempting to initialize OpenAI LLM extractor")
-            llm = OpenAILLMExtractor()  # may raise if no key
+            llm = OpenAILLMExtractor(db_session=db)  # may raise if no key
             logger.info("OpenAI LLM extractor initialized successfully")
         except Exception as e:
             logger.error("Failed to initialize OpenAI LLM extractor", extra={"error": str(e)}, exc_info=True)

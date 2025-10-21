@@ -7,10 +7,13 @@ from sqlalchemy import func, select, and_, or_, desc, text
 from sqlalchemy.orm import Session
 
 from ...db import models
+from ...infra.logging import get_logger
 from .dto import (
     UserSummaryDTO, UserDetailDTO, DashboardStatsDTO,
     SystemHealthDTO, AnalyticsDTO, AdminLogDTO, UserActivityDTO
 )
+
+logger = get_logger(__name__)
 
 
 class AdminRepository:
@@ -221,6 +224,14 @@ class AdminRepository:
             models.User.is_oauth_user == True
         ).count()
         
+        # Active sessions (currently logged in)
+        try:
+            active_sessions = self.db.query(models.ActiveSession).filter(
+                models.ActiveSession.expires_at > now
+            ).count()
+        except Exception:
+            active_sessions = 0
+        
         # Application metrics
         total_applications = self.db.query(models.Application).count()
         
@@ -260,6 +271,52 @@ class AdminRepository:
             models.Reminder.created_at >= seven_days_ago
         ).count()
         
+        # LLM usage metrics
+        try:
+            total_llm_calls = self.db.query(models.LLMUsage).count()
+            
+            llm_calls_24h_count = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= now - timedelta(days=1)
+            ).count()
+            
+            llm_calls_7d_count = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= seven_days_ago
+            ).count()
+            
+            llm_calls_30d_count = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= thirty_days_ago
+            ).count()
+            
+            # Sum all costs (convert cents to dollars)
+            total_cost_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).scalar() or 0
+            total_llm_cost = float(total_cost_cents) / 100
+            
+            cost_24h_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= now - timedelta(days=1)
+            ).scalar() or 0
+            llm_cost_24h = float(cost_24h_cents) / 100
+            
+            cost_7d_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= seven_days_ago
+            ).scalar() or 0
+            llm_cost_7d = float(cost_7d_cents) / 100
+            
+            cost_30d_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= thirty_days_ago
+            ).scalar() or 0
+            llm_cost_30d = float(cost_30d_cents) / 100
+            
+        except Exception as e:
+            logger.error("Failed to get LLM stats for dashboard", extra={"error": str(e)})
+            total_llm_calls = 0
+            total_llm_cost = 0.0
+            llm_calls_24h_count = 0
+            llm_calls_7d_count = 0
+            llm_calls_30d_count = 0
+            llm_cost_24h = 0.0
+            llm_cost_7d = 0.0
+            llm_cost_30d = 0.0
+        
         return DashboardStatsDTO(
             total_users=total_users,
             active_users_7d=active_7d,
@@ -267,6 +324,7 @@ class AdminRepository:
             new_users_7d=new_users_7d,
             premium_users=premium_users,
             oauth_users=oauth_users,
+            active_sessions=active_sessions,
             total_applications=total_applications,
             applications_7d=applications_7d,
             applications_30d=applications_30d,
@@ -276,7 +334,15 @@ class AdminRepository:
             total_jobs=total_jobs,
             jobs_7d=jobs_7d,
             total_reminders=total_reminders,
-            reminders_7d=reminders_7d
+            reminders_7d=reminders_7d,
+            total_llm_calls=total_llm_calls,
+            total_llm_cost=total_llm_cost,
+            llm_calls_24h=llm_calls_24h_count,
+            llm_calls_7d=llm_calls_7d_count,
+            llm_calls_30d=llm_calls_30d_count,
+            llm_cost_24h=llm_cost_24h,
+            llm_cost_7d=llm_cost_7d,
+            llm_cost_30d=llm_cost_30d
         )
     
     # ==================== SYSTEM HEALTH ====================
@@ -288,18 +354,71 @@ class AdminRepository:
         seven_days_ago = now - timedelta(days=7)
         thirty_days_ago = now - timedelta(days=30)
         
-        # LLM usage (placeholder - would need actual tracking)
-        llm_calls_24h = 0
-        llm_calls_7d = 0
-        llm_cost_24h = 0.0
-        llm_cost_7d = 0.0
-        llm_cost_30d = 0.0
+        # LLM usage - real tracking from llm_usage table
+        try:
+            # Count calls
+            llm_calls_24h = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= one_day_ago
+            ).count()
+            
+            llm_calls_7d = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= seven_days_ago
+            ).count()
+            
+            llm_calls_30d = self.db.query(models.LLMUsage).filter(
+                models.LLMUsage.created_at >= thirty_days_ago
+            ).count()
+            
+            # Sum costs (stored as cents, convert to dollars)
+            cost_24h_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= one_day_ago
+            ).scalar() or 0
+            
+            cost_7d_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= seven_days_ago
+            ).scalar() or 0
+            
+            cost_30d_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
+                models.LLMUsage.created_at >= thirty_days_ago
+            ).scalar() or 0
+            
+            llm_cost_24h = float(cost_24h_cents) / 100
+            llm_cost_7d = float(cost_7d_cents) / 100
+            llm_cost_30d = float(cost_30d_cents) / 100
+            
+        except Exception as e:
+            logger.error("Failed to get LLM usage stats", extra={"error": str(e)})
+            llm_calls_24h = 0
+            llm_calls_7d = 0
+            llm_calls_30d = 0
+            llm_cost_24h = 0.0
+            llm_cost_7d = 0.0
+            llm_cost_30d = 0.0
         
-        # Cache performance (simplified)
-        cache_hits_24h = 0
-        cache_misses_24h = 0
-        cache_hit_rate = 0.0
-        cache_size_mb = 0.0
+        # Cache performance - get real Redis stats
+        try:
+            from ...infra.cache.stats import get_redis_stats, get_redis_info_24h
+            
+            redis_stats = get_redis_stats()
+            redis_24h = get_redis_info_24h()
+            
+            cache_hits_24h = redis_24h.get("hits_24h", 0)
+            cache_misses_24h = redis_24h.get("misses_24h", 0)
+            cache_hit_rate = redis_stats.get("hit_rate", 0.0)
+            cache_size_mb = redis_stats.get("used_memory_mb", 0.0)
+            
+            logger.debug("Redis cache stats retrieved", extra={
+                "hits_24h": cache_hits_24h,
+                "misses_24h": cache_misses_24h,
+                "hit_rate": cache_hit_rate,
+                "memory_mb": cache_size_mb
+            })
+        except Exception as e:
+            logger.error("Failed to get Redis cache stats", extra={"error": str(e)})
+            cache_hits_24h = 0
+            cache_misses_24h = 0
+            cache_hit_rate = 0.0
+            cache_size_mb = 0.0
         
         # Database size (PostgreSQL specific)
         try:

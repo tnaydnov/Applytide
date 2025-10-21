@@ -47,7 +47,7 @@ async def get_admin_logs(
                 admin_email=log.admin_email,
                 action=log.action,
                 target_type=log.target_type,
-                target_id=log.target_id,
+                target_id=str(log.target_id) if log.target_id else None,
                 details=log.details,
                 ip_address=log.ip_address,
                 user_agent=log.user_agent,

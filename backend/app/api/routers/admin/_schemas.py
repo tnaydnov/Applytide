@@ -135,6 +135,7 @@ class DashboardStatsResponse(BaseModel):
     new_users_7d: int
     premium_users: int
     oauth_users: int
+    active_sessions: int  # Currently logged in users
     total_applications: int
     applications_7d: int
     applications_30d: int
@@ -145,23 +146,44 @@ class DashboardStatsResponse(BaseModel):
     jobs_7d: int
     total_reminders: int
     reminders_7d: int
+    
+    # LLM usage metrics
+    total_llm_calls: int
+    total_llm_cost: float
+    llm_calls_24h: int
+    llm_calls_7d: int
+    llm_calls_30d: int
+    llm_cost_24h: float
+    llm_cost_7d: float
+    llm_cost_30d: float
+    
     avg_api_response_time: Optional[float] = None
     error_rate_24h: Optional[float] = None
 
 
 class SystemHealthResponse(BaseModel):
+    # LLM usage metrics
+    total_llm_calls: int
+    total_llm_cost: float
     llm_calls_24h: int
     llm_calls_7d: int
+    llm_calls_30d: int
     llm_cost_24h: float
     llm_cost_7d: float
     llm_cost_30d: float
+    
+    # Cache metrics
     cache_hits_24h: int
     cache_misses_24h: int
     cache_hit_rate: float
     cache_size_mb: float
+    
+    # Database metrics
     db_size_mb: float
     db_connection_pool_size: int
     db_connection_pool_available: int
+    
+    # API metrics
     total_api_calls_24h: int
     avg_response_time_ms: float
     error_count_24h: int

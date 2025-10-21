@@ -51,7 +51,7 @@ async def get_cohort_retention(
     - Long-term user engagement
     """
     service = AnalyticsService(db)
-    return service.get_cohort_retention(months_back=months_back)
+    return await service.get_cohort_retention(months_back=months_back)
 
 
 @router.get(
@@ -86,7 +86,7 @@ async def predict_churn(
     - Identify product issues
     """
     service = AnalyticsService(db)
-    return service.predict_churn(days_inactive_threshold=days_inactive)
+    return await service.predict_churn(days_inactive_threshold=days_inactive)
 
 
 @router.get(
@@ -122,7 +122,7 @@ async def get_feature_adoption(
     - Premium conversion opportunities
     """
     service = AnalyticsService(db)
-    return service.get_feature_adoption()
+    return await service.get_feature_adoption()
 
 
 @router.get(
@@ -158,7 +158,7 @@ async def get_conversion_funnel(
     - Overall conversion rate
     """
     service = AnalyticsService(db)
-    return service.get_application_funnel(days=days)
+    return await service.get_application_funnel(days=days)
 
 
 @router.get(
@@ -195,4 +195,4 @@ async def get_application_velocity(
     - Track improvements over time
     """
     service = AnalyticsService(db)
-    return service.get_application_velocity(days=days)
+    return await service.get_application_velocity(days=days)

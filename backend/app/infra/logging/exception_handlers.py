@@ -3,6 +3,7 @@ Global Exception Handler for FastAPI
 
 Catches all unhandled exceptions and logs them with full context.
 Returns user-friendly error responses.
+Integrates with error tracking database.
 """
 
 from fastapi import Request, status
@@ -13,6 +14,8 @@ import traceback
 from typing import Any, Dict
 
 from app.infra.logging import get_logger
+from app.infra.logging.error_tracking import log_error
+from app.db.session import get_db
 
 
 logger = get_logger(__name__)
@@ -36,6 +39,29 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
                 "path": str(request.url)
             }
         )
+        
+        # Log to database for 5xx errors
+        try:
+            db_gen = get_db()
+            db = next(db_gen)
+            try:
+                user_id = getattr(request.state, 'user_id', None)
+                log_error(
+                    db=db,
+                    error=exc,
+                    user_id=user_id,
+                    endpoint=str(request.url.path),
+                    method=request.method,
+                    status_code=exc.status_code,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("user-agent"),
+                    severity="error"
+                )
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Failed to log error to database: {e}")
+        
     elif exc.status_code >= 400:
         logger.warning(
             f"HTTP {exc.status_code}: {exc.detail}",
@@ -117,6 +143,28 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
             "method": request.method
         }
     )
+    
+    # Log to database
+    try:
+        db_gen = get_db()
+        db = next(db_gen)
+        try:
+            user_id = getattr(request.state, 'user_id', None)
+            log_error(
+                db=db,
+                error=exc,
+                user_id=user_id,
+                endpoint=str(request.url.path),
+                method=request.method,
+                status_code=500,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+                severity="critical"
+            )
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to log error to database: {e}")
     
     # Return user-friendly error (hide internal details in production)
     return JSONResponse(

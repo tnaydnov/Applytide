@@ -66,6 +66,7 @@ class DashboardStatsDTO:
     new_users_7d: int
     premium_users: int
     oauth_users: int
+    active_sessions: int  # Currently logged in users
     
     # Application metrics
     total_applications: int
@@ -84,6 +85,16 @@ class DashboardStatsDTO:
     # Reminder metrics
     total_reminders: int
     reminders_7d: int
+    
+    # LLM usage metrics
+    total_llm_calls: int
+    total_llm_cost: float  # in USD
+    llm_calls_24h: int
+    llm_calls_7d: int
+    llm_calls_30d: int
+    llm_cost_24h: float
+    llm_cost_7d: float
+    llm_cost_30d: float
     
     # System health
     avg_api_response_time: Optional[float] = None

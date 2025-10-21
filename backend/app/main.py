@@ -31,6 +31,7 @@ except Exception:
 
 from .infra.http.middleware.security_headers import SecurityHeadersMiddleware
 from .infra.http.middleware.rate_limit import GlobalRateLimitMiddleware
+from .infra.http.middleware.error_logging import ErrorLoggingMiddleware
 from .api.routers.jobs import router as jobs_router
 from .api.routers.applications import router as applications_router
 from .api.routers.ws import router as ws_router
@@ -111,6 +112,9 @@ else:
 allowed_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 allowed_hosts += ["backend", "frontend"]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+# --- Error logging middleware (catch all unhandled exceptions)
+app.add_middleware(ErrorLoggingMiddleware)
 
 # --- Routers
 app.include_router(auth_router)

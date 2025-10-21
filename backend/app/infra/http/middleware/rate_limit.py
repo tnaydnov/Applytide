@@ -9,6 +9,13 @@ from fastapi import status
 
 from redis.asyncio import Redis
 from ....config import settings
+from ...logging import get_logger
+from ...logging.security_tracking import log_security_event_db
+from ....db.session import get_db
+
+
+# Initialize logger
+logger = get_logger(__name__)
 
 RATE_LIMIT_LUA = """
 local key     = KEYS[1]
@@ -155,6 +162,41 @@ class GlobalRateLimitMiddleware:
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-Reset": str(int(reset_at)),
             }
+            
+            # Log rate limit violation to security events
+            try:
+                # Extract request details
+                path = scope.get("path", "unknown")
+                method = scope.get("method", "unknown")
+                headers_dict = dict((k.decode().lower(), v.decode()) for k, v in scope.get("headers", []))
+                user_agent = headers_dict.get("user-agent", "unknown")
+                ip_address = self._get_client_ip(scope)
+                
+                # Get database session
+                db_gen = get_db()
+                db = next(db_gen)
+                try:
+                    log_security_event_db(
+                        db=db,
+                        event_type="rate_limit_exceeded",
+                        severity="high",
+                        ip_address=ip_address,
+                        endpoint=path,
+                        method=method,
+                        user_agent=user_agent,
+                        details={
+                            "limit": int(limit),
+                            "retry_after": int(retry_after),
+                            "identifier": ident
+                        },
+                        action_taken="blocked"
+                    )
+                finally:
+                    db.close()
+            except Exception as e:
+                # Non-blocking: log error but continue with rate limit response
+                logger.error(f"Failed to log rate limit security event: {e}", exc_info=True)
+            
             resp = JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={"detail": "Rate limit exceeded"},

@@ -514,5 +514,294 @@ async def get_active_sessions(
         )
 
 
+# ==================== SECURITY EVENTS (NEW - DATABASE-BACKED) ====================
+# Enhanced security event tracking using SecurityEvent table
+
+
+@router.get("/security/events/recent")
+@limiter.limit("60/minute")
+async def get_recent_security_events(
+    request: Request,
+    limit: int = Query(100, ge=1, le=1000),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    resolved: Optional[bool] = Query(None, description="Filter by resolution status"),
+    hours: int = Query(24, ge=1, le=720),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get recent security events from the database.
+    
+    Enhanced security monitoring using the SecurityEvent table.
+    Tracks:
+    - Failed login attempts
+    - Rate limit violations
+    - Suspicious activity
+    
+    **Filters**:
+    - event_type: 'failed_login', 'rate_limit_exceeded', 'suspicious_activity'
+    - severity: 'low', 'medium', 'high', 'critical'
+    - resolved: true/false (show resolved or unresolved events)
+    - hours: Time period (1-720 hours)
+    """
+    from ....infra.logging.security_tracking import get_recent_security_events
+    
+    logger.info(
+        "Admin requesting recent security events",
+        extra={
+            "admin_id": str(current_admin.id),
+            "filters": {
+                "event_type": event_type,
+                "severity": severity,
+                "resolved": resolved,
+                "hours": hours
+            }
+        }
+    )
+    
+    try:
+        events = get_recent_security_events(
+            db=db,
+            limit=limit,
+            event_type=event_type,
+            severity=severity,
+            resolved=resolved,
+            hours=hours
+        )
+        
+        return {
+            "events": [
+                {
+                    "id": str(e.id),
+                    "created_at": e.created_at.isoformat(),
+                    "event_type": e.event_type,
+                    "severity": e.severity,
+                    "user_id": str(e.user_id) if e.user_id else None,
+                    "email": e.email,
+                    "endpoint": e.endpoint,
+                    "method": e.method,
+                    "ip_address": e.ip_address,
+                    "user_agent": e.user_agent,
+                    "details": e.details,
+                    "action_taken": e.action_taken,
+                    "resolved": e.resolved,
+                    "resolved_at": e.resolved_at.isoformat() if e.resolved_at else None,
+                    "resolved_by": str(e.resolved_by) if e.resolved_by else None,
+                    "resolution_notes": e.resolution_notes
+                }
+                for e in events
+            ],
+            "count": len(events),
+            "filters_applied": {
+                "event_type": event_type,
+                "severity": severity,
+                "resolved": resolved,
+                "hours": hours
+            }
+        }
+    except Exception as e:
+        logger.error(
+            "Error retrieving security events",
+            extra={"admin_id": str(current_admin.id), "error": str(e)},
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve security events"
+        )
+
+
+@router.get("/security/events/stats")
+@limiter.limit("60/minute")
+async def get_security_event_stats(
+    request: Request,
+    hours: int = Query(24, ge=1, le=720),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get security event statistics.
+    
+    Returns:
+    - Total events count
+    - Events grouped by type (failed_login, rate_limit_exceeded, etc.)
+    - Events grouped by severity (critical, high, medium, low)
+    - Top 10 offending IP addresses
+    - Count of unresolved critical/high severity events
+    
+    Useful for:
+    - Security dashboard overview
+    - Identifying attack patterns
+    - Prioritizing security responses
+    """
+    from ....infra.logging.security_tracking import get_security_stats
+    
+    logger.info(
+        "Admin requesting security event statistics",
+        extra={"admin_id": str(current_admin.id), "hours": hours}
+    )
+    
+    try:
+        stats = get_security_stats(db=db, hours=hours)
+        return stats
+    except Exception as e:
+        logger.error(
+            "Error retrieving security statistics",
+            extra={"admin_id": str(current_admin.id), "error": str(e)},
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve security statistics"
+        )
+
+
+@router.get("/security/events/{event_id}")
+@limiter.limit("60/minute")
+async def get_security_event_details(
+    request: Request,
+    event_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Get detailed information about a specific security event.
+    
+    Includes:
+    - Full event details
+    - User information (if applicable)
+    - Resolution status and notes
+    - All captured context (IP, user agent, endpoint, etc.)
+    """
+    from ....db.models import SecurityEvent
+    
+    logger.info(
+        "Admin requesting security event details",
+        extra={"admin_id": str(current_admin.id), "event_id": str(event_id)}
+    )
+    
+    try:
+        event = db.query(SecurityEvent).filter(SecurityEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Security event not found")
+        
+        return {
+            "id": str(event.id),
+            "created_at": event.created_at.isoformat(),
+            "event_type": event.event_type,
+            "severity": event.severity,
+            "user_id": str(event.user_id) if event.user_id else None,
+            "email": event.email,
+            "endpoint": event.endpoint,
+            "method": event.method,
+            "ip_address": event.ip_address,
+            "user_agent": event.user_agent,
+            "details": event.details,
+            "action_taken": event.action_taken,
+            "resolved": event.resolved,
+            "resolved_at": event.resolved_at.isoformat() if event.resolved_at else None,
+            "resolved_by": str(event.resolved_by) if event.resolved_by else None,
+            "resolution_notes": event.resolution_notes
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error retrieving security event details",
+            extra={
+                "admin_id": str(current_admin.id),
+                "event_id": str(event_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve security event"
+        )
+
+
+@router.post("/security/events/{event_id}/resolve")
+@limiter.limit("30/minute")
+async def resolve_security_event(
+    request: Request,
+    event_id: UUID,
+    resolution_notes: Optional[str] = Query(None, max_length=2000),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_admin_user)
+):
+    """
+    Mark a security event as resolved.
+    
+    Requires admin privileges. Updates:
+    - resolved flag to true
+    - resolved_at timestamp
+    - resolved_by to current admin
+    - resolution_notes (optional explanation)
+    
+    Use this to:
+    - Acknowledge reviewed events
+    - Document response actions
+    - Track which admin handled the event
+    """
+    from ....infra.logging.security_tracking import mark_security_event_resolved
+    
+    logger.info(
+        "Admin resolving security event",
+        extra={
+            "admin_id": str(current_admin.id),
+            "event_id": str(event_id),
+            "has_notes": bool(resolution_notes)
+        }
+    )
+    
+    try:
+        event = mark_security_event_resolved(
+            db=db,
+            event_id=event_id,
+            resolved_by=current_admin.id,
+            resolution_notes=resolution_notes
+        )
+        
+        logger.info(
+            "Security event resolved",
+            extra={
+                "admin_id": str(current_admin.id),
+                "event_id": str(event_id)
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Security event marked as resolved",
+            "event": {
+                "id": str(event.id),
+                "event_type": event.event_type,
+                "severity": event.severity,
+                "resolved": event.resolved,
+                "resolved_at": event.resolved_at.isoformat() if event.resolved_at else None,
+                "resolved_by": str(event.resolved_by) if event.resolved_by else None,
+                "resolution_notes": event.resolution_notes
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(
+            "Error resolving security event",
+            extra={
+                "admin_id": str(current_admin.id),
+                "event_id": str(event_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resolve security event"
+        )
+
+
 # ==================== GDPR COMPLIANCE TOOLS ====================
 # User data export and deletion requests for GDPR compliance

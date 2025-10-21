@@ -3,6 +3,7 @@ import os, json
 from openai import OpenAI
 from ...domain.jobs.extraction.ports import LLMExtractor
 from ..logging import get_logger
+from ..tracking.llm_tracker import TrackedLLMWrapper
 
 logger = get_logger(__name__)
 
@@ -101,19 +102,24 @@ Return ONLY the JSON object.
 
 
 class OpenAILLMExtractor(LLMExtractor):
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, db_session=None):
         api = os.getenv("OPENAI_API_KEY", "")
         if not api:
             raise RuntimeError("OPENAI_API_KEY not set")
-        self.client = OpenAI(api_key=api)
+        
+        # Wrap OpenAI client with tracker
+        base_client = OpenAI(api_key=api)
+        self.client = TrackedLLMWrapper(base_client, db_session, purpose="job_extraction")
+        
         # Use cost-effective models by default, allow upgrade via env vars
         # Cost comparison: gpt-4o-mini ~$0.00015/1K tokens vs gpt-4o ~$0.0025/1K tokens (16x cheaper!)
         self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
         self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o-mini")  # Use mini by default for cost efficiency
         # To upgrade image model: set JOB_EXTRACT_IMAGE_MODEL=gpt-4o in environment
-        logger.info("OpenAI LLM initialized", extra={
+        logger.info("OpenAI LLM initialized with tracking", extra={
             "text_model": self.text_model,
-            "image_model": self.image_model
+            "image_model": self.image_model,
+            "tracking_enabled": db_session is not None
         })
 
     def extract_job(self, url: str, text: str, hints=None) -> dict:

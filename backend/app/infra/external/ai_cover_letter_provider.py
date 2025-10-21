@@ -37,6 +37,10 @@ except Exception:
     DEFAULT_MODEL = os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
 
 from ...db import models
+from ..tracking.llm_tracker import track_llm_call, calculate_cost
+from ..logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _safe_str(x: object, limit: int | None = None) -> str:
@@ -60,10 +64,12 @@ def _resolve_job_and_company(db: Session, job_id: str) -> Tuple[models.Job, Opti
 
 
 class AICoverLetterService:
-    def __init__(self) -> None:
+    def __init__(self, db_session=None) -> None:
         if not OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY environment variable is required")
 
+        self.db_session = db_session  # Store for tracking
+        
         proxy_url = HTTPS_PROXY or HTTP_PROXY
         transport = None
         if proxy_url:
@@ -221,6 +227,9 @@ class AICoverLetterService:
         )
 
         try:
+            import time
+            start_time = time.time()
+            
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -230,8 +239,29 @@ class AICoverLetterService:
                 max_tokens=1000,
                 temperature=0.6,
             )
+            
+            latency_ms = int((time.time() - start_time) * 1000)
 
             cover_letter_text = (response.choices[0].message.content or "").strip()
+            
+            # Track the LLM call
+            if self.db_session and response.usage:
+                try:
+                    track_llm_call(
+                        db=self.db_session,
+                        provider="openai",
+                        model=self.model,
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                        total_tokens=response.usage.total_tokens,
+                        purpose="cover_letter_generation",
+                        endpoint="chat.completions.create",
+                        latency_ms=latency_ms,
+                        request_sample={"tone": tone, "length": length},
+                        response_sample={"word_count": len(cover_letter_text.split())}
+                    )
+                except Exception as track_error:
+                    logger.warning("Failed to track LLM call", extra={"error": str(track_error)})
 
             return {
                 "success": True,
@@ -246,6 +276,24 @@ class AICoverLetterService:
             }
 
         except Exception as e:
+            # Track failed call
+            if self.db_session:
+                try:
+                    track_llm_call(
+                        db=self.db_session,
+                        provider="openai",
+                        model=self.model,
+                        prompt_tokens=0,
+                        completion_tokens=0,
+                        total_tokens=0,
+                        purpose="cover_letter_generation",
+                        endpoint="chat.completions.create",
+                        latency_ms=0,
+                        error=str(e)
+                    )
+                except Exception:
+                    pass
+            
             return {
                 "success": False,
                 "error": f"Failed to generate cover letter: {e}",

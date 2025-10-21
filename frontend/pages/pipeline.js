@@ -210,7 +210,7 @@ export default function PipelinePage() {
                   className="w-4 h-4 rounded border-white/20 bg-white/10 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
                 />
                 <span className="text-sm text-white/90">
-                  {showArchived ? 'Active' : 'Archived'}
+                  'Archived'
                 </span>
               </label>
               <Button size="sm" variant="outline" onClick={clearFilters} title="Clear filters">Reset</Button>

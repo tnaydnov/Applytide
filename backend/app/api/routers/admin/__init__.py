@@ -40,6 +40,9 @@ from . import (
     security,
     gdpr,
     analytics_advanced,
+    sessions,
+    errors,
+    llm_usage,
 )
 
 
@@ -67,10 +70,13 @@ router.include_router(storage.router)
 
 # Security & Compliance
 router.include_router(security.router)
+router.include_router(sessions.router)
+router.include_router(errors.router)
 router.include_router(gdpr.router)
 
-# Advanced Analytics
+# Advanced Analytics & Monitoring
 router.include_router(analytics_advanced.router)
+router.include_router(llm_usage.router)
 
 
 # Export router for use in main.py

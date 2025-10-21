@@ -69,6 +69,66 @@ export default function AdminDashboard() {
                   </a>
 
                   <a 
+                    href="/admin/llm-usage" 
+                    className="block p-4 rounded-lg bg-gradient-to-r from-violet-600/20 to-purple-600/20 hover:from-violet-600/30 hover:to-purple-600/30 transition-colors border border-violet-500/30"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-slate-100">🤖 LLM Usage & Costs</div>
+                        <div className="text-sm text-slate-400">Track OpenAI API costs and usage</div>
+                      </div>
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="/admin/security-events" 
+                    className="block p-4 rounded-lg bg-gradient-to-r from-red-600/20 to-rose-600/20 hover:from-red-600/30 hover:to-rose-600/30 transition-colors border border-red-500/30"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-slate-100">🔒 Security Events</div>
+                        <div className="text-sm text-slate-400">Failed logins, rate limits, incidents</div>
+                      </div>
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="/admin/errors" 
+                    className="block p-4 rounded-lg bg-gradient-to-r from-amber-600/20 to-orange-600/20 hover:from-amber-600/30 hover:to-orange-600/30 transition-colors border border-amber-500/30"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-slate-100">⚠️ Error Logs</div>
+                        <div className="text-sm text-slate-400">Monitor application errors</div>
+                      </div>
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="/admin/sessions" 
+                    className="block p-4 rounded-lg bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/30 hover:to-blue-600/30 transition-colors border border-cyan-500/30"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-slate-100">👥 Active Sessions</div>
+                        <div className="text-sm text-slate-400">Who's online, session management</div>
+                      </div>
+                      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </a>
+
+                  <a 
                     href="/admin/jobs" 
                     className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
                   >

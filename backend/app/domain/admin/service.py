@@ -17,7 +17,7 @@ class AdminService:
     
     def __init__(self, repo: AdminRepository, user_mgmt: Optional[UserManagementService] = None):
         self.repo = repo
-        self.user_mgmt = user_mgmt or UserManagementService(repo.db)
+        self.user_mgmt = user_mgmt or UserManagementService(repo)
     
     # ==================== USER MANAGEMENT ====================
     

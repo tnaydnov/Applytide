@@ -24,6 +24,8 @@ from ....infra.security.tokens import (
 from ....infra.security.rate_limiter import login_limiter, refresh_limiter
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
+from ....infra.logging.security_tracking import log_security_event_db
+from ....infra.security.session_tracking import create_active_session, remove_session
 from ....config import settings
 
 from .utils import get_client_info
@@ -69,6 +71,24 @@ async def login(
             ip_address=ip_address,
             failure_reason="rate_limit_exceeded"
         )
+        
+        # Log to security events database
+        try:
+            log_security_event_db(
+                db=db,
+                event_type="rate_limit_exceeded",
+                severity="medium",
+                ip_address=ip_address,
+                email=form_data.email,
+                endpoint="/api/auth/login",
+                method="POST",
+                user_agent=user_agent,
+                details={"reason": "email_rate_limit", "email": form_data.email},
+                action_taken="blocked"
+            )
+        except Exception as e:
+            logger.error(f"Failed to log security event: {e}", exc_info=True)
+        
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts"
@@ -88,6 +108,24 @@ async def login(
             ip_address=ip_address,
             failure_reason="rate_limit_exceeded"
         )
+        
+        # Log to security events database
+        try:
+            log_security_event_db(
+                db=db,
+                event_type="rate_limit_exceeded",
+                severity="high",
+                ip_address=ip_address,
+                email=form_data.email,
+                endpoint="/api/auth/login",
+                method="POST",
+                user_agent=user_agent,
+                details={"reason": "ip_rate_limit", "retry_after": retry_after},
+                action_taken="blocked"
+            )
+        except Exception as e:
+            logger.error(f"Failed to log security event: {e}", exc_info=True)
+        
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts",
@@ -127,6 +165,27 @@ async def login(
             ip_address=ip_address,
             failure_reason="invalid_credentials"
         )
+        
+        # Log to security events database
+        try:
+            log_security_event_db(
+                db=db,
+                event_type="failed_login",
+                severity="medium" if user else "low",  # Higher severity if user exists (potential attack)
+                ip_address=ip_address,
+                email=form_data.email,
+                user_id=user.id if user else None,
+                endpoint="/api/auth/login",
+                method="POST",
+                user_agent=user_agent,
+                details={
+                    "reason": "invalid_credentials",
+                    "user_exists": bool(user)
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to log security event: {e}", exc_info=True)
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -231,6 +290,27 @@ async def login(
         method="email",
         ip_address=ip_address
     )
+    
+    # Track active session
+    try:
+        from datetime import timedelta
+        session_expires_at = datetime.now(timezone.utc) + timedelta(days=refresh_days)
+        
+        create_active_session(
+            db=db,
+            user_id=user.id,
+            session_token=refresh_token,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            expires_at=session_expires_at
+        )
+        logger.debug("Active session tracked", extra={"user_id": str(user.id)})
+    except Exception as e:
+        # Non-critical - don't fail login if session tracking fails
+        logger.error("Failed to track active session", extra={
+            "user_id": str(user.id),
+            "error": str(e)
+        })
     
     logger.info(
         "User logged in successfully",
@@ -458,6 +538,17 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     # Clear cookies
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/api/auth")
+    
+    # Remove active session
+    if refresh_token:
+        try:
+            remove_session(db, refresh_token)
+            logger.debug("Active session removed", extra={"user_id": user_id})
+        except Exception as e:
+            logger.error("Failed to remove active session", extra={
+                "user_id": user_id,
+                "error": str(e)
+            })
     
     if user_id:
         event_logger.log_logout(user_id=user_id)

@@ -521,12 +521,6 @@ export const unblockIP = async ({ ipAddress, justification, password }) => {
   return res.json();
 };
 
-export const getActiveSessions = async (limit = 100) => {
-  const res = await apiFetch(`/admin/security/active-sessions?limit=${limit}`);
-  if (!res.ok) throw new Error('Failed to fetch active sessions');
-  return res.json();
-};
-
 // ==================== GDPR COMPLIANCE ====================
 
 export const getGDPRStats = async () => {
@@ -606,6 +600,160 @@ export const getConversionFunnel = async (days = 30) => {
 export const getApplicationVelocity = async (days = 30) => {
   const res = await apiFetch(`/admin/analytics/application-velocity?days=${days}`);
   if (!res.ok) throw new Error('Failed to fetch application velocity');
+  return res.json();
+};
+
+// ==================== LLM USAGE MONITORING ====================
+
+export const getLLMStats = async (hours = 24) => {
+  const res = await apiFetch(`/admin/llm-usage/stats?hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch LLM stats');
+  return res.json();
+};
+
+export const getLLMUsageByUser = async (limit = 10, hours = 24) => {
+  const res = await apiFetch(`/admin/llm-usage/by-user?limit=${limit}&hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch LLM usage by user');
+  return res.json();
+};
+
+export const getLLMUsageByModel = async (hours = 24) => {
+  const res = await apiFetch(`/admin/llm-usage/by-model?hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch LLM usage by model');
+  return res.json();
+};
+
+export const getRecentLLMCalls = async (limit = 50, includeErrors = null) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  if (includeErrors !== null) params.append('include_errors', includeErrors);
+  
+  const res = await apiFetch(`/admin/llm-usage/recent?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch recent LLM calls');
+  return res.json();
+};
+
+export const getLLMCosts = async (hours = 24) => {
+  const res = await apiFetch(`/admin/llm-usage/costs?hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch LLM costs');
+  return res.json();
+};
+
+export const getLLMTrends = async (days = 7) => {
+  const res = await apiFetch(`/admin/llm-usage/trends?days=${days}`);
+  if (!res.ok) throw new Error('Failed to fetch LLM trends');
+  return res.json();
+};
+
+// ==================== SECURITY EVENTS ====================
+
+export const getSecurityEventsRecent = async ({
+  limit = 50,
+  event_type = null,
+  severity = null,
+  resolved = null,
+  hours = 24
+}) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  params.append('hours', hours);
+  if (event_type) params.append('event_type', event_type);
+  if (severity) params.append('severity', severity);
+  if (resolved !== null) params.append('resolved', resolved);
+  
+  const res = await apiFetch(`/admin/security/events/recent?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch security events');
+  return res.json();
+};
+
+export const getSecurityEventsStats = async (hours = 24) => {
+  const res = await apiFetch(`/admin/security/events/stats?hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch security event stats');
+  return res.json();
+};
+
+export const getSecurityEventDetail = async (eventId) => {
+  const res = await apiFetch(`/admin/security/events/${eventId}`);
+  if (!res.ok) throw new Error('Failed to fetch security event details');
+  return res.json();
+};
+
+export const resolveSecurityEvent = async (eventId, notes = '') => {
+  const res = await apiFetch(`/admin/security/events/${eventId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ notes })
+  });
+  if (!res.ok) throw new Error('Failed to resolve security event');
+  return res.json();
+};
+
+// ==================== ERROR LOGS ====================
+
+export const getErrorLogsRecent = async ({
+  limit = 50,
+  severity = null,
+  resolved = null,
+  hours = 24
+}) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  params.append('hours', hours);
+  if (severity) params.append('severity', severity);
+  if (resolved !== null) params.append('resolved', resolved);
+  
+  const res = await apiFetch(`/admin/errors/recent?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch error logs');
+  return res.json();
+};
+
+export const getErrorStats = async (hours = 24) => {
+  const res = await apiFetch(`/admin/errors/stats?hours=${hours}`);
+  if (!res.ok) throw new Error('Failed to fetch error stats');
+  return res.json();
+};
+
+export const getErrorDetail = async (errorId) => {
+  const res = await apiFetch(`/admin/errors/${errorId}`);
+  if (!res.ok) throw new Error('Failed to fetch error details');
+  return res.json();
+};
+
+export const resolveError = async (errorId, notes = '') => {
+  const res = await apiFetch(`/admin/errors/${errorId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ notes })
+  });
+  if (!res.ok) throw new Error('Failed to resolve error');
+  return res.json();
+};
+
+// ==================== ACTIVE SESSIONS ====================
+
+export const getActiveSessions = async (limit = 100) => {
+  const res = await apiFetch(`/admin/sessions/active?limit=${limit}`);
+  if (!res.ok) throw new Error('Failed to fetch active sessions');
+  return res.json();
+};
+
+export const getSessionStats = async () => {
+  const res = await apiFetch('/admin/sessions/stats');
+  if (!res.ok) throw new Error('Failed to fetch session stats');
+  return res.json();
+};
+
+export const terminateSession = async (sessionId) => {
+  const res = await apiFetch(`/admin/sessions/${sessionId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to terminate session');
+  return res.json();
+};
+
+export const terminateUserSessions = async (userId) => {
+  const res = await apiFetch(`/admin/sessions/user/${userId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to terminate user sessions');
   return res.json();
 };
 
