@@ -245,23 +245,6 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 
-# ---------- Active Sessions ----------
-class ActiveSession(Base):
-    """Track active user sessions for admin monitoring and control"""
-    __tablename__ = "active_sessions"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    session_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)  # Hash of the JWT jti
-    refresh_token_jti: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)  # Link to refresh token
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    device_info: Mapped[str | None] = mapped_column(String(200), nullable=True)  # Extracted device type
-    location: Mapped[str | None] = mapped_column(String(100), nullable=True)  # Approximate location from IP
-    last_activity_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-
-
 # ---------- Email History ----------
 class EmailHistory(Base):
     """Complete email history for admin monitoring"""
