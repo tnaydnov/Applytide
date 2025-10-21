@@ -38,22 +38,37 @@ def upgrade():
         sa.Column('error', sa.Text(), nullable=True),
     )
     
-    # Create active_sessions table
-    op.create_table(
-        'active_sessions',
-        sa.Column('id', UUID(as_uuid=True), primary_key=True),
-        sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id'), nullable=False, index=True),
-        sa.Column('session_token', sa.String(500), nullable=False, unique=True, index=True),
-        sa.Column('login_at', sa.DateTime(), nullable=False, index=True),
-        sa.Column('last_activity_at', sa.DateTime(), nullable=False, index=True),
-        sa.Column('expires_at', sa.DateTime(), nullable=False, index=True),
-        sa.Column('ip_address', sa.String(50), nullable=True, index=True),
-        sa.Column('user_agent', sa.String(500), nullable=True),
-        sa.Column('device_type', sa.String(50), nullable=True),
-        sa.Column('browser', sa.String(100), nullable=True),
-        sa.Column('os', sa.String(100), nullable=True),
-        sa.Column('location', sa.String(200), nullable=True),
-    )
+    # Update active_sessions table schema (table exists from 20251020_180650_add_enhanced_admin_features.py)
+    # Modify existing columns
+    op.alter_column('active_sessions', 'session_token',
+                   existing_type=sa.String(64),
+                   type_=sa.String(500),
+                   existing_nullable=False)
+    
+    # Rename created_at to login_at
+    op.alter_column('active_sessions', 'created_at',
+                   new_column_name='login_at',
+                   existing_type=sa.DateTime(),
+                   existing_nullable=False)
+    
+    # Add new columns
+    op.add_column('active_sessions', sa.Column('device_type', sa.String(50), nullable=True))
+    op.add_column('active_sessions', sa.Column('browser', sa.String(100), nullable=True))
+    op.add_column('active_sessions', sa.Column('os', sa.String(100), nullable=True))
+    
+    # Rename/repurpose device_info to location (both String fields)
+    op.alter_column('active_sessions', 'device_info',
+                   new_column_name='location',
+                   existing_type=sa.String(200),
+                   existing_nullable=True)
+    
+    # Drop columns we don't need
+    op.drop_column('active_sessions', 'refresh_token_jti')
+    op.drop_index('ix_active_sessions_refresh_token_jti', table_name='active_sessions')
+    
+    # Update location column size (it was device_info=200, now location=200, no change needed)
+    # Update ip_address index (it had none, add it)
+    op.create_index(op.f('ix_active_sessions_ip_address'), 'active_sessions', ['ip_address'], unique=False)
     
     # Create error_logs table
     op.create_table(
@@ -100,7 +115,27 @@ def upgrade():
 
 
 def downgrade():
+    # Drop new tables
     op.drop_table('security_events')
     op.drop_table('error_logs')
-    op.drop_table('active_sessions')
     op.drop_table('llm_usage')
+    
+    # Revert active_sessions table schema changes
+    op.drop_index(op.f('ix_active_sessions_ip_address'), table_name='active_sessions')
+    op.create_index('ix_active_sessions_refresh_token_jti', 'active_sessions', ['refresh_token_jti'], unique=False)
+    op.add_column('active_sessions', sa.Column('refresh_token_jti', sa.String(36), nullable=True))
+    op.alter_column('active_sessions', 'location',
+                   new_column_name='device_info',
+                   existing_type=sa.String(200),
+                   existing_nullable=True)
+    op.drop_column('active_sessions', 'os')
+    op.drop_column('active_sessions', 'browser')
+    op.drop_column('active_sessions', 'device_type')
+    op.alter_column('active_sessions', 'login_at',
+                   new_column_name='created_at',
+                   existing_type=sa.DateTime(),
+                   existing_nullable=False)
+    op.alter_column('active_sessions', 'session_token',
+                   existing_type=sa.String(500),
+                   type_=sa.String(64),
+                   existing_nullable=False)
