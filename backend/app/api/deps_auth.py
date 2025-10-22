@@ -52,12 +52,5 @@ async def get_current_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise credentials_exception
-    
-    # Check if user is banned
-    if user.is_banned:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account has been suspended. Please contact support for more information."
-        )
 
     return user
