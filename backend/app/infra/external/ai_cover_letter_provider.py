@@ -37,7 +37,7 @@ except Exception:
     DEFAULT_MODEL = os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
 
 from ...db import models
-from ..tracking.llm_tracker import track_llm_call, calculate_cost
+# ADMIN CLEANUP: Removed llm_tracker import
 from ..logging import get_logger
 
 logger = get_logger(__name__)
@@ -244,24 +244,7 @@ class AICoverLetterService:
 
             cover_letter_text = (response.choices[0].message.content or "").strip()
             
-            # Track the LLM call
-            if self.db_session and response.usage:
-                try:
-                    track_llm_call(
-                        db=self.db_session,
-                        provider="openai",
-                        model=self.model,
-                        prompt_tokens=response.usage.prompt_tokens,
-                        completion_tokens=response.usage.completion_tokens,
-                        total_tokens=response.usage.total_tokens,
-                        purpose="cover_letter_generation",
-                        endpoint="chat.completions.create",
-                        latency_ms=latency_ms,
-                        request_sample={"tone": tone, "length": length},
-                        response_sample={"word_count": len(cover_letter_text.split())}
-                    )
-                except Exception as track_error:
-                    logger.warning("Failed to track LLM call", extra={"error": str(track_error)})
+            # ADMIN CLEANUP: Removed LLM call tracking
 
             return {
                 "success": True,
@@ -276,23 +259,7 @@ class AICoverLetterService:
             }
 
         except Exception as e:
-            # Track failed call
-            if self.db_session:
-                try:
-                    track_llm_call(
-                        db=self.db_session,
-                        provider="openai",
-                        model=self.model,
-                        prompt_tokens=0,
-                        completion_tokens=0,
-                        total_tokens=0,
-                        purpose="cover_letter_generation",
-                        endpoint="chat.completions.create",
-                        latency_ms=0,
-                        error=str(e)
-                    )
-                except Exception:
-                    pass
+            # ADMIN CLEANUP: Removed LLM call tracking
             
             return {
                 "success": False,

@@ -28,11 +28,10 @@ logger = get_logger(__name__)
 # Optional OpenAI for resume analysis
 try:
     from openai import OpenAI
-    from ....infra.tracking.llm_tracker import TrackedLLMWrapper
+    # ADMIN CLEANUP: Removed llm_tracker import
     _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 except Exception:
     OpenAI = None
-    TrackedLLMWrapper = None
     _OPENAI_API_KEY = ""
 
 
@@ -47,15 +46,12 @@ class DocumentService:
         self.extractor = extractor
         self.db_session = db_session
         
-        # Initialize LLM for AI analysis with tracking
+        # Initialize LLM for AI analysis (ADMIN CLEANUP: removed tracking wrapper)
         self._llm = None
-        if OpenAI and _OPENAI_API_KEY and TrackedLLMWrapper:
+        if OpenAI and _OPENAI_API_KEY:
             try:
-                base_client = OpenAI(api_key=_OPENAI_API_KEY)
-                self._llm = TrackedLLMWrapper(base_client, db_session, purpose="document_analysis")
-                logger.info("OpenAI LLM initialized for document service with tracking", extra={
-                    "tracking_enabled": db_session is not None
-                })
+                self._llm = OpenAI(api_key=_OPENAI_API_KEY)
+                logger.info("OpenAI LLM initialized for document service")
             except Exception as e:
                 logger.warning("OpenAI LLM initialization failed", extra={"error": str(e)})
         
