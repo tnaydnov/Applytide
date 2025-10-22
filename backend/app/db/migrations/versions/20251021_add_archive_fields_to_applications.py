@@ -1,7 +1,7 @@
 """add archive fields to applications
 
 Revision ID: 20251021_archive
-Revises: 20251020_merge_all_heads
+Revises: a124a47fd4fb
 Create Date: 2025-10-21 06:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20251021_archive'
-down_revision = '20251020_merge_all_heads'
+down_revision = 'a124a47fd4fb'
 branch_labels = None
 depends_on = None
 
