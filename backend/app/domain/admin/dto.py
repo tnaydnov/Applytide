@@ -105,8 +105,11 @@ class DashboardStatsDTO:
 class SystemHealthDTO:
     """System health metrics"""
     # LLM usage
+    total_llm_calls: int
+    total_llm_cost: float
     llm_calls_24h: int
     llm_calls_7d: int
+    llm_calls_30d: int
     llm_cost_24h: float
     llm_cost_7d: float
     llm_cost_30d: float

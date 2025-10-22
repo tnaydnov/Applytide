@@ -48,6 +48,7 @@ async def get_dashboard_stats(
         new_users_7d=stats.new_users_7d,
         premium_users=stats.premium_users,
         oauth_users=stats.oauth_users,
+        active_sessions=stats.active_sessions,
         total_applications=stats.total_applications,
         applications_7d=stats.applications_7d,
         applications_30d=stats.applications_30d,
@@ -58,6 +59,15 @@ async def get_dashboard_stats(
         jobs_7d=stats.jobs_7d,
         total_reminders=stats.total_reminders,
         reminders_7d=stats.reminders_7d,
+        # LLM usage metrics
+        total_llm_calls=stats.total_llm_calls,
+        total_llm_cost=stats.total_llm_cost,
+        llm_calls_24h=stats.llm_calls_24h,
+        llm_calls_7d=stats.llm_calls_7d,
+        llm_calls_30d=stats.llm_calls_30d,
+        llm_cost_24h=stats.llm_cost_24h,
+        llm_cost_7d=stats.llm_cost_7d,
+        llm_cost_30d=stats.llm_cost_30d,
         avg_api_response_time=stats.avg_api_response_time,
         error_rate_24h=stats.error_rate_24h
     )
@@ -120,8 +130,11 @@ async def get_system_health(
     
     health = service.get_system_health()
     return SystemHealthResponse(
+        total_llm_calls=health.total_llm_calls,
+        total_llm_cost=health.total_llm_cost,
         llm_calls_24h=health.llm_calls_24h,
         llm_calls_7d=health.llm_calls_7d,
+        llm_calls_30d=health.llm_calls_30d,
         llm_cost_24h=health.llm_cost_24h,
         llm_cost_7d=health.llm_cost_7d,
         llm_cost_30d=health.llm_cost_30d,

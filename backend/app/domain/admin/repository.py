@@ -356,7 +356,10 @@ class AdminRepository:
         
         # LLM usage - real tracking from llm_usage table
         try:
-            # Count calls
+            # Total counts
+            total_llm_calls = self.db.query(models.LLMUsage).count()
+            
+            # Count calls by timeframe
             llm_calls_24h = self.db.query(models.LLMUsage).filter(
                 models.LLMUsage.created_at >= one_day_ago
             ).count()
@@ -370,6 +373,9 @@ class AdminRepository:
             ).count()
             
             # Sum costs (stored as cents, convert to dollars)
+            total_cost_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).scalar() or 0
+            total_llm_cost = float(total_cost_cents) / 100
+            
             cost_24h_cents = self.db.query(func.coalesce(func.sum(models.LLMUsage.cost), 0)).filter(
                 models.LLMUsage.created_at >= one_day_ago
             ).scalar() or 0
@@ -388,6 +394,8 @@ class AdminRepository:
             
         except Exception as e:
             logger.error("Failed to get LLM usage stats", extra={"error": str(e)})
+            total_llm_calls = 0
+            total_llm_cost = 0.0
             llm_calls_24h = 0
             llm_calls_7d = 0
             llm_calls_30d = 0
@@ -440,8 +448,11 @@ class AdminRepository:
         error_rate = 0.0
         
         return SystemHealthDTO(
+            total_llm_calls=total_llm_calls,
+            total_llm_cost=total_llm_cost,
             llm_calls_24h=llm_calls_24h,
             llm_calls_7d=llm_calls_7d,
+            llm_calls_30d=llm_calls_30d,
             llm_cost_24h=llm_cost_24h,
             llm_cost_7d=llm_cost_7d,
             llm_cost_30d=llm_cost_30d,
