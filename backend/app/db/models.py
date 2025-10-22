@@ -65,7 +65,6 @@ class User(Base):
     
     # Account Status
     is_premium: Mapped[bool] = mapped_column(default=False, nullable=False)
-    is_admin: Mapped[bool] = mapped_column(default=False, nullable=False)
     premium_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -87,12 +86,6 @@ class User(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
-    
-    # Account Security
-    is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    banned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ban_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    banned_by_admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class OAuthToken(Base):
@@ -245,23 +238,6 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 
-# ---------- Email History ----------
-class EmailHistory(Base):
-    """Complete email history for admin monitoring"""
-    __tablename__ = "email_history"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    recipient_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
-    email_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # verification, password_reset, welcome, etc.
-    subject: Mapped[str] = mapped_column(String(500), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # sent, failed, bounced
-    provider_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
-    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # If tracking enabled
-    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # If tracking enabled
-
-
 class EmailAction(Base):
     __tablename__ = "email_actions"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -311,33 +287,11 @@ class ReminderNote(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
 
-# ---------- Admin Logs ----------
-class AdminLog(Base):
-    """Track all admin actions for audit trail
-    
-    IMPORTANT: Audit logs are immutable and permanent for compliance.
-    Even if an admin user is deleted, their logs MUST be preserved.
-    We store admin_email redundantly to maintain readability.
-    """
-    __tablename__ = "admin_logs"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Nullable to preserve logs
-    admin_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)  # Redundant but permanent record
-    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # 'view_user', 'update_user', 'view_stats', etc.
-    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)  # 'user', 'application', 'document', etc.
-    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)  # Changed from String to UUID to match migration
-    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Additional context
-    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
-
-
 # ---------- Application Logs ----------
 class ApplicationLog(Base):
     """Track application events, errors, and user actions
     
     Stores structured application logs for debugging, monitoring, and analytics.
-    Separate from AdminLog which tracks admin-specific actions.
     
     Used for:
     - Authentication events (login, logout, registration)
@@ -382,150 +336,3 @@ class ApplicationLog(Base):
     
     # Additional structured data
     extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Any extra context
-
-
-# ---------- LLM Usage Tracking ----------
-class LLMUsage(Base):
-    """Track all LLM API calls for cost monitoring and analytics"""
-    __tablename__ = "llm_usage"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # Timing
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
-    
-    # User context
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    
-    # Model info
-    provider: Mapped[str] = mapped_column(String(50), nullable=False)  # 'openai', 'anthropic', etc.
-    model: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # 'gpt-4o-mini', 'claude-3', etc.
-    
-    # Token usage
-    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    
-    # Cost (in USD)
-    cost: Mapped[float] = mapped_column(Integer, nullable=False)  # Stored as cents to avoid float issues
-    
-    # Request context
-    purpose: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # 'resume_analysis', 'cover_letter', etc.
-    endpoint: Mapped[str | None] = mapped_column(String(500), nullable=True)  # Which API endpoint triggered this
-    
-    # Performance
-    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Response time in milliseconds
-    
-    # Request/response samples (for debugging)
-    request_sample: Mapped[str | None] = mapped_column(Text, nullable=True)  # First 500 chars of prompt
-    response_sample: Mapped[str | None] = mapped_column(Text, nullable=True)  # First 500 chars of response
-    
-    # Error tracking
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-
-# ---------- Active Sessions ----------
-class ActiveSession(Base):
-    """Track currently active user sessions for admin monitoring"""
-    __tablename__ = "active_sessions"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # User
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    
-    # Session info
-    session_token: Mapped[str] = mapped_column(String(500), nullable=False, unique=True, index=True)
-    
-    # Login details
-    login_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
-    last_activity_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
-    
-    # Client info
-    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
-    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    device_type: Mapped[str | None] = mapped_column(String(50), nullable=True)  # 'desktop', 'mobile', 'tablet'
-    browser: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    os: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    location: Mapped[str | None] = mapped_column(String(200), nullable=True)  # City, Country
-
-
-# ---------- Error Logs ----------
-class ErrorLog(Base):
-    """Track application errors for monitoring and debugging"""
-    __tablename__ = "error_logs"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
-    
-    # User context (if available)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    
-    # Error details
-    error_type: Mapped[str] = mapped_column(String(200), nullable=False, index=True)  # Exception class name
-    error_message: Mapped[str] = mapped_column(Text, nullable=False)
-    stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
-    
-    # Request context
-    endpoint: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)  # API endpoint
-    method: Mapped[str | None] = mapped_column(String(10), nullable=True)  # GET, POST, etc.
-    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
-    
-    # Client info
-    ip_address: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
-    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    
-    # Service context
-    service: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # 'auth', 'documents', 'jobs', etc.
-    
-    # Severity
-    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="error", index=True)  # 'critical', 'error', 'warning'
-    
-    # Resolution tracking
-    resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    resolved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    resolution_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-
-class SecurityEvent(Base):
-    """Track security-related events (failed logins, rate limits, suspicious activity)"""
-    __tablename__ = "security_events"
-    
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    
-    # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, nullable=False, index=True)
-    
-    # Event classification
-    event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # 'failed_login', 'rate_limit_exceeded', 'suspicious_activity', etc.
-    severity: Mapped[str] = mapped_column(String(20), nullable=False, default="medium", index=True)  # 'low', 'medium', 'high', 'critical'
-    
-    # User context (may be null for failed login attempts)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)  # For failed login attempts
-    
-    # Request context
-    endpoint: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)  # API endpoint
-    method: Mapped[str | None] = mapped_column(String(10), nullable=True)  # GET, POST, etc.
-    
-    # Client info
-    ip_address: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    
-    # Event details (JSON for flexibility)
-    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Flexible storage for event-specific data
-    
-    # Action taken
-    action_taken: Mapped[str | None] = mapped_column(String(200), nullable=True)  # e.g., "blocked", "throttled", "alerted"
-    
-    # Resolution tracking
-    resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    resolved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    resolution_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-

@@ -91,12 +91,6 @@ export default function NavBar() {
         { label: "Reminders", href: "/reminders", icon: "notifications" },
       ],
     },
-    // Admin link - only show if user is admin (simple button, no dropdown)
-    ...(user?.is_admin ? [{
-      label: "Admin",
-      href: "/admin",
-      icon: "settings",
-    }] : []),
   ];
 
   // Determine which links to show based on auth state

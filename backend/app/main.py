@@ -46,7 +46,6 @@ from .db.session import get_db
 from .infra.cache.redis_client import get_redis
 from .api.routers.reminders import router as reminders_router
 from .api.routers.auth import router as auth_router
-from .api.routers.admin import router as admin_router
 from .config import settings
 
 # Setup logging FIRST (before creating FastAPI app)
@@ -55,7 +54,6 @@ setup_logging()
 # Create logger for this module
 logger = get_logger(__name__)
 
-# Initialize rate limiter for admin endpoints
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="Applytide API")
@@ -129,7 +127,6 @@ app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
 app.include_router(reminders_router)
-app.include_router(admin_router)
 
 # --- Security headers (as late as possible)
 if settings.SECURITY_HEADERS_ENABLED:
