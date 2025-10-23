@@ -27,15 +27,20 @@ export default function SecurityPage() {
     try {
       setLoading(true);
       
+      // Build event params - only include event_type if not 'all'
+      const eventParams = {
+        hours: timeWindow,
+        page,
+        page_size: pageSize
+      };
+      if (eventTypeFilter !== 'all') {
+        eventParams.event_type = eventTypeFilter;
+      }
+      
       // Load security stats and events
       const [statsData, eventsData] = await Promise.all([
         adminApi.getSecurityStats(timeWindow),
-        adminApi.getSecurityEvents({
-          hours: timeWindow,
-          event_type: eventTypeFilter !== 'all' ? eventTypeFilter : undefined,
-          page,
-          page_size: pageSize
-        })
+        adminApi.getSecurityEvents(eventParams)
       ]);
 
       setStats(statsData);

@@ -630,39 +630,56 @@ class AdminService:
         # Calculate cutoff time
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         
-        # Security event types in ApplicationLog
-        security_event_types = [
-            'failed_login',
-            'rate_limit_exceeded',
-            'token_revoked',
-            'suspicious_activity',
-            'unauthorized_access'
-        ]
-        
-        # Query security events
-        security_events = self.db.query(models.ApplicationLog).filter(
+        # Query security-related logs
+        # Security events are identified by message patterns or logger names
+        security_logs = self.db.query(models.ApplicationLog).filter(
             models.ApplicationLog.timestamp >= cutoff,
-            models.ApplicationLog.event_type.in_(security_event_types)
+            or_(
+                # Authentication failures
+                and_(
+                    models.ApplicationLog.level == 'WARNING',
+                    models.ApplicationLog.message.ilike('%login%failed%')
+                ),
+                and_(
+                    models.ApplicationLog.level == 'ERROR',
+                    models.ApplicationLog.message.ilike('%authentication%')
+                ),
+                # Rate limiting
+                models.ApplicationLog.message.ilike('%rate%limit%'),
+                # Token issues
+                models.ApplicationLog.message.ilike('%token%revok%'),
+                models.ApplicationLog.message.ilike('%token%invalid%'),
+                # Unauthorized access
+                and_(
+                    models.ApplicationLog.status_code.in_([401, 403]),
+                    models.ApplicationLog.level.in_(['WARNING', 'ERROR'])
+                )
+            )
         ).all()
         
-        # Count by event type
-        failed_logins = len([e for e in security_events if e.event_type == 'failed_login'])
-        rate_limit_violations = len([e for e in security_events if e.event_type == 'rate_limit_exceeded'])
-        token_revocations = len([e for e in security_events if e.event_type == 'token_revoked'])
+        # Count by event type (inferred from message/status)
+        failed_logins = len([e for e in security_logs if 
+                            ('login' in e.message.lower() and 'fail' in e.message.lower()) or
+                            (e.status_code == 401 and 'auth' in e.message.lower())])
+        
+        rate_limit_violations = len([e for e in security_logs if 'rate' in e.message.lower() and 'limit' in e.message.lower()])
+        
+        token_revocations = len([e for e in security_logs if 'token' in e.message.lower() and ('revok' in e.message.lower() or 'invalid' in e.message.lower())])
         
         # Count unique IPs for each category
         failed_login_ips = set()
         rate_limit_ips = set()
         
-        for event in security_events:
-            ip = None
-            if event.extra and isinstance(event.extra, dict):
+        for event in security_logs:
+            ip = event.ip_address
+            if not ip and event.extra and isinstance(event.extra, dict):
                 ip = event.extra.get('ip_address') or event.extra.get('ip')
             
             if ip:
-                if event.event_type == 'failed_login':
+                msg_lower = event.message.lower()
+                if 'login' in msg_lower and 'fail' in msg_lower:
                     failed_login_ips.add(ip)
-                elif event.event_type == 'rate_limit_exceeded':
+                elif 'rate' in msg_lower and 'limit' in msg_lower:
                     rate_limit_ips.add(ip)
         
         return dto.SecurityStatsDTO(
@@ -685,7 +702,7 @@ class AdminService:
         
         Args:
             hours: Number of hours to look back
-            event_type: Filter by event type
+            event_type: Filter by event type (failed_login, rate_limit, token_revoked, unauthorized)
             page: Page number (1-indexed)
             page_size: Items per page
             
@@ -697,20 +714,71 @@ class AdminService:
         # Build query
         query = self.db.query(models.ApplicationLog)
         
-        # Security event types
-        security_event_types = [
-            'failed_login',
-            'rate_limit_exceeded',
-            'token_revoked',
-            'suspicious_activity',
-            'unauthorized_access'
-        ]
-        
-        # Filter by security events
-        if event_type:
-            query = query.filter(models.ApplicationLog.event_type == event_type)
+        # Filter by security events using message patterns and status codes
+        if event_type == 'failed_login':
+            query = query.filter(
+                or_(
+                    and_(
+                        models.ApplicationLog.level.in_(['WARNING', 'ERROR']),
+                        models.ApplicationLog.message.ilike('%login%fail%')
+                    ),
+                    and_(
+                        models.ApplicationLog.status_code == 401,
+                        models.ApplicationLog.message.ilike('%auth%')
+                    )
+                )
+            )
+        elif event_type == 'rate_limit':
+            query = query.filter(
+                models.ApplicationLog.message.ilike('%rate%limit%')
+            )
+        elif event_type == 'token_revoked':
+            query = query.filter(
+                and_(
+                    models.ApplicationLog.message.ilike('%token%'),
+                    or_(
+                        models.ApplicationLog.message.ilike('%revok%'),
+                        models.ApplicationLog.message.ilike('%invalid%')
+                    )
+                )
+            )
+        elif event_type == 'unauthorized':
+            query = query.filter(
+                and_(
+                    models.ApplicationLog.status_code.in_([401, 403]),
+                    models.ApplicationLog.level.in_(['WARNING', 'ERROR'])
+                )
+            )
         else:
-            query = query.filter(models.ApplicationLog.event_type.in_(security_event_types))
+            # Show all security events
+            query = query.filter(
+                or_(
+                    # Authentication failures
+                    and_(
+                        models.ApplicationLog.level == 'WARNING',
+                        models.ApplicationLog.message.ilike('%login%fail%')
+                    ),
+                    and_(
+                        models.ApplicationLog.level == 'ERROR',
+                        models.ApplicationLog.message.ilike('%authentication%')
+                    ),
+                    # Rate limiting
+                    models.ApplicationLog.message.ilike('%rate%limit%'),
+                    # Token issues
+                    and_(
+                        models.ApplicationLog.message.ilike('%token%'),
+                        or_(
+                            models.ApplicationLog.message.ilike('%revok%'),
+                            models.ApplicationLog.message.ilike('%invalid%')
+                        )
+                    ),
+                    # Unauthorized access
+                    and_(
+                        models.ApplicationLog.status_code.in_([401, 403]),
+                        models.ApplicationLog.level.in_(['WARNING', 'ERROR'])
+                    )
+                )
+            )
         
         # Time window filter
         if hours:
@@ -727,46 +795,51 @@ class AdminService:
         # Build response
         events = []
         for record in records:
-            # Extract IP and user info from extra data
-            ip_address = None
-            username = None
-            user_email = None
-            severity = 'medium'
-            
-            if record.extra and isinstance(record.extra, dict):
+            # Extract IP from record or extra data
+            ip_address = record.ip_address
+            if not ip_address and record.extra and isinstance(record.extra, dict):
                 ip_address = record.extra.get('ip_address') or record.extra.get('ip')
-                username = record.extra.get('username') or record.extra.get('email')
-                severity = record.extra.get('severity', 'medium')
             
-            # Try to get user email from user_id
+            # Get user email if user_id exists
+            user_email = None
             if record.user_id:
                 user = self.db.get(models.User, record.user_id)
                 if user:
                     user_email = user.email
             
-            # Determine severity based on event type if not provided
-            if not record.extra or 'severity' not in record.extra:
-                if record.event_type == 'failed_login':
-                    severity = 'medium'
-                elif record.event_type == 'rate_limit_exceeded':
-                    severity = 'low'
-                elif record.event_type == 'token_revoked':
-                    severity = 'info'
-                elif record.event_type == 'suspicious_activity':
-                    severity = 'high'
-                elif record.event_type == 'unauthorized_access':
-                    severity = 'critical'
+            # Infer event type from message
+            msg_lower = record.message.lower()
+            inferred_event_type = 'other'
+            severity = 'medium'
+            
+            if 'login' in msg_lower and 'fail' in msg_lower:
+                inferred_event_type = 'failed_login'
+                severity = 'medium'
+            elif 'rate' in msg_lower and 'limit' in msg_lower:
+                inferred_event_type = 'rate_limit'
+                severity = 'low'
+            elif 'token' in msg_lower and ('revok' in msg_lower or 'invalid' in msg_lower):
+                inferred_event_type = 'token_revoked'
+                severity = 'info'
+            elif record.status_code in [401, 403]:
+                inferred_event_type = 'unauthorized'
+                severity = 'high' if record.status_code == 403 else 'medium'
+            
+            # Override with severity from extra if present
+            if record.extra and isinstance(record.extra, dict) and 'severity' in record.extra:
+                severity = record.extra.get('severity', severity)
             
             events.append({
-                'id': record.id,
+                'id': str(record.id),
                 'timestamp': record.timestamp.isoformat(),
-                'event_type': record.event_type,
+                'event_type': inferred_event_type,
                 'severity': severity,
                 'user_email': user_email,
-                'username': username,
                 'ip_address': ip_address,
                 'message': record.message,
-                'details': record.details
+                'status_code': record.status_code,
+                'endpoint': record.endpoint,
+                'method': record.method
             })
         
         return events
