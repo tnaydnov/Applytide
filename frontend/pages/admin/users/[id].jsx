@@ -17,11 +17,12 @@ import {
 import AdminGuard from '@/components/guards/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { format } from 'date-fns';
 
 export default function UserDetailPage() {
   const router = useRouter();
+  const toast = useToast();
   const { id } = router.query;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

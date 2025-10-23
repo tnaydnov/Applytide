@@ -3,10 +3,11 @@ import { FiLogOut, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import AdminGuard from '@/components/guards/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { formatDistanceToNow, format } from 'date-fns';
 
 export default function SessionsPage() {
+  const toast = useToast();
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);

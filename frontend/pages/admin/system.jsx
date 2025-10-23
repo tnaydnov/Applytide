@@ -3,9 +3,10 @@ import { FiDatabase, FiHardDrive, FiActivity, FiCheckCircle, FiAlertCircle } fro
 import AdminGuard from '@/components/guards/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 export default function SystemHealthPage() {
+  const toast = useToast();
   const [dbHealth, setDbHealth] = useState(null);
   const [storage, setStorage] = useState(null);
   const [apiHealth, setApiHealth] = useState(null);

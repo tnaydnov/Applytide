@@ -6,9 +6,10 @@ import StatCard from '@/components/admin/StatCard';
 import ActivityFeed from '@/components/admin/ActivityFeed';
 import SimpleChart from '@/components/admin/SimpleChart';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 export default function AdminDashboard() {
+  const toast = useToast();
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
   const [charts, setCharts] = useState(null);

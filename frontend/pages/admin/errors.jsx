@@ -3,10 +3,11 @@ import { FiAlertCircle, FiAlertTriangle, FiInfo, FiChevronLeft, FiChevronRight }
 import AdminGuard from '@/components/guards/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function ErrorsPage() {
+  const toast = useToast();
   const [errors, setErrors] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);

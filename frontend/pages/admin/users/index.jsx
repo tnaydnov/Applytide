@@ -5,11 +5,12 @@ import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/f
 import AdminGuard from '@/components/guards/AdminGuard';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { adminApi } from '@/features/admin/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function UsersListPage() {
   const router = useRouter();
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
