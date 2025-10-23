@@ -87,15 +87,24 @@ class AdminService:
     
     def get_activity_feed(self, limit: int = 20) -> List[dto.ActivityEventDTO]:
         """Get recent activity events."""
-        # Get recent logs with user info
+        # Get recent logs
         stmt = (
             select(models.ApplicationLog)
-            .options(selectinload(models.ApplicationLog.user))
             .order_by(desc(models.ApplicationLog.timestamp))
             .limit(limit)
         )
         
         logs = self.db.scalars(stmt).all()
+        
+        # Get user emails for logs with user_id
+        user_ids = [log.user_id for log in logs if log.user_id]
+        users_map = {}
+        if user_ids:
+            users = self.db.scalars(
+                select(models.User)
+                .where(models.User.id.in_(user_ids))
+            ).all()
+            users_map = {user.id: user.email for user in users}
         
         events = []
         for log in logs:
@@ -105,7 +114,7 @@ class AdminService:
             events.append(dto.ActivityEventDTO(
                 id=log.id,
                 timestamp=log.timestamp,
-                user_email=log.user.email if log.user else None,
+                user_email=users_map.get(log.user_id) if log.user_id else None,
                 user_id=log.user_id,
                 event_type=event_type,
                 message=log.message,
