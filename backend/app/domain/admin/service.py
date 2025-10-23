@@ -334,8 +334,8 @@ class AdminService:
         ) or 0
         
         docs_count = self.db.scalar(
-            select(func.count(models.Document.id))
-            .where(models.Document.user_id == user.id)
+            select(func.count(models.Resume.id))
+            .where(models.Resume.user_id == user.id)
         ) or 0
         
         return dto.UserDetailDTO(
