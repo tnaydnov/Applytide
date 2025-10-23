@@ -222,7 +222,7 @@ async def login(
 
     # Build user response
     user_data = schemas.UserInfo(
-        id=str(user.id), email=user.email, full_name=user.full_name, first_name=user.first_name,
+        id=str(user.id), email=user.email, role=user.role, full_name=user.full_name, first_name=user.first_name,
         last_name=user.last_name, avatar_url=user.avatar_url or user.google_avatar_url, bio=user.bio,
         phone=user.phone, location=user.location, timezone=user.timezone, website=user.website,
         linkedin_url=user.linkedin_url, github_url=user.github_url, language=user.language,
@@ -364,7 +364,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
             )
 
         user_data = schemas.UserInfo(
-            id=str(user.id), email=user.email, full_name=user.full_name, first_name=user.first_name,
+            id=str(user.id), email=user.email, role=user.role, full_name=user.full_name, first_name=user.first_name,
             last_name=user.last_name, avatar_url=user.avatar_url or user.google_avatar_url, bio=user.bio,
             phone=user.phone, location=user.location, timezone=user.timezone, website=user.website,
             linkedin_url=user.linkedin_url, github_url=user.github_url, language=user.language,

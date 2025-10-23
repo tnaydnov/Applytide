@@ -64,6 +64,7 @@ class ExtensionTokenOut(BaseModel):
 class UserInfo(BaseModel):
     id: str
     email: str
+    role: str = "user"
     full_name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None

@@ -28,10 +28,15 @@ export default function NavBar() {
   useEffect(() => {
     const onDoc = (e) => {
       const target = e.target;
+      // Don't close if clicking on a link inside the menu
+      if (target.closest('a')) {
+        return;
+      }
       if (activeDropdown && dropdownRef.current && target && !dropdownRef.current.contains(target)) {
         setActiveDropdown(null);
       }
-      if (isUserMenuOpen && userMenuRef.current && target && !userMenuRef.current.contains(target)) {
+      if (isUserMenuOpen && userMenuRef.current && userBtnRef.current && target && 
+          !userMenuRef.current.contains(target) && !userBtnRef.current.contains(target)) {
         setIsUserMenuOpen(false);
       }
       if (isMenuOpen && target && !target.closest("[data-mobile-popover]") && !target.closest(".glass-nav")) {
