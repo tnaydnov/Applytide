@@ -58,7 +58,7 @@ class DashboardChartsDTO(BaseModel):
 
 class UserListItemDTO(BaseModel):
     """User item in list view."""
-    id: int
+    id: uuid.UUID
     email: str
     role: str
     is_premium: bool
@@ -77,7 +77,7 @@ class UserListItemDTO(BaseModel):
 
 class UserDetailDTO(BaseModel):
     """Detailed user information."""
-    id: int
+    id: uuid.UUID
     email: str
     role: str
     is_premium: bool
@@ -111,7 +111,7 @@ class UserDetailDTO(BaseModel):
 
 class UserApplicationDTO(BaseModel):
     """User's application summary."""
-    id: int
+    id: uuid.UUID
     job_title: str
     company_name: str
     current_stage: str
@@ -123,7 +123,7 @@ class UserApplicationDTO(BaseModel):
 
 class UserJobDTO(BaseModel):
     """User's saved job summary."""
-    id: int
+    id: uuid.UUID
     title: str
     company: str
     location: Optional[str] = None
@@ -149,11 +149,11 @@ class PaginatedUsersDTO(BaseModel):
 
 class ErrorLogDTO(BaseModel):
     """Error log item."""
-    id: int
+    id: uuid.UUID
     timestamp: datetime
     level: str
     message: str
-    user_id: Optional[int] = None
+    user_id: Optional[uuid.UUID] = None
     user_email: Optional[str] = None
     endpoint: Optional[str] = None
     status_code: Optional[int] = None
@@ -190,8 +190,8 @@ class PaginatedErrorsDTO(BaseModel):
 
 class SessionDTO(BaseModel):
     """Active session information."""
-    id: int
-    user_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
     user_email: str
     created_at: datetime
     expires_at: datetime
