@@ -94,7 +94,10 @@ export default function UserMenu({
             )}
           </Link>
           <button
-            onClick={onLogout}
+            onClick={() => {
+              setIsUserMenuOpen(false);
+              onLogout();
+            }}
             className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
