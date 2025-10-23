@@ -183,11 +183,11 @@ export default function UserDetailPage() {
       <AdminGuard>
         <AdminLayout>
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
-            <div className="bg-white rounded-lg shadow p-6 space-y-4">
-              <div className="h-6 bg-gray-200 rounded w-64"></div>
-              <div className="h-4 bg-gray-200 rounded w-96"></div>
-              <div className="h-4 bg-gray-200 rounded w-80"></div>
+            <div className="h-8 bg-slate-700 rounded w-48 mb-8"></div>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-6 space-y-4">
+              <div className="h-6 bg-slate-700 rounded w-64"></div>
+              <div className="h-4 bg-slate-700 rounded w-96"></div>
+              <div className="h-4 bg-slate-700 rounded w-80"></div>
             </div>
           </div>
         </AdminLayout>
@@ -205,7 +205,7 @@ export default function UserDetailPage() {
         {/* Back Button */}
         <Link
           href="/admin/users"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
+          className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 mb-6"
         >
           <FiArrowLeft />
           Back to Users
@@ -213,27 +213,27 @@ export default function UserDetailPage() {
 
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{user.email}</h1>
+          <h1 className="text-3xl font-bold text-white">{user.email}</h1>
           <div className="mt-2 flex items-center gap-4">
-            <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+            <span className={`px-3 py-1 text-sm font-medium rounded-full border ${
               user.role === 'admin' 
-                ? 'bg-purple-100 text-purple-800' 
-                : 'bg-gray-100 text-gray-800'
+                ? 'bg-purple-900/30 text-purple-300 border-purple-600' 
+                : 'bg-slate-700 text-slate-300 border-slate-600'
             }`}>
               {user.role}
             </span>
             {user.is_premium && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-yellow-900/30 text-yellow-300 border border-yellow-600">
                 ⭐ Premium
               </span>
             )}
             {user.email_verified_at && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-900/30 text-green-300 border border-green-600">
                 ✓ Verified
               </span>
             )}
             {user.is_oauth_user && (
-              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-900/30 text-blue-300 border border-blue-600">
                 🔗 OAuth
               </span>
             )}
@@ -244,32 +244,32 @@ export default function UserDetailPage() {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Account Details */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Account Details</h2>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+              <div className="p-6 border-b border-slate-700">
+                <h2 className="text-lg font-semibold text-white">Account Details</h2>
               </div>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="mt-1 text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <p className="text-sm text-slate-400">Email</p>
+                    <p className="mt-1 text-sm font-medium text-white flex items-center gap-2">
                       <FiMail size={16} />
                       {user.email}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">User ID</p>
-                    <p className="mt-1 text-sm font-medium text-gray-900">#{user.id}</p>
+                    <p className="text-sm text-slate-400">User ID</p>
+                    <p className="mt-1 text-sm font-medium text-white">#{user.id}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Joined</p>
-                    <p className="mt-1 text-sm font-medium text-gray-900">
+                    <p className="text-sm text-slate-400">Joined</p>
+                    <p className="mt-1 text-sm font-medium text-white">
                       {format(new Date(user.created_at), 'MMM d, yyyy')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Last Login</p>
-                    <p className="mt-1 text-sm font-medium text-gray-900">
+                    <p className="text-sm text-slate-400">Last Login</p>
+                    <p className="mt-1 text-sm font-medium text-white">
                       {user.last_login_at 
                         ? format(new Date(user.last_login_at), 'MMM d, yyyy h:mm a')
                         : 'Never'
@@ -279,9 +279,9 @@ export default function UserDetailPage() {
                 </div>
 
                 {user.is_premium && user.premium_expires_at && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">Premium Expires</p>
-                    <p className="mt-1 text-sm font-medium text-gray-900">
+                  <div className="pt-4 border-t border-slate-700">
+                    <p className="text-sm text-slate-400">Premium Expires</p>
+                    <p className="mt-1 text-sm font-medium text-white">
                       {format(new Date(user.premium_expires_at), 'MMM d, yyyy')}
                     </p>
                   </div>
@@ -291,37 +291,37 @@ export default function UserDetailPage() {
 
             {/* Profile Information */}
             {(user.location || user.timezone || user.phone || user.linkedin_url || user.website) && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
+              <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+                <div className="p-6 border-b border-slate-700">
+                  <h2 className="text-lg font-semibold text-white">Profile Information</h2>
                 </div>
                 <div className="p-6 space-y-3">
                   {user.location && (
                     <div className="flex items-center gap-2 text-sm">
-                      <FiMapPin className="text-gray-400" />
-                      <span className="text-gray-900">{user.location}</span>
+                      <FiMapPin className="text-slate-400" />
+                      <span className="text-white">{user.location}</span>
                     </div>
                   )}
                   {user.timezone && (
                     <div className="flex items-center gap-2 text-sm">
-                      <FiGlobe className="text-gray-400" />
-                      <span className="text-gray-900">{user.timezone}</span>
+                      <FiGlobe className="text-slate-400" />
+                      <span className="text-white">{user.timezone}</span>
                     </div>
                   )}
                   {user.phone && (
                     <div className="flex items-center gap-2 text-sm">
-                      <FiPhone className="text-gray-400" />
-                      <span className="text-gray-900">{user.phone}</span>
+                      <FiPhone className="text-slate-400" />
+                      <span className="text-white">{user.phone}</span>
                     </div>
                   )}
                   {user.linkedin_url && (
                     <div className="flex items-center gap-2 text-sm">
-                      <FiLinkedin className="text-gray-400" />
+                      <FiLinkedin className="text-slate-400" />
                       <a 
                         href={user.linkedin_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-400 hover:underline"
                       >
                         LinkedIn Profile
                       </a>
@@ -329,12 +329,12 @@ export default function UserDetailPage() {
                   )}
                   {user.website && (
                     <div className="flex items-center gap-2 text-sm">
-                      <FiGlobe className="text-gray-400" />
+                      <FiGlobe className="text-slate-400" />
                       <a 
                         href={user.website} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-400 hover:underline"
                       >
                         {user.website}
                       </a>
@@ -345,27 +345,27 @@ export default function UserDetailPage() {
             )}
 
             {/* Stats */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Activity Statistics</h2>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+              <div className="p-6 border-b border-slate-700">
+                <h2 className="text-lg font-semibold text-white">Activity Statistics</h2>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{user.total_applications}</p>
-                    <p className="text-sm text-gray-600">Applications</p>
+                    <p className="text-2xl font-bold text-white">{user.total_applications}</p>
+                    <p className="text-sm text-slate-400">Applications</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{user.total_jobs}</p>
-                    <p className="text-sm text-gray-600">Saved Jobs</p>
+                    <p className="text-2xl font-bold text-white">{user.total_jobs}</p>
+                    <p className="text-sm text-slate-400">Saved Jobs</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{user.total_reminders}</p>
-                    <p className="text-sm text-gray-600">Reminders</p>
+                    <p className="text-2xl font-bold text-white">{user.total_reminders}</p>
+                    <p className="text-sm text-slate-400">Reminders</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{user.total_documents}</p>
-                    <p className="text-sm text-gray-600">Documents</p>
+                    <p className="text-2xl font-bold text-white">{user.total_documents}</p>
+                    <p className="text-sm text-slate-400">Documents</p>
                   </div>
                 </div>
               </div>
@@ -375,9 +375,9 @@ export default function UserDetailPage() {
           {/* Actions Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+              <div className="p-6 border-b border-slate-700">
+                <h2 className="text-lg font-semibold text-white">Actions</h2>
               </div>
               <div className="p-6 space-y-3">
                 <button
@@ -420,7 +420,7 @@ export default function UserDetailPage() {
                   Revoke Sessions ({user.active_sessions_count})
                 </button>
 
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-slate-700">
                   <button
                     onClick={handleDeleteUser}
                     disabled={actionLoading}
@@ -434,14 +434,14 @@ export default function UserDetailPage() {
             </div>
 
             {/* Sessions Info */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Sessions</h2>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+              <div className="p-6 border-b border-slate-700">
+                <h2 className="text-lg font-semibold text-white">Sessions</h2>
               </div>
               <div className="p-6">
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">{user.active_sessions_count}</p>
-                  <p className="text-sm text-gray-600 mt-1">Active Sessions</p>
+                  <p className="text-3xl font-bold text-white">{user.active_sessions_count}</p>
+                  <p className="text-sm text-slate-400 mt-1">Active Sessions</p>
                 </div>
               </div>
             </div>
@@ -450,40 +450,40 @@ export default function UserDetailPage() {
 
         {/* Recent Applications */}
         {applications.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
+          <div className="mt-6 bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700">
+              <h2 className="text-lg font-semibold text-white">Recent Applications</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-700">
+                <thead className="bg-slate-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stage</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Job Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Stage</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Applied</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-slate-800 divide-y divide-slate-700">
                   {loadingApplications ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">Loading...</td>
+                      <td colSpan="4" className="px-6 py-4 text-center text-slate-400">Loading...</td>
                     </tr>
                   ) : (
                     applications.map((app) => (
-                      <tr key={app.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <tr key={app.id} className="hover:bg-slate-700/50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                           {app.job_title}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {app.company_name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-900/30 text-blue-300 border border-blue-600">
                             {app.current_stage}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {app.applied_date 
                             ? format(new Date(app.applied_date), 'MMM d, yyyy')
                             : 'Not set'
@@ -500,38 +500,38 @@ export default function UserDetailPage() {
 
         {/* Saved Jobs */}
         {jobs.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Saved Jobs</h2>
+          <div className="mt-6 bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700">
+              <h2 className="text-lg font-semibold text-white">Saved Jobs</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-700">
+                <thead className="bg-slate-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saved</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Location</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Saved</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-slate-800 divide-y divide-slate-700">
                   {loadingJobs ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">Loading...</td>
+                      <td colSpan="4" className="px-6 py-4 text-center text-slate-400">Loading...</td>
                     </tr>
                   ) : (
                     jobs.map((job) => (
-                      <tr key={job.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      <tr key={job.id} className="hover:bg-slate-700/50">
+                        <td className="px-6 py-4 text-sm font-medium text-white">
                           {job.title}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {job.company}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {job.location || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                           {format(new Date(job.created_at), 'MMM d, yyyy')}
                         </td>
                       </tr>
@@ -545,17 +545,17 @@ export default function UserDetailPage() {
 
         {/* Recent Activity */}
         {activity.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+          <div className="mt-6 bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700">
+              <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
             </div>
             <div className="p-6">
               <div className="space-y-4">
                 {loadingActivity ? (
-                  <p className="text-center text-gray-500">Loading...</p>
+                  <p className="text-center text-slate-400">Loading...</p>
                 ) : (
                   activity.map((event) => (
-                    <div key={event.id} className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div key={event.id} className="flex gap-4 pb-4 border-b border-slate-700 last:border-0 last:pb-0">
                       <div className="flex-shrink-0">
                         <div className={`w-2 h-2 rounded-full mt-2 ${
                           event.level === 'ERROR' ? 'bg-red-500' :
@@ -564,8 +564,8 @@ export default function UserDetailPage() {
                         }`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">{event.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-sm text-white">{event.message}</p>
+                        <p className="text-xs text-slate-400 mt-1">
                           {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
                         </p>
                       </div>
