@@ -56,7 +56,8 @@ export default function UserMenu({
       {isUserMenuOpen && (
         <div
           ref={userMenuRef}
-          className="absolute right-0 top-full mt-2 w-56 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 border border-white/20 z-50"
+          className="absolute right-0 top-full mt-2 w-56 bg-red-500 backdrop-blur-xl rounded-xl shadow-2xl py-2 border-4 border-yellow-500 z-[9999]"
+          style={{ pointerEvents: 'auto' }}
         >
           <div className="px-4 py-3 text-sm text-gray-300 border-b border-white/10">
             <div className="flex items-center space-x-2">
