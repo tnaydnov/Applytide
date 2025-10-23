@@ -71,6 +71,7 @@ export default function UserMenu({
           </div>
           <Link
             href="/profile"
+            onClick={() => setIsUserMenuOpen(false)}
             className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,6 +81,7 @@ export default function UserMenu({
           </Link>
           <Link
             href="/pricing"
+            onClick={() => setIsUserMenuOpen(false)}
             className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

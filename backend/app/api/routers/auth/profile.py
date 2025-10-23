@@ -51,7 +51,8 @@ def get_current_user_info(current_user: models.User = Depends(get_current_user))
             "last_login_at": current_user.last_login_at.isoformat() if current_user.last_login_at else None,
             "email_verified": bool(current_user.email_verified_at),
             "is_oauth_user": current_user.is_oauth_user,
-            "google_id": current_user.google_id
+            "google_id": current_user.google_id,
+            "role": getattr(current_user, 'role', 'user')
         }
     except Exception as e:
         logger.error(

@@ -2,7 +2,49 @@
  * Admin API Client
  * All API calls for admin panel
  */
-import api from '../../lib/api';
+import { apiFetch } from '../../lib/api';
+
+// Helper to create axios-like API wrapper
+const api = {
+  get: async (url, options = {}) => {
+    const params = options.params ? '?' + new URLSearchParams(options.params).toString() : '';
+    const response = await apiFetch(url + params, { method: 'GET' });
+    const data = await response.json();
+    return { data };
+  },
+  post: async (url, body, options = {}) => {
+    const response = await apiFetch(url, { 
+      method: 'POST', 
+      body: JSON.stringify(body),
+      ...options 
+    });
+    const data = await response.json();
+    return { data };
+  },
+  put: async (url, body, options = {}) => {
+    const response = await apiFetch(url, { 
+      method: 'PUT', 
+      body: JSON.stringify(body),
+      ...options 
+    });
+    const data = await response.json();
+    return { data };
+  },
+  patch: async (url, body, options = {}) => {
+    const response = await apiFetch(url, { 
+      method: 'PATCH', 
+      body: JSON.stringify(body),
+      ...options 
+    });
+    const data = await response.json();
+    return { data };
+  },
+  delete: async (url, options = {}) => {
+    const response = await apiFetch(url, { method: 'DELETE', ...options });
+    const data = await response.json();
+    return { data };
+  },
+};
 
 export const adminApi = {
   // ============================================================================
