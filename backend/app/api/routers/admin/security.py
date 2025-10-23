@@ -7,19 +7,20 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from ....api.deps_auth import require_admin
-from ....db.session import get_db
-from ...service import AdminService
-from ...dto import SecurityStatsDTO
+from app.api.deps import get_db
+from app.api.deps_admin import get_admin_user
+from app.db import models
+from app.domain.admin.service import AdminService
+from app.domain.admin import dto
 
-router = APIRouter()
+router = APIRouter(prefix="/security", tags=["admin-security"])
 
 
-@router.get("/stats", response_model=SecurityStatsDTO)
+@router.get("/stats", response_model=dto.SecurityStatsDTO)
 async def get_security_stats(
     hours: int = Query(24, description="Time window in hours"),
-    db: Session = Depends(get_db),
-    _: dict = Depends(require_admin)
+    admin_user: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
 ):
     """
     Get security statistics for the specified time window.
@@ -40,8 +41,8 @@ async def get_security_events(
     event_type: Optional[str] = Query(None, description="Filter by event type"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
-    db: Session = Depends(get_db),
-    _: dict = Depends(require_admin)
+    admin_user: models.User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
 ):
     """
     Get paginated list of security events with optional filters.
