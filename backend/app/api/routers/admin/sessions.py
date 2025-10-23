@@ -84,7 +84,7 @@ def list_sessions(
             created_at=session.created_at,
             expires_at=session.expires_at,
             last_used_at=session.last_used_at,
-            device_info=session.device_info
+            device_info=session.user_agent  # RefreshToken model uses user_agent, not device_info
         ))
     
     return dto.PaginatedSessionsDTO(
