@@ -72,21 +72,15 @@ def get_storage_usage(
     """
     Get storage usage breakdown.
     """
-    # Count documents
-    total_documents = db.scalar(select(func.count(models.Document.id))) or 0
+    # Count resumes (documents)
+    total_documents = db.scalar(select(func.count(models.Resume.id))) or 0
     
-    # Try to get total file sizes
-    try:
-        size_result = db.execute(
-            select(func.sum(models.Document.file_size))
-        ).scalar()
-        total_size_mb = (size_result / (1024 * 1024)) if size_result else 0.0
-    except:
-        total_size_mb = 0.0
+    # File size not available in Resume model, set to 0
+    total_size_mb = 0.0
     
-    # Count users with documents
+    # Count users with resumes
     documents_by_user = db.scalar(
-        select(func.count(func.distinct(models.Document.user_id)))
+        select(func.count(func.distinct(models.Resume.user_id)))
     ) or 0
     
     # Count users with avatars

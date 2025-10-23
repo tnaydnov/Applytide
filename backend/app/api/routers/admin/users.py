@@ -250,12 +250,15 @@ def revoke_user_sessions(
     # Find and deactivate all active sessions
     sessions = db.query(models.RefreshToken).filter(
         models.RefreshToken.user_id == user_id,
-        models.RefreshToken.is_active == True
+        models.RefreshToken.is_active == True,
+        models.RefreshToken.revoked_at.is_(None)
     ).all()
     
     count = 0
+    now = datetime.utcnow()
     for session in sessions:
         session.is_active = False
+        session.revoked_at = now
         count += 1
     
     db.commit()
@@ -263,8 +266,8 @@ def revoke_user_sessions(
     logger.warning(
         f"Admin {admin_user.email} revoked {count} sessions for user {user.email}",
         extra={
-            "admin_id": admin_user.id,
-            "target_user_id": user_id,
+            "admin_id": str(admin_user.id),
+            "target_user_id": str(user_id),
             "action": "sessions_revoked",
             "sessions_count": count
         }
