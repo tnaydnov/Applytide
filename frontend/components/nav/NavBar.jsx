@@ -31,8 +31,11 @@ export default function NavBar() {
       if (activeDropdown && dropdownRef.current && target && !dropdownRef.current.contains(target)) {
         setActiveDropdown(null);
       }
-      if (isUserMenuOpen && userMenuRef.current && target && !userMenuRef.current.contains(target)) {
-        setIsUserMenuOpen(false);
+      if (isUserMenuOpen && target) {
+        // Don't close if clicking inside the dropdown or user button
+        if (!target.closest('[data-user-dropdown]') && !target.closest('[data-user-menu]')) {
+          setIsUserMenuOpen(false);
+        }
       }
       if (isMenuOpen && target && !target.closest("[data-mobile-popover]") && !target.closest(".glass-nav")) {
         setIsMenuOpen(false);
