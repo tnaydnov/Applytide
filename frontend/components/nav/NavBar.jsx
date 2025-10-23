@@ -91,6 +91,10 @@ export default function NavBar() {
         { label: "Reminders", href: "/reminders", icon: "notifications" },
       ],
     },
+    // Add admin link for admin users only
+    ...(user?.role === 'admin' ? [
+      { label: "Admin", href: "/admin", icon: "admin_panel_settings" }
+    ] : []),
   ];
 
   // Determine which links to show based on auth state

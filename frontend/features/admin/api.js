@@ -1,0 +1,208 @@
+/**
+ * Admin API Client
+ * All API calls for admin panel
+ */
+import api from '@/lib/api';
+
+export const adminApi = {
+  // ============================================================================
+  // Dashboard
+  // ============================================================================
+  
+  /**
+   * Get dashboard statistics
+   */
+  getDashboardStats: async () => {
+    const response = await api.get('/admin/dashboard/stats');
+    return response.data;
+  },
+
+  /**
+   * Get activity feed
+   */
+  getActivityFeed: async (limit = 20) => {
+    const response = await api.get('/admin/dashboard/activity', {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get dashboard charts data
+   */
+  getDashboardCharts: async () => {
+    const response = await api.get('/admin/dashboard/charts');
+    return response.data;
+  },
+
+  // ============================================================================
+  // Users Management
+  // ============================================================================
+  
+  /**
+   * Get users list with filters
+   */
+  getUsers: async (params = {}) => {
+    const response = await api.get('/admin/users', { params });
+    return response.data;
+  },
+
+  /**
+   * Get user detail
+   */
+  getUser: async (userId) => {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  /**
+   * Toggle user premium status
+   */
+  toggleUserPremium: async (userId, isPremium, expiresAt = null) => {
+    const response = await api.patch(`/admin/users/${userId}/premium`, {
+      is_premium: isPremium,
+      expires_at: expiresAt
+    });
+    return response.data;
+  },
+
+  /**
+   * Change user role
+   */
+  changeUserRole: async (userId, role) => {
+    const response = await api.patch(`/admin/users/${userId}/role`, { role });
+    return response.data;
+  },
+
+  /**
+   * Delete user
+   */
+  deleteUser: async (userId) => {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  /**
+   * Revoke all user sessions
+   */
+  revokeUserSessions: async (userId) => {
+    const response = await api.post(`/admin/users/${userId}/revoke-sessions`);
+    return response.data;
+  },
+
+  /**
+   * Get user's applications
+   */
+  getUserApplications: async (userId, limit = 50) => {
+    const response = await api.get(`/admin/users/${userId}/applications`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get user's saved jobs
+   */
+  getUserJobs: async (userId, limit = 50) => {
+    const response = await api.get(`/admin/users/${userId}/jobs`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get user's activity logs
+   */
+  getUserActivity: async (userId, limit = 50) => {
+    const response = await api.get(`/admin/users/${userId}/activity`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  // ============================================================================
+  // Error Monitoring
+  // ============================================================================
+  
+  /**
+   * Get errors list with filters
+   */
+  getErrors: async (params = {}) => {
+    const response = await api.get('/admin/errors', { params });
+    return response.data;
+  },
+
+  /**
+   * Get error summary statistics
+   */
+  getErrorSummary: async () => {
+    const response = await api.get('/admin/errors/summary');
+    return response.data;
+  },
+
+  /**
+   * Get error detail
+   */
+  getError: async (errorId) => {
+    const response = await api.get(`/admin/errors/${errorId}`);
+    return response.data;
+  },
+
+  // ============================================================================
+  // Sessions Management
+  // ============================================================================
+  
+  /**
+   * Get sessions list with filters
+   */
+  getSessions: async (params = {}) => {
+    const response = await api.get('/admin/sessions', { params });
+    return response.data;
+  },
+
+  /**
+   * Get session statistics
+   */
+  getSessionStats: async () => {
+    const response = await api.get('/admin/sessions/stats');
+    return response.data;
+  },
+
+  /**
+   * Revoke a session
+   */
+  revokeSession: async (sessionId) => {
+    const response = await api.delete(`/admin/sessions/${sessionId}`);
+    return response.data;
+  },
+
+  // ============================================================================
+  // System Health
+  // ============================================================================
+  
+  /**
+   * Get database health
+   */
+  getDatabaseHealth: async () => {
+    const response = await api.get('/admin/system/database');
+    return response.data;
+  },
+
+  /**
+   * Get storage usage
+   */
+  getStorageUsage: async () => {
+    const response = await api.get('/admin/system/storage');
+    return response.data;
+  },
+
+  /**
+   * Get API health
+   */
+  getApiHealth: async () => {
+    const response = await api.get('/admin/system/api');
+    return response.data;
+  }
+};
+
+export default adminApi;
