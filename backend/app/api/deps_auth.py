@@ -54,3 +54,40 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def get_current_user_optional(
+    request: Request,
+    db: Session = Depends(get_db),
+    access_token: str | None = Cookie(None),
+    authorization: HTTPAuthorizationCredentials | None = Depends(security),
+) -> models.User | None:
+    """
+    Get current authenticated user from token (optional).
+    Returns None if not authenticated instead of raising exception.
+    Useful for endpoints that work for both authenticated and anonymous users.
+    """
+    token = access_token
+    if not token and authorization:
+        scheme = (authorization.scheme or "").lower()
+        if scheme == "bearer":
+            token = authorization.credentials
+
+    if not token:
+        return None
+
+    try:
+        payload = decode_access(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except ValueError:
+                return None
+    except Exception:
+        return None
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    return user

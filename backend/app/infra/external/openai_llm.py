@@ -3,7 +3,7 @@ import os, json
 from openai import OpenAI
 from ...domain.jobs.extraction.ports import LLMExtractor
 from ..logging import get_logger
-# ADMIN CLEANUP: Removed llm_tracker import
+from .llm_tracker import track_openai_call
 
 logger = get_logger(__name__)
 
@@ -107,8 +107,8 @@ class OpenAILLMExtractor(LLMExtractor):
         if not api:
             raise RuntimeError("OPENAI_API_KEY not set")
         
-        # ADMIN CLEANUP: Removed LLM tracking wrapper
         self.client = OpenAI(api_key=api)
+        self.db_session = db_session  # Store DB session for tracking
         
         # Use cost-effective models by default, allow upgrade via env vars
         # Cost comparison: gpt-4o-mini ~$0.00015/1K tokens vs gpt-4o ~$0.0025/1K tokens (16x cheaper!)
@@ -117,7 +117,8 @@ class OpenAILLMExtractor(LLMExtractor):
         # To upgrade image model: set JOB_EXTRACT_IMAGE_MODEL=gpt-4o in environment
         logger.info("OpenAI LLM initialized", extra={
             "text_model": self.text_model,
-            "image_model": self.image_model
+            "image_model": self.image_model,
+            "tracking_enabled": self.db_session is not None
         })
 
     def extract_job(self, url: str, text: str, hints=None) -> dict:
@@ -173,15 +174,45 @@ class OpenAILLMExtractor(LLMExtractor):
             "response_format": "json_object"
         })
 
+        # Track LLM usage if DB session available
+        tracker = None
+        if self.db_session:
+            tracker = track_openai_call(
+                self.db_session,
+                endpoint="job_extraction",
+                url=url[:200] if url else None,
+                text_length=text_len
+            )
+        
         try:
             api_start = __import__('time').time()
-            resp = self.client.chat.completions.create(
-                model=self.text_model,
-                temperature=0.1,
-                response_format={"type": "json_object"},
-                messages=messages,
-                max_tokens=2500
-            )
+            
+            if tracker:
+                with tracker:
+                    resp = self.client.chat.completions.create(
+                        model=self.text_model,
+                        temperature=0.1,
+                        response_format={"type": "json_object"},
+                        messages=messages,
+                        max_tokens=2500
+                    )
+                    # Record usage
+                    if resp.usage:
+                        tracker.set_usage(
+                            model=resp.model,
+                            prompt_tokens=resp.usage.prompt_tokens,
+                            completion_tokens=resp.usage.completion_tokens,
+                            total_tokens=resp.usage.total_tokens
+                        )
+            else:
+                resp = self.client.chat.completions.create(
+                    model=self.text_model,
+                    temperature=0.1,
+                    response_format={"type": "json_object"},
+                    messages=messages,
+                    max_tokens=2500
+                )
+            
             api_time = __import__('time').time() - api_start
             
             logger.info("OpenAI API call successful", extra={

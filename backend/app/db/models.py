@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint, JSON, Column
+from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint, JSON, Column, Float
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -336,3 +336,47 @@ class ApplicationLog(Base):
     
     # Additional structured data
     extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Any extra context
+
+
+class LLMUsage(Base):
+    """Track LLM API usage for cost monitoring and analytics
+    
+    Tracks all LLM API calls (OpenAI, etc.) to monitor:
+    - Token usage and costs
+    - Performance metrics
+    - Feature usage patterns
+    - User-specific costs for premium users
+    """
+    __tablename__ = "llm_usage"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
+    
+    # User context
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    
+    # Provider info
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # "openai", "anthropic"
+    model: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # "gpt-4o-mini", "gpt-4o", "claude-3"
+    endpoint: Mapped[str] = mapped_column(String(200), nullable=False)  # "job_extraction", "cover_letter", "resume_analysis"
+    
+    # Token usage
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    # Cost tracking (USD)
+    # NOTE: estimated_cost is calculated using OpenAI's published pricing and token counts.
+    # This is typically accurate within 1-2%, but for exact costs check OpenAI billing dashboard.
+    # Cost may differ due to: pricing updates, enterprise discounts, cached tokens, rounding.
+    estimated_cost: Mapped[float] = mapped_column(Float, nullable=False)  # Calculated based on model pricing
+    
+    # Performance
+    response_time_ms: Mapped[int] = mapped_column(Integer, nullable=False)  # Latency in milliseconds
+    
+    # Status
+    success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Additional context
+    extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Feature-specific metadata

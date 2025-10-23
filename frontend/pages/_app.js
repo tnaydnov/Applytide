@@ -6,11 +6,18 @@ import "../styles/globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 import { ToastProvider } from '../lib/toast';
 import { isPublicRoute } from '../lib/routes';
+import { setupErrorTracking } from '../lib/errorTracking';
 import Head from 'next/head';
 import AppLayout from "../components/layout/AppLayout";
+import { useEffect } from 'react';
 
 export default function MyApp({ Component, pageProps, router }) {
   const isPublicPage = isPublicRoute(router.pathname);
+
+  // Setup global error tracking on mount
+  useEffect(() => {
+    setupErrorTracking();
+  }, []);
 
   return (
     <ToastProvider>

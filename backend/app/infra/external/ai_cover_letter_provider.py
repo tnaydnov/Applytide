@@ -37,7 +37,7 @@ except Exception:
     DEFAULT_MODEL = os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
 
 from ...db import models
-# ADMIN CLEANUP: Removed llm_tracker import
+from .llm_tracker import track_openai_call
 from ..logging import get_logger
 
 logger = get_logger(__name__)
@@ -230,21 +230,52 @@ class AICoverLetterService:
             import time
             start_time = time.time()
             
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=1000,
-                temperature=0.6,
-            )
+            # Track LLM usage if DB session available
+            tracker = None
+            if self.db_session:
+                tracker = track_openai_call(
+                    self.db_session,
+                    endpoint="cover_letter_generation",
+                    user_id=job.user_id if job and hasattr(job, 'user_id') else None,
+                    job_title=job_title[:100] if job_title else None,
+                    company=company_name[:100] if company_name else None,
+                    tone=tone,
+                    length=length
+                )
+            
+            if tracker:
+                with tracker:
+                    response = await self.client.chat.completions.create(
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": prompt},
+                        ],
+                        max_tokens=1000,
+                        temperature=0.6,
+                    )
+                    # Record usage
+                    if response.usage:
+                        tracker.set_usage(
+                            model=response.model,
+                            prompt_tokens=response.usage.prompt_tokens,
+                            completion_tokens=response.usage.completion_tokens,
+                            total_tokens=response.usage.total_tokens
+                        )
+            else:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=1000,
+                    temperature=0.6,
+                )
             
             latency_ms = int((time.time() - start_time) * 1000)
 
             cover_letter_text = (response.choices[0].message.content or "").strip()
-            
-            # ADMIN CLEANUP: Removed LLM call tracking
 
             return {
                 "success": True,
@@ -259,8 +290,6 @@ class AICoverLetterService:
             }
 
         except Exception as e:
-            # ADMIN CLEANUP: Removed LLM call tracking
-            
             return {
                 "success": False,
                 "error": f"Failed to generate cover letter: {e}",

@@ -83,8 +83,8 @@ export default function AdminDashboard() {
       <AdminLayout>
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-gray-600">Overview of your application</p>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="mt-2 text-slate-400">Overview of your application</p>
         </div>
 
         {/* Stats Grid */}
@@ -110,8 +110,8 @@ export default function AdminDashboard() {
             loading={loading}
           />
           <StatCard
-            title="Active Sessions"
-            value={stats?.active_sessions}
+            title="Active Users (24h)"
+            value={stats?.active_users}
             icon={FiActivity}
             loading={loading}
           />
@@ -119,15 +119,15 @@ export default function AdminDashboard() {
 
         {/* Error Alert (if any recent errors) */}
         {stats && stats.recent_errors_count > 0 && (
-          <div className="mb-8 bg-red-50 border-l-4 border-red-400 p-4 rounded">
+          <div className="mb-8 bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
             <div className="flex items-center">
               <FiAlertCircle className="text-red-400 mr-3" size={20} />
               <div>
-                <p className="text-sm font-medium text-red-800">
+                <p className="text-sm font-medium text-red-300">
                   {stats.recent_errors_count} error{stats.recent_errors_count !== 1 ? 's' : ''} in the last 24 hours
                 </p>
-                <p className="text-sm text-red-700 mt-1">
-                  <a href="/admin/errors" className="underline">View error logs →</a>
+                <p className="text-sm text-red-400 mt-1">
+                  <a href="/admin/errors" className="underline hover:text-red-300">View error logs →</a>
                 </p>
               </div>
             </div>

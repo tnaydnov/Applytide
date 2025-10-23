@@ -244,6 +244,50 @@ export const adminApi = {
   getApiHealth: async () => {
     const response = await api.get('/admin/system/api');
     return response.data;
+  },
+
+  // ============================================================================
+  // LLM Usage Tracking
+  // ============================================================================
+  
+  /**
+   * Get LLM usage statistics
+   */
+  getLLMUsageStats: async (hours = 24) => {
+    const response = await api.get('/admin/llm-usage/stats', {
+      params: { hours }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get LLM usage list with filters
+   */
+  getLLMUsageList: async (params = {}) => {
+    const response = await api.get('/admin/llm-usage', { params });
+    return response.data;
+  },
+
+  // ============================================================================
+  // Security Monitoring
+  // ============================================================================
+  
+  /**
+   * Get security statistics
+   */
+  getSecurityStats: async (hours = 24) => {
+    const response = await api.get('/admin/security/stats', {
+      params: { hours }
+    });
+    return response.data;
+  },
+
+  /**
+   * Get security events
+   */
+  getSecurityEvents: async (params = {}) => {
+    const response = await api.get('/admin/security/events', { params });
+    return response.data;
   }
 };
 

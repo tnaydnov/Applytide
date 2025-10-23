@@ -47,6 +47,7 @@ from .infra.cache.redis_client import get_redis
 from .api.routers.reminders import router as reminders_router
 from .api.routers.auth import router as auth_router
 from .api.routers.admin import router as admin_router
+from .api.routers.errors import router as errors_router
 from .config import settings
 
 # Setup logging FIRST (before creating FastAPI app)
@@ -116,6 +117,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # --- Routers
 app.include_router(auth_router)
+app.include_router(errors_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(ws_router)

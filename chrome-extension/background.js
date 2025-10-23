@@ -15,6 +15,79 @@ if (!DEV) {
 
 let ACCESS = null;   // short-lived extension access token (Authorization: Bearer …)
 
+// ==================== ERROR TRACKING ====================
+/**
+ * Log errors to backend for monitoring
+ */
+async function logErrorToBackend(errorData) {
+  try {
+    await fetch(`${API_HOST}/errors/log`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...errorData,
+        source: 'extension',
+        user_agent: navigator.userAgent,
+      }),
+    });
+  } catch (err) {
+    // Silently fail if backend logging fails
+    console.error('Failed to log error to backend:', err);
+  }
+}
+
+/**
+ * Setup global error handler for extension
+ */
+function setupExtensionErrorTracking() {
+  // Handle uncaught errors
+  self.addEventListener('error', (event) => {
+    const errorData = {
+      message: event.message || String(event.error),
+      url: 'chrome-extension://background.js',
+      line_number: event.lineno,
+      column_number: event.colno,
+      stack_trace: event.error?.stack || null,
+      extra: {
+        error_type: 'extension_runtime_error',
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    if (DEV) {
+      console.error('Extension runtime error:', errorData);
+    }
+
+    logErrorToBackend(errorData);
+  });
+
+  // Handle unhandled promise rejections
+  self.addEventListener('unhandledrejection', (event) => {
+    const errorData = {
+      message: `Unhandled Promise Rejection: ${event.reason?.message || String(event.reason)}`,
+      url: 'chrome-extension://background.js',
+      stack_trace: event.reason?.stack || null,
+      extra: {
+        error_type: 'extension_unhandled_promise_rejection',
+        reason: String(event.reason),
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    if (DEV) {
+      console.error('Extension unhandled promise rejection:', errorData);
+    }
+
+    logErrorToBackend(errorData);
+  });
+}
+
+// Initialize error tracking
+setupExtensionErrorTracking();
+// ==================== END ERROR TRACKING ====================
+
 chrome.runtime.onStartup.addListener(() => {
   CAPTURE_CACHE.clear();
 });

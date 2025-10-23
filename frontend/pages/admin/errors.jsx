@@ -70,45 +70,45 @@ export default function ErrorsPage() {
     <AdminGuard>
       <AdminLayout>
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Error Monitoring</h1>
-          <p className="mt-2 text-gray-600">Track and analyze application errors</p>
+          <h1 className="text-3xl font-bold text-white">Error Monitoring</h1>
+          <p className="mt-2 text-slate-400">Track and analyze application errors</p>
         </div>
 
         {/* Summary Stats */}
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-600">Total Errors</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.total_errors}</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4">
+              <p className="text-sm text-slate-400">Total Errors</p>
+              <p className="text-2xl font-bold text-white">{summary.total_errors}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-600">Critical</p>
-              <p className="text-2xl font-bold text-red-600">{summary.critical_count}</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4">
+              <p className="text-sm text-slate-400">Critical</p>
+              <p className="text-2xl font-bold text-red-400">{summary.critical_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-600">Errors</p>
-              <p className="text-2xl font-bold text-red-500">{summary.error_count}</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4">
+              <p className="text-sm text-slate-400">Errors</p>
+              <p className="text-2xl font-bold text-red-400">{summary.error_count}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-600">Today</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.errors_today}</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4">
+              <p className="text-sm text-slate-400">Today</p>
+              <p className="text-2xl font-bold text-white">{summary.errors_today}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-sm text-gray-600">This Week</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.errors_this_week}</p>
+            <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4">
+              <p className="text-sm text-slate-400">This Week</p>
+              <p className="text-2xl font-bold text-white">{summary.errors_this_week}</p>
             </div>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-4 mb-6">
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Level</label>
               <select
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Levels</option>
                 <option value="CRITICAL">Critical</option>
@@ -117,11 +117,11 @@ export default function ErrorsPage() {
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Time Range</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Time Range</label>
               <select
                 value={hoursFilter}
                 onChange={(e) => setHoursFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All Time</option>
                 <option value="1">Last Hour</option>
@@ -133,51 +133,51 @@ export default function ErrorsPage() {
         </div>
 
         {/* Errors List */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-slate-700">
+              <thead className="bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endpoint</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Level</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Message</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Endpoint</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase">Time</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-slate-800 divide-y divide-slate-700">
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-64"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-slate-700 rounded w-16"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-slate-700 rounded w-64"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-slate-700 rounded w-32"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-slate-700 rounded w-24"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-slate-700 rounded w-20"></div></td>
                     </tr>
                   ))
                 ) : errors.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500">No errors found</td>
+                    <td colSpan="5" className="px-6 py-8 text-center text-slate-400">No errors found</td>
                   </tr>
                 ) : (
                   errors.map((error) => (
-                    <tr key={error.id} className="hover:bg-gray-50">
+                    <tr key={error.id} className="hover:bg-slate-700/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getLevelBadge(error.level)}`}>
                           {error.level}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-gray-900 line-clamp-2">{error.message}</p>
+                        <p className="text-sm text-slate-200 line-clamp-2">{error.message}</p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                         {error.user_email || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">
                         {error.endpoint || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                         {formatDistanceToNow(new Date(error.timestamp), { addSuffix: true })}
                       </td>
                     </tr>
@@ -189,8 +189,8 @@ export default function ErrorsPage() {
 
           {/* Pagination */}
           {!loading && errors.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-700">
+            <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
+              <div className="text-sm text-slate-300">
                 Showing {((pagination.page - 1) * pagination.page_size) + 1} to{' '}
                 {Math.min(pagination.page * pagination.page_size, pagination.total)} of{' '}
                 {pagination.total} errors
@@ -199,15 +199,15 @@ export default function ErrorsPage() {
                 <button
                   onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
                   disabled={pagination.page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  className="px-3 py-1 border border-slate-600 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50"
                 >
                   <FiChevronLeft />
                 </button>
-                <span className="px-4 py-1">Page {pagination.page} of {pagination.total_pages}</span>
+                <span className="px-4 py-1 text-slate-300">Page {pagination.page} of {pagination.total_pages}</span>
                 <button
                   onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
                   disabled={pagination.page === pagination.total_pages}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  className="px-3 py-1 border border-slate-600 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50"
                 >
                   <FiChevronRight />
                 </button>

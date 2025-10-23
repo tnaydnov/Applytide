@@ -3,7 +3,7 @@ Admin service - core business logic for admin panel.
 """
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
-from sqlalchemy import select, func, and_, or_, desc, case
+from sqlalchemy import select, func, and_, or_, desc, case, distinct
 from sqlalchemy.orm import Session, selectinload
 from app.db import models
 from app.domain.admin import dto
@@ -53,13 +53,14 @@ class AdminService:
             select(func.count(models.Application.id))
         ) or 0
         
-        # Active sessions
-        active_sessions = self.db.scalar(
-            select(func.count(models.RefreshToken.id))
+        # Active users (users with activity in last 24 hours)
+        twenty_four_hours_ago = now - timedelta(hours=24)
+        active_users = self.db.scalar(
+            select(func.count(distinct(models.ApplicationLog.user_id)))
             .where(
                 and_(
-                    models.RefreshToken.is_active == True,
-                    models.RefreshToken.expires_at > now
+                    models.ApplicationLog.user_id.isnot(None),
+                    models.ApplicationLog.timestamp >= twenty_four_hours_ago
                 )
             )
         ) or 0
@@ -81,15 +82,18 @@ class AdminService:
             new_users_today=new_users_today,
             new_users_this_week=new_users_this_week,
             total_applications=total_applications,
-            active_sessions=active_sessions,
+            active_users=active_users,
             recent_errors_count=recent_errors_count
         )
     
     def get_activity_feed(self, limit: int = 20) -> List[dto.ActivityEventDTO]:
-        """Get recent activity events."""
-        # Get recent logs
+        """Get recent business events (not HTTP request logs)."""
+        # Filter for logs with event_type in extra field (business events only)
         stmt = (
             select(models.ApplicationLog)
+            .where(
+                models.ApplicationLog.extra['event_type'].astext.isnot(None)
+            )
             .order_by(desc(models.ApplicationLog.timestamp))
             .limit(limit)
         )
@@ -108,8 +112,8 @@ class AdminService:
         
         events = []
         for log in logs:
-            # Determine event type from message/endpoint
-            event_type = self._parse_event_type(log)
+            # Get event type from extra field
+            event_type = log.extra.get('event_type') if log.extra else self._parse_event_type(log)
             
             events.append(dto.ActivityEventDTO(
                 id=log.id,
@@ -409,10 +413,13 @@ class AdminService:
         ]
     
     def get_user_activity(self, user_id: int, limit: int = 50) -> List[dto.ActivityEventDTO]:
-        """Get user's recent activity from logs."""
+        """Get user's recent business events (not HTTP request logs)."""
         stmt = (
             select(models.ApplicationLog)
-            .where(models.ApplicationLog.user_id == user_id)
+            .where(
+                models.ApplicationLog.user_id == user_id,
+                models.ApplicationLog.extra['event_type'].astext.isnot(None)
+            )
             .order_by(desc(models.ApplicationLog.timestamp))
             .limit(limit)
         )
@@ -425,9 +432,341 @@ class AdminService:
                 timestamp=log.timestamp,
                 user_email=None,  # Not needed since we know the user
                 user_id=log.user_id,
-                event_type=self._parse_event_type(log),
+                event_type=log.extra.get('event_type') if log.extra else self._parse_event_type(log),
                 message=log.message,
                 level=log.level
             )
             for log in logs
         ]
+    
+    # ========================================================================
+    # LLM Usage Tracking Methods
+    # ========================================================================
+    
+    def get_llm_usage_stats(self, hours: Optional[int] = 24) -> dto.LLMUsageStatsDTO:
+        """Get LLM usage statistics for the specified time window."""
+        cutoff = None
+        if hours:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        stmt = select(models.LLMUsage)
+        if cutoff:
+            stmt = stmt.where(models.LLMUsage.timestamp >= cutoff)
+        
+        # Total calls
+        total_calls = self.db.scalar(select(func.count(models.LLMUsage.id)).select_from(stmt.subquery())) or 0
+        
+        # Successful calls
+        successful_calls = self.db.scalar(
+            select(func.count(models.LLMUsage.id))
+            .select_from(stmt.subquery())
+            .where(models.LLMUsage.success == True)
+        ) or 0
+        
+        # Total cost
+        total_cost = self.db.scalar(
+            select(func.sum(models.LLMUsage.estimated_cost))
+            .select_from(stmt.subquery())
+        ) or 0.0
+        
+        # Total tokens
+        total_tokens = self.db.scalar(
+            select(func.sum(models.LLMUsage.total_tokens))
+            .select_from(stmt.subquery())
+        ) or 0
+        
+        # Average response time
+        avg_response_time = self.db.scalar(
+            select(func.avg(models.LLMUsage.response_time_ms))
+            .select_from(stmt.subquery())
+        ) or 0
+        
+        # Usage by endpoint
+        endpoint_stats = self.db.execute(
+            select(
+                models.LLMUsage.endpoint,
+                func.count(models.LLMUsage.id).label('calls'),
+                func.sum(models.LLMUsage.estimated_cost).label('cost'),
+                func.sum(models.LLMUsage.total_tokens).label('tokens')
+            )
+            .select_from(stmt.subquery())
+            .group_by(models.LLMUsage.endpoint)
+        ).all()
+        
+        by_endpoint = [
+            {
+                "endpoint": row[0],
+                "calls": row[1],
+                "cost": float(row[2] or 0),
+                "tokens": row[3] or 0
+            }
+            for row in endpoint_stats
+        ]
+        
+        # Usage by model
+        model_stats = self.db.execute(
+            select(
+                models.LLMUsage.model,
+                func.count(models.LLMUsage.id).label('calls'),
+                func.sum(models.LLMUsage.estimated_cost).label('cost')
+            )
+            .select_from(stmt.subquery())
+            .group_by(models.LLMUsage.model)
+        ).all()
+        
+        by_model = [
+            {
+                "model": row[0],
+                "calls": row[1],
+                "cost": float(row[2] or 0)
+            }
+            for row in model_stats
+        ]
+        
+        return dto.LLMUsageStatsDTO(
+            total_calls=total_calls,
+            successful_calls=successful_calls,
+            failed_calls=total_calls - successful_calls,
+            total_cost=float(total_cost),
+            total_tokens=total_tokens,
+            avg_response_time_ms=int(avg_response_time),
+            by_endpoint=by_endpoint,
+            by_model=by_model
+        )
+    
+    def get_llm_usage_list(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        endpoint: Optional[str] = None,
+        user_id: Optional[int] = None,
+        success_only: Optional[bool] = None,
+        hours: Optional[int] = None
+    ) -> dto.PaginatedLLMUsageDTO:
+        """Get paginated list of LLM usage records."""
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 50
+        if page_size > 100:
+            page_size = 100
+        
+        stmt = select(models.LLMUsage)
+        
+        # Apply filters
+        if endpoint:
+            stmt = stmt.where(models.LLMUsage.endpoint == endpoint)
+        
+        if user_id:
+            stmt = stmt.where(models.LLMUsage.user_id == user_id)
+        
+        if success_only is not None:
+            stmt = stmt.where(models.LLMUsage.success == success_only)
+        
+        if hours:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            stmt = stmt.where(models.LLMUsage.timestamp >= cutoff)
+        
+        # Get total count
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = self.db.scalar(count_stmt) or 0
+        
+        # Apply pagination
+        stmt = stmt.order_by(desc(models.LLMUsage.timestamp))
+        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+        
+        records = self.db.scalars(stmt).all()
+        
+        # Build DTOs
+        items = []
+        for record in records:
+            # Get user email if user_id exists
+            user_email = None
+            if record.user_id:
+                user = self.db.get(models.User, record.user_id)
+                user_email = user.email if user else None
+            
+            items.append(dto.LLMUsageDTO(
+                id=record.id,
+                timestamp=record.timestamp,
+                user_id=record.user_id,
+                user_email=user_email,
+                provider=record.provider,
+                model=record.model,
+                endpoint=record.endpoint,
+                prompt_tokens=record.prompt_tokens,
+                completion_tokens=record.completion_tokens,
+                total_tokens=record.total_tokens,
+                estimated_cost=record.estimated_cost,
+                response_time_ms=record.response_time_ms,
+                success=record.success,
+                error_message=record.error_message
+            ))
+        
+        return dto.PaginatedLLMUsageDTO(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            pages=(total + page_size - 1) // page_size
+        )
+
+    # ========================================================================
+    # Security Monitoring
+    # ========================================================================
+
+    def get_security_stats(self, hours: int = 24) -> dto.SecurityStatsDTO:
+        """
+        Get security statistics for the specified time window.
+        
+        Args:
+            hours: Number of hours to look back (default 24)
+            
+        Returns:
+            SecurityStatsDTO with counts of security events
+        """
+        from datetime import datetime, timedelta
+        
+        # Calculate cutoff time
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Security event types in ApplicationLog
+        security_event_types = [
+            'failed_login',
+            'rate_limit_exceeded',
+            'token_revoked',
+            'suspicious_activity',
+            'unauthorized_access'
+        ]
+        
+        # Query security events
+        security_events = self.db.query(models.ApplicationLog).filter(
+            models.ApplicationLog.timestamp >= cutoff,
+            models.ApplicationLog.event_type.in_(security_event_types)
+        ).all()
+        
+        # Count by event type
+        failed_logins = len([e for e in security_events if e.event_type == 'failed_login'])
+        rate_limit_violations = len([e for e in security_events if e.event_type == 'rate_limit_exceeded'])
+        token_revocations = len([e for e in security_events if e.event_type == 'token_revoked'])
+        
+        # Count unique IPs for each category
+        failed_login_ips = set()
+        rate_limit_ips = set()
+        
+        for event in security_events:
+            ip = None
+            if event.extra and isinstance(event.extra, dict):
+                ip = event.extra.get('ip_address') or event.extra.get('ip')
+            
+            if ip:
+                if event.event_type == 'failed_login':
+                    failed_login_ips.add(ip)
+                elif event.event_type == 'rate_limit_exceeded':
+                    rate_limit_ips.add(ip)
+        
+        return dto.SecurityStatsDTO(
+            failed_logins=failed_logins,
+            unique_failed_ips=len(failed_login_ips),
+            rate_limit_violations=rate_limit_violations,
+            unique_rate_limit_ips=len(rate_limit_ips),
+            token_revocations=token_revocations
+        )
+
+    def get_security_events(
+        self,
+        hours: Optional[int] = 24,
+        event_type: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50
+    ) -> list:
+        """
+        Get paginated list of security events.
+        
+        Args:
+            hours: Number of hours to look back
+            event_type: Filter by event type
+            page: Page number (1-indexed)
+            page_size: Items per page
+            
+        Returns:
+            List of security event dictionaries
+        """
+        from datetime import datetime, timedelta
+        
+        # Build query
+        query = self.db.query(models.ApplicationLog)
+        
+        # Security event types
+        security_event_types = [
+            'failed_login',
+            'rate_limit_exceeded',
+            'token_revoked',
+            'suspicious_activity',
+            'unauthorized_access'
+        ]
+        
+        # Filter by security events
+        if event_type:
+            query = query.filter(models.ApplicationLog.event_type == event_type)
+        else:
+            query = query.filter(models.ApplicationLog.event_type.in_(security_event_types))
+        
+        # Time window filter
+        if hours:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            query = query.filter(models.ApplicationLog.timestamp >= cutoff)
+        
+        # Order by timestamp descending
+        query = query.order_by(models.ApplicationLog.timestamp.desc())
+        
+        # Pagination
+        offset = (page - 1) * page_size
+        records = query.offset(offset).limit(page_size).all()
+        
+        # Build response
+        events = []
+        for record in records:
+            # Extract IP and user info from extra data
+            ip_address = None
+            username = None
+            user_email = None
+            severity = 'medium'
+            
+            if record.extra and isinstance(record.extra, dict):
+                ip_address = record.extra.get('ip_address') or record.extra.get('ip')
+                username = record.extra.get('username') or record.extra.get('email')
+                severity = record.extra.get('severity', 'medium')
+            
+            # Try to get user email from user_id
+            if record.user_id:
+                user = self.db.get(models.User, record.user_id)
+                if user:
+                    user_email = user.email
+            
+            # Determine severity based on event type if not provided
+            if not record.extra or 'severity' not in record.extra:
+                if record.event_type == 'failed_login':
+                    severity = 'medium'
+                elif record.event_type == 'rate_limit_exceeded':
+                    severity = 'low'
+                elif record.event_type == 'token_revoked':
+                    severity = 'info'
+                elif record.event_type == 'suspicious_activity':
+                    severity = 'high'
+                elif record.event_type == 'unauthorized_access':
+                    severity = 'critical'
+            
+            events.append({
+                'id': record.id,
+                'timestamp': record.timestamp.isoformat(),
+                'event_type': record.event_type,
+                'severity': severity,
+                'user_email': user_email,
+                'username': username,
+                'ip_address': ip_address,
+                'message': record.message,
+                'details': record.details
+            })
+        
+        return events

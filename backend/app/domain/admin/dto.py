@@ -18,7 +18,7 @@ class DashboardStatsDTO(BaseModel):
     new_users_today: int
     new_users_this_week: int
     total_applications: int
-    active_sessions: int
+    active_users: int
     recent_errors_count: int
     
     model_config = ConfigDict(from_attributes=True)
@@ -259,5 +259,69 @@ class APIHealthDTO(BaseModel):
     requests_last_hour: int
     errors_last_hour: int
     avg_response_time_ms: float
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# LLM Usage DTOs
+# ============================================================================
+
+class LLMUsageDTO(BaseModel):
+    """Single LLM usage record."""
+    id: uuid.UUID
+    timestamp: datetime
+    user_id: uuid.UUID | None
+    user_email: str | None
+    provider: str
+    model: str
+    endpoint: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost: float
+    response_time_ms: int
+    success: bool
+    error_message: str | None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LLMUsageStatsDTO(BaseModel):
+    """LLM usage statistics."""
+    total_calls: int
+    successful_calls: int
+    failed_calls: int
+    total_cost: float
+    total_tokens: int
+    avg_response_time_ms: int
+    by_endpoint: list[dict]  # [{"endpoint": str, "calls": int, "cost": float, "tokens": int}]
+    by_model: list[dict]  # [{"model": str, "calls": int, "cost": float}]
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedLLMUsageDTO(BaseModel):
+    """Paginated LLM usage records."""
+    items: list[LLMUsageDTO]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# Security Monitoring DTOs
+# ============================================================================
+
+class SecurityStatsDTO(BaseModel):
+    """Security statistics for monitoring dashboard."""
+    failed_logins: int
+    unique_failed_ips: int
+    rate_limit_violations: int
+    unique_rate_limit_ips: int
+    token_revocations: int
     
     model_config = ConfigDict(from_attributes=True)

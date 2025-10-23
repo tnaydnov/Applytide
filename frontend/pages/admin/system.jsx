@@ -69,10 +69,10 @@ export default function SystemHealthPage() {
       <AdminGuard>
         <AdminLayout>
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-64"></div>
+            <div className="h-8 bg-slate-700 rounded w-64"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white rounded-lg shadow p-6 h-64"></div>
+                <div key={i} className="bg-slate-800 border border-slate-700 rounded-lg shadow p-6 h-64"></div>
               ))}
             </div>
           </div>
@@ -86,13 +86,13 @@ export default function SystemHealthPage() {
       <AdminLayout>
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">System Health</h1>
-            <p className="mt-2 text-gray-600">Monitor system resources and performance</p>
+            <h1 className="text-3xl font-bold text-white">System Health</h1>
+            <p className="mt-2 text-slate-400">Monitor system resources and performance</p>
           </div>
           <button
             onClick={loadData}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>
@@ -100,20 +100,20 @@ export default function SystemHealthPage() {
 
         {/* API Health Status */}
         {apiHealth && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg shadow p-6 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {getStatusIcon(apiHealth.status)}
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">API Status</h2>
+                  <h2 className="text-2xl font-bold text-white">API Status</h2>
                   <p className={`text-lg font-medium capitalize ${getStatusColor(apiHealth.status)}`}>
                     {apiHealth.status}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600">Uptime</p>
-                <p className="text-2xl font-bold text-gray-900">{formatUptime(apiHealth.uptime_seconds)}</p>
+                <p className="text-sm text-slate-400">Uptime</p>
+                <p className="text-2xl font-bold text-white">{formatUptime(apiHealth.uptime_seconds)}</p>
               </div>
             </div>
           </div>
@@ -121,41 +121,41 @@ export default function SystemHealthPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Database Health */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200 flex items-center gap-3">
-              <FiDatabase className="text-blue-600" size={24} />
-              <h2 className="text-lg font-semibold text-gray-900">Database</h2>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700 flex items-center gap-3">
+              <FiDatabase className="text-indigo-400" size={24} />
+              <h2 className="text-lg font-semibold text-white">Database</h2>
             </div>
             {dbHealth && (
               <div className="p-6 space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Total Size</p>
-                  <p className="text-2xl font-bold text-gray-900">{dbHealth.total_size_mb.toFixed(2)} MB</p>
+                  <p className="text-sm text-slate-400">Total Size</p>
+                  <p className="text-2xl font-bold text-white">{dbHealth.total_size_mb.toFixed(2)} MB</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Tables</p>
-                  <p className="text-2xl font-bold text-gray-900">{dbHealth.table_count}</p>
+                  <p className="text-sm text-slate-400">Tables</p>
+                  <p className="text-2xl font-bold text-white">{dbHealth.table_count}</p>
                 </div>
-                <div className="pt-4 border-t border-gray-200 space-y-2">
+                <div className="pt-4 border-t border-slate-700 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Users</span>
-                    <span className="font-medium text-gray-900">{dbHealth.users_count.toLocaleString()}</span>
+                    <span className="text-slate-400">Users</span>
+                    <span className="font-medium text-slate-200">{dbHealth.users_count.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Applications</span>
-                    <span className="font-medium text-gray-900">{dbHealth.applications_count.toLocaleString()}</span>
+                    <span className="text-slate-400">Applications</span>
+                    <span className="font-medium text-slate-200">{dbHealth.applications_count.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Jobs</span>
-                    <span className="font-medium text-gray-900">{dbHealth.jobs_count.toLocaleString()}</span>
+                    <span className="text-slate-400">Jobs</span>
+                    <span className="font-medium text-slate-200">{dbHealth.jobs_count.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Logs</span>
-                    <span className="font-medium text-gray-900">{dbHealth.logs_count.toLocaleString()}</span>
+                    <span className="text-slate-400">Logs</span>
+                    <span className="font-medium text-slate-200">{dbHealth.logs_count.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Sessions</span>
-                    <span className="font-medium text-gray-900">{dbHealth.sessions_count.toLocaleString()}</span>
+                    <span className="text-slate-400">Sessions</span>
+                    <span className="font-medium text-slate-200">{dbHealth.sessions_count.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -163,29 +163,29 @@ export default function SystemHealthPage() {
           </div>
 
           {/* Storage */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200 flex items-center gap-3">
-              <FiHardDrive className="text-green-600" size={24} />
-              <h2 className="text-lg font-semibold text-gray-900">Storage</h2>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700 flex items-center gap-3">
+              <FiHardDrive className="text-green-400" size={24} />
+              <h2 className="text-lg font-semibold text-white">Storage</h2>
             </div>
             {storage && (
               <div className="p-6 space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Total Documents</p>
-                  <p className="text-2xl font-bold text-gray-900">{storage.total_documents.toLocaleString()}</p>
+                  <p className="text-sm text-slate-400">Total Documents</p>
+                  <p className="text-2xl font-bold text-white">{storage.total_documents.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Size</p>
-                  <p className="text-2xl font-bold text-gray-900">{storage.total_size_mb.toFixed(2)} MB</p>
+                  <p className="text-sm text-slate-400">Total Size</p>
+                  <p className="text-2xl font-bold text-white">{storage.total_size_mb.toFixed(2)} MB</p>
                 </div>
-                <div className="pt-4 border-t border-gray-200 space-y-2">
+                <div className="pt-4 border-t border-slate-700 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Users with Documents</span>
-                    <span className="font-medium text-gray-900">{storage.documents_by_user}</span>
+                    <span className="text-slate-400">Users with Documents</span>
+                    <span className="font-medium text-slate-200">{storage.documents_by_user}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Avatars</span>
-                    <span className="font-medium text-gray-900">{storage.avatars_count}</span>
+                    <span className="text-slate-400">Avatars</span>
+                    <span className="font-medium text-slate-200">{storage.avatars_count}</span>
                   </div>
                 </div>
               </div>
@@ -193,29 +193,29 @@ export default function SystemHealthPage() {
           </div>
 
           {/* API Metrics */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b border-gray-200 flex items-center gap-3">
-              <FiActivity className="text-purple-600" size={24} />
-              <h2 className="text-lg font-semibold text-gray-900">API Metrics</h2>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700 flex items-center gap-3">
+              <FiActivity className="text-purple-400" size={24} />
+              <h2 className="text-lg font-semibold text-white">API Metrics</h2>
             </div>
             {apiHealth && (
               <div className="p-6 space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Requests (Last Hour)</p>
-                  <p className="text-2xl font-bold text-gray-900">{apiHealth.requests_last_hour.toLocaleString()}</p>
+                  <p className="text-sm text-slate-400">Requests (Last Hour)</p>
+                  <p className="text-2xl font-bold text-white">{apiHealth.requests_last_hour.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Errors (Last Hour)</p>
-                  <p className="text-2xl font-bold text-red-600">{apiHealth.errors_last_hour}</p>
+                  <p className="text-sm text-slate-400">Errors (Last Hour)</p>
+                  <p className="text-2xl font-bold text-red-400">{apiHealth.errors_last_hour}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Avg Response Time</p>
-                  <p className="text-2xl font-bold text-gray-900">{apiHealth.avg_response_time_ms.toFixed(0)} ms</p>
+                  <p className="text-sm text-slate-400">Avg Response Time</p>
+                  <p className="text-2xl font-bold text-white">{apiHealth.avg_response_time_ms.toFixed(0)} ms</p>
                 </div>
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4 border-t border-slate-700">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Error Rate</span>
-                    <span className="font-medium text-gray-900">
+                    <span className="text-slate-400">Error Rate</span>
+                    <span className="font-medium text-slate-200">
                       {apiHealth.requests_last_hour > 0 
                         ? ((apiHealth.errors_last_hour / apiHealth.requests_last_hour) * 100).toFixed(2)
                         : 0

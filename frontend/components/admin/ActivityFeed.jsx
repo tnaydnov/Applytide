@@ -6,17 +6,17 @@ import { formatDistanceToNow } from 'date-fns';
 export default function ActivityFeed({ activities, loading }) {
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+      <div className="bg-slate-800 border border-slate-700 rounded-lg">
+        <div className="p-6 border-b border-slate-700">
+          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
         </div>
         <div className="p-6 space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="animate-pulse flex gap-4">
-              <div className="w-2 h-2 bg-gray-200 rounded-full mt-2"></div>
+              <div className="w-2 h-2 bg-slate-700 rounded-full mt-2"></div>
               <div className="flex-1">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-4 bg-slate-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-slate-700 rounded w-1/4"></div>
               </div>
             </div>
           ))}
@@ -27,11 +27,11 @@ export default function ActivityFeed({ activities, loading }) {
 
   if (!activities || activities.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+      <div className="bg-slate-800 border border-slate-700 rounded-lg">
+        <div className="p-6 border-b border-slate-700">
+          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
         </div>
-        <div className="p-6 text-center text-gray-500">
+        <div className="p-6 text-center text-slate-400">
           No recent activity
         </div>
       </div>
@@ -47,7 +47,7 @@ export default function ActivityFeed({ activities, loading }) {
       case 'WARNING':
         return 'bg-yellow-400';
       default:
-        return 'bg-blue-400';
+        return 'bg-indigo-400';
     }
   };
 
@@ -69,9 +69,9 @@ export default function ActivityFeed({ activities, loading }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+    <div className="bg-slate-800 border border-slate-700 rounded-lg">
+      <div className="p-6 border-b border-slate-700">
+        <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
       </div>
       <div className="p-6">
         <div className="flow-root">
@@ -81,7 +81,7 @@ export default function ActivityFeed({ activities, loading }) {
                 <div className="relative pb-8">
                   {idx !== activities.length - 1 && (
                     <span
-                      className="absolute top-5 left-2 -ml-px h-full w-0.5 bg-gray-200"
+                      className="absolute top-5 left-2 -ml-px h-full w-0.5 bg-slate-700"
                       aria-hidden="true"
                     />
                   )}
@@ -89,7 +89,7 @@ export default function ActivityFeed({ activities, loading }) {
                     <div>
                       <span className={`
                         h-4 w-4 rounded-full flex items-center justify-center
-                        ring-4 ring-white ${getLevelColor(activity.level)}
+                        ring-4 ring-slate-800 ${getLevelColor(activity.level)}
                       `}>
                         <span className="text-xs">
                           {getEventIcon(activity.event_type)}
@@ -98,12 +98,12 @@ export default function ActivityFeed({ activities, loading }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div>
-                        <p className="text-sm text-gray-900">
+                        <p className="text-sm text-slate-200">
                           {activity.message}
                         </p>
-                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
                           {activity.user_email && (
-                            <span className="font-medium">{activity.user_email}</span>
+                            <span className="font-medium text-slate-300">{activity.user_email}</span>
                           )}
                           <span>•</span>
                           <span>
