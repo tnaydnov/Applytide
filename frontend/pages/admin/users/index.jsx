@@ -87,22 +87,22 @@ export default function UsersListPage() {
       <AdminLayout>
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-          <p className="mt-2 text-gray-600">Manage user accounts and permissions</p>
+          <h1 className="text-3xl font-bold text-white">Users Management</h1>
+          <p className="mt-2 text-slate-400">Manage user accounts and permissions</p>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow mb-6">
+        <div className="bg-slate-800 rounded-lg border border-slate-700 mb-6">
           <div className="p-6">
             <form onSubmit={handleSearch} className="flex gap-4">
               <div className="flex-1 relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by email or location..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-400"
                 />
               </div>
               <button
@@ -114,7 +114,7 @@ export default function UsersListPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                className="px-4 py-2 border border-slate-600 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors flex items-center gap-2"
               >
                 <FiFilter />
                 Filters
@@ -123,13 +123,13 @@ export default function UsersListPage() {
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Role</label>
                   <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Roles</option>
                     <option value="user">User</option>
@@ -137,11 +137,11 @@ export default function UsersListPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Premium</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Premium</label>
                   <select
                     value={premiumFilter}
                     onChange={(e) => setPremiumFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Users</option>
                     <option value="true">Premium Only</option>
@@ -149,11 +149,11 @@ export default function UsersListPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Verified</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Email Verified</label>
                   <select
                     value={verifiedFilter}
                     onChange={(e) => setVerifiedFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Users</option>
                     <option value="true">Verified Only</option>
@@ -163,7 +163,7 @@ export default function UsersListPage() {
                 <div className="md:col-span-3">
                   <button
                     onClick={resetFilters}
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-blue-400 hover:text-blue-300"
                   >
                     Reset all filters
                   </button>
@@ -174,69 +174,69 @@ export default function UsersListPage() {
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-slate-700">
+              <thead className="bg-slate-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Applications
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Last Login
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-slate-800 divide-y divide-slate-700">
                 {loading ? (
                   // Loading skeleton
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-48"></div>
+                        <div className="h-4 bg-slate-700 rounded w-48"></div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                        <div className="h-4 bg-slate-700 rounded w-16"></div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        <div className="h-4 bg-slate-700 rounded w-20"></div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-12"></div>
+                        <div className="h-4 bg-slate-700 rounded w-12"></div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-4 bg-slate-700 rounded w-24"></div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                        <div className="h-4 bg-slate-700 rounded w-16"></div>
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-8 text-center text-slate-400">
                       No users found
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-slate-700/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{user.email}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
+                          <div className="text-sm font-medium text-white">{user.email}</div>
+                          <div className="text-sm text-slate-400 flex items-center gap-2">
                             {user.is_oauth_user && <span className="text-xs">🔗 OAuth</span>}
                             {user.email_verified_at && <span className="text-xs">✓ Verified</span>}
                           </div>
@@ -245,27 +245,27 @@ export default function UsersListPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-purple-900/30 text-purple-400 border border-purple-700' 
+                            : 'bg-slate-700 text-slate-300 border border-slate-600'
                         }`}>
                           {user.role}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {user.is_premium ? (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700">
                             ⭐ Premium
                           </span>
                         ) : (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-700 text-slate-300 border border-slate-600">
                             Free
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                         {user.total_applications}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                         {user.last_login_at 
                           ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true })
                           : 'Never'
@@ -274,7 +274,7 @@ export default function UsersListPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link
                           href={`/admin/users/${user.id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="text-blue-400 hover:text-blue-300 font-medium"
                         >
                           View
                         </Link>
@@ -288,8 +288,8 @@ export default function UsersListPage() {
 
           {/* Pagination */}
           {!loading && users.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-700">
+            <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
+              <div className="text-sm text-slate-300">
                 Showing {((pagination.page - 1) * pagination.page_size) + 1} to{' '}
                 {Math.min(pagination.page * pagination.page_size, pagination.total)} of{' '}
                 {pagination.total} users
@@ -298,17 +298,17 @@ export default function UsersListPage() {
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-slate-600 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FiChevronLeft />
                 </button>
-                <span className="px-4 py-1">
+                <span className="px-4 py-1 text-slate-300">
                   Page {pagination.page} of {pagination.total_pages}
                 </span>
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.total_pages}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-slate-600 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FiChevronRight />
                 </button>

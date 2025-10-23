@@ -32,15 +32,20 @@ export default function LLMUsagePage() {
       setLoading(true);
       
       // Load stats and usage list
+      const filters = {
+        page,
+        page_size: pageSize,
+        hours: timeWindow
+      };
+      
+      // Only add filters if they have values
+      if (endpointFilter) filters.endpoint = endpointFilter;
+      if (successFilter === 'success') filters.success_only = true;
+      if (successFilter === 'failure') filters.success_only = false;
+      
       const [statsData, listData] = await Promise.all([
         adminApi.getLLMUsageStats(timeWindow),
-        adminApi.getLLMUsageList({
-          page,
-          page_size: pageSize,
-          hours: timeWindow,
-          endpoint: endpointFilter || undefined,
-          success_only: successFilter === 'success' ? true : successFilter === 'failure' ? false : undefined
-        })
+        adminApi.getLLMUsageList(filters)
       ]);
 
       setStats(statsData);
