@@ -1,6 +1,7 @@
 """
 Admin users management endpoints.
 """
+import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -63,7 +64,7 @@ def list_users(
 
 @router.get("/{user_id}", response_model=dto.UserDetailDTO)
 def get_user(
-    user_id: int,
+    user_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
 ):
@@ -81,7 +82,7 @@ def get_user(
 
 @router.patch("/{user_id}/premium")
 def toggle_user_premium(
-    user_id: int,
+    user_id: uuid.UUID,
     is_premium: bool,
     expires_at: Optional[datetime] = None,
     admin_user: models.User = Depends(get_admin_user),
@@ -127,7 +128,7 @@ def toggle_user_premium(
 
 @router.patch("/{user_id}/role")
 def change_user_role(
-    user_id: int,
+    user_id: uuid.UUID,
     role: str,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
@@ -184,7 +185,7 @@ def change_user_role(
 
 @router.delete("/{user_id}")
 def delete_user(
-    user_id: int,
+    user_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -232,7 +233,7 @@ def delete_user(
 
 @router.post("/{user_id}/revoke-sessions")
 def revoke_user_sessions(
-    user_id: int,
+    user_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -279,7 +280,7 @@ def revoke_user_sessions(
 
 @router.get("/{user_id}/applications", response_model=list[dto.UserApplicationDTO])
 def get_user_applications(
-    user_id: int,
+    user_id: uuid.UUID,
     limit: int = 50,
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
@@ -302,7 +303,7 @@ def get_user_applications(
 
 @router.get("/{user_id}/jobs", response_model=list[dto.UserJobDTO])
 def get_user_jobs(
-    user_id: int,
+    user_id: uuid.UUID,
     limit: int = 50,
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
@@ -325,7 +326,7 @@ def get_user_jobs(
 
 @router.get("/{user_id}/activity", response_model=list[dto.ActivityEventDTO])
 def get_user_activity(
-    user_id: int,
+    user_id: uuid.UUID,
     limit: int = 50,
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)

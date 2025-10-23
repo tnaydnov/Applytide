@@ -1,6 +1,7 @@
 """
 Admin session management endpoints.
 """
+import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_, desc
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 def list_sessions(
     page: int = 1,
     page_size: int = 20,
-    user_id: Optional[int] = None,
+    user_id: Optional[uuid.UUID] = None,
     active_only: bool = True,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
@@ -149,7 +150,7 @@ def get_session_stats(
 
 @router.delete("/{session_id}")
 def revoke_session(
-    session_id: int,
+    session_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):

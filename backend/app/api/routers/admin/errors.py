@@ -1,6 +1,7 @@
 """
 Admin error monitoring endpoints.
 """
+import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_, desc
@@ -20,7 +21,7 @@ def list_errors(
     page: int = 1,
     page_size: int = 20,
     level: Optional[str] = None,
-    user_id: Optional[int] = None,
+    user_id: Optional[uuid.UUID] = None,
     endpoint: Optional[str] = None,
     hours: Optional[int] = None,
     admin_user: models.User = Depends(get_admin_user),
@@ -172,7 +173,7 @@ def get_error_summary(
 
 @router.get("/{log_id}")
 def get_error_detail(
-    log_id: int,
+    log_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
