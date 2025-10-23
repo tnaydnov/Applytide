@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { FiDatabase, FiHardDrive, FiActivity, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
-import AdminGuard from '@/components/guards/AdminGuard';
-import AdminLayout from '@/components/admin/AdminLayout';
-import { adminApi } from '@/features/admin/api';
-import { useToast } from '@/lib/toast';
+import AdminGuard from '../../components/guards/AdminGuard';
+import AdminLayout from '../../components/admin/AdminLayout';
+import { adminApi } from '../../features/admin/api';
+import { useToast } from '../../lib/toast';
 
 export default function SystemHealthPage() {
   const toast = useToast();

@@ -2,7 +2,7 @@
  * Admin API Client
  * All API calls for admin panel
  */
-import api from '@/lib/api';
+import api from '../../lib/api';
 
 export const adminApi = {
   // ============================================================================

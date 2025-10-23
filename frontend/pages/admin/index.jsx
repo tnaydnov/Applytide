@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FiUsers, FiCreditCard, FiFileText, FiActivity, FiAlertCircle } from 'react-icons/fi';
-import AdminGuard from '@/components/guards/AdminGuard';
-import AdminLayout from '@/components/admin/AdminLayout';
-import StatCard from '@/components/admin/StatCard';
-import ActivityFeed from '@/components/admin/ActivityFeed';
-import SimpleChart from '@/components/admin/SimpleChart';
-import { adminApi } from '@/features/admin/api';
-import { useToast } from '@/lib/toast';
+import AdminGuard from '../../components/guards/AdminGuard';
+import AdminLayout from '../../components/admin/AdminLayout';
+import StatCard from '../../components/admin/StatCard';
+import ActivityFeed from '../../components/admin/ActivityFeed';
+import SimpleChart from '../../components/admin/SimpleChart';
+import { adminApi } from '../../features/admin/api';
+import { useToast } from '../../lib/toast';
 
 export default function AdminDashboard() {
   const toast = useToast();

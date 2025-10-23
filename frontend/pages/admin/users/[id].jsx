@@ -14,11 +14,10 @@ import {
   FiLinkedin,
   FiPhone
 } from 'react-icons/fi';
-import AdminGuard from '@/components/guards/AdminGuard';
-import AdminLayout from '@/components/admin/AdminLayout';
-import { adminApi } from '@/features/admin/api';
-import { useToast } from '@/lib/toast';
-import { format } from 'date-fns';
+import AdminGuard from '../../../components/guards/AdminGuard';
+import AdminLayout from '../../../components/admin/AdminLayout';
+import { adminApi } from '../../../features/admin/api';
+import { useToast } from '../../../lib/toast';
 
 export default function UserDetailPage() {
   const router = useRouter();

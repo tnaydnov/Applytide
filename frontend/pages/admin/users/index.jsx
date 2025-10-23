@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { FiSearch, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import AdminGuard from '@/components/guards/AdminGuard';
-import AdminLayout from '@/components/admin/AdminLayout';
-import { adminApi } from '@/features/admin/api';
-import { useToast } from '@/lib/toast';
+import AdminGuard from '../../../components/guards/AdminGuard';
+import AdminLayout from '../../../components/admin/AdminLayout';
+import { adminApi } from '../../../features/admin/api';
+import { useToast } from '../../../lib/toast';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function UsersListPage() {
