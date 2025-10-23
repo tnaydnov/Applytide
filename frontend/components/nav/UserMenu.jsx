@@ -71,7 +71,6 @@ export default function UserMenu({
           <Link
             href="/profile"
             className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200"
-            onClick={() => setIsUserMenuOpen(false)}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -81,7 +80,6 @@ export default function UserMenu({
           <Link
             href="/pricing"
             className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200"
-            onClick={() => setIsUserMenuOpen(false)}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -94,7 +92,8 @@ export default function UserMenu({
             )}
           </Link>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              console.log("Sign Out clicked", e);
               setIsUserMenuOpen(false);
               onLogout();
             }}
