@@ -1,6 +1,7 @@
 """
 Admin Data Transfer Objects (DTOs) for API responses.
 """
+import uuid
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
@@ -25,10 +26,10 @@ class DashboardStatsDTO(BaseModel):
 
 class ActivityEventDTO(BaseModel):
     """Single activity event for activity feed."""
-    id: int
+    id: uuid.UUID
     timestamp: datetime
     user_email: Optional[str] = None
-    user_id: Optional[int] = None
+    user_id: Optional[uuid.UUID] = None
     event_type: str  # "user_registered", "application_created", "error", etc.
     message: str
     level: str  # INFO, WARNING, ERROR, CRITICAL
