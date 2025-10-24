@@ -62,6 +62,15 @@ def create_refresh_token(
     with get_db_session() as db:
         # Revoke existing active sessions from the same device (same user_agent)
         # This ensures only one active session per device
+        logger.info(
+            f"create_refresh_token called",
+            extra={
+                "user_id": user_id,
+                "has_user_agent": bool(user_agent),
+                "user_agent_preview": user_agent[:50] if user_agent else None
+            }
+        )
+        
         if user_agent:
             try:
                 existing_sessions = db.query(RefreshToken).filter(
@@ -70,6 +79,15 @@ def create_refresh_token(
                     RefreshToken.revoked_at.is_(None),
                     RefreshToken.expires_at > _now()
                 ).all()
+                
+                logger.info(
+                    f"Checked for existing sessions",
+                    extra={
+                        "user_id": user_id,
+                        "user_agent": user_agent[:50],
+                        "found_sessions": len(existing_sessions)
+                    }
+                )
                 
                 if existing_sessions:
                     revoked_count = len(existing_sessions)
