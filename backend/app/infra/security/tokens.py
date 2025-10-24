@@ -79,7 +79,7 @@ def create_refresh_token(
                 # First, let's see ALL sessions for this user to debug
                 all_user_sessions = db.query(RefreshToken).filter(
                     RefreshToken.user_id == uuid.UUID(user_id),
-                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.is_active == True,
                     RefreshToken.expires_at > _now()
                 ).all()
                 
@@ -96,7 +96,7 @@ def create_refresh_token(
                 existing_sessions = db.query(RefreshToken).filter(
                     RefreshToken.user_id == uuid.UUID(user_id),
                     RefreshToken.user_agent.like(f"{user_agent_prefix}%"),
-                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.is_active == True,
                     RefreshToken.expires_at > _now()
                 ).all()
                 
