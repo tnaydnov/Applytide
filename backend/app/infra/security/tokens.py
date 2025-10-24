@@ -73,9 +73,11 @@ def create_refresh_token(
         
         if user_agent:
             try:
+                # Use LIKE to match user_agent prefix (first 100 chars) to handle minor variations
+                user_agent_prefix = user_agent[:100]
                 existing_sessions = db.query(RefreshToken).filter(
                     RefreshToken.user_id == uuid.UUID(user_id),
-                    RefreshToken.user_agent == user_agent,
+                    RefreshToken.user_agent.like(f"{user_agent_prefix}%"),
                     RefreshToken.revoked_at.is_(None),
                     RefreshToken.expires_at > _now()
                 ).all()
