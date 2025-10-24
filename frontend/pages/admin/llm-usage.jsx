@@ -17,6 +17,7 @@ export default function LLMUsagePage() {
   const [timeWindow, setTimeWindow] = useState(24); // hours
   const [page, setPage] = useState(1);
   const [endpointFilter, setEndpointFilter] = useState('');
+  const [usageTypeFilter, setUsageTypeFilter] = useState('');
   const [successFilter, setSuccessFilter] = useState('all'); // 'all', 'success', 'failure'
   
   // Pagination
@@ -25,7 +26,7 @@ export default function LLMUsagePage() {
 
   useEffect(() => {
     loadData();
-  }, [timeWindow, page, endpointFilter, successFilter]);
+  }, [timeWindow, page, endpointFilter, usageTypeFilter, successFilter]);
 
   const loadData = async () => {
     try {
@@ -40,6 +41,7 @@ export default function LLMUsagePage() {
       
       // Only add filters if they have values
       if (endpointFilter) filters.endpoint = endpointFilter;
+      if (usageTypeFilter) filters.usage_type = usageTypeFilter;
       if (successFilter === 'success') filters.success_only = true;
       if (successFilter === 'failure') filters.success_only = false;
       
@@ -69,13 +71,14 @@ export default function LLMUsagePage() {
   const exportToCSV = () => {
     try {
       // CSV headers
-      const headers = ['Timestamp', 'User', 'Endpoint', 'Model', 'Prompt Tokens', 'Completion Tokens', 'Total Tokens', 'Cost (USD)', 'Latency (ms)', 'Status', 'Error'];
+      const headers = ['Timestamp', 'User', 'Endpoint', 'Usage Type', 'Model', 'Prompt Tokens', 'Completion Tokens', 'Total Tokens', 'Cost (USD)', 'Latency (ms)', 'Status', 'Error'];
       
       // CSV rows
       const rows = usageList.map(item => [
         new Date(item.timestamp).toISOString(),
         item.user_email || 'N/A',
         item.endpoint,
+        item.usage_type || 'N/A',
         item.model,
         item.prompt_tokens,
         item.completion_tokens,
@@ -271,6 +274,72 @@ export default function LLMUsagePage() {
                 </div>
               </div>
 
+              {/* Usage by Type - Full Width */}
+              <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <FiActivity className="text-purple-400" />
+                  Usage by Type
+                </h3>
+                {stats.by_usage_type && stats.by_usage_type.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {stats.by_usage_type
+                      .sort((a, b) => b.cost - a.cost)
+                      .map(item => {
+                        // Human-readable labels
+                        const labels = {
+                          'chrome_extension': { name: 'Chrome Extension', color: 'bg-green-500', icon: '🔌' },
+                          'cover_letter': { name: 'Cover Letter', color: 'bg-blue-500', icon: '📝' },
+                          'resume_general': { name: 'Resume Analysis', color: 'bg-purple-500', icon: '📄' },
+                          'resume_job': { name: 'Job Matching', color: 'bg-orange-500', icon: '🎯' }
+                        };
+                        const label = labels[item.usage_type] || { name: item.usage_type, color: 'bg-gray-500', icon: '❓' };
+                        
+                        return (
+                          <div key={item.usage_type} className="bg-slate-700 p-4 rounded-lg space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">{label.icon}</span>
+                              <span className="text-sm font-medium text-slate-300">{label.name}</span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-400">Calls</span>
+                                <span className="text-lg font-semibold text-white">{item.calls.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-400">Cost</span>
+                                <span className="text-lg font-semibold text-green-400">${item.cost.toFixed(4)}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-400">Tokens</span>
+                                <span className="text-sm text-slate-300">{item.tokens.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-slate-400">Avg Cost/Call</span>
+                                <span className="text-sm text-slate-300">${(item.cost / item.calls).toFixed(6)}</span>
+                              </div>
+                            </div>
+                            {/* Progress bar showing percentage of total cost */}
+                            <div className="pt-2">
+                              <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>% of Total Cost</span>
+                                <span>{((item.cost / stats.total_cost) * 100).toFixed(1)}%</span>
+                              </div>
+                              <div className="w-full bg-slate-600 rounded-full h-2">
+                                <div
+                                  className={`${label.color} h-2 rounded-full transition-all duration-300`}
+                                  style={{ width: `${(item.cost / stats.total_cost) * 100}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 text-center py-8">No data available</p>
+                )}
+              </div>
+
               {/* Filters & Table */}
               <div className="bg-slate-800 rounded-lg border border-slate-700">
                 {/* Filter Bar */}
@@ -293,6 +362,22 @@ export default function LLMUsagePage() {
                     {uniqueEndpoints.map(endpoint => (
                       <option key={endpoint} value={endpoint}>{endpoint}</option>
                     ))}
+                  </select>
+
+                  {/* Usage Type Filter */}
+                  <select
+                    value={usageTypeFilter}
+                    onChange={(e) => {
+                      setUsageTypeFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">All Usage Types</option>
+                    <option value="chrome_extension">🔌 Chrome Extension</option>
+                    <option value="cover_letter">📝 Cover Letter</option>
+                    <option value="resume_general">📄 Resume Analysis</option>
+                    <option value="resume_job">🎯 Job Matching</option>
                   </select>
 
                   {/* Success Filter */}
@@ -327,6 +412,7 @@ export default function LLMUsagePage() {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Timestamp</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">User</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Usage Type</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Endpoint</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Model</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Tokens</th>
@@ -344,6 +430,23 @@ export default function LLMUsagePage() {
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-300">
                               {item.user_email || <span className="text-slate-500">System</span>}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {(() => {
+                                const labels = {
+                                  'chrome_extension': { text: 'Chrome Extension', color: 'bg-green-900/30 text-green-400', icon: '🔌' },
+                                  'cover_letter': { text: 'Cover Letter', color: 'bg-blue-900/30 text-blue-400', icon: '📝' },
+                                  'resume_general': { text: 'Resume Analysis', color: 'bg-purple-900/30 text-purple-400', icon: '📄' },
+                                  'resume_job': { text: 'Job Matching', color: 'bg-orange-900/30 text-orange-400', icon: '🎯' }
+                                };
+                                const label = labels[item.usage_type] || { text: item.usage_type || 'N/A', color: 'bg-slate-700 text-slate-300', icon: '❓' };
+                                return (
+                                  <span className={`px-2 py-1 ${label.color} rounded text-xs font-medium inline-flex items-center gap-1`}>
+                                    <span>{label.icon}</span>
+                                    <span>{label.text}</span>
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-300">
                               <span className="px-2 py-1 bg-slate-700 rounded text-xs">
