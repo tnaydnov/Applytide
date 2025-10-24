@@ -75,6 +75,24 @@ def create_refresh_token(
             try:
                 # Use LIKE to match user_agent prefix (first 100 chars) to handle minor variations
                 user_agent_prefix = user_agent[:100]
+                
+                # First, let's see ALL sessions for this user to debug
+                all_user_sessions = db.query(RefreshToken).filter(
+                    RefreshToken.user_id == uuid.UUID(user_id),
+                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.expires_at > _now()
+                ).all()
+                
+                logger.info(
+                    f"Debug: All active sessions for user",
+                    extra={
+                        "user_id": user_id,
+                        "total_active_sessions": len(all_user_sessions),
+                        "user_agents": [s.user_agent[:50] if s.user_agent else None for s in all_user_sessions],
+                        "searching_for_prefix": user_agent_prefix
+                    }
+                )
+                
                 existing_sessions = db.query(RefreshToken).filter(
                     RefreshToken.user_id == uuid.UUID(user_id),
                     RefreshToken.user_agent.like(f"{user_agent_prefix}%"),
