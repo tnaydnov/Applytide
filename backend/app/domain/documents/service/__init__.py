@@ -65,7 +65,7 @@ class DocumentService:
             logger.warning("AI cover letter service unavailable", extra={"error": str(e)})
         
         # Initialize specialized modules
-        self.utils = DocumentUtils(store=store, llm=self._llm)
+        self.utils = DocumentUtils(store=store, llm=self._llm, db_session=db_session)
         self.cache = AnalysisCache(utils=self.utils)
         self.crud = DocumentCRUD(store=store, extractor=extractor, utils=self.utils)
         self.preview = DocumentPreview(utils=self.utils)

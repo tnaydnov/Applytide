@@ -236,6 +236,7 @@ class AICoverLetterService:
                 tracker = track_openai_call(
                     self.db_session,
                     endpoint="cover_letter_generation",
+                    usage_type="cover_letter",
                     user_id=job.user_id if job and hasattr(job, 'user_id') else None,
                     job_title=job_title[:100] if job_title else None,
                     company=company_name[:100] if company_name else None,

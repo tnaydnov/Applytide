@@ -197,6 +197,7 @@ class LLMUsageTracker:
         self,
         db: Session,
         endpoint: str,
+        usage_type: str,
         provider: str = "openai",
         user_id: Optional[uuid.UUID] = None,
         extra: Optional[Dict[str, Any]] = None
@@ -206,13 +207,15 @@ class LLMUsageTracker:
         
         Args:
             db: Database session
-            endpoint: Endpoint name (e.g., "job_extraction", "cover_letter")
+            endpoint: Endpoint name (e.g., "job_extraction", "cover_letter_generation")
+            usage_type: Usage type category (e.g., "chrome_extension", "cover_letter", "resume_general", "resume_job")
             provider: LLM provider name (default: "openai")
             user_id: Optional user ID for tracking per-user costs
             extra: Optional extra metadata
         """
         self.db = db
         self.endpoint = endpoint
+        self.usage_type = usage_type
         self.provider = provider
         self.user_id = user_id
         self.extra = extra or {}
@@ -288,6 +291,7 @@ class LLMUsageTracker:
             provider=self.provider,
             model=self.model,
             endpoint=self.endpoint,
+            usage_type=self.usage_type,
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
             total_tokens=self.total_tokens,
@@ -302,8 +306,9 @@ class LLMUsageTracker:
         self.db.commit()
         
         logger.info(
-            f"LLM usage tracked: {self.endpoint}",
+            f"LLM usage tracked: {self.usage_type} ({self.endpoint})",
             extra={
+                "usage_type": self.usage_type,
                 "model": self.model,
                 "tokens": self.total_tokens,
                 "cost_usd": f"${cost:.6f}",
@@ -317,6 +322,7 @@ class LLMUsageTracker:
 def track_openai_call(
     db: Session,
     endpoint: str,
+    usage_type: str,
     user_id: Optional[uuid.UUID] = None,
     **extra
 ) -> LLMUsageTracker:
@@ -324,7 +330,7 @@ def track_openai_call(
     Convenience function to create OpenAI usage tracker.
     
     Usage:
-        with track_openai_call(db, "job_extraction", user_id=user.id) as tracker:
+        with track_openai_call(db, "job_extraction", "chrome_extension", user_id=user.id) as tracker:
             response = client.chat.completions.create(...)
             tracker.set_usage(
                 model=response.model,
@@ -332,10 +338,18 @@ def track_openai_call(
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens
             )
+    
+    Args:
+        db: Database session
+        endpoint: Specific endpoint name (e.g., "job_extraction", "cover_letter_generation")
+        usage_type: Usage category (e.g., "chrome_extension", "cover_letter", "resume_general", "resume_job")
+        user_id: Optional user ID for tracking per-user costs
+        **extra: Additional metadata to store
     """
     return LLMUsageTracker(
         db=db,
         endpoint=endpoint,
+        usage_type=usage_type,
         provider="openai",
         user_id=user_id,
         extra=extra

@@ -68,11 +68,11 @@ class DocumentAnalysisModule:
         candidates = list(dict.fromkeys([*sorted(freq, key=freq.get, reverse=True)[:25], *caps]))
         return [c for c in candidates if c]
     
-    def perform_general_resume_analysis(self, text_content: str) -> dict:
+    def perform_general_resume_analysis(self, text_content: str, user_id: Optional[uuid.UUID] = None) -> dict:
         """Perform general resume analysis without job context."""
         if self.utils._llm is not None:
             try:
-                j = self.llm_analyze_general_first(resume_text=text_content or "")
+                j = self.llm_analyze_general_first(resume_text=text_content or "", user_id=user_id)
                 return j
             except Exception as e:
                 logger.warning("LLM general analysis failed, using fallback", extra={"error": str(e)})
@@ -153,7 +153,7 @@ class DocumentAnalysisModule:
             "ai_detailed_analysis": self.utils.normalize_ai_detailed_analysis({})
         }
     
-    def llm_analyze_general_first(self, *, resume_text: str) -> Dict[str, Any]:
+    def llm_analyze_general_first(self, *, resume_text: str, user_id: Optional[uuid.UUID] = None) -> Dict[str, Any]:
         """General, job-agnostic LLM analysis for ANY profession."""
         resume_snip = (resume_text or "")[:12000]
         system = (
@@ -185,7 +185,13 @@ Rules:
 - 'section_scores' keys can be any sections present or expected (e.g., Summary, Experience, Education, Certifications).
 """
         
-        j = self.utils.llm_call(system=system, user=user)
+        j = self.utils.llm_call(
+            system=system, 
+            user=user, 
+            usage_type="resume_general",
+            endpoint="resume_analysis_general",
+            user_id=user_id
+        )
         scores = j.get("scores", {}) if isinstance(j.get("scores"), dict) else {}
         formatting = self.utils.clamp_pct(scores.get("formatting"), 70.0)
         readability = self.utils.clamp_pct(scores.get("readability"), 70.0)
@@ -222,7 +228,7 @@ Rules:
     
     def llm_analyze_job_first(self, *, resume_text: str, job_meta: str,
                             requirements: List[str], required_tech: List[str],
-                            extra_keywords: List[str]) -> Dict[str, Any]:
+                            extra_keywords: List[str], user_id: Optional[uuid.UUID] = None) -> Dict[str, Any]:
         """
         Ask the LLM to do end-to-end job matching across ANY domain.
         'technical_skills' == 'hard skills relevant to this role' (non-tech friendly).
@@ -302,7 +308,13 @@ Rules:
 - Prefer concise bullets. No markdown. Keep arrays short but useful.
 """
         
-        j = self.utils.llm_call(system=system, user=user)
+        j = self.utils.llm_call(
+            system=system, 
+            user=user,
+            usage_type="resume_job",
+            endpoint="resume_analysis_job",
+            user_id=user_id
+        )
         
         # Defensive coercion & defaults
         scores = j.get("scores", {}) if isinstance(j.get("scores"), dict) else {}
@@ -383,6 +395,7 @@ Rules:
         extra_keywords: List[str],
         use_ai: bool,
         job_meta: str,
+        user_id: Optional[uuid.UUID] = None,
     ) -> Dict[str, Any]:
         """Analyze resume against specific job requirements."""
         # If LLM available, use LLM-first universal scoring
@@ -394,6 +407,7 @@ Rules:
                     requirements=requirements,
                     required_tech=required_tech,
                     extra_keywords=extra_keywords,
+                    user_id=user_id,
                 )
             except Exception as e:
                 logger.warning("LLM job analysis failed, using fallback", extra={
@@ -544,6 +558,7 @@ Rules:
                 extra_keywords=job_keywords,
                 use_ai=use_ai and self.utils._llm is not None,
                 job_meta=job_meta,
+                user_id=uuid.UUID(user_id) if user_id else None,
             )
             
             ats = ATSScore(
@@ -571,7 +586,10 @@ Rules:
                 action_verb_count=None,
             )
         else:
-            gen = self.perform_general_resume_analysis(resume_text)
+            gen = self.perform_general_resume_analysis(
+                resume_text,
+                user_id=uuid.UUID(user_id) if user_id else None
+            )
             
             ats = ATSScore(
                 overall_score=gen["overall_score"],

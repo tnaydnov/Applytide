@@ -180,6 +180,7 @@ class OpenAILLMExtractor(LLMExtractor):
             tracker = track_openai_call(
                 self.db_session,
                 endpoint="job_extraction",
+                usage_type="chrome_extension",
                 url=url[:200] if url else None,
                 text_length=text_len
             )

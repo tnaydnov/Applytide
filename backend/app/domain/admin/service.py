@@ -523,6 +523,28 @@ class AdminService:
             for row in model_stats
         ]
         
+        # Usage by usage_type (NEW)
+        usage_type_stats = self.db.execute(
+            select(
+                models.LLMUsage.usage_type,
+                func.count(models.LLMUsage.id).label('calls'),
+                func.sum(models.LLMUsage.estimated_cost).label('cost'),
+                func.sum(models.LLMUsage.total_tokens).label('tokens')
+            )
+            .select_from(stmt.subquery())
+            .group_by(models.LLMUsage.usage_type)
+        ).all()
+        
+        by_usage_type = [
+            {
+                "usage_type": row[0],
+                "calls": row[1],
+                "cost": float(row[2] or 0),
+                "tokens": row[3] or 0
+            }
+            for row in usage_type_stats
+        ]
+        
         return dto.LLMUsageStatsDTO(
             total_calls=total_calls,
             successful_calls=successful_calls,
@@ -531,7 +553,8 @@ class AdminService:
             total_tokens=total_tokens,
             avg_response_time_ms=int(avg_response_time),
             by_endpoint=by_endpoint,
-            by_model=by_model
+            by_model=by_model,
+            by_usage_type=by_usage_type
         )
     
     def get_llm_usage_list(
@@ -539,6 +562,7 @@ class AdminService:
         page: int = 1,
         page_size: int = 50,
         endpoint: Optional[str] = None,
+        usage_type: Optional[str] = None,
         user_id: Optional[int] = None,
         success_only: Optional[bool] = None,
         hours: Optional[int] = None
@@ -556,6 +580,9 @@ class AdminService:
         # Apply filters
         if endpoint:
             stmt = stmt.where(models.LLMUsage.endpoint == endpoint)
+        
+        if usage_type:
+            stmt = stmt.where(models.LLMUsage.usage_type == usage_type)
         
         if user_id:
             stmt = stmt.where(models.LLMUsage.user_id == user_id)
@@ -594,6 +621,7 @@ class AdminService:
                 provider=record.provider,
                 model=record.model,
                 endpoint=record.endpoint,
+                usage_type=record.usage_type,
                 prompt_tokens=record.prompt_tokens,
                 completion_tokens=record.completion_tokens,
                 total_tokens=record.total_tokens,

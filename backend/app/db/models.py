@@ -358,7 +358,8 @@ class LLMUsage(Base):
     # Provider info
     provider: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # "openai", "anthropic"
     model: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # "gpt-4o-mini", "gpt-4o", "claude-3"
-    endpoint: Mapped[str] = mapped_column(String(200), nullable=False)  # "job_extraction", "cover_letter", "resume_analysis"
+    endpoint: Mapped[str] = mapped_column(String(200), nullable=False)  # "job_extraction", "cover_letter_generation", "resume_analysis_general", "resume_analysis_job"
+    usage_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # "chrome_extension", "cover_letter", "resume_general", "resume_job"
     
     # Token usage
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)

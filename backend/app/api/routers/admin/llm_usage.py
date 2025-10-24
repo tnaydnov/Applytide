@@ -45,6 +45,7 @@ def list_llm_usage(
     page: int = 1,
     page_size: int = 50,
     endpoint: Optional[str] = None,
+    usage_type: Optional[str] = None,
     user_id: Optional[int] = None,
     success_only: Optional[bool] = None,
     hours: Optional[int] = None,
@@ -57,7 +58,8 @@ def list_llm_usage(
     Query params:
     - page: Page number (default: 1)
     - page_size: Items per page (default: 50, max: 100)
-    - endpoint: Filter by endpoint (e.g., "job_extraction", "cover_letter")
+    - endpoint: Filter by endpoint (e.g., "job_extraction", "cover_letter_generation")
+    - usage_type: Filter by usage type (e.g., "chrome_extension", "cover_letter", "resume_general", "resume_job")
     - user_id: Filter by user ID
     - success_only: Filter by success status (true/false/null for all)
     - hours: Only show records from last N hours
@@ -66,6 +68,7 @@ def list_llm_usage(
         page=page,
         page_size=page_size,
         endpoint=endpoint,
+        usage_type=usage_type,
         user_id=user_id,
         success_only=success_only,
         hours=hours

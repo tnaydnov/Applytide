@@ -276,6 +276,7 @@ class LLMUsageDTO(BaseModel):
     provider: str
     model: str
     endpoint: str
+    usage_type: str
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -297,6 +298,7 @@ class LLMUsageStatsDTO(BaseModel):
     avg_response_time_ms: int
     by_endpoint: list[dict]  # [{"endpoint": str, "calls": int, "cost": float, "tokens": int}]
     by_model: list[dict]  # [{"model": str, "calls": int, "cost": float}]
+    by_usage_type: list[dict]  # [{"usage_type": str, "calls": int, "cost": float, "tokens": int}]
     
     model_config = ConfigDict(from_attributes=True)
 

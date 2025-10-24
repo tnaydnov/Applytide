@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import os
 import re
+import uuid
 
 from ....infra.files.document_store import DocumentStore
 from ....infra.logging import get_logger
@@ -15,18 +16,21 @@ logger = get_logger(__name__)
 # Optional OpenAI for LLM calls
 try:
     from openai import OpenAI  # type: ignore
+    from ....infra.external.llm_tracker import track_openai_call
     _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 except Exception:
     OpenAI = None  # type: ignore
+    track_openai_call = None  # type: ignore
     _OPENAI_API_KEY = ""
 
 
 class DocumentUtils:
     """Shared utility methods for document operations."""
     
-    def __init__(self, store: DocumentStore, llm: Optional[Any] = None):
+    def __init__(self, store: DocumentStore, llm: Optional[Any] = None, db_session=None):
         self.store = store
         self._llm = llm
+        self.db_session = db_session
     
     def sidecar(self, file_path: Path) -> Dict[str, Any]:
         """Read sidecar metadata for a document."""
@@ -98,25 +102,62 @@ class DocumentUtils:
         fix = {"nodejs": "node.js", "node": "node.js"}
         return [fix.get(t, t) for t in toks]
     
-    def llm_call(self, *, system: str, user: str, max_tokens: int = 2600) -> dict:
+    def llm_call(self, *, system: str, user: str, max_tokens: int = 2600, usage_type: str = "resume_general", endpoint: str = "resume_analysis", user_id: Optional[uuid.UUID] = None) -> dict:
         """Safe LLM call that always returns a JSON object or {}."""
         if self._llm is None:
             return {}
         
         try:
-            resp = self._llm.chat.completions.create(
-                model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
-                temperature=0.0,
-                top_p=1.0,
-                presence_penalty=0,
-                frequency_penalty=0,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user}
-                ],
-                max_tokens=max_tokens,
-            )
+            # Track LLM usage if DB session available
+            tracker = None
+            if self.db_session and track_openai_call:
+                tracker = track_openai_call(
+                    self.db_session,
+                    endpoint=endpoint,
+                    usage_type=usage_type,
+                    user_id=user_id,
+                    system_prompt_length=len(system),
+                    user_prompt_length=len(user)
+                )
+            
+            if tracker:
+                with tracker:
+                    resp = self._llm.chat.completions.create(
+                        model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
+                        temperature=0.0,
+                        top_p=1.0,
+                        presence_penalty=0,
+                        frequency_penalty=0,
+                        response_format={"type": "json_object"},
+                        messages=[
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user}
+                        ],
+                        max_tokens=max_tokens,
+                    )
+                    # Record usage
+                    if resp.usage:
+                        tracker.set_usage(
+                            model=resp.model,
+                            prompt_tokens=resp.usage.prompt_tokens,
+                            completion_tokens=resp.usage.completion_tokens,
+                            total_tokens=resp.usage.total_tokens
+                        )
+            else:
+                resp = self._llm.chat.completions.create(
+                    model=os.getenv("RESUME_MODEL", "gpt-4o-mini"),
+                    temperature=0.0,
+                    top_p=1.0,
+                    presence_penalty=0,
+                    frequency_penalty=0,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user}
+                    ],
+                    max_tokens=max_tokens,
+                )
+            
             content = resp.choices[0].message.content or "{}"
             return json.loads(content)
         except Exception as e:
