@@ -77,6 +77,9 @@ def create_refresh_token(
                         session.revoked_at = _now()
                         session.is_active = False
                     
+                    # Commit the revocations
+                    db.commit()
+                    
                     logger.info(
                         f"Revoked {revoked_count} existing session(s) from same device",
                         extra={
