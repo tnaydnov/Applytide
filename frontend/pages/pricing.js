@@ -22,7 +22,7 @@ export default function PricingPage() {
 
   const plans = [
     {
-      name: 'Free',
+      name: 'Starter',
       description: 'Perfect for getting started with job applications',
       price: { monthly: 0, yearly: 0 },
       popular: false,
@@ -49,12 +49,12 @@ export default function PricingPage() {
     {
       name: 'Premium',
       description: 'Professional job search with AI-powered tools',
-      price: { monthly: 19, yearly: 199 },
-      popular: true,
+      price: { monthly: 'TBA', yearly: 'TBA' },
+      popular: false,
       comingSoon: true,
-      trialDays: 7,
+      trialDays: null,
       features: [
-        { name: 'Everything in Free', included: true },
+        { name: 'Everything in Starter', included: true },
         { name: 'Unlimited job applications', included: true },
         { name: 'Advanced analytics dashboard', included: true, badge: 'Hot' },
         { name: 'Unlimited AI cover letter generation', included: true, badge: 'AI' },
@@ -77,6 +77,8 @@ export default function PricingPage() {
 
   const formatPrice = (plan) => {
     if (plan.price === 'Custom') return 'Custom';
+    if (plan.price.monthly === 'TBA') return 'Pricing TBA';
+    
     const price = billingCycle === 'monthly' ? plan.price.monthly : plan.price.yearly;
     if (price === 0) return 'Free';
 
@@ -88,7 +90,7 @@ export default function PricingPage() {
   };
 
   const getYearlySavings = (plan) => {
-    if (plan.price === 'Custom' || plan.price.monthly === 0) return null;
+    if (plan.price === 'Custom' || plan.price.monthly === 0 || plan.price.monthly === 'TBA') return null;
     const yearlyMonthly = plan.price.yearly / 12;
     const savings = ((plan.price.monthly - yearlyMonthly) / plan.price.monthly * 100).toFixed(0);
     return `Save ${savings}%`;
@@ -96,7 +98,6 @@ export default function PricingPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Choose Your Plan" subtitle="Accelerate your job search with powerful tools" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
@@ -153,13 +154,8 @@ export default function PricingPage() {
         min-w-[86%] sm:min-w-[75%] md:min-w-0 snap-center
       `}
             >
-              {/* Badges live INSIDE header to avoid overlap */}
-              <div className="flex items-center justify-center gap-3 mb-3">
-                {plan.popular && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                    Most Popular
-                  </span>
-                )}
+              {/* Fixed height badge container to keep cards aligned */}
+              <div className="flex items-center justify-center gap-3 mb-3 h-8">
                 {plan.comingSoon && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
                     🚧 Coming soon
@@ -173,15 +169,12 @@ export default function PricingPage() {
                 <p className="text-gray-300 mb-4">{plan.description}</p>
                 <div>
                   <span className="text-4xl font-bold text-white">{formatPrice(plan)}</span>
-                  {plan.price !== 'Custom' && plan.price.monthly > 0 && billingCycle === 'yearly' && (
+                  {plan.price !== 'Custom' && plan.price.monthly > 0 && plan.price.monthly !== 'TBA' && billingCycle === 'yearly' && (
                     <div className="text-sm text-green-400 mt-1">
                       {getYearlySavings(plan)} • Billed ${plan.price.yearly}/year
                     </div>
                   )}
                 </div>
-                {plan.trialDays && (
-                  <div className="text-sm text-indigo-400 font-medium mt-2">🎉 {plan.trialDays} days free trial</div>
-                )}
               </div>
 
               {/* Features */}
@@ -235,84 +228,225 @@ export default function PricingPage() {
           ))}
         </div>
 
+        {/* Premium Features Showcase */}
+        <div className="mt-32 mb-16">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold text-white mb-6">
+              Why Choose <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Applytide Premium</span>?
+            </h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              Transform your job search with cutting-edge AI technology and professional tools designed to give you an unfair advantage in today's competitive market.
+            </p>
+          </div>
 
-        {/* Feature Showcase */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-center text-white mb-12">
-            Why Choose <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Applytide Premium</span>?
-          </h2>
+          {/* Hero Feature - AI Powered */}
+          <div className="mb-16 relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 blur-3xl -z-10"></div>
+            <Card className="p-12 glass-card border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-900/20 to-purple-900/20">
+              <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold mb-6">
+                    <span className="text-2xl mr-2">✨</span> AI-Powered Job Search
+                  </div>
+                  <h3 className="text-4xl font-bold text-white mb-6">Your Personal AI Career Assistant</h3>
+                  <p className="text-xl text-gray-300 mb-8">
+                    Leverage advanced artificial intelligence to automate your entire job search workflow. From finding opportunities to optimizing applications, our AI works 24/7 so you don't have to.
+                  </p>
+                  <div className="space-y-4">
+                    {[
+                      'Smart job discovery based on your profile',
+                      'Auto-apply to relevant positions while you sleep',
+                      'AI-generated cover letters tailored to each role',
+                      'Resume optimization that beats ATS systems'
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start">
+                        <svg className="w-6 h-6 text-green-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-lg text-gray-200">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 blur-2xl opacity-30"></div>
+                  <div className="relative bg-gray-900/50 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+                    <div className="text-6xl mb-4 text-center">🤖</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-indigo-900/30 rounded-lg border border-indigo-500/30">
+                        <span className="text-gray-300">Jobs Analyzed</span>
+                        <span className="text-2xl font-bold text-white">1,247</span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-purple-900/30 rounded-lg border border-purple-500/30">
+                        <span className="text-gray-300">Applications Sent</span>
+                        <span className="text-2xl font-bold text-white">83</span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-green-900/30 rounded-lg border border-green-500/30">
+                        <span className="text-gray-300">Interviews Booked</span>
+                        <span className="text-2xl font-bold text-white">12</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Feature Grid */}
+          <div className="grid md:grid-cols-2 gap-8 mb-16">
+            {/* Advanced Analytics */}
+            <Card className="p-8 glass-card border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20">
+              <div className="flex items-start mb-6">
+                <div className="text-5xl mr-4">📊</div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Advanced Analytics Dashboard</h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-red-500 to-orange-500 text-white">
+                    🔥 HOT
+                  </span>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-6 text-lg">
+                Make data-driven decisions with comprehensive insights into your job search performance. Track success rates, identify patterns, and optimize your strategy.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Response rate tracking & trends',
+                  'Application funnel visualization',
+                  'Time-to-interview analytics',
+                  'Success pattern identification',
+                  'Performance benchmarking'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center text-gray-200">
+                    <span className="text-purple-400 mr-2">▸</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            {/* Resume Optimization */}
+            <Card className="p-8 glass-card border border-white/10 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/20">
+              <div className="flex items-start mb-6">
+                <div className="text-5xl mr-4">📝</div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">AI Resume Generation & Optimization</h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    🧠 AI
+                  </span>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-6 text-lg">
+                Create ATS-optimized resumes from scratch or enhance existing ones. Our AI ensures your resume matches job requirements and stands out to recruiters.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Generate tailored resumes from your profile',
+                  'ATS optimization for better visibility',
+                  'Job-specific resume variants',
+                  'Skills gap analysis & recommendations',
+                  'Industry-standard formatting'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center text-gray-200">
+                    <span className="text-indigo-400 mr-2">▸</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            {/* Smart Automation */}
+            <Card className="p-8 glass-card border border-white/10 hover:border-yellow-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-yellow-500/20">
+              <div className="flex items-start mb-6">
+                <div className="text-5xl mr-4">⚡</div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Intelligent Automation</h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                    ⚡ POWER
+                  </span>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-6 text-lg">
+                Save hours every day with intelligent automation that handles repetitive tasks, leaving you free to focus on interview preparation and networking.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Auto-fill applications with one click',
+                  'Smart email tracking & categorization',
+                  'Automatic job board monitoring',
+                  'Interview scheduling automation',
+                  'Follow-up reminder system'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center text-gray-200">
+                    <span className="text-yellow-400 mr-2">▸</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            {/* Professional Tools */}
+            <Card className="p-8 glass-card border border-white/10 hover:border-green-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/20">
+              <div className="flex items-start mb-6">
+                <div className="text-5xl mr-4">🎯</div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Professional Career Tools</h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-teal-500 text-white">
+                    💼 PRO
+                  </span>
+                </div>
+              </div>
+              <p className="text-gray-300 mb-6 text-lg">
+                Access professional-grade tools and insights that give you a competitive edge in your job search and career development.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Company research & insights',
+                  'AI interview preparation tips',
+                  'Professional email templates',
+                  'Salary negotiation guidance',
+                  'Export & reporting tools (CSV, PDF)'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center text-gray-200">
+                    <span className="text-green-400 mr-2">▸</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
             {[
-              {
-                icon: '🤖',
-                title: 'AI Resume Optimization',
-                description: 'Get your resume noticed with AI-powered optimization that matches job requirements and beats ATS systems.'
-              },
-              {
-                icon: '📊',
-                title: 'Advanced Analytics',
-                description: 'Track your success rate, identify patterns, and optimize your job search strategy with detailed insights.'
-              },
-              {
-                icon: '🎯',
-                title: 'Smart Job Matching',
-                description: 'Our AI finds jobs that perfectly match your skills and preferences, saving you hours of searching.'
-              },
-
-              {
-                icon: '⚡',
-                title: 'Auto-Apply Technology',
-                description: 'Apply to relevant jobs automatically while you sleep. Let our AI work for you 24/7.'
-              },
-              {
-                icon: '🎨',
-                title: 'Professional Templates',
-                description: 'Stand out with beautifully designed resume and email templates crafted by industry experts.'
-              }
-            ].map((feature, index) => (
-              <Card key={index} className="p-6 glass-card border border-white/10 hover:border-indigo-500/30 transition-colors">
-                <div className="text-4xl mb-4 text-center">{feature.icon}</div>
-                <h3 className="text-xl font-semibold text-white mb-3 text-center">{feature.title}</h3>
-                <p className="text-gray-300 text-center">{feature.description}</p>
+              { value: '10x', label: 'Faster Applications', icon: '🚀' },
+              { value: '3x', label: 'More Interviews', icon: '📅' },
+              { value: '85%', label: 'Time Saved', icon: '⏰' },
+              { value: '24/7', label: 'AI Working', icon: '🤖' }
+            ].map((stat, i) => (
+              <Card key={i} className="p-6 glass-card border border-white/10 text-center hover:border-indigo-500/50 transition-all">
+                <div className="text-4xl mb-2">{stat.icon}</div>
+                <div className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
+                <div className="text-gray-300 font-medium">{stat.label}</div>
               </Card>
             ))}
           </div>
-        </div>
 
-        {/* FAQ Section */}
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-12">Frequently Asked Questions</h2>
-
-          <div className="space-y-6">
-            {[
-              {
-                question: "When will Premium features be available?",
-                answer: "We're working hard to launch Premium features in early 2026. Join our waitlist to be notified first and get early access pricing!"
-              },
-              {
-                question: "What happens when I switch plans?",
-                answer: "When you upgrade to Premium, you get immediate access to all features. If you downgrade from Premium to Free, you'll keep Premium access until your current billing period ends, then switch to Free plan limits."
-              },
-              {
-                question: "What if I have more than 25 applications when downgrading?",
-                answer: "Don't worry! Your existing applications are always safe. You'll keep access to all your data, but you won't be able to add new applications until you're under the 25-application limit or upgrade back to Premium."
-              },
-              {
-                question: "Do you offer refunds?",
-                answer: "Yes! We offer a 30-day money-back guarantee on all paid plans. Plus, you can try Premium free for 7 days before any charges."
-              },
-              {
-                question: "Is there a limit on job applications in Premium?",
-                answer: "No limits! Premium users get unlimited job applications, resume versions, and access to all our advanced features."
-              }
-            ].map((faq, index) => (
-              <Card key={index} className="p-6 glass-card border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-3">{faq.question}</h3>
-                <p className="text-gray-300">{faq.answer}</p>
-              </Card>
-            ))}
-          </div>
+          {/* Final CTA */}
+          <Card className="p-12 text-center bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 border-2 border-indigo-500/30">
+            <h3 className="text-4xl font-bold text-white mb-4">Ready to Transform Your Job Search?</h3>
+            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+              Join the waitlist now and be among the first to experience the future of job hunting. Early adopters get exclusive benefits and special pricing.
+            </p>
+            <Button
+              onClick={handleUpgrade}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-12 py-4 text-lg font-semibold"
+            >
+              Join the Waitlist - Coming Early 2026
+            </Button>
+          </Card>
         </div>
 
         {/* CTA Section */}

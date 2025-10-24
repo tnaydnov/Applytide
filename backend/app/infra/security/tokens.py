@@ -62,36 +62,10 @@ def create_refresh_token(
     with get_db_session() as db:
         # Revoke existing active sessions from the same device (same user_agent)
         # This ensures only one active session per device
-        logger.info(
-            f"create_refresh_token called",
-            extra={
-                "user_id": user_id,
-                "has_user_agent": bool(user_agent),
-                "user_agent_preview": user_agent[:50] if user_agent else None
-            }
-        )
-        
         if user_agent:
             try:
                 # Use LIKE to match user_agent prefix (first 100 chars) to handle minor variations
                 user_agent_prefix = user_agent[:100]
-                
-                # First, let's see ALL sessions for this user to debug
-                all_user_sessions = db.query(RefreshToken).filter(
-                    RefreshToken.user_id == uuid.UUID(user_id),
-                    RefreshToken.is_active == True,
-                    RefreshToken.expires_at > _now()
-                ).all()
-                
-                logger.info(
-                    f"Debug: All active sessions for user",
-                    extra={
-                        "user_id": user_id,
-                        "total_active_sessions": len(all_user_sessions),
-                        "user_agents": [s.user_agent[:50] if s.user_agent else None for s in all_user_sessions],
-                        "searching_for_prefix": user_agent_prefix
-                    }
-                )
                 
                 existing_sessions = db.query(RefreshToken).filter(
                     RefreshToken.user_id == uuid.UUID(user_id),
@@ -99,15 +73,6 @@ def create_refresh_token(
                     RefreshToken.is_active == True,
                     RefreshToken.expires_at > _now()
                 ).all()
-                
-                logger.info(
-                    f"Checked for existing sessions",
-                    extra={
-                        "user_id": user_id,
-                        "user_agent": user_agent[:50],
-                        "found_sessions": len(existing_sessions)
-                    }
-                )
                 
                 if existing_sessions:
                     revoked_count = len(existing_sessions)
