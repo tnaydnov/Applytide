@@ -9,6 +9,9 @@ from ...infra.cache.redis_client import r
 from ...db.session import get_db_session
 from ...db.models import RefreshToken, EmailAction
 from ...db import models
+from ...infra.logging import get_logger
+
+logger = get_logger(__name__)
 
 def _now():
     return datetime.now(timezone.utc)
@@ -57,6 +60,40 @@ def create_refresh_token(
     }
 
     with get_db_session() as db:
+        # Revoke existing active sessions from the same device (same user_agent)
+        # This ensures only one active session per device
+        if user_agent:
+            try:
+                existing_sessions = db.query(RefreshToken).filter(
+                    RefreshToken.user_id == uuid.UUID(user_id),
+                    RefreshToken.user_agent == user_agent,
+                    RefreshToken.revoked_at.is_(None),
+                    RefreshToken.expires_at > _now()
+                ).all()
+                
+                if existing_sessions:
+                    revoked_count = len(existing_sessions)
+                    for session in existing_sessions:
+                        session.revoked_at = _now()
+                        session.is_active = False
+                    
+                    logger.info(
+                        f"Revoked {revoked_count} existing session(s) from same device",
+                        extra={
+                            "user_id": user_id,
+                            "user_agent": user_agent[:100],
+                            "revoked_count": revoked_count
+                        }
+                    )
+            except Exception as e:
+                # Log error but don't fail the login - worst case we have duplicate sessions
+                logger.error(
+                    "Failed to revoke existing sessions from same device",
+                    extra={"user_id": user_id, "error": str(e)},
+                    exc_info=True
+                )
+        
+        # Create new session
         db_token = RefreshToken(
             user_id=uuid.UUID(user_id),
             jti=jti,
