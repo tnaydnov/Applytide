@@ -137,12 +137,15 @@ export default function useRemindersData(opts = {}) {
           title: finalTitle,
           description: String(form?.description || ""),
           due_date: new Date(dueRaw).toISOString(), // RFC3339
-          email_notify: !!form?.email_notify, // default handled in caller
           add_meet_link: !!form?.add_meet_link,
           timezone_str:
             (typeof Intl !== "undefined" &&
               Intl.DateTimeFormat().resolvedOptions().timeZone) ||
             "UTC",
+          // Email notification fields from modal
+          email_notifications_enabled: form?.email_notifications_enabled ?? false,
+          notification_schedule: form?.notification_schedule || null,
+          event_type: form?.event_type || "general",
         };
 
         await createReminderAPI(payload);

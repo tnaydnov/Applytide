@@ -62,22 +62,18 @@ def base_template(content: str, preview_text: str = "") -> str:
         }}
         
         .logo-container {{
-            width: 64px;
-            height: 64px;
             background: white;
             border-radius: 16px;
             margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 15px 25px;
+            display: inline-block;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }}
         
-        .logo-text {{
-            color: {BRAND_COLORS['primary']};
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+        .logo-svg {{
+            height: 40px;
+            width: auto;
+            display: block;
         }}
         
         .brand-name {{
@@ -140,22 +136,6 @@ def base_template(content: str, preview_text: str = "") -> str:
             color: white;
         }}
         
-        .social-links {{
-            margin: 20px 0;
-        }}
-        
-        .social-links a {{
-            display: inline-block;
-            width: 36px;
-            height: 36px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            margin: 0 5px;
-            line-height: 36px;
-            color: #cbd5e1;
-            text-decoration: none;
-        }}
-        
         @media only screen and (max-width: 600px) {{
             .email-wrapper {{
                 padding: 20px 10px;
@@ -185,9 +165,21 @@ def base_template(content: str, preview_text: str = "") -> str:
         <div class="email-container">
             <div class="email-header">
                 <div class="logo-container">
-                    <div class="logo-text">AT</div>
+                    <svg class="logo-svg" viewBox="0 0 700 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="gradHL" x1="20" y1="120" x2="140" y2="20" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#2B6AF6"/>
+                                <stop offset="1" stop-color="#00C2FF"/>
+                            </linearGradient>
+                        </defs>
+                        <g transform="translate(0,0)">
+                            <path d="M40 120 L80 20" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M120 120 L80 20" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M42 84 C 62 72, 98 96, 118 84" stroke="url(#gradHL)" stroke-width="12" stroke-linecap="round" fill="none"/>
+                        </g>
+                        <text x="160" y="106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-weight="700" font-size="56" fill="white">Applytide</text>
+                    </svg>
                 </div>
-                <h1 class="brand-name">Applytide</h1>
             </div>
             
             <div class="email-body">
@@ -195,11 +187,6 @@ def base_template(content: str, preview_text: str = "") -> str:
             </div>
             
             <div class="email-footer">
-                <div class="social-links">
-                    <a href="https://twitter.com/applytide" title="Twitter">𝕏</a>
-                    <a href="https://linkedin.com/company/applytide" title="LinkedIn">in</a>
-                </div>
-                
                 <p style="margin: 15px 0 5px; font-weight: 600; color: #cbd5e1;">Applytide</p>
                 <p style="margin: 5px 0;">Your AI-powered job application tracker</p>
                 
@@ -235,42 +222,99 @@ def welcome_email(name: str, email: str) -> str:
             Your journey to landing your dream job starts now
         </p>
         
-        <div style="background: {BRAND_COLORS['light']}; border-left: 4px solid {BRAND_COLORS['primary']}; padding: 20px; border-radius: 8px; margin: 30px 0;">
-            <h3 style="color: {BRAND_COLORS['primary']}; margin: 0 0 10px 0; font-size: 18px;">
-                🚀 Quick Start Guide
-            </h3>
-            <ul style="color: #475569; margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li><strong>Track Applications:</strong> Add jobs you're interested in</li>
-                <li><strong>Set Reminders:</strong> Never miss a deadline or interview</li>
-                <li><strong>Use the Extension:</strong> Save jobs directly from LinkedIn</li>
-                <li><strong>View Analytics:</strong> Track your progress with beautiful charts</li>
-            </ul>
-        </div>
-        
         <div style="text-align: center; margin: 40px 0;">
             <a href="https://applytide.com/dashboard" class="btn">
                 Go to Dashboard →
             </a>
         </div>
         
+        <div style="background: {BRAND_COLORS['light']}; border-left: 4px solid {BRAND_COLORS['primary']}; padding: 25px; border-radius: 12px; margin: 30px 0;">
+            <h3 style="color: {BRAND_COLORS['primary']}; margin: 0 0 20px 0; font-size: 20px; font-weight: 700;">
+                🚀 Getting Started - Your First Steps
+            </h3>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="display: flex; align-items: start; margin-bottom: 20px;">
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">1</div>
+                    <div>
+                        <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+                            Add Your First Job Application
+                        </h4>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
+                            Click "Add Application" in your dashboard. Fill in the job title, company, and application status. You can track everything from initial application to final interview!
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: start; margin-bottom: 20px;">
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">2</div>
+                    <div>
+                        <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+                            Set Up Reminders
+                        </h4>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
+                            Never miss an interview or deadline! Enable email notifications when creating reminders. Set multiple notification times (1 day before, 1 hour before, etc.) to stay on top of important dates.
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: start; margin-bottom: 20px;">
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">3</div>
+                    <div>
+                        <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+                            Install the Chrome Extension
+                        </h4>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
+                            Save jobs with one click while browsing LinkedIn, Indeed, or any job board. The extension automatically extracts job details and saves them to your Applytide dashboard.
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: start;">
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">4</div>
+                    <div>
+                        <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+                            Track Your Progress
+                        </h4>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
+                            Visit the Analytics page to see beautiful charts of your job search progress. Track application trends, response rates, and interview conversion rates to optimize your job search strategy.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 25px; border-radius: 12px; margin: 30px 0;">
             <div style="display: flex; align-items: center; margin-bottom: 15px;">
                 <div style="font-size: 32px; margin-right: 15px;">💡</div>
-                <h3 style="color: {BRAND_COLORS['primary']}; margin: 0; font-size: 18px;">Pro Tip</h3>
+                <h3 style="color: {BRAND_COLORS['primary']}; margin: 0; font-size: 18px; font-weight: 700;">Pro Tips for Success</h3>
             </div>
-            <p style="color: #475569; margin: 0; line-height: 1.6;">
-                Install our Chrome extension to save jobs with one click while browsing LinkedIn, Indeed, or any job board!
+            <ul style="color: #475569; margin: 0; padding-left: 20px; line-height: 1.8; font-size: 14px;">
+                <li><strong>Update application statuses regularly</strong> - Keep your pipeline accurate to get better insights</li>
+                <li><strong>Use the documents feature</strong> - Store resumes, cover letters, and portfolios for quick access</li>
+                <li><strong>Set realistic reminders</strong> - Give yourself enough time to prepare for interviews</li>
+                <li><strong>Check your pipeline view</strong> - Visualize your entire job search journey at a glance</li>
+            </ul>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin: 30px 0; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🎯</div>
+            <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 18px; font-weight: 700;">
+                Need Help Getting Started?
+            </h3>
+            <p style="color: #78350f; margin: 0 0 15px 0; line-height: 1.6;">
+                We're here to help! Check out our help center or reach out to us directly.
             </p>
-            <a href="https://chrome.google.com/webstore/detail/applytide" 
-               style="display: inline-block; margin-top: 15px; color: {BRAND_COLORS['primary']}; text-decoration: none; font-weight: 600;">
-                Get Extension →
+            <a href="https://applytide.com/contact" style="display: inline-block; color: #92400e; text-decoration: none; font-weight: 600;">
+                Contact Support →
             </a>
         </div>
         
         <div class="divider"></div>
         
-        <p style="color: #64748b; font-size: 14px; margin: 20px 0 0 0; text-align: center;">
-            Need help? Reply to this email or visit our <a href="https://applytide.com/contact" style="color: {BRAND_COLORS['primary']}; text-decoration: none;">help center</a>
+        <p style="color: #64748b; font-size: 14px; margin: 20px 0 0 0; text-align: center; line-height: 1.6;">
+            Happy job hunting! 🚀<br>
+            <span style="font-size: 12px;">Reply to this email anytime if you have questions</span>
         </p>
     """
     
