@@ -61,27 +61,31 @@ def base_template(content: str, preview_text: str = "") -> str:
         
         .email-header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 35px 30px;
+            padding: 40px 30px;
             text-align: center;
         }}
         
         .logo-container {{
             margin: 0 auto;
-            display: inline-block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
         }}
         
         .logo-img {{
-            height: 45px;
+            height: 55px;
             width: auto;
             display: block;
         }}
         
         .brand-name {{
             color: white;
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 32px;
+            font-weight: 700;
             margin: 0;
             letter-spacing: -0.5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }}
         
         .email-body {{
@@ -167,6 +171,7 @@ def base_template(content: str, preview_text: str = "") -> str:
             <div class="email-header">
                 <div class="logo-container">
                     <img src="https://applytide.com/images/logomark.png" alt="Applytide" class="logo-img" />
+                    <h1 class="brand-name">Applytide</h1>
                 </div>
             </div>
             
@@ -465,46 +470,51 @@ def reminder_email(
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     """
     
-    # Urgency-based styling - clean and simple
+    # Urgency-based styling - professional color scheme
     urgency_config = {
         'now': {
             'emoji': '🚨',
             'title': 'HAPPENING NOW',
-            'color': '#ef4444',
+            'color': '#dc2626',
             'bg': '#fef2f2',
-            'border': '#fecaca',
+            'card_bg': '#fee2e2',
+            'border': '#dc2626',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
             'title': 'DUE TODAY',
-            'color': '#f59e0b',
-            'bg': '#fffbeb',
-            'border': '#fed7aa',
+            'color': '#ea580c',
+            'bg': '#fff7ed',
+            'card_bg': '#ffedd5',
+            'border': '#ea580c',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
             'title': 'TOMORROW',
-            'color': '#3b82f6',
+            'color': '#2563eb',
             'bg': '#eff6ff',
-            'border': '#bfdbfe',
+            'card_bg': '#dbeafe',
+            'border': '#2563eb',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
             'title': 'THIS WEEK',
-            'color': '#8b5cf6',
+            'color': '#7c3aed',
             'bg': '#f5f3ff',
-            'border': '#ddd6fe',
+            'card_bg': '#ede9fe',
+            'border': '#7c3aed',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
             'title': 'UPCOMING',
-            'color': '#10b981',
+            'color': '#059669',
             'bg': '#f0fdf4',
-            'border': '#bbf7d0',
+            'card_bg': '#d1fae5',
+            'border': '#059669',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -521,48 +531,56 @@ def reminder_email(
     event_icon = event_icons.get(event_type, '📋')
     
     content = f"""
-        <!-- Urgency Badge - Clean & Simple -->
-        <div style="text-align: center; margin-bottom: 30px;">
-            <div style="display: inline-block; width: 70px; height: 70px; background: {config['bg']}; border: 3px solid {config['border']}; border-radius: 50%; line-height: 70px; font-size: 32px; margin-bottom: 15px;">
-                {config['emoji']}
+        <!-- Urgency Badge -->
+        <div style="text-align: center; margin-bottom: 35px;">
+            <div style="display: inline-block; background: {config['bg']}; padding: 15px 20px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
+                <span style="font-size: 48px; line-height: 1;">{config['emoji']}</span>
             </div>
-            <div style="display: inline-block; background: {config['color']}; color: white; padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
-                {config['title']}
+            <div style="display: block; margin-top: 15px;">
+                <span style="display: inline-block; background: {config['color']}; color: white; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                    {config['title']}
+                </span>
             </div>
         </div>
         
-        <!-- Main Title - Dark & Visible -->
-        <h1 style="color: #1e293b; font-size: 28px; font-weight: 700; margin: 0 0 12px 0; text-align: center; line-height: 1.3;">
+        <!-- Main Title -->
+        <h2 style="color: #0f172a; font-size: 32px; font-weight: 700; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
             {title}
-        </h1>
+        </h2>
         
         <!-- Greeting Message -->
-        <p style="color: #64748b; font-size: 16px; margin: 0 0 35px 0; text-align: center; line-height: 1.5;">
+        <p style="color: #64748b; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
             Hey {name}, {config['message']}
         </p>
         
-        <!-- Event Card - Clean & Professional -->
-        <div style="background: {config['bg']}; border-left: 4px solid {config['color']}; border-radius: 12px; padding: 30px; margin: 30px 0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+        <!-- Event Card -->
+        <div style="background: white; border: 2px solid {config['border']}; border-radius: 16px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);">
             
-            {f'<p style="color: #475569; margin: 0 0 25px 0; line-height: 1.7; font-size: 16px; text-align: center;">{description}</p>' if description else ''}
+            {f'<p style="color: #334155; margin: 0 0 30px 0; line-height: 1.8; font-size: 17px; text-align: center; font-weight: 500;">{description}</p>' if description else ''}
             
             <!-- Date & Time Card -->
-            <div style="background: white; padding: 25px 20px; border-radius: 10px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
+            <div style="background: {config['card_bg']}; padding: 30px 25px; border-radius: 12px; border: 1px solid {config['border']};">
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
                     <tr>
-                        <td style="width: 50%; padding: 10px; text-align: center; border-right: 1px solid #e2e8f0;">
-                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                📅 DUE DATE
+                        <td style="width: 50%; padding: 15px; text-align: center; border-right: 2px solid {config['border']};">
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 28px;">📅</span>
+                            </div>
+                            <p style="color: #64748b; margin: 0 0 8px 0; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Due Date
                             </p>
-                            <p style="color: #1e293b; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4;">
+                            <p style="color: #0f172a; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.5;">
                                 {due_date}
                             </p>
                         </td>
-                        <td style="width: 50%; padding: 10px; text-align: center;">
-                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                ⏱️ TIME LEFT
+                        <td style="width: 50%; padding: 15px; text-align: center;">
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 28px;">⏱️</span>
+                            </div>
+                            <p style="color: #64748b; margin: 0 0 8px 0; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Time Left
                             </p>
-                            <p style="color: {config['color']}; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.4;">
+                            <p style="color: {config['color']}; margin: 0; font-size: 19px; font-weight: 800; line-height: 1.5;">
                                 {time_until}
                             </p>
                         </td>
@@ -572,10 +590,10 @@ def reminder_email(
         </div>
         
         <!-- Call-to-Action Button -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 35px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 40px 0 35px;">
             <tr>
                 <td align="center">
-                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 16px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 18px 45px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 17px; box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35); transition: all 0.3s;">
                         View Application →
                     </a>
                 </td>
@@ -583,16 +601,16 @@ def reminder_email(
         </table>
         
         <!-- Divider -->
-        <div style="height: 1px; background: #e2e8f0; margin: 30px 0;"></div>
+        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); margin: 35px 0;"></div>
         
         <!-- Footer Tip -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 25px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
             <tr>
                 <td align="center">
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 12px 0;">
-                        💡 <strong style="color: #64748b;">Pro Tip:</strong> Set multiple reminders to stay on top of deadlines!
+                    <p style="color: #94a3b8; font-size: 15px; margin: 0 0 15px 0; line-height: 1.6;">
+                        💡 <strong style="color: #64748b;">Pro Tip:</strong> Set multiple reminders to never miss important deadlines!
                     </p>
-                    <p style="color: #64748b; font-size: 13px; margin: 0;">
+                    <p style="color: #64748b; font-size: 14px; margin: 0;">
                         Manage all reminders in your 
                         <a href="https://applytide.com/reminders" style="color: #667eea; text-decoration: none; font-weight: 600;">
                             Dashboard →
