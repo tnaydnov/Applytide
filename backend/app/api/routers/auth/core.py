@@ -487,10 +487,41 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/logout_all", response_model=schemas.MessageResponse)
-def logout_all(current_user: models.User = Depends(get_current_user)):
+def logout_all(
+    request: Request,
+    response: Response,
+    current_user: models.User = Depends(get_current_user)
+):
     """Logout user from all devices by revoking all tokens."""
     try:
+        # Revoke all refresh tokens from Redis
         revoke_all_user_tokens(str(current_user.id))
+        
+        # Also blacklist the CURRENT access token for immediate logout
+        access_token = request.cookies.get("access_token")
+        if access_token:
+            try:
+                data = decode_access(access_token)
+                remaining = max(0, int(
+                    data["exp"] - int(datetime.now(timezone.utc).timestamp())
+                ))
+                jti = data.get("jti")
+                
+                if jti and remaining > 0:
+                    revoke_jti(jti, remaining)
+                    logger.debug(
+                        "Current access token blacklisted during logout_all",
+                        extra={"user_id": str(current_user.id)}
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Error blacklisting current access token",
+                    extra={"error": str(e)}
+                )
+        
+        # Clear cookies for current session
+        response.delete_cookie(key="access_token", path="/")
+        response.delete_cookie(key="refresh_token", path="/api/auth")
         
         logger.info(
             "User logged out from all devices",

@@ -113,7 +113,9 @@ export default function SecurityForm({
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-white">Logout from all devices</h4>
-              <p className="text-xs text-gray-400">This will log you out from all browsers and devices</p>
+              <p className="text-xs text-gray-400">
+                Revokes all sessions. Other devices may stay logged in for up to 15 minutes.
+              </p>
             </div>
             <Button onClick={onLogoutAll} variant="secondary" size="sm">
               Logout All

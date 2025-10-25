@@ -139,11 +139,25 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
+    const confirmed = window.confirm(
+      "⚠️ Logout from all devices?\n\n" +
+      "This will:\n" +
+      "• Log you out from ALL browsers and devices\n" +
+      "• Revoke all your active sessions\n" +
+      "• You'll need to log in again on all devices\n\n" +
+      "Note: Other devices may stay logged in for up to 15 minutes (until their access token expires).\n\n" +
+      "Continue with logout?"
+    );
+
+    if (!confirmed) return;
+
     try {
       await logoutService();
-      router.push("/login");
+      // Force immediate UI update and full page reload
+      window.location.href = "/login";
     } catch {
-      router.push("/login");
+      // Even if logout fails, force logout client-side
+      window.location.href = "/login";
     }
   };
 

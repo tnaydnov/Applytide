@@ -222,10 +222,13 @@ async def export_user_data(
             },
             "account": {
                 "email": current_user.email,
-                "is_active": current_user.is_active,
+                "full_name": current_user.full_name,
                 "is_premium": current_user.is_premium,
+                "is_oauth_user": current_user.is_oauth_user,
+                "email_verified": current_user.email_verified_at is not None,
                 "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-                "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+                "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+                "last_login_at": current_user.last_login_at.isoformat() if current_user.last_login_at else None
             },
             "profile": None,
             "jobs": [],
