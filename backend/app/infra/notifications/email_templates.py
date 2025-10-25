@@ -9,9 +9,13 @@ BRAND_COLORS = {
     'success': '#10b981',      # Green - positive actions
     'warning': '#f59e0b',      # Amber - warnings
     'danger': '#ef4444',       # Red - critical
-    'dark': '#1e293b',         # Slate - dark text
+    'dark': '#0f172a',         # Slate - dark text (darker)
     'light': '#f8fafc',        # Slate - light bg
-    'gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    'gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'neon_blue': '#3b82f6',    # Bright blue
+    'neon_purple': '#a855f7',  # Bright purple
+    'cyber_dark': '#1e1b4b',   # Deep indigo
+    'tech_gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
 }
 
 def base_template(content: str, preview_text: str = "") -> str:
@@ -42,38 +46,51 @@ def base_template(content: str, preview_text: str = "") -> str:
         
         .email-wrapper {{
             width: 100%;
-            background: linear-gradient(180deg, {BRAND_COLORS['light']} 0%, #e2e8f0 100%);
+            background: #0f172a;
             padding: 40px 20px;
         }}
         
         .email-container {{
             max-width: 600px;
             margin: 0 auto;
-            background: white;
-            border-radius: 16px;
+            background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.4), 0 0 80px rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.3);
         }}
         
         .email-header {{
-            background: {BRAND_COLORS['gradient']};
-            padding: 40px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            padding: 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .email-header::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
         }}
         
         .logo-container {{
-            background: white;
-            border-radius: 16px;
-            margin: 0 auto 20px;
-            padding: 15px 25px;
+            position: relative;
+            z-index: 1;
+            margin: 0 auto;
             display: inline-block;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }}
         
         .logo-svg {{
-            height: 40px;
+            height: 50px;
             width: auto;
             display: block;
+            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
         }}
         
         .brand-name {{
@@ -86,6 +103,7 @@ def base_template(content: str, preview_text: str = "") -> str:
         
         .email-body {{
             padding: 40px 30px;
+            background: linear-gradient(180deg, rgba(30, 27, 75, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
         }}
         
         .email-footer {{
@@ -94,6 +112,7 @@ def base_template(content: str, preview_text: str = "") -> str:
             text-align: center;
             color: #94a3b8;
             font-size: 13px;
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
         }}
         
         .btn {{
@@ -165,24 +184,7 @@ def base_template(content: str, preview_text: str = "") -> str:
         <div class="email-container">
             <div class="email-header">
                 <div class="logo-container">
-                    <svg class="logo-svg" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="wave" x1="48" y1="208" x2="208" y2="48" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#D97706"/>
-                                <stop offset="1" stop-color="#FB7185"/>
-                            </linearGradient>
-                            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                                <feGaussianBlur stdDeviation="2" result="b"/>
-                                <feMerge>
-                                    <feMergeNode in="b"/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        <path d="M64 208 L128 48" stroke="#F3F6FF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M192 208 L128 48" stroke="#F3F6FF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M 58 146 C 86 86, 106 206, 128 146 S 170 86, 194 146" stroke="url(#wave)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)"/>
-                    </svg>
+                    <img src="https://applytide.com/images/logomark.svg" alt="Applytide" class="logo-svg" />
                 </div>
             </div>
             
@@ -481,51 +483,56 @@ def reminder_email(
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     """
     
-    # Urgency-based styling with enhanced colors
+    # Urgency-based styling with techy, cyber colors
     urgency_config = {
         'now': {
             'emoji': '🚨',
-            'title': 'Happening NOW!',
-            'color': BRAND_COLORS['danger'],
-            'bg_color': '#fee2e2',
-            'border_color': '#fca5a5',
-            'text_color': '#991b1b',
+            'title': 'HAPPENING NOW',
+            'color': '#ef4444',
+            'glow': 'rgba(239, 68, 68, 0.5)',
+            'bg': 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%)',
+            'border': '#f87171',
+            'text': '#fecaca',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
-            'title': 'Today',
-            'color': BRAND_COLORS['warning'],
-            'bg_color': '#fef3c7',
-            'border_color': '#fcd34d',
-            'text_color': '#92400e',
+            'title': 'DUE TODAY',
+            'color': '#f59e0b',
+            'glow': 'rgba(245, 158, 11, 0.5)',
+            'bg': 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%)',
+            'border': '#fbbf24',
+            'text': '#fde68a',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
-            'title': 'Tomorrow',
-            'color': BRAND_COLORS['primary'],
-            'bg_color': '#dbeafe',
-            'border_color': '#93c5fd',
-            'text_color': '#1e40af',
+            'title': 'TOMORROW',
+            'color': '#3b82f6',
+            'glow': 'rgba(59, 130, 246, 0.5)',
+            'bg': 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%)',
+            'border': '#60a5fa',
+            'text': '#bfdbfe',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
-            'title': 'This Week',
-            'color': BRAND_COLORS['secondary'],
-            'bg_color': '#f3e8ff',
-            'border_color': '#d8b4fe',
-            'text_color': '#6b21a8',
+            'title': 'THIS WEEK',
+            'color': '#a855f7',
+            'glow': 'rgba(168, 85, 247, 0.5)',
+            'bg': 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(147, 51, 234, 0.1) 100%)',
+            'border': '#c084fc',
+            'text': '#e9d5ff',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
-            'title': 'Upcoming',
-            'color': BRAND_COLORS['success'],
-            'bg_color': '#d1fae5',
-            'border_color': '#6ee7b7',
-            'text_color': '#065f46',
+            'title': 'UPCOMING',
+            'color': '#10b981',
+            'glow': 'rgba(16, 185, 129, 0.5)',
+            'bg': 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%)',
+            'border': '#34d399',
+            'text': '#a7f3d0',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -541,65 +548,63 @@ def reminder_email(
     config = urgency_config.get(urgency, urgency_config['future'])
     event_icon = event_icons.get(event_type, '📋')
     
-    # Create Google Calendar add link (encoded)
-    import urllib.parse
-    calendar_title = urllib.parse.quote(title)
-    calendar_description = urllib.parse.quote(description or "Reminder from Applytide")
-    # Note: due_date format should be converted to Google Calendar format (YYYYMMDDTHHmmss)
-    # For now, we'll use a simple link that opens with pre-filled title
-    calendar_link = f"https://calendar.google.com/calendar/render?action=TEMPLATE&text={calendar_title}&details={calendar_description}"
-    
     content = f"""
-        <!-- Urgency Badge -->
-        <div style="text-align: center; margin-bottom: 30px;">
-            <div style="display: inline-block; width: 90px; height: 90px; background: {config['color']}; border-radius: 50%; line-height: 90px; font-size: 48px; margin-bottom: 15px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);">
-                {config['emoji']}
+        <!-- Urgency Badge with Glow Effect -->
+        <div style="text-align: center; margin-bottom: 35px;">
+            <div style="position: relative; display: inline-block;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 140px; height: 140px; background: radial-gradient(circle, {config['glow']} 0%, transparent 70%); border-radius: 50%; filter: blur(30px);"></div>
+                <div style="position: relative; display: inline-block; width: 100px; height: 100px; background: {config['bg']}; border: 3px solid {config['border']}; border-radius: 50%; line-height: 100px; font-size: 50px; box-shadow: 0 15px 40px -10px {config['glow']}, inset 0 0 20px rgba(255,255,255,0.1);">
+                    {config['emoji']}
+                </div>
             </div>
-            <div style="display: inline-block; background: {config['bg_color']}; color: {config['text_color']}; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 10px;">
+            <div style="margin-top: 20px; display: inline-block; background: {config['bg']}; border: 2px solid {config['border']}; color: {config['text']}; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 8px 20px -5px {config['glow']};">
                 {config['title']}
             </div>
         </div>
         
-        <!-- Main Heading -->
-        <h2 style="color: {BRAND_COLORS['dark']}; font-size: 28px; font-weight: 700; margin: 0 0 12px 0; text-align: center; line-height: 1.3;">
+        <!-- Main Title with Gradient -->
+        <h1 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 32px; font-weight: 800; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
             {title}
-        </h2>
+        </h1>
         
         <!-- Greeting Message -->
-        <p style="color: #64748b; font-size: 17px; margin: 0 0 35px 0; text-align: center; line-height: 1.5;">
-            Hi {name}, {config['message']}
+        <p style="color: #cbd5e1; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
+            Hey {name}, {config['message']}
         </p>
         
-        <!-- Event Card -->
-        <div style="background: {config['bg_color']}; border-left: 5px solid {config['color']}; border-radius: 12px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+        <!-- Cyber Event Card -->
+        <div style="background: {config['bg']}; border: 2px solid {config['border']}; border-radius: 16px; padding: 40px 35px; margin: 40px 0; position: relative; overflow: hidden; box-shadow: 0 20px 50px -10px {config['glow']}, inset 0 1px 0 rgba(255,255,255,0.1);">
             
-            <!-- Event Type Icon -->
-            <div style="text-align: center; margin-bottom: 25px;">
-                <span style="font-size: 48px; display: inline-block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));">
+            <!-- Decorative Corner -->
+            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: {config['color']}; opacity: 0.1; border-radius: 50%; filter: blur(20px);"></div>
+            
+            <!-- Event Icon -->
+            <div style="text-align: center; margin-bottom: 30px;">
+                <span style="font-size: 56px; display: inline-block; filter: drop-shadow(0 8px 16px {config['glow']});">
                     {event_icon}
                 </span>
             </div>
             
             <!-- Description -->
-            {f'<p style="color: {config["text_color"]}; margin: 0 0 25px 0; line-height: 1.7; font-size: 16px; text-align: center; padding: 0 10px;">{description}</p>' if description else ''}
+            {f'<p style="color: {config["text"]}; margin: 0 0 30px 0; line-height: 1.8; font-size: 17px; text-align: center; padding: 0 10px; font-weight: 500;">{description}</p>' if description else ''}
             
-            <!-- Date & Time Info -->
-            <div style="background: white; padding: 25px 20px; border-radius: 10px; margin-top: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <!-- Date & Time Card with Glassmorphism -->
+            <div style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(139, 92, 246, 0.3); padding: 30px 25px; border-radius: 12px; margin-top: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);">
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
                     <tr>
-                        <td style="width: 50%; padding: 10px; text-align: center; border-right: 2px solid {config['bg_color']};">
-                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                📅 Due Date
+                        <td style="width: 50%; padding: 15px; text-align: center; border-right: 1px solid rgba(139, 92, 246, 0.3);">
+                            <p style="color: #94a3b8; margin: 0 0 10px 0; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                                📅 DUE DATE
                             </p>
-                            <p style="color: {BRAND_COLORS['dark']}; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.4;">
+                            <p style="color: #e2e8f0; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5;">
                                 {due_date}
                             </p>
                         </td>
-                        <td style="width: 50%; padding: 10px; text-align: center;">
-                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                ⏱️ Time Left
+                        <td style="width: 50%; padding: 15px; text-align: center;">
+                            <p style="color: #94a3b8; margin: 0 0 10px 0; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                                ⏱️ TIME LEFT
                             </p>
-                            <p style="color: {config['color']}; margin: 0; font-size: 20px; font-weight: 700; line-height: 1.4;">
+                            <p style="color: {config['color']}; margin: 0; font-size: 20px; font-weight: 800; line-height: 1.5; text-shadow: 0 0 20px {config['glow']};">
                                 {time_until}
                             </p>
                         </td>
@@ -608,39 +613,31 @@ def reminder_email(
             </div>
         </div>
         
-        <!-- Action Buttons -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 40px 0;">
+        <!-- Call-to-Action Button -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 45px 0 35px;">
             <tr>
                 <td align="center">
-                    <!-- Primary CTA -->
-                    <a href="{action_url}" style="display: inline-block; background: {config['color']}; color: white; padding: 16px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; margin: 0 8px 15px 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); transition: all 0.3s;">
-                        View Details →
-                    </a>
-                </td>
-            </tr>
-            <tr>
-                <td align="center">
-                    <!-- Google Calendar Button -->
-                    <a href="{calendar_link}" style="display: inline-block; background: white; color: {config['color']}; padding: 14px 32px; border: 2px solid {config['color']}; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; margin: 0 8px; transition: all 0.3s;">
-                        📅 Add to Google Calendar
+                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); color: white !important; padding: 18px 50px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 17px; letter-spacing: 0.5px; box-shadow: 0 15px 40px -10px rgba(139, 92, 246, 0.6), inset 0 1px 0 rgba(255,255,255,0.2); transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1);">
+                        VIEW REMINDER →
                     </a>
                 </td>
             </tr>
         </table>
         
-        <div class="divider"></div>
+        <!-- Divider -->
+        <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.4), transparent); margin: 35px 0;"></div>
         
-        <!-- Footer Links -->
+        <!-- Footer Tip -->
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
             <tr>
                 <td align="center">
                     <p style="color: #94a3b8; font-size: 14px; margin: 0 0 15px 0;">
-                        💡 <strong>Quick Tip:</strong> Set up multiple reminders to never miss important deadlines!
+                        💡 <strong style="color: #cbd5e1;">Pro Tip:</strong> Set multiple reminders to stay on top of important deadlines!
                     </p>
                     <p style="color: #64748b; font-size: 14px; margin: 0;">
-                        Manage your reminders in your 
-                        <a href="https://applytide.com/reminders" style="color: {BRAND_COLORS['primary']}; text-decoration: none; font-weight: 600;">
-                            Reminders Dashboard
+                        Manage all reminders in your 
+                        <a href="https://applytide.com/reminders" style="color: #a855f7; text-decoration: none; font-weight: 600; text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);">
+                            Dashboard →
                         </a>
                     </p>
                 </td>

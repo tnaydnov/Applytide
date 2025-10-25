@@ -239,9 +239,9 @@ def send_reminder_notifications(db: Session):
                         logger.warning(f"Failed to convert timezone {user_tz_str}: {e}")
                         due_date_str = reminder.due_date.strftime('%B %d, %Y at %I:%M %p UTC')
                     
-                    # Build action URL
+                    # Build action URL - link to pipeline page with application highlighted
                     if reminder.application_id:
-                        action_url = f"{settings.FRONTEND_URL}/applications/{reminder.application_id}"
+                        action_url = f"{settings.FRONTEND_URL}/pipeline?highlight={reminder.application_id}"
                     else:
                         action_url = f"{settings.FRONTEND_URL}/reminders"
                     
