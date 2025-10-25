@@ -132,30 +132,20 @@ class ExtractionOrchestrator:
             
             logger.info("LLM extraction completed successfully", extra={
                 "title": job.get('title', '')[:50],
-                "company": job.get('company_name', '')
+                "company": job.get('company_name', ''),
+                "description_length": len(job.get('description', '')),
+                "requirements_count": len(job.get('requirements', [])),
+                "skills_count": len(job.get('skills', []))
             })
             
-            # Start from exact user text as description
-            desc_raw = self.utils.clean_text(text)
+            # TRUST LLM COMPLETELY - no post-processing for manual text path
+            # The LLM (gpt-4.1-mini) with our detailed prompt is better at:
+            # - Extracting requirements vs nice-to-haves
+            # - Removing requirement lines from description
+            # - Preserving section headers correctly
+            # - Avoiding duplicate extractions
             
-            # Backstop: Run regex splitter to catch missed bullets & dedupe
-            desc_clean, extra_reqs = self.requirements.split(
-                desc_raw,
-                job.get("requirements") or []
-            )
-            merged_reqs = list(dict.fromkeys(
-                (job.get("requirements") or []) + (extra_reqs or [])
-            ))
-            
-            # Remove any exact requirement lines still in description
-            req_set = {r.strip() for r in merged_reqs}
-            if desc_clean:
-                desc_clean = "\n".join([
-                    ln for ln in desc_clean.split("\n")
-                    if ln.strip() not in req_set
-                ])
-            
-            # Build final result
+            # Build final result using LLM output directly
             result = {
                 "title": (job.get("title") or hints.get("title") or "").strip(),
                 "company_name": (job.get("company_name") or hints.get("company_name") or "").strip(),
@@ -163,8 +153,8 @@ class ExtractionOrchestrator:
                 "location": (job.get("location") or hints.get("location") or "").strip(),
                 "remote_type": (job.get("remote_type") or hints.get("remote_type") or "").strip(),
                 "job_type": (job.get("job_type") or hints.get("job_type") or "").strip(),
-                "description": self.utils.clean_text(desc_clean),
-                "requirements": [x.strip() for x in merged_reqs if x and x.strip()],
+                "description": job.get("description", "").strip(),  # Use LLM's cleaned description
+                "requirements": [x.strip() for x in (job.get("requirements") or []) if x and x.strip()],
                 "skills": [x.strip() for x in (job.get("skills") or []) if x and x.strip()],
             }
             
