@@ -37,6 +37,7 @@ description:
 - CRITICALLY IMPORTANT: NEVER remove ANY section headers - headers like "About the Company", "Position Overview", "Key Responsibilities", "Advantages", "Work Environment", etc. MUST remain in the description
 - REMOVE section headers for Requirements/Qualifications sections ONLY if ALL lines under them are extracted to requirements[]
 - Keep any lines with explicit nice-to-have indicators ("advantage", "preferred", "plus", "bonus", "nice to have", "helpful", "ideal") in the description, even if they're under a requirements section
+- IMPORTANT: If a requirements section contains BOTH mandatory and nice-to-have items (e.g., "Ability to support the following: Item A - advantage, Item B - advantage"), keep the ENTIRE section including its header in the description since not all items are being extracted
 - Keep EXACT original wording - do not rewrite or rephrase
 - Add TWO line breaks (\\n\\n) before section headers
 - Preserve bullet points and list formatting
@@ -55,6 +56,9 @@ requirements[]:
   * "Previous experience in fintech - advantage" → KEEP in description (explicitly says "advantage"), do NOT extract
   * "Familiarity with X is a plus" → KEEP in description (explicitly says "plus"), do NOT extract
   * "Strong communication skills" in Responsibilities section → KEEP in description (wrong section), do NOT extract
+  * MIXED SECTION EXAMPLE: "Ability to support the following:\n- Spring Boot – significant advantage\n- MySQL – significant advantage"
+    → Since ALL items are nice-to-have (advantage/plus), KEEP the entire section including header in description, extract NOTHING
+    → If it was "Ability to support:\n- 5 years Java (no qualifier)\n- MySQL – advantage", extract "5 years Java" only, keep header + "MySQL – advantage" in description
 - Keep EXACT wording, one requirement per array item
 - Strip bullet symbols (•, -, *, etc.) but preserve the full text
 - Remove duplicates (case-insensitive comparison)
@@ -62,9 +66,24 @@ requirements[]:
 - ABSOLUTELY CRITICAL REMOVAL RULE (READ THIS TWICE):
   * Step 1: Extract requirement lines to requirements[] array
   * Step 2: REMOVE those EXACT lines from the description field
-  * Step 3: If ALL lines under a requirements section header were extracted, also REMOVE the section header
+  * Step 3: If ALL lines under a requirements section header were extracted, also REMOVE the section header itself
   * The description field must NOT contain any text that appears in requirements[]
   * Double-check your final description - if you see requirement lines in it, you made a mistake
+
+- CRITICAL HEADER REMOVAL EXAMPLE:
+  * INPUT: "Main tasks:\n•Install software\n\nJob requirements:\nKnowledge of C++\nBachelor's degree\n"
+  * After extracting "Knowledge of C++" and "Bachelor's degree" to requirements[]
+  * OUTPUT description: "Main tasks:\n•Install software\n\n"  ← Notice "Job requirements:" header is REMOVED
+  * OUTPUT requirements: ["Knowledge of C++", "Bachelor's degree"]
+  * WRONG OUTPUT: "Main tasks:\n•Install software\n\nJob requirements:\n\n"  ← This is INCORRECT! Header must be removed!
+
+- FINAL CHECK BEFORE RETURNING:
+  * Scan your description field for orphaned requirement section headers like "Job requirements:", "Qualifications:", "Requirements:", etc.
+  * If you see these headers with NO content under them, YOU MUST REMOVE THEM
+  * Common mistake: leaving "\\n\\nJob requirements:\\n\\n" in the description after extracting all requirements
+  * These empty headers are visual noise and MUST BE REMOVED
+  * ALSO CHECK: Make sure sections containing nice-to-have items (with "advantage", "plus", "preferred") were NOT accidentally removed from description
+  * If the original text had "Ability to support: Spring Boot - advantage", this MUST appear in the description field
 
 skills[]:
 - Extract ALL specific skills, tools, technologies, and keywords mentioned ANYWHERE in the job posting
@@ -110,11 +129,12 @@ class OpenAILLMExtractor(LLMExtractor):
         self.client = OpenAI(api_key=api)
         self.db_session = db_session  # Store DB session for tracking
         
-        # Use cost-effective models by default, allow upgrade via env vars
-        # Cost comparison: gpt-4o-mini ~$0.00015/1K tokens vs gpt-4o ~$0.0025/1K tokens (16x cheaper!)
-        self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o-mini")
-        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o-mini")  # Use mini by default for cost efficiency
-        # To upgrade image model: set JOB_EXTRACT_IMAGE_MODEL=gpt-4o in environment
+        # Use GPT-4o for better instruction following and extraction quality
+        # Cost: gpt-4o ~$2.50/1M input, $10/1M output (~15x more than mini, but worth it for quality)
+        # Average job extraction: ~$0.015 vs $0.001 with mini - acceptable tradeoff for better UX
+        self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4o")
+        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4o")  # Use gpt-4o for better vision accuracy
+        # To use cheaper mini: set JOB_EXTRACT_MODEL=gpt-4o-mini (not recommended - lower quality)
         logger.info("OpenAI LLM initialized", extra={
             "text_model": self.text_model,
             "image_model": self.image_model,
