@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, ValidationError, field_validator
+from datetime import datetime, timezone
 import json
 
 from ...db.session import get_db
@@ -198,6 +199,148 @@ async def update_user_profile(
             detail=f"Failed to save profile: {str(e)}"
         )
 
+@router.get("/export")
+async def export_user_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Export all user data in JSON format (GDPR Data Portability).
+    Returns a comprehensive JSON containing all user information.
+    """
+    try:
+        logger.info("Data export requested", extra={"user_id": str(current_user.id)})
+        
+        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken
+        from ...domain.documents.service import DocumentService
+        
+        export_data = {
+            "export_info": {
+                "user_id": str(current_user.id),
+                "export_date": datetime.now(timezone.utc).isoformat(),
+                "format_version": "1.0"
+            },
+            "account": {
+                "email": current_user.email,
+                "is_active": current_user.is_active,
+                "is_premium": current_user.is_premium,
+                "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+                "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+            },
+            "profile": None,
+            "jobs": [],
+            "documents": [],
+            "reminders": [],
+            "preferences": None
+        }
+        
+        # Profile data
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+        if profile:
+            export_data["profile"] = {
+                "preferred_locations": profile.preferred_locations,
+                "country": profile.country,
+                "remote_preference": profile.remote_preference,
+                "target_roles": profile.target_roles,
+                "target_industries": profile.target_industries,
+                "experience_level": profile.experience_level,
+                "skills": profile.skills,
+                "career_goals": profile.career_goals,
+                "created_at": profile.created_at.isoformat() if profile.created_at else None
+            }
+        
+        # Jobs data
+        jobs = db.query(Job).filter(Job.user_id == current_user.id).all()
+        for job in jobs:
+            export_data["jobs"].append({
+                "id": str(job.id),
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "url": job.url,
+                "description": job.description,
+                "requirements": job.requirements,
+                "salary_range": job.salary_range,
+                "employment_type": job.employment_type,
+                "status": job.status,
+                "stage": job.stage,
+                "notes": job.notes,
+                "source": job.source,
+                "applied_date": job.applied_date.isoformat() if job.applied_date else None,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "updated_at": job.updated_at.isoformat() if job.updated_at else None
+            })
+        
+        # Documents data (metadata only, not file contents)
+        try:
+            doc_service = DocumentService()
+            documents = doc_service.list_documents(db=db, user_id=str(current_user.id))
+            for doc in documents:
+                export_data["documents"].append({
+                    "id": str(doc.id),
+                    "filename": doc.filename,
+                    "file_type": doc.file_type,
+                    "file_size": doc.file_size,
+                    "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                    "note": "File contents not included in export. Download files separately from the application."
+                })
+        except Exception as e:
+            logger.error(f"Failed to export documents metadata: {str(e)}", exc_info=True)
+            export_data["documents_error"] = "Failed to retrieve documents metadata"
+        
+        # Reminders data
+        reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id).all()
+        for reminder in reminders:
+            reminder_data = {
+                "id": str(reminder.id),
+                "title": reminder.title,
+                "description": reminder.description,
+                "reminder_date": reminder.reminder_date.isoformat() if reminder.reminder_date else None,
+                "is_completed": reminder.is_completed,
+                "job_id": str(reminder.job_id) if reminder.job_id else None,
+                "created_at": reminder.created_at.isoformat() if reminder.created_at else None,
+                "notes": []
+            }
+            
+            # Get reminder notes
+            notes = db.query(ReminderNote).filter(ReminderNote.reminder_id == reminder.id).all()
+            for note in notes:
+                reminder_data["notes"].append({
+                    "id": str(note.id),
+                    "content": note.content,
+                    "created_at": note.created_at.isoformat() if note.created_at else None
+                })
+            
+            export_data["reminders"].append(reminder_data)
+        
+        # User preferences
+        prefs = db.query(UserPreferences).filter(UserPreferences.user_id == current_user.id).first()
+        if prefs:
+            export_data["preferences"] = {
+                "email_notifications": prefs.email_notifications,
+                "theme": prefs.theme,
+                "created_at": prefs.created_at.isoformat() if prefs.created_at else None
+            }
+        
+        logger.info("Data export completed", extra={
+            "user_id": str(current_user.id),
+            "jobs_count": len(export_data["jobs"]),
+            "documents_count": len(export_data["documents"]),
+            "reminders_count": len(export_data["reminders"])
+        })
+        
+        return export_data
+        
+    except Exception as e:
+        logger.error("Data export failed", extra={
+            "user_id": str(current_user.id),
+            "error": str(e)
+        }, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to export data: {str(e)}"
+        )
+
 @router.get("/completeness")
 async def get_profile_completeness(
     current_user: User = Depends(get_current_user),
@@ -269,11 +412,123 @@ async def update_career_goals(
     """Placeholder: not persisted."""
     return {"message": "Career goals updated successfully"}
 
+@router.delete("/account")
+async def delete_user_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete user account and ALL associated data (GDPR Right to Erasure).
+    This includes:
+    - User account
+    - Profile
+    - All job applications
+    - All documents (files + DB records)
+    - All reminders and notes
+    - All calendar tokens
+    - All sessions/refresh tokens
+    """
+    try:
+        logger.warning("ACCOUNT DELETION initiated", extra={
+            "user_id": str(current_user.id),
+            "email": current_user.email
+        })
+        
+        user_id = current_user.id
+        user_email = current_user.email
+        
+        # Import here to avoid circular imports
+        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences
+        from ...domain.documents.service import DocumentService
+        from ...infra.cache import get_redis
+        
+        # 1. Delete all documents (files + DB records)
+        try:
+            doc_service = DocumentService()
+            documents = doc_service.list_documents(db=db, user_id=str(user_id))
+            for doc in documents:
+                try:
+                    doc_service.delete_document(db=db, user_id=str(user_id), document_id=str(doc.id))
+                    logger.info(f"Deleted document {doc.id} for user {user_id}")
+                except Exception as e:
+                    logger.error(f"Failed to delete document {doc.id}: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Failed to delete documents: {str(e)}", exc_info=True)
+        
+        # 2. Delete all reminders and notes
+        try:
+            db.query(ReminderNote).filter(ReminderNote.user_id == user_id).delete()
+            db.query(Reminder).filter(Reminder.user_id == user_id).delete()
+            logger.info(f"Deleted reminders for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete reminders: {str(e)}", exc_info=True)
+        
+        # 3. Delete all job applications
+        try:
+            db.query(Job).filter(Job.user_id == user_id).delete()
+            logger.info(f"Deleted jobs for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete jobs: {str(e)}", exc_info=True)
+        
+        # 4. Delete user preferences
+        try:
+            db.query(UserPreferences).filter(UserPreferences.user_id == user_id).delete()
+            logger.info(f"Deleted preferences for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete preferences: {str(e)}", exc_info=True)
+        
+        # 5. Delete user profile
+        try:
+            db.query(UserProfile).filter(UserProfile.user_id == user_id).delete()
+            logger.info(f"Deleted profile for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete profile: {str(e)}", exc_info=True)
+        
+        # 6. Revoke all refresh tokens (Redis)
+        try:
+            redis = get_redis()
+            # Revoke all refresh tokens for this user
+            from ...infra.security.tokens import revoke_all_user_tokens
+            revoke_all_user_tokens(user_id, redis)
+            logger.info(f"Revoked all tokens for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to revoke tokens: {str(e)}", exc_info=True)
+        
+        # 7. Delete user account (LAST - after all related data)
+        db.delete(current_user)
+        db.commit()
+        
+        logger.warning("ACCOUNT DELETION completed", extra={
+            "user_id": str(user_id),
+            "email": user_email
+        })
+        
+        return {
+            "message": "Account successfully deleted. All your data has been permanently removed.",
+            "deleted_user_id": str(user_id),
+            "deletion_timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error("ACCOUNT DELETION failed", extra={
+            "user_id": str(current_user.id),
+            "error": str(e)
+        }, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account. Please contact support. Error: {str(e)}"
+        )
+
 @router.delete("/")
 async def delete_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Delete user profile only (keeps account active).
+    Use /account endpoint to delete entire account.
+    """
     try:
         logger.warning("Deleting user profile", extra={"user_id": current_user.id})
         

@@ -2,6 +2,7 @@ import NavBar from "../components/nav/NavBar";
 import Footer from "../components/Footer";
 import AuthGuard from "../components/guards/AuthGuard";
 import FloatingFeedbackButton from "../components/feedback/FloatingFeedbackButton";
+import CookieConsent from "../components/CookieConsent";
 import "../styles/globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 import { ToastProvider } from '../lib/toast';
@@ -58,6 +59,9 @@ export default function MyApp({ Component, pageProps, router }) {
               <Footer />
             </AuthGuard>
           )}
+          
+          {/* Cookie Consent Banner - appears on all pages */}
+          <CookieConsent />
           
           {/* Floating Feedback Button - appears on all pages */}
           <FloatingFeedbackButton />

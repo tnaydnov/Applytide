@@ -131,13 +131,15 @@ app.include_router(feedback_router)
 app.include_router(reminders_router)
 app.include_router(admin_router)
 
-# --- Security headers (as late as possible)
-if settings.SECURITY_HEADERS_ENABLED:
-    app.add_middleware(SecurityHeadersMiddleware)
-
-# --- Proxy headers (outermost)
+# --- Proxy headers (outermost - must be first in middleware stack)
 if ProxyHeadersMiddleware is not None and os.getenv("TRUST_PROXY_HEADERS", "1") == "1":
     app.add_middleware(ProxyHeadersMiddleware)
+
+# --- Security headers (MUST be after ProxyHeaders to detect HTTPS correctly)
+# Force enable in production regardless of setting
+if ENV == "production" or settings.SECURITY_HEADERS_ENABLED:
+    app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security headers middleware enabled")
 
 @app.get("/health", tags=["monitoring"])
 async def health_check(db: AsyncSession = Depends(get_db)):

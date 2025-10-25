@@ -433,20 +433,6 @@ export default function PricingPage() {
               </Card>
             ))}
           </div>
-
-          {/* Final CTA */}
-          <Card className="p-12 text-center bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 border-2 border-indigo-500/30">
-            <h3 className="text-4xl font-bold text-white mb-4">Ready to Transform Your Job Search?</h3>
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join the waitlist now and be among the first to experience the future of job hunting. Early adopters get exclusive benefits and special pricing.
-            </p>
-            <Button
-              onClick={handleUpgrade}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-12 py-4 text-lg font-semibold"
-            >
-              Join the Waitlist - Coming Early 2026
-            </Button>
-          </Card>
         </div>
 
         {/* CTA Section */}

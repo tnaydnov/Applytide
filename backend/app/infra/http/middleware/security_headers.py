@@ -63,12 +63,25 @@ class SecurityHeadersMiddleware:
         async def send_with_headers(message):
             if message["type"] == "http.response.start":
                 mh = MutableHeaders(raw=message.get("headers", []))
+                
+                # Get scheme from scope - check multiple sources
+                scheme = (scope.get("scheme") or "http").lower()
+                # Also check X-Forwarded-Proto header if behind proxy
+                headers = dict(scope.get("headers", []))
+                forwarded_proto = headers.get(b"x-forwarded-proto", b"").decode("latin1").lower()
+                if forwarded_proto in ("https", "http"):
+                    scheme = forwarded_proto
+                
+                is_https = scheme == "https"
+                
+                # ALWAYS apply security headers (production OR development)
+                # Core security headers (ALWAYS)
+                mh.setdefault("X-Content-Type-Options", "nosniff")
+                mh.setdefault("X-Frame-Options", "DENY")
+                mh.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+                
                 if self.env == "production":
-                    scheme = (scope.get("scheme") or "http").lower()
-                    is_https = scheme == "https"
-                    # Modern core headers
-                    mh.setdefault("X-Content-Type-Options", "nosniff")
-                    mh.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+                    # Additional production-only headers
                     mh.setdefault("Cross-Origin-Opener-Policy", "same-origin")
                     mh.setdefault("Cross-Origin-Resource-Policy", "same-site")
                     mh.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
@@ -77,11 +90,8 @@ class SecurityHeadersMiddleware:
                     # HSTS (only if HTTPS)
                     if is_https:
                         mh.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
-                    # Legacy fallback for very old clients (harmless otherwise)
-                    mh.setdefault("X-Frame-Options", "DENY")
                 else:
-                    # Dev: keep minimal
-                    mh.setdefault("X-Content-Type-Options", "nosniff")
+                    # Dev: still apply some headers
                     mh.setdefault("X-Frame-Options", "SAMEORIGIN")
 
                 # Optional: isolation (opt-in; can break embeds)

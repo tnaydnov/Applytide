@@ -31,7 +31,7 @@ export default function TermsOfService() {
 
                 <h2 className="text-2xl font-bold text-white mt-8 mb-4">2. Eligibility & Account Authority</h2>
                 <p className="text-slate-300 mb-4">
-                    You must be at least 13 years old to use our Service. If you are creating an account on behalf of a company or organization, you represent that you have the authority to bind that entity to these terms.
+                    By using this Service, you represent that you have the legal capacity to enter into binding contracts in your jurisdiction. If you are creating an account on behalf of a company or organization, you represent that you have the authority to bind that entity to these terms.
                 </p>
 
                 <h2 className="text-2xl font-bold text-white mt-8 mb-4">3. Chrome Extension & Third-Party Sites</h2>

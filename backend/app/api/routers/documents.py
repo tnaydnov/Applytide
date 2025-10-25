@@ -31,7 +31,29 @@ async def upload_document(
     svc: DocumentService = Depends(get_document_service),
 ):
     try:
-        allowed = {".pdf", ".docx", ".doc", ".txt", ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"}
+        # Extension whitelist
+        allowed_extensions = {".pdf", ".docx", ".doc", ".txt", ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus"}
+        
+        # MIME type whitelist (maps MIME -> allowed extensions)
+        allowed_mimes = {
+            # Documents
+            "application/pdf": [".pdf"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+            "application/msword": [".doc"],
+            "text/plain": [".txt"],
+            # Audio
+            "audio/mpeg": [".mp3"],
+            "audio/mp4": [".m4a"],
+            "audio/aac": [".aac"],
+            "audio/x-m4a": [".m4a"],
+            "audio/wav": [".wav"],
+            "audio/x-wav": [".wav"],
+            "audio/flac": [".flac"],
+            "audio/ogg": [".ogg"],
+            "audio/opus": [".opus"],
+            "application/ogg": [".ogg"],
+        }
+        
         if not file.filename:
             logger.warning(
                 "Upload attempt with missing filename",
@@ -40,7 +62,7 @@ async def upload_document(
             raise HTTPException(status_code=400, detail="Missing filename")
         
         ext = "." + file.filename.split(".")[-1].lower()
-        if ext not in allowed:
+        if ext not in allowed_extensions:
             logger.warning(
                 "Upload attempt with unsupported file format",
                 extra={
@@ -71,6 +93,76 @@ async def upload_document(
                 }
             )
             raise HTTPException(status_code=400, detail="Empty file")
+        
+        # SECURITY: Verify actual file content matches claimed extension
+        try:
+            import magic
+            mime_type = magic.from_buffer(content, mime=True)
+            
+            # Check if MIME type is allowed
+            if mime_type not in allowed_mimes:
+                logger.warning(
+                    "Upload attempt with disallowed MIME type",
+                    extra={
+                        "user_id": str(current_user.id),
+                        "file_name": file.filename,
+                        "claimed_extension": ext,
+                        "detected_mime": mime_type
+                    }
+                )
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"File content validation failed. Detected type '{mime_type}' is not allowed."
+                )
+            
+            # Check if extension matches MIME type
+            if ext not in allowed_mimes[mime_type]:
+                logger.warning(
+                    "Upload attempt with mismatched file type",
+                    extra={
+                        "user_id": str(current_user.id),
+                        "file_name": file.filename,
+                        "claimed_extension": ext,
+                        "detected_mime": mime_type,
+                        "expected_extensions": allowed_mimes[mime_type]
+                    }
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File extension doesn't match content. Expected {allowed_mimes[mime_type]}, got {ext}"
+                )
+            
+            logger.info(
+                "File content validation passed",
+                extra={
+                    "user_id": str(current_user.id),
+                    "file_name": file.filename,
+                    "mime_type": mime_type,
+                    "extension": ext
+                }
+            )
+            
+        except ImportError:
+            # python-magic not installed - log warning but continue
+            logger.warning(
+                "python-magic not available - skipping MIME type validation",
+                extra={
+                    "user_id": str(current_user.id),
+                    "file_name": file.filename
+                }
+            )
+        except Exception as mime_error:
+            logger.error(
+                "Error during MIME type validation",
+                extra={
+                    "user_id": str(current_user.id),
+                    "file_name": file.filename,
+                    "error": str(mime_error)
+                },
+                exc_info=True
+            )
+            # Don't fail upload if MIME check fails - but log it
+            pass
 
         meta_dict: Dict[str, Any] = {}
         if metadata:

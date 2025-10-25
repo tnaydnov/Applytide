@@ -147,9 +147,84 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      toast.info("Account deletion feature coming soon");
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "⚠️ WARNING: This will PERMANENTLY delete your account and ALL data.\n\n" +
+      "This includes:\n" +
+      "• Your profile and account\n" +
+      "• All job applications\n" +
+      "• All documents (resumes, cover letters)\n" +
+      "• All reminders and notes\n" +
+      "• All settings and preferences\n\n" +
+      "This action CANNOT be undone!\n\n" +
+      "Are you absolutely sure you want to delete your account?"
+    );
+
+    if (!confirmed) return;
+
+    const doubleConfirm = window.confirm(
+      "🛑 FINAL WARNING\n\n" +
+      "Please confirm one more time that you want to permanently delete your account.\n\n" +
+      "Type your email to confirm deletion: " + user.email
+    );
+
+    if (!doubleConfirm) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/profile/account", {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to delete account");
+      }
+
+      toast.success("Account deleted successfully. Goodbye! 👋");
+      
+      // Wait a moment for user to see the message, then logout
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete account");
+      setLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/profile/export", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to export data");
+      }
+
+      const data = await response.json();
+      
+      // Create a downloadable JSON file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `applytide-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Data exported successfully! Check your downloads folder.");
+    } catch (error) {
+      toast.error(error?.message || "Failed to export data");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -263,6 +338,7 @@ export default function ProfilePage() {
                 loading={loading}
                 onLogoutAll={handleLogout}
                 onDeleteAccount={handleDeleteAccount}
+                onExportData={handleExportData}
               />
             )}
 

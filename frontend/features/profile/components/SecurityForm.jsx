@@ -8,6 +8,7 @@ export default function SecurityForm({
   loading,
   onLogoutAll,
   onDeleteAccount,
+  onExportData,
 }) {
   return (
     <div className="space-y-6">
@@ -86,6 +87,26 @@ export default function SecurityForm({
         )}
       </Card>
 
+      <Card className="p-6 glass-card border border-blue-500/20">
+        <h3 className="text-xl font-semibold text-blue-400 mb-4">Privacy & Data</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-white">Download Your Data</h4>
+              <p className="text-xs text-gray-400">Export all your data in JSON format (GDPR data portability)</p>
+            </div>
+            <Button 
+              onClick={onExportData} 
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700" 
+              size="sm"
+            >
+              {loading ? "Exporting..." : "Download Data"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-6 glass-card border border-red-500/20">
         <h3 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h3>
         <div className="space-y-4">
@@ -102,10 +123,10 @@ export default function SecurityForm({
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-white">Delete Account</h4>
-              <p className="text-xs text-gray-400">Permanently delete your account and all data</p>
+              <p className="text-xs text-gray-400">Permanently delete your account and ALL data (cannot be undone)</p>
             </div>
-            <Button onClick={onDeleteAccount} className="bg-red-600 hover:bg-red-700" size="sm">
-              Delete Account
+            <Button onClick={onDeleteAccount} className="bg-red-600 hover:bg-red-700" size="sm" disabled={loading}>
+              {loading ? "Deleting..." : "Delete Account"}
             </Button>
           </div>
         </div>

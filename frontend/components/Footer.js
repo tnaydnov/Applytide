@@ -42,6 +42,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/contact" className="text-slate-300 hover:text-white transition-colors text-sm">
+                  Contact Us
+                </Link>
+              </li>
+              <li>
                 <Link href="/privacy" className="text-slate-300 hover:text-white transition-colors text-sm">
                   Privacy Policy
                 </Link>
@@ -62,9 +67,9 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:contact@applytide.com" className="text-slate-300 hover:text-white transition-colors text-sm">
-                  Contact Us
-                </a>
+                <Link href="/accessibility" className="text-slate-300 hover:text-white transition-colors text-sm">
+                  Accessibility
+                </Link>
               </li>
             </ul>
           </div>
