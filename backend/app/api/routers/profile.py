@@ -252,27 +252,25 @@ async def export_user_data(
                 "created_at": profile.created_at.isoformat() if profile.created_at else None
             }
         
-        # Jobs data
+        # Jobs data - only fields that actually exist in Job model
         jobs = db.query(Job).filter(Job.user_id == current_user.id).all()
         for job in jobs:
-            export_data["jobs"].append({
+            job_data = {
                 "id": str(job.id),
+                "user_id": str(job.user_id) if job.user_id else None,
+                "company_id": str(job.company_id) if job.company_id else None,
+                "source_url": job.source_url,
                 "title": job.title,
-                "company": job.company,
                 "location": job.location,
-                "url": job.url,
+                "remote_type": job.remote_type,
+                "job_type": job.job_type,
                 "description": job.description,
-                "requirements": job.requirements,
-                "salary_range": job.salary_range,
-                "employment_type": job.employment_type,
-                "status": job.status,
-                "stage": job.stage,
-                "notes": job.notes,
-                "source": job.source,
-                "applied_date": job.applied_date.isoformat() if job.applied_date else None,
-                "created_at": job.created_at.isoformat() if job.created_at else None,
-                "updated_at": job.updated_at.isoformat() if job.updated_at else None
-            })
+                "requirements": job.requirements if job.requirements else [],
+                "skills": job.skills if job.skills else [],
+                "created_at": job.created_at.isoformat() if job.created_at else None
+            }
+                
+            export_data["jobs"].append(job_data)
         
         # Documents data (metadata only, not file contents)
         try:
