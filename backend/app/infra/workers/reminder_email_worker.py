@@ -94,6 +94,8 @@ def send_reminder_notifications(db: Session):
     """Check and send reminder email notifications"""
     now = datetime.now(timezone.utc)
     
+    logger.info("Checking for reminders to send notifications...")
+    
     # Query reminders that have email notifications enabled and are in the future
     stmt = (
         select(models.Reminder, models.User)
@@ -105,8 +107,20 @@ def send_reminder_notifications(db: Session):
         )
     )
     
+    reminders_found = 0
     for reminder, user in db.execute(stmt).all():
+        reminders_found += 1
         try:
+            logger.info(
+                f"Processing reminder: {reminder.title}",
+                extra={
+                    "reminder_id": str(reminder.id),
+                    "due_date": str(reminder.due_date),
+                    "email_enabled": reminder.email_notifications_enabled,
+                    "schedule": reminder.notification_schedule
+                }
+            )
+            
             schedule = reminder.notification_schedule or {}
             schedule_type = schedule.get('type', 'once')
             times = schedule.get('times', [])
@@ -175,6 +189,8 @@ def send_reminder_notifications(db: Session):
                 exc_info=True
             )
             continue
+    
+    logger.info(f"Processed {reminders_found} reminders with email notifications enabled")
 
 
 def main_loop():

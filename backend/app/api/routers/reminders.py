@@ -120,6 +120,15 @@ async def import_google_event(
 @router.post("/reminders", response_model=ReminderResponse)
 async def create_reminder(reminder: ReminderCreate, user: User = Depends(get_current_user), svc: ReminderService = Depends(get_reminder_service)):
     try:
+        logger.info(
+            "Creating reminder with email notifications",
+            extra={
+                "user_id": str(user.id),
+                "email_enabled": reminder.email_notifications_enabled,
+                "event_type": reminder.event_type,
+                "has_schedule": reminder.notification_schedule is not None
+            }
+        )
         return await svc.create_reminder(
             user_id=user.id,
             title=reminder.title,
@@ -130,6 +139,10 @@ async def create_reminder(reminder: ReminderCreate, user: User = Depends(get_cur
             add_meet_link=reminder.add_meet_link,
             calendar_id="primary",
             timezone_str=reminder.timezone_str,
+            # Email notification fields
+            email_notifications_enabled=reminder.email_notifications_enabled,
+            notification_schedule=reminder.notification_schedule,
+            event_type=reminder.event_type,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
