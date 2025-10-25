@@ -85,16 +85,11 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Check auth on mount + every 5 min on ALL pages
-  // We ALWAYS need to know if user is logged in, even on public pages
+  // Check auth on mount only (no periodic polling)
+  // Periodic checks are unnecessary - the fetch interceptor handles 401s automatically
   useEffect(() => {
-    // Always check auth status on initial mount
+    // Check auth status on initial mount
     checkAuthStatus();
-    
-    // Set up periodic checks (every 5 minutes)
-    const interval = setInterval(checkAuthStatus, 5 * 60 * 1000);
-    
-    return () => clearInterval(interval);
   }, []); // Run only once on mount
 
   // Proactive refresh 2 min before expiry

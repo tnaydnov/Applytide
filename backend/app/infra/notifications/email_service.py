@@ -2,9 +2,15 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timezone
 from ...config import settings
-
 from ...infra.logging import get_logger
+from .email_templates import (
+    welcome_email,
+    password_changed_email,
+    account_deleted_email,
+    reminder_email
+)
 
 logger = get_logger(__name__)
 
@@ -33,7 +39,7 @@ class EmailService:
             return True
         except Exception as e:
             logger.error("Failed to send email", extra={
-                "to": to,
+                "to": to_email,
                 "subject": subject,
                 "error": str(e)
             }, exc_info=True)
@@ -144,5 +150,57 @@ class EmailService:
         </html>
         """ 
         return self._send_email(to_email, "Reset Your Password - Applytide", html_content)
+    
+    def send_welcome_email(self, to_email: str, name: str):
+        """Send welcome email to new users"""
+        html_content = welcome_email(name, to_email)
+        return self._send_email(to_email, f"Welcome to Applytide, {name}! 🎉", html_content)
+    
+    def send_password_changed_email(self, to_email: str, name: str):
+        """Send security alert when password is changed"""
+        html_content = password_changed_email(name).replace(
+            '{datetime}',
+            datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')
+        )
+        return self._send_email(to_email, "Your Applytide Password Was Changed", html_content)
+    
+    def send_account_deleted_email(self, to_email: str, name: str):
+        """Send confirmation after account deletion"""
+        html_content = account_deleted_email(name)
+        return self._send_email(to_email, "Your Applytide Account Has Been Deleted", html_content)
+    
+    def send_reminder_email(
+        self,
+        to_email: str,
+        name: str,
+        title: str,
+        description: str,
+        due_date: str,
+        time_until: str,
+        urgency: str,
+        event_type: str,
+        action_url: str
+    ):
+        """Send reminder email with dynamic urgency"""
+        html_content = reminder_email(
+            name=name,
+            title=title,
+            description=description,
+            due_date=due_date,
+            time_until=time_until,
+            urgency=urgency,
+            event_type=event_type,
+            action_url=action_url
+        )
+        subject_prefix = {
+            'now': '🚨 URGENT',
+            'today': '⏰ TODAY',
+            'tomorrow': '📅 TOMORROW',
+            'week': '📌 THIS WEEK',
+            'future': '🔔'
+        }.get(urgency, '🔔')
+        
+        return self._send_email(to_email, f"{subject_prefix} Reminder: {title}", html_content)
 
 email_service = EmailService()
+

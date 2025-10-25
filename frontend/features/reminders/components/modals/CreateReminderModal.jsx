@@ -18,11 +18,60 @@ export default function CreateReminderModal({
     email_notify: true,
   });
 
+  const [notificationTimes, setNotificationTimes] = useState([
+    { value: 1, unit: "hours" },
+    { value: 1, unit: "days" },
+  ]);
+
   if (!open) return null;
+
+  const addNotificationTime = () => {
+    setNotificationTimes([...notificationTimes, { value: 1, unit: "hours" }]);
+  };
+
+  const removeNotificationTime = (index) => {
+    setNotificationTimes(notificationTimes.filter((_, i) => i !== index));
+  };
+
+  const updateNotificationTime = (index, field, value) => {
+    const updated = [...notificationTimes];
+    updated[index][field] = value;
+    setNotificationTimes(updated);
+  };
+
+  // Map frontend type to backend event_type
+  const getEventType = (type) => {
+    const mapping = {
+      'Interview': 'interview',
+      'Deadline': 'deadline',
+      'Follow-up': 'follow-up',
+      'Call': 'follow-up',
+      'Custom': 'general'
+    };
+    return mapping[type] || 'general';
+  };
 
   const submit = async (e) => {
     e?.preventDefault?.();
-    const ok = await onCreate?.(form);
+    
+    // Build notification schedule
+    const notificationSchedule = form.email_notify ? {
+      type: "multiple",
+      times: notificationTimes.map(t => ({
+        value: parseInt(t.value),
+        unit: t.unit === "hours" ? "hour" : t.unit === "days" ? "day" : t.unit === "weeks" ? "week" : "hour",
+        sent: false
+      }))
+    } : null;
+
+    const payload = {
+      ...form,
+      email_notifications_enabled: form.email_notify,
+      notification_schedule: notificationSchedule,
+      event_type: getEventType(form.type),
+    };
+
+    const ok = await onCreate?.(payload);
     if (ok) onClose?.();
   };
 
@@ -128,9 +177,52 @@ export default function CreateReminderModal({
                 checked={form.email_notify}
                 onChange={(e) => setForm((f) => ({ ...f, email_notify: e.target.checked }))}
               />
-              Email me reminders
+              📧 Email me reminders
             </label>
           </div>
+
+          {/* Notification Schedule */}
+          {form.email_notify && (
+            <div className="rounded-lg bg-slate-800/50 p-4 space-y-3">
+              <label className="field-label text-sm">Send email notifications:</label>
+              {notificationTimes.map((time, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    value={time.value}
+                    onChange={(e) => updateNotificationTime(index, 'value', e.target.value)}
+                    className="input-glass w-20"
+                  />
+                  <select
+                    value={time.unit}
+                    onChange={(e) => updateNotificationTime(index, 'unit', e.target.value)}
+                    className="input-glass flex-1"
+                  >
+                    <option value="hours">hours before</option>
+                    <option value="days">days before</option>
+                    <option value="weeks">weeks before</option>
+                  </select>
+                  {notificationTimes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeNotificationTime(index)}
+                      className="text-red-400 hover:text-red-300 px-2"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addNotificationTime}
+                className="text-sm text-indigo-400 hover:text-indigo-300"
+              >
+                + Add another reminder time
+              </button>
+            </div>
+          )}
 
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={onClose} className="btn-ghost rounded-md px-3 py-2">Cancel</button>

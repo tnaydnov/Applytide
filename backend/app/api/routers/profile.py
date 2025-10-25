@@ -434,6 +434,7 @@ async def delete_user_account(
         
         user_id = current_user.id
         user_email = current_user.email
+        user_name = current_user.full_name
         
         # Import here to avoid circular imports
         from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences
@@ -500,6 +501,18 @@ async def delete_user_account(
             "user_id": str(user_id),
             "email": user_email
         })
+        
+        # Send account deletion confirmation email (non-blocking, after commit)
+        try:
+            from ...infra.notifications.email_service import email_service
+            email_service.send_account_deleted_email(
+                user_email,
+                user_name or user_email.split('@')[0]
+            )
+            logger.info(f"Account deletion email sent to {user_email}")
+        except Exception as e:
+            # Log but don't fail deletion (account is already deleted)
+            logger.error(f"Failed to send deletion email: {str(e)}", exc_info=True)
         
         return {
             "message": "Account successfully deleted. All your data has been permanently removed.",

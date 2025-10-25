@@ -5,6 +5,12 @@ from ...db.session import SessionLocal
 from ...db import models
 from ...config import settings
 from ...infra.notifications.email_service import email_service
+from ...infra.logging import get_logger
+
+# Import the reminder email worker function
+from .reminder_email_worker import send_reminder_notifications
+
+logger = get_logger(__name__)
 
 FOLLOW_UP_DAYS = 3
 LOOP_SECONDS = 60
@@ -57,13 +63,17 @@ def check_followups(db):
             pass
 
 def main_loop():
+    logger.info("Starting reminder worker with email notifications...")
     while True:
         try:
             db = SessionLocal()
             check_upcoming_interviews(db)
             check_followups(db)
-        except Exception:
-            pass
+            
+            # Send reminder email notifications
+            send_reminder_notifications(db)
+        except Exception as e:
+            logger.error(f"Worker error: {e}", exc_info=True)
         finally:
             try: db.close()
             except: pass

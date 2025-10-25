@@ -35,6 +35,10 @@ class ReminderCreate(BaseModel):
     add_meet_link: bool = False
     create_google_event: bool = True
     timezone_str: str = "UTC"
+    # Email notification fields
+    email_notifications_enabled: bool = False
+    notification_schedule: Optional[dict] = None
+    event_type: Optional[str] = "general"
 
 class ReminderResponse(BaseModel):
     id: uuid.UUID
@@ -45,6 +49,11 @@ class ReminderResponse(BaseModel):
     google_event_id: Optional[str] = None
     meet_url: Optional[str] = None
     created_at: datetime
+    # Email notification fields
+    email_notifications_enabled: bool = False
+    notification_schedule: Optional[dict] = None
+    event_type: Optional[str] = "general"
+    last_notification_sent: Optional[datetime] = None
     class Config: from_attributes = True
 
 class ReminderUpdate(BaseModel):
@@ -55,6 +64,10 @@ class ReminderUpdate(BaseModel):
     google_event_id: Optional[str] = None
     meet_url: Optional[str] = None
     timezone_str: Optional[str] = "UTC"
+    # Email notification fields
+    email_notifications_enabled: Optional[bool] = None
+    notification_schedule: Optional[dict] = None
+    event_type: Optional[str] = None
 
 # ---------- Notes ----------
 @router.get("/reminders/{reminder_id}/notes", response_model=List[ReminderNoteOut])

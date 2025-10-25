@@ -257,12 +257,19 @@ class Reminder(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     google_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    meet_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)   # <-- add
+    meet_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    
+    # Email notification settings
+    email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notification_schedule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    event_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="general")
+    last_notification_sent: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'google_event_id', name='uq_user_google_event'),  # <-- optional but helpful
+        UniqueConstraint('user_id', 'google_event_id', name='uq_user_google_event'),
     )
     
 # ---------- User Preferences ----------

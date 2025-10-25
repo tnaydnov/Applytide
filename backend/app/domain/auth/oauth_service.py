@@ -74,6 +74,7 @@ class OAuthService:
                 user.is_oauth_user = True
                 if not user.email_verified_at:
                     user.email_verified_at = datetime.now(timezone.utc)
+                user.last_login_at = datetime.now(timezone.utc)
                 self.db.commit()
             else:
                 is_new = True
@@ -84,8 +85,13 @@ class OAuthService:
                     google_id=google_id,
                     is_oauth_user=True,
                     email_verified_at=datetime.now(timezone.utc),
+                    last_login_at=datetime.now(timezone.utc),
                 )
                 self.db.add(user); self.db.commit(); self.db.refresh(user)
+        else:
+            # Existing OAuth user - update last login
+            user.last_login_at = datetime.now(timezone.utc)
+            self.db.commit()
 
         # Save tokens
         self.token_repo.upsert_token(user_id=user.id, provider="google", token_data=token_data)

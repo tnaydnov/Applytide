@@ -134,6 +134,13 @@ def password_reset(payload: schemas.PasswordResetIn, db: Session = Depends(get_d
             # Revoke all existing tokens for security
             revoke_all_user_tokens(user_id)
             
+            # Send password changed confirmation email
+            try:
+                email_service.send_password_changed_email(user.email, user.full_name or "User")
+                logger.info("Password changed email sent", extra={"user_id": user_id})
+            except Exception as e:
+                logger.error(f"Failed to send password changed email: {e}", extra={"user_id": user_id})
+            
             logger.info(
                 "Password reset successful",
                 extra={"user_id": user_id, "email": user.email}

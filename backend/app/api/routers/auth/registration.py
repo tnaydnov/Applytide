@@ -159,6 +159,21 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
             extra={"user_id": str(user.id), "email": user.email, "error": str(e)},
             exc_info=True
         )
+    
+    # Send welcome email (non-blocking)
+    try:
+        email_service.send_welcome_email(user.email, user.full_name or user.email.split('@')[0])
+        logger.info(
+            "Welcome email sent",
+            extra={"user_id": str(user.id), "email": user.email}
+        )
+    except Exception as e:
+        # Log but don't fail registration
+        logger.error(
+            "Failed to send welcome email",
+            extra={"user_id": str(user.id), "email": user.email, "error": str(e)},
+            exc_info=True
+        )
 
     logger.info(
         "User registered successfully",

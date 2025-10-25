@@ -29,6 +29,9 @@ class ReminderService:
         add_meet_link: bool = False,
         calendar_id: str = "primary",
         timezone_str: str = "UTC",
+        email_notifications_enabled: bool = False,
+        notification_schedule: Optional[dict] = None,
+        event_type: Optional[str] = "general",
     ) -> ReminderDTO:
         due = due_date or (datetime.now(timezone.utc) + timedelta(hours=1))
 
@@ -39,7 +42,14 @@ class ReminderService:
             return dup
 
         r = self.reminders.create(
-            user_id=user_id, title=title, description=description, due_date=due, application_id=application_id
+            user_id=user_id, 
+            title=title, 
+            description=description, 
+            due_date=due, 
+            application_id=application_id,
+            email_notifications_enabled=email_notifications_enabled,
+            notification_schedule=notification_schedule,
+            event_type=event_type,
         )
 
         # respect the flag (bugfix vs old code)
