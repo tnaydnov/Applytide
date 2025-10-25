@@ -46,51 +46,34 @@ def base_template(content: str, preview_text: str = "") -> str:
         
         .email-wrapper {{
             width: 100%;
-            background: #0f172a;
+            background: #f8fafc;
             padding: 40px 20px;
         }}
         
         .email-container {{
             max-width: 600px;
             margin: 0 auto;
-            background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
-            border-radius: 20px;
+            background: white;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.4), 0 0 80px rgba(168, 85, 247, 0.2);
-            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }}
         
         .email-header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 35px 30px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .email-header::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
         }}
         
         .logo-container {{
-            position: relative;
-            z-index: 1;
             margin: 0 auto;
             display: inline-block;
         }}
         
-        .logo-svg {{
-            height: 50px;
+        .logo-img {{
+            height: 45px;
             width: auto;
             display: block;
-            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
         }}
         
         .brand-name {{
@@ -102,17 +85,16 @@ def base_template(content: str, preview_text: str = "") -> str:
         }}
         
         .email-body {{
-            padding: 40px 30px;
-            background: linear-gradient(180deg, rgba(30, 27, 75, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
+            padding: 40px 35px;
+            background: white;
         }}
         
         .email-footer {{
-            background: {BRAND_COLORS['dark']};
+            background: #1e293b;
             padding: 30px;
             text-align: center;
             color: #94a3b8;
             font-size: 13px;
-            border-top: 1px solid rgba(139, 92, 246, 0.2);
         }}
         
         .btn {{
@@ -184,7 +166,7 @@ def base_template(content: str, preview_text: str = "") -> str:
         <div class="email-container">
             <div class="email-header">
                 <div class="logo-container">
-                    <img src="https://applytide.com/images/logomark.svg" alt="Applytide" class="logo-svg" />
+                    <img src="https://applytide.com/images/logomark.png" alt="Applytide" class="logo-img" />
                 </div>
             </div>
             
@@ -483,56 +465,46 @@ def reminder_email(
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     """
     
-    # Urgency-based styling with techy, cyber colors
+    # Urgency-based styling - clean and simple
     urgency_config = {
         'now': {
             'emoji': '🚨',
             'title': 'HAPPENING NOW',
             'color': '#ef4444',
-            'glow': 'rgba(239, 68, 68, 0.5)',
-            'bg': 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%)',
-            'border': '#f87171',
-            'text': '#fecaca',
+            'bg': '#fef2f2',
+            'border': '#fecaca',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
             'title': 'DUE TODAY',
             'color': '#f59e0b',
-            'glow': 'rgba(245, 158, 11, 0.5)',
-            'bg': 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%)',
-            'border': '#fbbf24',
-            'text': '#fde68a',
+            'bg': '#fffbeb',
+            'border': '#fed7aa',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
             'title': 'TOMORROW',
             'color': '#3b82f6',
-            'glow': 'rgba(59, 130, 246, 0.5)',
-            'bg': 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%)',
-            'border': '#60a5fa',
-            'text': '#bfdbfe',
+            'bg': '#eff6ff',
+            'border': '#bfdbfe',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
             'title': 'THIS WEEK',
-            'color': '#a855f7',
-            'glow': 'rgba(168, 85, 247, 0.5)',
-            'bg': 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(147, 51, 234, 0.1) 100%)',
-            'border': '#c084fc',
-            'text': '#e9d5ff',
+            'color': '#8b5cf6',
+            'bg': '#f5f3ff',
+            'border': '#ddd6fe',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
             'title': 'UPCOMING',
             'color': '#10b981',
-            'glow': 'rgba(16, 185, 129, 0.5)',
-            'bg': 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%)',
-            'border': '#34d399',
-            'text': '#a7f3d0',
+            'bg': '#f0fdf4',
+            'border': '#bbf7d0',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -549,62 +521,48 @@ def reminder_email(
     event_icon = event_icons.get(event_type, '📋')
     
     content = f"""
-        <!-- Urgency Badge with Glow Effect -->
-        <div style="text-align: center; margin-bottom: 35px;">
-            <div style="position: relative; display: inline-block;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 140px; height: 140px; background: radial-gradient(circle, {config['glow']} 0%, transparent 70%); border-radius: 50%; filter: blur(30px);"></div>
-                <div style="position: relative; display: inline-block; width: 100px; height: 100px; background: {config['bg']}; border: 3px solid {config['border']}; border-radius: 50%; line-height: 100px; font-size: 50px; box-shadow: 0 15px 40px -10px {config['glow']}, inset 0 0 20px rgba(255,255,255,0.1);">
-                    {config['emoji']}
-                </div>
+        <!-- Urgency Badge - Clean & Simple -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; width: 70px; height: 70px; background: {config['bg']}; border: 3px solid {config['border']}; border-radius: 50%; line-height: 70px; font-size: 32px; margin-bottom: 15px;">
+                {config['emoji']}
             </div>
-            <div style="margin-top: 20px; display: inline-block; background: {config['bg']}; border: 2px solid {config['border']}; color: {config['text']}; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 8px 20px -5px {config['glow']};">
+            <div style="display: inline-block; background: {config['color']}; color: white; padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
                 {config['title']}
             </div>
         </div>
         
-        <!-- Main Title with Gradient -->
-        <h1 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 32px; font-weight: 800; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
+        <!-- Main Title - Dark & Visible -->
+        <h1 style="color: #1e293b; font-size: 28px; font-weight: 700; margin: 0 0 12px 0; text-align: center; line-height: 1.3;">
             {title}
         </h1>
         
         <!-- Greeting Message -->
-        <p style="color: #cbd5e1; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
+        <p style="color: #64748b; font-size: 16px; margin: 0 0 35px 0; text-align: center; line-height: 1.5;">
             Hey {name}, {config['message']}
         </p>
         
-        <!-- Cyber Event Card -->
-        <div style="background: {config['bg']}; border: 2px solid {config['border']}; border-radius: 16px; padding: 40px 35px; margin: 40px 0; position: relative; overflow: hidden; box-shadow: 0 20px 50px -10px {config['glow']}, inset 0 1px 0 rgba(255,255,255,0.1);">
+        <!-- Event Card - Clean & Professional -->
+        <div style="background: {config['bg']}; border-left: 4px solid {config['color']}; border-radius: 12px; padding: 30px; margin: 30px 0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
             
-            <!-- Decorative Corner -->
-            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: {config['color']}; opacity: 0.1; border-radius: 50%; filter: blur(20px);"></div>
+            {f'<p style="color: #475569; margin: 0 0 25px 0; line-height: 1.7; font-size: 16px; text-align: center;">{description}</p>' if description else ''}
             
-            <!-- Event Icon -->
-            <div style="text-align: center; margin-bottom: 30px;">
-                <span style="font-size: 56px; display: inline-block; filter: drop-shadow(0 8px 16px {config['glow']});">
-                    {event_icon}
-                </span>
-            </div>
-            
-            <!-- Description -->
-            {f'<p style="color: {config["text"]}; margin: 0 0 30px 0; line-height: 1.8; font-size: 17px; text-align: center; padding: 0 10px; font-weight: 500;">{description}</p>' if description else ''}
-            
-            <!-- Date & Time Card with Glassmorphism -->
-            <div style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(139, 92, 246, 0.3); padding: 30px 25px; border-radius: 12px; margin-top: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);">
+            <!-- Date & Time Card -->
+            <div style="background: white; padding: 25px 20px; border-radius: 10px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
                     <tr>
-                        <td style="width: 50%; padding: 15px; text-align: center; border-right: 1px solid rgba(139, 92, 246, 0.3);">
-                            <p style="color: #94a3b8; margin: 0 0 10px 0; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                        <td style="width: 50%; padding: 10px; text-align: center; border-right: 1px solid #e2e8f0;">
+                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
                                 📅 DUE DATE
                             </p>
-                            <p style="color: #e2e8f0; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5;">
+                            <p style="color: #1e293b; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4;">
                                 {due_date}
                             </p>
                         </td>
-                        <td style="width: 50%; padding: 15px; text-align: center;">
-                            <p style="color: #94a3b8; margin: 0 0 10px 0; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                        <td style="width: 50%; padding: 10px; text-align: center;">
+                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
                                 ⏱️ TIME LEFT
                             </p>
-                            <p style="color: {config['color']}; margin: 0; font-size: 20px; font-weight: 800; line-height: 1.5; text-shadow: 0 0 20px {config['glow']};">
+                            <p style="color: {config['color']}; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.4;">
                                 {time_until}
                             </p>
                         </td>
@@ -614,29 +572,29 @@ def reminder_email(
         </div>
         
         <!-- Call-to-Action Button -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 45px 0 35px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 35px 0;">
             <tr>
                 <td align="center">
-                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); color: white !important; padding: 18px 50px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 17px; letter-spacing: 0.5px; box-shadow: 0 15px 40px -10px rgba(139, 92, 246, 0.6), inset 0 1px 0 rgba(255,255,255,0.2); transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1);">
-                        VIEW REMINDER →
+                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 16px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        View Application →
                     </a>
                 </td>
             </tr>
         </table>
         
         <!-- Divider -->
-        <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.4), transparent); margin: 35px 0;"></div>
+        <div style="height: 1px; background: #e2e8f0; margin: 30px 0;"></div>
         
         <!-- Footer Tip -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 25px;">
             <tr>
                 <td align="center">
-                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 15px 0;">
-                        💡 <strong style="color: #cbd5e1;">Pro Tip:</strong> Set multiple reminders to stay on top of important deadlines!
+                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 12px 0;">
+                        💡 <strong style="color: #64748b;">Pro Tip:</strong> Set multiple reminders to stay on top of deadlines!
                     </p>
-                    <p style="color: #64748b; font-size: 14px; margin: 0;">
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">
                         Manage all reminders in your 
-                        <a href="https://applytide.com/reminders" style="color: #a855f7; text-decoration: none; font-weight: 600; text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);">
+                        <a href="https://applytide.com/reminders" style="color: #667eea; text-decoration: none; font-weight: 600;">
                             Dashboard →
                         </a>
                     </p>
