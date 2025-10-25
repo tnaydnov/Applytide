@@ -211,7 +211,7 @@ async def export_user_data(
     try:
         logger.info("Data export requested", extra={"user_id": str(current_user.id)})
         
-        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken, Document
+        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken, Resume
         
         export_data = {
             "export_info": {
@@ -271,16 +271,14 @@ async def export_user_data(
                 
             export_data["jobs"].append(job_data)
         
-        # Documents data (metadata only, not file contents)
+        # Documents data (stored as resumes in database)
         try:
-            from ...db.models import Document
-            documents = db.query(Document).filter(Document.user_id == current_user.id).all()
+            documents = db.query(Resume).filter(Resume.user_id == current_user.id).all()
             for doc in documents:
                 export_data["documents"].append({
                     "id": str(doc.id),
-                    "filename": doc.filename,
-                    "file_type": doc.file_type,
-                    "file_size": doc.file_size,
+                    "label": doc.label,
+                    "file_path": doc.file_path,
                     "created_at": doc.created_at.isoformat() if doc.created_at else None,
                     "note": "File contents not included in export. Download files separately from the application."
                 })
