@@ -4,6 +4,7 @@ import { Button } from "../../../components/ui";
 import ExpandableScoreCategory from "./ExpandableScoreCategory";
 import { getScoreColor } from "../utils/helpers";
 import ModalSurface from "./ModalSurface";
+import LLMDownError from "../../../components/LLMDownError";
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, BorderStyle } from 'docx';
@@ -16,6 +17,8 @@ export default function AnalysisModal({
     documentName = "Document",
     onExportWord,
     onExportPDF,
+    llmError = false,
+    onRetry,
 }) {
     // Export analysis as PDF
     // scroll lock + esc to close
@@ -156,25 +159,33 @@ export default function AnalysisModal({
                         {/* Body */}
                         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-6 space-y-4">
 
-                            {/* Analysis type banner (from original page) */}
-                            <div
-                                className={`p-4 rounded-lg border ${isJobSpecific
-                                    ? "bg-blue-900/30 border-blue-500/30 text-blue-200"
-                                    : "bg-amber-900/30 border-amber-500/30 text-amber-200"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-base">{isJobSpecific ? "🎯" : "📊"}</span>
-                                    <strong className="text-slate-200">
-                                        {isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis"}
-                                    </strong>
-                                </div>
-                                <p className="text-sm text-slate-300 leading-relaxed break-words m-0">
-                                    {isJobSpecific
-                                        ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
-                                        : "This is a general analysis. Select a job for tailored matching."}
-                                </p>
-                            </div>
+                            {/* Show LLM error if present */}
+                            {llmError ? (
+                                <LLMDownError
+                                    context="resume analysis"
+                                    onRetry={onRetry}
+                                />
+                            ) : (
+                                <>
+                                    {/* Analysis type banner (from original page) */}
+                                    <div
+                                        className={`p-4 rounded-lg border ${isJobSpecific
+                                            ? "bg-blue-900/30 border-blue-500/30 text-blue-200"
+                                            : "bg-amber-900/30 border-amber-500/30 text-amber-200"
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-base">{isJobSpecific ? "🎯" : "📊"}</span>
+                                            <strong className="text-slate-200">
+                                                {isJobSpecific ? "Job-Specific Analysis" : "General Resume Analysis"}
+                                            </strong>
+                                        </div>
+                                        <p className="text-sm text-slate-300 leading-relaxed break-words m-0">
+                                            {isJobSpecific
+                                                ? "This analysis compares your resume against job skills/requirements and provides targeted feedback."
+                                                : "This is a general analysis. Select a job for tailored matching."}
+                                        </p>
+                                    </div>
 
                             {/* Collapsible score categories – derived directly from ats_score + ai_detailed_analysis */}
                             {ats.technical_skills_score != null && (
@@ -330,6 +341,8 @@ export default function AnalysisModal({
                                         ))}
                                     </ul>
                                 </div>
+                            )}
+                                </>
                             )}
                         </div>
 

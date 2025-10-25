@@ -626,7 +626,10 @@ export function parseJobForDisplay(job) {
   cleanDescription.split("\n").forEach((ln) => {
     const t = ln.trim();
     if (!t) return;
-    if (displayHeaderRe.test(t) || (/^[A-Z][A-Za-z0-9 '&/+-]{2,80}:?$/.test(t) && t.split(" ").length <= 8)) {
+    
+    // Only treat as header if it matches known header keywords (displayHeaderRe)
+    // Don't use broad regex that catches normal sentences
+    if (displayHeaderRe.test(t)) {
       blocks.push({ type: "header", text: t.replace(/:$/, "") });
     } else if (/^\s*•\s+/.test(ln)) {
       blocks.push({ type: "bullet", text: ln.replace(/^\s*•\s+/, "") });

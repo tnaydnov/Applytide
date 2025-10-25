@@ -58,6 +58,7 @@ export default function DocumentsView() {
     analysisModalOpen,
     setAnalysisModalOpen,
     currentAnalysis,
+    llmError,
     analyzeResume,
     analyzeResumeWithJob,
     exportWord,
@@ -73,6 +74,7 @@ export default function DocumentsView() {
     isGenerating,
     generated,
     setGenerated,
+    llmError: clLlmError,
     generate,
     saveAsDocument,
   } = useCoverLetter({ jobs, resumes, onSaved: refresh });
@@ -171,6 +173,15 @@ export default function DocumentsView() {
           onClose={() => setAnalysisModalOpen(false)}
           onExportPDF={() => exportPDF(currentAnalysis, docs.find((d) => d.id === currentAnalysis?.document_id)?.name || "Document")}
           onExportWord={exportWord}
+          llmError={llmError}
+          onRetry={() => {
+            setAnalysisModalOpen(false);
+            // Find the document and retry the analysis
+            const doc = docs.find((d) => d.id === currentAnalysis?.document_id);
+            if (doc) {
+              analyzeResume(doc);
+            }
+          }}
         />
       )}
 
@@ -186,6 +197,7 @@ export default function DocumentsView() {
         generatedCoverLetter={generated}
         onChangeGenerated={setGenerated}
         onSave={saveAsDocument}
+        llmError={clLlmError}
       />
 
       <JobPickerModal

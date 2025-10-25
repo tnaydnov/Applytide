@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { api, apiFetch } from "../../../lib/api";
+import { isLLMServiceDown, getLLMErrorMessage } from "../../../lib/llmError";
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -13,6 +14,7 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [generated, setGenerated] = useState("");
+    const [llmError, setLlmError] = useState(false);
 
 
 
@@ -26,6 +28,7 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
     const generate = useCallback(async () => {
         if (!canGenerate) return;
         setIsGenerating(true);
+        setLlmError(false);
         try {
             const result = await api.generateCoverLetter(clForm);
 
@@ -48,8 +51,13 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
             }
 
         } catch (error) {
-            console.error("Error generating cover letter:", error);
-            setGenerated("An error occurred while generating your cover letter. Please try again.");
+            if (isLLMServiceDown(error)) {
+                setLlmError(true);
+                setGenerated(""); // Clear any previous content
+            } else {
+                console.error("Error generating cover letter:", error);
+                setGenerated("An error occurred while generating your cover letter. Please try again.");
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -106,6 +114,7 @@ export default function useCoverLetter({ jobs = [], resumes = [], onSaved } = {}
         isGenerating,
         generated,
         setGenerated,
+        llmError,
         generate,
         saveAsDocument,
     };

@@ -150,16 +150,18 @@ export default function JobsPage() {
           }}
         />
 
-        {/* Jobs grid */}
-        <JobList
-          jobs={jobs}
-          loading={loading}
-          expandedJobs={expandedJobs}
-          toggleJobExpanded={toggleJobExpanded}
-          onOpenDetails={openJobDetails}
-          onOpenApply={openApply}
-          onDelete={deleteJob}
-        />
+        {/* Jobs grid - separated from filters */}
+        <div className="mt-8">
+          <JobList
+            jobs={jobs}
+            loading={loading}
+            expandedJobs={expandedJobs}
+            toggleJobExpanded={toggleJobExpanded}
+            onOpenDetails={openJobDetails}
+            onOpenApply={openApply}
+            onDelete={deleteJob}
+          />
+        </div>
 
         {/* Pagination */}
         {pagination.pages > 1 && (

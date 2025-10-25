@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui";
 import { getCompany } from "../utils/helpers";
 import ModalSurface from "./ModalSurface";
+import LLMDownError from "../../../components/LLMDownError";
 
 /**
  * CoverLetterModal
@@ -40,6 +41,7 @@ export default function CoverLetterModal({
     generatedCoverLetter = "",
     onChangeGenerated,
     onSave,
+    llmError = false,
 }) {
     const [mounted, setMounted] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -230,6 +232,12 @@ export default function CoverLetterModal({
                                                 </p>
                                             </div>
                                         </div>
+                                    ) : llmError ? (
+                                        /* Show LLM error if present */
+                                        <LLMDownError
+                                            context="cover letter generation"
+                                            onRetry={onGenerate}
+                                        />
                                     ) : (
                                         /* Replace this textarea with the conditional rendering */
                                         isFullscreen ? (

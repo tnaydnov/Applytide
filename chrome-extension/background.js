@@ -102,6 +102,24 @@ chrome.runtime.onStartup.addListener(keepAlive);
 chrome.runtime.onInstalled.addListener(keepAlive);
 
 // ---------------- Utilities ----------------
+function isLLMServiceDown(error) {
+  const errorMsg = (error?.message || String(error)).toLowerCase();
+  return errorMsg.includes('openai') ||
+    errorMsg.includes('503') ||
+    errorMsg.includes('502') ||
+    errorMsg.includes('504') ||
+    errorMsg.includes('429') ||
+    errorMsg.includes('rate limit') ||
+    errorMsg.includes('overloaded') ||
+    errorMsg.includes('timeout') ||
+    errorMsg.includes('service unavailable') ||
+    errorMsg.includes('upstream') ||
+    errorMsg.includes('model is currently overloaded') ||
+    errorMsg.includes('try again later') ||
+    errorMsg.includes('temporarily unavailable') ||
+    errorMsg.includes('api error');
+}
+
 function authHeaders() {
   const h = { "Content-Type": "application/json" };
   if (ACCESS) h["Authorization"] = `Bearer ${ACCESS}`;
@@ -1336,7 +1354,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ ok: true, saved });
           } catch (error) {
             notifyProgress('flow:error');
-            const errorMsg = error?.message || String(error);
+            let errorMsg = error?.message || String(error);
+            
+            // Check if it's an LLM service failure
+            if (isLLMServiceDown(error)) {
+              errorMsg = '🤖💤 Our AI Brain is Taking a Nap\n\nThe modern world apparently can\'t handle anything without AI anymore, so we\'ll just have to wait till our robot overlords wake up.\n\n(In the meantime, maybe we could try using our human brains? Just kidding, nobody remembers how.)\n\nPlease try again in a few minutes.';
+            }
+            
             console.error('Pasted text extraction failed:', error);
             sendResponse({ ok: false, error: errorMsg });
           }
@@ -1745,7 +1769,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } catch (e) {
       console.error('[Applytide bg] error:', e);
       try { notifyProgress('flow:error', { error: String(e?.message || e) }); } catch { }
-      sendResponse({ ok: false, error: String(e?.message || e) });
+      
+      let errorMsg = String(e?.message || e);
+      
+      // Check if it's an LLM service failure
+      if (isLLMServiceDown(e)) {
+        errorMsg = '🤖💤 Our AI Brain is Taking a Nap\n\nThe modern world apparently can\'t handle anything without AI anymore, so we\'ll just have to wait till our robot overlords wake up.\n\n(In the meantime, maybe we could try using our human brains? Just kidding, nobody remembers how.)\n\nPlease try again in a few minutes.';
+      }
+      
+      sendResponse({ ok: false, error: errorMsg });
     }
   })();
 

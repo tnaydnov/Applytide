@@ -42,9 +42,10 @@ from ..logging import get_logger
 
 logger = get_logger(__name__)
 
-# Model pricing per 1M tokens (as of Oct 2024)
+# Model pricing per 1M tokens (last updated: Oct 25, 2025)
 # Source: https://openai.com/pricing
 # Updated regularly to reflect current OpenAI pricing
+# Includes: GPT-4o, GPT-4.1, GPT-4 Turbo, GPT-4, GPT-3.5, o-series reasoning models
 MODEL_PRICING = {
     # GPT-4o models (newest, most capable)
     "gpt-4o": {
@@ -72,6 +73,20 @@ MODEL_PRICING = {
     "gpt-4o-mini-2024-07-18": {
         "prompt": 0.150,
         "completion": 0.600
+    },
+    
+    # GPT-4.1 models (newer, improved)
+    "gpt-4.1": {
+        "prompt": 5.00,     # $5.00 per 1M input tokens
+        "completion": 15.00  # $15.00 per 1M output tokens
+    },
+    "gpt-4.1-mini": {
+        "prompt": 0.40,     # $0.40 per 1M input tokens
+        "completion": 1.60   # $1.60 per 1M output tokens
+    },
+    "gpt-4.1-nano": {
+        "prompt": 0.10,     # $0.10 per 1M input tokens
+        "completion": 0.40   # $0.40 per 1M output tokens
     },
     
     # GPT-4 Turbo models
@@ -124,8 +139,34 @@ MODEL_PRICING = {
         "completion": 1.50
     },
     "gpt-3.5-turbo-1106": {
-        "prompt": 1.00,
-        "completion": 2.00
+        "prompt": 0.50,
+        "completion": 1.50
+    },
+    
+    # o-series reasoning models
+    "o1": {
+        "prompt": 15.00,    # $15.00 per 1M input tokens
+        "completion": 60.00  # $60.00 per 1M output tokens
+    },
+    "o1-mini": {
+        "prompt": 3.00,     # $3.00 per 1M input tokens
+        "completion": 12.00  # $12.00 per 1M output tokens
+    },
+    "o1-preview": {
+        "prompt": 15.00,
+        "completion": 60.00
+    },
+    "o3": {
+        "prompt": 20.00,    # $20.00 per 1M input tokens (estimated)
+        "completion": 80.00  # $80.00 per 1M output tokens (estimated)
+    },
+    "o3-mini": {
+        "prompt": 1.10,     # $1.10 per 1M input tokens
+        "completion": 4.40   # $4.40 per 1M output tokens
+    },
+    "o4-mini": {
+        "prompt": 1.10,     # $1.10 per 1M input tokens (estimated)
+        "completion": 4.40   # $4.40 per 1M output tokens (estimated)
     },
     "gpt-3.5-turbo-instruct": {
         "prompt": 1.50,
