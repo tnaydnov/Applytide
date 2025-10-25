@@ -211,8 +211,7 @@ async def export_user_data(
     try:
         logger.info("Data export requested", extra={"user_id": str(current_user.id)})
         
-        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken
-        from ...domain.documents.service import DocumentService
+        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken, Document
         
         export_data = {
             "export_info": {
@@ -274,8 +273,8 @@ async def export_user_data(
         
         # Documents data (metadata only, not file contents)
         try:
-            doc_service = DocumentService()
-            documents = doc_service.list_documents(db=db, user_id=str(current_user.id))
+            from ...db.models import Document
+            documents = db.query(Document).filter(Document.user_id == current_user.id).all()
             for doc in documents:
                 export_data["documents"].append({
                     "id": str(doc.id),
