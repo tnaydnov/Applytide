@@ -37,7 +37,7 @@ class ReminderSQLARepository(IReminderRepo):
         ).scalar_one_or_none()
         return _r_to_dto(row) if row else None
 
-    def create(self, *, user_id: UUID, title: str, description: Optional[str], due_date: datetime, application_id: Optional[UUID], email_notifications_enabled: bool = False, notification_schedule: Optional[dict] = None, event_type: Optional[str] = "general") -> ReminderDTO:
+    def create(self, *, user_id: UUID, title: str, description: Optional[str], due_date: datetime, application_id: Optional[UUID], email_notifications_enabled: bool = False, notification_schedule: Optional[dict] = None, event_type: Optional[str] = "general", user_timezone: Optional[str] = "UTC") -> ReminderDTO:
         r = models.Reminder(
             user_id=user_id, 
             title=title, 
@@ -47,6 +47,7 @@ class ReminderSQLARepository(IReminderRepo):
             email_notifications_enabled=email_notifications_enabled,
             notification_schedule=notification_schedule,
             event_type=event_type,
+            user_timezone=user_timezone,
         )
         self.db.add(r); self.db.commit(); self.db.refresh(r)
         return _r_to_dto(r)

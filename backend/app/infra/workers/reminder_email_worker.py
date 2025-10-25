@@ -4,6 +4,7 @@ Sends reminder emails based on user-configured schedules with dynamic urgency
 """
 import time
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from ...db.session import SessionLocal
@@ -63,11 +64,105 @@ def should_send_notification(
 ) -> bool:
     """
     Check if a specific notification should be sent
-    notification_time format: {"value": 1, "unit": "hour", "sent": false}
+    Supports multiple notification types:
+    1. Relative: {"value": 1, "unit": "hour", "sent": false}
+    2. Specific: {"type": "specific", "datetime": "2025-10-25T19:00:00Z", "sent": false}
+    3. Recurring: {"type": "recurring", "frequency": "daily", "time": "09:00", "start_days_before": 7, "last_sent": null}
     """
     if notification_time.get('sent', False):
         return False
     
+    # SPAM PREVENTION: Check if we sent ANY notification recently (within last 10 minutes)
+    # This prevents duplicate sends from parallel workers or repeated checks
+    if reminder.last_notification_sent:
+        time_since_last = (now - reminder.last_notification_sent).total_seconds()
+        if time_since_last < 600:  # 10 minutes
+            logger.debug(
+                f"Skipping notification - sent {int(time_since_last)}s ago",
+                extra={"reminder_id": str(reminder.id)}
+            )
+            return False
+    
+    notification_type = notification_time.get('type')
+    
+    # Handle specific datetime notifications
+    if notification_type == 'specific':
+        specific_datetime_str = notification_time.get('datetime')
+        if not specific_datetime_str:
+            return False
+        
+        try:
+            # Parse the specific datetime (should be in ISO format)
+            from dateutil import parser as date_parser
+            specific_datetime = date_parser.isoparse(specific_datetime_str)
+            
+            # Make sure it's timezone-aware
+            if specific_datetime.tzinfo is None:
+                specific_datetime = specific_datetime.replace(tzinfo=timezone.utc)
+            
+            # Send if we're within 5 minutes of the target time
+            time_diff = abs((now - specific_datetime).total_seconds())
+            return time_diff <= 300  # 5 minutes tolerance
+            
+        except Exception as e:
+            logger.error(f"Failed to parse specific datetime {specific_datetime_str}: {e}")
+            return False
+    
+    # Handle recurring daily reminders
+    if notification_type == 'recurring':
+        frequency = notification_time.get('frequency')
+        if frequency != 'daily':
+            return False  # Only daily supported for now
+        
+        target_time_str = notification_time.get('time', '09:00')  # HH:MM format
+        start_days_before = notification_time.get('start_days_before', 7)
+        last_sent_str = notification_time.get('last_sent')
+        
+        # Check if we're within the notification window
+        days_until_due = (reminder.due_date - now).total_seconds() / 86400
+        if days_until_due > start_days_before or days_until_due < 0:
+            return False  # Outside notification window
+        
+        # Parse target time
+        try:
+            hour, minute = map(int, target_time_str.split(':'))
+            
+            # Get user's timezone or default to UTC
+            user_tz_str = reminder.user_timezone or 'UTC'
+            user_tz = ZoneInfo(user_tz_str)
+            
+            # Convert current time to user's timezone
+            now_local = now.astimezone(user_tz)
+            
+            # Create target datetime for today in user's timezone
+            target_today = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            
+            # Check if we're within 5 minutes of target time
+            time_diff = abs((now_local - target_today).total_seconds())
+            within_window = time_diff <= 300  # 5 minutes tolerance
+            
+            if not within_window:
+                return False
+            
+            # Check if we already sent today (prevent multiple sends per day)
+            if last_sent_str:
+                try:
+                    from dateutil import parser as date_parser
+                    last_sent = date_parser.isoparse(last_sent_str).astimezone(user_tz)
+                    # If last sent was today, don't send again
+                    if last_sent.date() == now_local.date():
+                        logger.debug(f"Recurring reminder already sent today")
+                        return False
+                except Exception as e:
+                    logger.warning(f"Failed to parse last_sent: {e}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to process recurring notification: {e}")
+            return False
+    
+    # Handle traditional relative time notifications (default)
     value = notification_time.get('value', 0)
     unit = notification_time.get('unit', 'hour')
     
@@ -133,8 +228,16 @@ def send_reminder_notifications(db: Session):
                     urgency = calculate_urgency(time_until_due)
                     time_until_str = format_time_until(time_until_due)
                     
-                    # Format due date
-                    due_date_str = reminder.due_date.strftime('%B %d, %Y at %I:%M %p')
+                    # Convert due_date to user's timezone for display
+                    user_tz_str = reminder.user_timezone or 'UTC'
+                    try:
+                        user_tz = ZoneInfo(user_tz_str)
+                        due_date_local = reminder.due_date.astimezone(user_tz)
+                        due_date_str = due_date_local.strftime('%B %d, %Y at %I:%M %p')
+                    except Exception as e:
+                        # Fallback to UTC if timezone conversion fails
+                        logger.warning(f"Failed to convert timezone {user_tz_str}: {e}")
+                        due_date_str = reminder.due_date.strftime('%B %d, %Y at %I:%M %p UTC')
                     
                     # Build action URL
                     if reminder.application_id:
@@ -157,7 +260,15 @@ def send_reminder_notifications(db: Session):
                     
                     if success:
                         # Mark this notification as sent
-                        times[idx]['sent'] = True
+                        notification_type = times[idx].get('type')
+                        
+                        if notification_type == 'recurring':
+                            # For recurring, update last_sent instead of marking sent
+                            times[idx]['last_sent'] = now.isoformat()
+                        else:
+                            # For one-time notifications, mark as sent
+                            times[idx]['sent'] = True
+                        
                         reminder.notification_schedule = {'type': schedule_type, 'times': times}
                         reminder.last_notification_sent = now
                         db.commit()
@@ -167,7 +278,8 @@ def send_reminder_notifications(db: Session):
                             extra={
                                 "reminder_id": str(reminder.id),
                                 "user_id": str(user.id),
-                                "urgency": urgency
+                                "urgency": urgency,
+                                "notification_type": notification_type or "relative"
                             }
                         )
                     else:

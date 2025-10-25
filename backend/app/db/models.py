@@ -264,6 +264,7 @@ class Reminder(Base):
     notification_schedule: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     event_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="general")
     last_notification_sent: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_timezone: Mapped[str | None] = mapped_column(String(50), nullable=True, default="UTC")
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)

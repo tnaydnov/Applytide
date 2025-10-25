@@ -165,19 +165,23 @@ def base_template(content: str, preview_text: str = "") -> str:
         <div class="email-container">
             <div class="email-header">
                 <div class="logo-container">
-                    <svg class="logo-svg" viewBox="0 0 700 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="logo-svg" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <linearGradient id="gradHL" x1="20" y1="120" x2="140" y2="20" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#2B6AF6"/>
-                                <stop offset="1" stop-color="#00C2FF"/>
+                            <linearGradient id="wave" x1="48" y1="208" x2="208" y2="48" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#D97706"/>
+                                <stop offset="1" stop-color="#FB7185"/>
                             </linearGradient>
+                            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="2" result="b"/>
+                                <feMerge>
+                                    <feMergeNode in="b"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
                         </defs>
-                        <g transform="translate(0,0)">
-                            <path d="M40 120 L80 20" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M120 120 L80 20" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M42 84 C 62 72, 98 96, 118 84" stroke="url(#gradHL)" stroke-width="12" stroke-linecap="round" fill="none"/>
-                        </g>
-                        <text x="160" y="106" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-weight="700" font-size="56" fill="white">Applytide</text>
+                        <path d="M64 208 L128 48" stroke="#F3F6FF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M192 208 L128 48" stroke="#F3F6FF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M 58 146 C 86 86, 106 206, 128 146 S 170 86, 194 146" stroke="url(#wave)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)"/>
                     </svg>
                 </div>
             </div>
@@ -219,18 +223,18 @@ def welcome_email(name: str, email: str) -> str:
         </h2>
         
         <p style="color: #64748b; font-size: 18px; margin: 0 0 30px 0;">
-            Your journey to landing your dream job starts now
+            Your AI-powered job search companion is ready
         </p>
         
         <div style="text-align: center; margin: 40px 0;">
             <a href="https://applytide.com/dashboard" class="btn">
-                Go to Dashboard →
+                Open Dashboard →
             </a>
         </div>
         
         <div style="background: {BRAND_COLORS['light']}; border-left: 4px solid {BRAND_COLORS['primary']}; padding: 25px; border-radius: 12px; margin: 30px 0;">
             <h3 style="color: {BRAND_COLORS['primary']}; margin: 0 0 20px 0; font-size: 20px; font-weight: 700;">
-                🚀 Getting Started - Your First Steps
+                🚀 Your Job Search Workflow
             </h3>
             
             <div style="margin-bottom: 25px;">
@@ -238,10 +242,11 @@ def welcome_email(name: str, email: str) -> str:
                     <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">1</div>
                     <div>
                         <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
-                            Add Your First Job Application
+                            Find & Save Jobs
                         </h4>
                         <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
-                            Click "Add Application" in your dashboard. Fill in the job title, company, and application status. You can track everything from initial application to final interview!
+                            <strong>Chrome Extension:</strong> Install our extension and save jobs with one click while browsing LinkedIn, Indeed, or any job board. It auto-extracts all job details.<br>
+                            <strong>Manual Entry:</strong> Or add jobs manually from the Job Board page.
                         </p>
                     </div>
                 </div>
@@ -250,10 +255,10 @@ def welcome_email(name: str, email: str) -> str:
                     <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">2</div>
                     <div>
                         <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
-                            Set Up Reminders
+                            Optimize Your Resume with AI
                         </h4>
                         <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
-                            Never miss an interview or deadline! Enable email notifications when creating reminders. Set multiple notification times (1 day before, 1 hour before, etc.) to stay on top of important dates.
+                            Go to <strong>Documents</strong> → Upload your resume → Click "Analyze with Job" to get AI-powered suggestions on how to tailor your resume for each specific role. The AI compares your resume against the job requirements and suggests improvements.
                         </p>
                     </div>
                 </div>
@@ -262,22 +267,34 @@ def welcome_email(name: str, email: str) -> str:
                     <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">3</div>
                     <div>
                         <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
-                            Install the Chrome Extension
+                            Generate Custom Cover Letters
                         </h4>
                         <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
-                            Save jobs with one click while browsing LinkedIn, Indeed, or any job board. The extension automatically extracts job details and saves them to your Applytide dashboard.
+                            Still in Documents, click <strong>"Generate Cover Letter"</strong> to create a tailored cover letter that matches both the job requirements and your resume. Our AI writes it for you in seconds.
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: start; margin-bottom: 20px;">
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">4</div>
+                    <div>
+                        <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
+                            Track Your Applications
+                        </h4>
+                        <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
+                            After applying, go to the <strong>Pipeline</strong> page to track your application status. Move applications through stages: Applied → Phone Screen → Interview → Offer. Visualize your entire job search journey.
                         </p>
                     </div>
                 </div>
                 
                 <div style="display: flex; align-items: start;">
-                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">4</div>
+                    <div style="background: {BRAND_COLORS['primary']}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; margin-right: 15px;">5</div>
                     <div>
                         <h4 style="color: {BRAND_COLORS['dark']}; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">
-                            Track Your Progress
+                            Never Miss Important Dates
                         </h4>
                         <p style="color: #64748b; margin: 0; line-height: 1.6; font-size: 14px;">
-                            Visit the Analytics page to see beautiful charts of your job search progress. Track application trends, response rates, and interview conversion rates to optimize your job search strategy.
+                            Set <strong>Reminders</strong> for interviews, deadlines, or follow-ups. Enable email notifications and choose when to be reminded (1 hour before, 1 day before, etc.). Syncs with Google Calendar automatically.
                         </p>
                     </div>
                 </div>
@@ -287,34 +304,34 @@ def welcome_email(name: str, email: str) -> str:
         <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 25px; border-radius: 12px; margin: 30px 0;">
             <div style="display: flex; align-items: center; margin-bottom: 15px;">
                 <div style="font-size: 32px; margin-right: 15px;">💡</div>
-                <h3 style="color: {BRAND_COLORS['primary']}; margin: 0; font-size: 18px; font-weight: 700;">Pro Tips for Success</h3>
+                <h3 style="color: {BRAND_COLORS['primary']}; margin: 0; font-size: 18px; font-weight: 700;">Pro Tips</h3>
             </div>
             <ul style="color: #475569; margin: 0; padding-left: 20px; line-height: 1.8; font-size: 14px;">
-                <li><strong>Update application statuses regularly</strong> - Keep your pipeline accurate to get better insights</li>
-                <li><strong>Use the documents feature</strong> - Store resumes, cover letters, and portfolios for quick access</li>
-                <li><strong>Set realistic reminders</strong> - Give yourself enough time to prepare for interviews</li>
-                <li><strong>Check your pipeline view</strong> - Visualize your entire job search journey at a glance</li>
+                <li><strong>Install the Chrome Extension first</strong> - It's the fastest way to build your job list</li>
+                <li><strong>Always analyze before applying</strong> - Get AI insights to improve your resume for each job</li>
+                <li><strong>Use the Pipeline view</strong> - Track which stage each application is in and spot patterns</li>
+                <li><strong>Check Analytics later</strong> - Once you have data, see your application trends, response rates, and optimize your strategy</li>
             </ul>
         </div>
         
         <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin: 30px 0; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 10px;">🎯</div>
             <h3 style="color: #92400e; margin: 0 0 10px 0; font-size: 18px; font-weight: 700;">
-                Need Help Getting Started?
+                Quick Start: Install Extension
             </h3>
             <p style="color: #78350f; margin: 0 0 15px 0; line-height: 1.6;">
-                We're here to help! Check out our help center or reach out to us directly.
+                The fastest way to get started is installing our Chrome extension. Save jobs from any website with one click!
             </p>
-            <a href="https://applytide.com/contact" style="display: inline-block; color: #92400e; text-decoration: none; font-weight: 600;">
-                Contact Support →
+            <a href="https://chrome.google.com/webstore" style="display: inline-block; color: #92400e; text-decoration: none; font-weight: 600;">
+                Get Chrome Extension →
             </a>
         </div>
         
         <div class="divider"></div>
         
         <p style="color: #64748b; font-size: 14px; margin: 20px 0 0 0; text-align: center; line-height: 1.6;">
-            Happy job hunting! 🚀<br>
-            <span style="font-size: 12px;">Reply to this email anytime if you have questions</span>
+            Questions? We're here to help! �<br>
+            <span style="font-size: 12px;">Reply to this email anytime</span>
         </p>
     """
     
@@ -459,46 +476,56 @@ def reminder_email(
     action_url: str
 ) -> str:
     """
-    Reminder email with dynamic urgency styling
+    Beautiful, professional reminder email with dynamic urgency styling
     urgency: 'now', 'today', 'tomorrow', 'week', 'future'
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     """
     
-    # Urgency-based styling
+    # Urgency-based styling with enhanced colors
     urgency_config = {
         'now': {
             'emoji': '🚨',
             'title': 'Happening NOW!',
             'color': BRAND_COLORS['danger'],
-            'gradient': 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+            'bg_color': '#fee2e2',
+            'border_color': '#fca5a5',
+            'text_color': '#991b1b',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
             'title': 'Today',
             'color': BRAND_COLORS['warning'],
-            'gradient': 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+            'bg_color': '#fef3c7',
+            'border_color': '#fcd34d',
+            'text_color': '#92400e',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
             'title': 'Tomorrow',
             'color': BRAND_COLORS['primary'],
-            'gradient': 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+            'bg_color': '#dbeafe',
+            'border_color': '#93c5fd',
+            'text_color': '#1e40af',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
             'title': 'This Week',
             'color': BRAND_COLORS['secondary'],
-            'gradient': 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+            'bg_color': '#f3e8ff',
+            'border_color': '#d8b4fe',
+            'text_color': '#6b21a8',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
             'title': 'Upcoming',
             'color': BRAND_COLORS['success'],
-            'gradient': 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+            'bg_color': '#d1fae5',
+            'border_color': '#6ee7b7',
+            'text_color': '#065f46',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -514,64 +541,111 @@ def reminder_email(
     config = urgency_config.get(urgency, urgency_config['future'])
     event_icon = event_icons.get(event_type, '📋')
     
+    # Create Google Calendar add link (encoded)
+    import urllib.parse
+    calendar_title = urllib.parse.quote(title)
+    calendar_description = urllib.parse.quote(description or "Reminder from Applytide")
+    # Note: due_date format should be converted to Google Calendar format (YYYYMMDDTHHmmss)
+    # For now, we'll use a simple link that opens with pre-filled title
+    calendar_link = f"https://calendar.google.com/calendar/render?action=TEMPLATE&text={calendar_title}&details={calendar_description}"
+    
     content = f"""
+        <!-- Urgency Badge -->
         <div style="text-align: center; margin-bottom: 30px;">
-            <div style="display: inline-block; width: 80px; height: 80px; background: {config['gradient']}; border-radius: 50%; line-height: 80px; font-size: 40px; margin-bottom: 20px;">
+            <div style="display: inline-block; width: 90px; height: 90px; background: {config['color']}; border-radius: 50%; line-height: 90px; font-size: 48px; margin-bottom: 15px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);">
                 {config['emoji']}
+            </div>
+            <div style="display: inline-block; background: {config['bg_color']}; color: {config['text_color']}; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 10px;">
+                {config['title']}
             </div>
         </div>
         
-        <h2 style="color: {BRAND_COLORS['dark']}; font-size: 26px; font-weight: 700; margin: 0 0 10px 0; text-align: center;">
-            Reminder: {config['title']}
+        <!-- Main Heading -->
+        <h2 style="color: {BRAND_COLORS['dark']}; font-size: 28px; font-weight: 700; margin: 0 0 12px 0; text-align: center; line-height: 1.3;">
+            {title}
         </h2>
         
-        <p style="color: #64748b; font-size: 16px; margin: 0 0 30px 0; text-align: center;">
+        <!-- Greeting Message -->
+        <p style="color: #64748b; font-size: 17px; margin: 0 0 35px 0; text-align: center; line-height: 1.5;">
             Hi {name}, {config['message']}
         </p>
         
-        <div style="background: white; border: 2px solid {config['color']}; border-radius: 12px; padding: 30px; margin: 30px 0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-            <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                <div style="font-size: 32px; margin-right: 15px;">{event_icon}</div>
-                <h3 style="color: {BRAND_COLORS['dark']}; margin: 0; font-size: 22px; font-weight: 700;">
-                    {title}
-                </h3>
+        <!-- Event Card -->
+        <div style="background: {config['bg_color']}; border-left: 5px solid {config['color']}; border-radius: 12px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+            
+            <!-- Event Type Icon -->
+            <div style="text-align: center; margin-bottom: 25px;">
+                <span style="font-size: 48px; display: inline-block; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));">
+                    {event_icon}
+                </span>
             </div>
             
-            {f'<p style="color: #475569; margin: 0 0 20px 0; line-height: 1.6; font-size: 16px;">{description}</p>' if description else ''}
+            <!-- Description -->
+            {f'<p style="color: {config["text_color"]}; margin: 0 0 25px 0; line-height: 1.7; font-size: 16px; text-align: center; padding: 0 10px;">{description}</p>' if description else ''}
             
-            <div style="background: {config['gradient']}; padding: 15px 20px; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <p style="color: {config['color']}; margin: 0; font-weight: 600; font-size: 14px;">
-                            Due Date
-                        </p>
-                        <p style="color: {BRAND_COLORS['dark']}; margin: 5px 0 0 0; font-size: 18px; font-weight: 700;">
-                            {due_date}
-                        </p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="color: {config['color']}; margin: 0; font-weight: 600; font-size: 14px;">
-                            Time Left
-                        </p>
-                        <p style="color: {BRAND_COLORS['dark']}; margin: 5px 0 0 0; font-size: 18px; font-weight: 700;">
-                            {time_until}
-                        </p>
-                    </div>
-                </div>
+            <!-- Date & Time Info -->
+            <div style="background: white; padding: 25px 20px; border-radius: 10px; margin-top: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 50%; padding: 10px; text-align: center; border-right: 2px solid {config['bg_color']};">
+                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                📅 Due Date
+                            </p>
+                            <p style="color: {BRAND_COLORS['dark']}; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.4;">
+                                {due_date}
+                            </p>
+                        </td>
+                        <td style="width: 50%; padding: 10px; text-align: center;">
+                            <p style="color: #94a3b8; margin: 0 0 8px 0; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                ⏱️ Time Left
+                            </p>
+                            <p style="color: {config['color']}; margin: 0; font-size: 20px; font-weight: 700; line-height: 1.4;">
+                                {time_until}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
         
-        <div style="text-align: center; margin: 40px 0;">
-            <a href="{action_url}" class="btn" style="background: {config['color']};">
-                View Details →
-            </a>
-        </div>
+        <!-- Action Buttons -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 40px 0;">
+            <tr>
+                <td align="center">
+                    <!-- Primary CTA -->
+                    <a href="{action_url}" style="display: inline-block; background: {config['color']}; color: white; padding: 16px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px; margin: 0 8px 15px 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); transition: all 0.3s;">
+                        View Details →
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td align="center">
+                    <!-- Google Calendar Button -->
+                    <a href="{calendar_link}" style="display: inline-block; background: white; color: {config['color']}; padding: 14px 32px; border: 2px solid {config['color']}; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; margin: 0 8px; transition: all 0.3s;">
+                        📅 Add to Google Calendar
+                    </a>
+                </td>
+            </tr>
+        </table>
         
         <div class="divider"></div>
         
-        <p style="color: #64748b; font-size: 13px; margin: 20px 0 0 0; text-align: center;">
-            Manage your reminders in your <a href="https://applytide.com/reminders" style="color: {BRAND_COLORS['primary']}; text-decoration: none;">Reminders dashboard</a>
-        </p>
+        <!-- Footer Links -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
+            <tr>
+                <td align="center">
+                    <p style="color: #94a3b8; font-size: 14px; margin: 0 0 15px 0;">
+                        💡 <strong>Quick Tip:</strong> Set up multiple reminders to never miss important deadlines!
+                    </p>
+                    <p style="color: #64748b; font-size: 14px; margin: 0;">
+                        Manage your reminders in your 
+                        <a href="https://applytide.com/reminders" style="color: {BRAND_COLORS['primary']}; text-decoration: none; font-weight: 600;">
+                            Reminders Dashboard
+                        </a>
+                    </p>
+                </td>
+            </tr>
+        </table>
     """
     
-    return base_template(content, preview_text=f"Reminder: {title} - {config['title']}")
+    return base_template(content, preview_text=f"⏰ {title} - {config['title']}")

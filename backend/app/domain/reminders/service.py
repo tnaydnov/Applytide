@@ -32,6 +32,7 @@ class ReminderService:
         email_notifications_enabled: bool = False,
         notification_schedule: Optional[dict] = None,
         event_type: Optional[str] = "general",
+        user_timezone: Optional[str] = "UTC",
     ) -> ReminderDTO:
         due = due_date or (datetime.now(timezone.utc) + timedelta(hours=1))
 
@@ -50,6 +51,7 @@ class ReminderService:
             email_notifications_enabled=email_notifications_enabled,
             notification_schedule=notification_schedule,
             event_type=event_type,
+            user_timezone=user_timezone,
         )
 
         # respect the flag (bugfix vs old code)

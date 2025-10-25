@@ -39,6 +39,7 @@ class ReminderCreate(BaseModel):
     email_notifications_enabled: bool = False
     notification_schedule: Optional[dict] = None
     event_type: Optional[str] = "general"
+    user_timezone: Optional[str] = "UTC"  # User's timezone for proper time display
 
 class ReminderResponse(BaseModel):
     id: uuid.UUID
@@ -54,6 +55,7 @@ class ReminderResponse(BaseModel):
     notification_schedule: Optional[dict] = None
     event_type: Optional[str] = "general"
     last_notification_sent: Optional[datetime] = None
+    user_timezone: Optional[str] = "UTC"
     class Config: from_attributes = True
 
 class ReminderUpdate(BaseModel):
@@ -143,6 +145,7 @@ async def create_reminder(reminder: ReminderCreate, user: User = Depends(get_cur
             email_notifications_enabled=reminder.email_notifications_enabled,
             notification_schedule=reminder.notification_schedule,
             event_type=reminder.event_type,
+            user_timezone=reminder.user_timezone,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

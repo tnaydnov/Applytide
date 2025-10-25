@@ -146,6 +146,11 @@ export default function useRemindersData(opts = {}) {
           email_notifications_enabled: form?.email_notifications_enabled ?? false,
           notification_schedule: form?.notification_schedule || null,
           event_type: form?.event_type || "general",
+          // User timezone for correct time display in emails
+          user_timezone:
+            (typeof Intl !== "undefined" &&
+              Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+            "UTC",
         };
 
         await createReminderAPI(payload);
