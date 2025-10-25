@@ -12,6 +12,7 @@ from ....infra.security.tokens import create_access_token, create_refresh_token
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
 from ....infra.external.google_oauth import OAuthService as GoogleOAuthService
+from ....infra.notifications.email_service import email_service
 from ....config import settings
 
 from .utils import get_client_info
@@ -108,6 +109,16 @@ async def callback_google(
                 registration_method="google",
                 ip_address=ip_address
             )
+            
+            # Send welcome email for new OAuth users
+            try:
+                email_service.send_welcome_email(
+                    to_email=user.email,
+                    name=user.full_name or user.email.split('@')[0]
+                )
+                logger.info("Welcome email sent to new OAuth user", extra={"user_id": user_id, "email": user.email})
+            except Exception as e:
+                logger.error(f"Failed to send welcome email to OAuth user: {e}", extra={"user_id": user_id})
 
         # Generate tokens
         access_token = create_access_token(user_id)
