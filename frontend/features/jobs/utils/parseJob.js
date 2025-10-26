@@ -25,6 +25,7 @@ export function parseJobForDisplay(job) {
     "the company", "company background", "company profile", "company description",
     "organization overview", "about the team", "the team", "our team",
     "meet the team", "who you'll work with", "who you’ll work with",
+    "team overview", "team description", "team profile", "team background",
     
     // Responsibilities
     "key responsibilities", "responsibilities", "your responsibilities",
@@ -35,7 +36,8 @@ export function parseJobForDisplay(job) {
     "role responsibilities", "your role", "your mission",
     "in this role you will", "you will", "day to day", "a day in the life",
     "job responsibilities", "your chain of impact", "your impact chain", "your scope",
-    "what will you do", "what will you be doing",
+    "what will you do", "what will you be doing", "what are you going to do",
+
     
     // Requirements/Qualifications
     "qualifications", "required qualifications", "minimum qualifications",
@@ -48,12 +50,20 @@ export function parseJobForDisplay(job) {
     "your chain of strengths", "your strengths", "what makes you great",
     "what you should have", "you should have", "what we expect",
     "minimum requirements", "basic qualifications",
+    "core qualifications", "key qualifications",
+
     
     // Nice to Have / Bonus
     "nice to have", "nice-to-have", "nice to haves", "nice-to-haves",
     "preferred", "preferred qualifications", "preferred requirements", "preferred skills",
-    "bonus points", "bonus", "plus", "a plus", "extras", "ideal qualifications",
-    
+    "bonus points", "bonus", "plus", "a plus", "extras", "ideal qualifications", "advantage", "advantages",
+    "desirable skills", "additional skills", "additional qualifications",
+    "would be great", "would be a plus", "would be an advantage",
+    "helpful skills", "helpful qualifications",
+    "extra skills", "extra qualifications",
+    "not required but helpful", "not required but preferred",
+    "not required but a plus", "not required but an advantage",
+
     // Skills/Technical
     "skills", "technical skills", "required skills", "preferred skills",
     "nice to have skills", "tech stack", "technology stack", "our stack", "stack",

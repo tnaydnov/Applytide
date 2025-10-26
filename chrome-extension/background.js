@@ -987,127 +987,9 @@ async function getRenderedCapture(tabId, {
         }
       }
 
-      // Quality check: detect if Readability extracted UI chrome/legal text instead of job content
-      const isLowQualityContent = (text) => {
-        if (!text || text.length < 200) return true;
-        
-        const lowerText = text.toLowerCase();
-        const textLen = text.length;
-        
-        // Detect common legal/compliance patterns that dominate the content
-        const legalPatterns = [
-          'voluntary self-identification',
-          'equal opportunity employer',
-          'equal employment opportunity',
-          'affirmative action',
-          'disability accommodation',
-          'reasonable accommodation',
-          'protected veteran',
-          'federal contractor',
-          'applicant privacy',
-          'privacy policy',
-          'cookie policy',
-          'terms of service',
-          'terms and conditions',
-          'data protection',
-          'gdpr',
-          'california privacy rights',
-          'ccpa'
-        ];
-        
-        // Count how much of the text is legal boilerplate
-        let legalCharCount = 0;
-        for (const pattern of legalPatterns) {
-          const regex = new RegExp(pattern, 'gi');
-          const matches = text.match(regex);
-          if (matches) {
-            // Estimate: each match represents ~300 chars of legal text around it
-            legalCharCount += matches.length * 300;
-          }
-        }
-        
-        // If more than 40% is legal text, it's low quality
-        if (legalCharCount > textLen * 0.4) {
-          console.log('[INJECTED] ⚠️  Quality check: detected dominant legal/compliance text');
-          return true;
-        }
-        
-        // Check for job-specific keywords (good signal)
-        const jobKeywords = [
-          'responsibilities', 'qualifications', 'requirements', 'experience',
-          'skills', 'role', 'position', 'candidate', 'team', 'work with',
-          'develop', 'manage', 'lead', 'collaborate', 'design', 'implement',
-          'bachelor', 'master', 'degree', 'years of experience', 'salary', 'benefits'
-        ];
-        
-        let jobKeywordCount = 0;
-        for (const keyword of jobKeywords) {
-          if (lowerText.includes(keyword)) {
-            jobKeywordCount++;
-          }
-        }
-        
-        // If we have very few job keywords (< 3), likely wrong content
-        if (jobKeywordCount < 3 && textLen > 500) {
-          console.log('[INJECTED] ⚠️  Quality check: missing job-specific keywords');
-          return true;
-        }
-        
-        // Check for excessive navigation/UI patterns
-        const uiPatterns = [
-          /back to (jobs|search|results)/gi,
-          /apply now/gi,
-          /save (job|this)/gi,
-          /share (job|this)/gi,
-          /sign in/gi,
-          /log in/gi,
-          /create account/gi,
-          /upload resume/gi,
-          /search jobs/gi
-        ];
-        
-        let uiMatchCount = 0;
-        for (const pattern of uiPatterns) {
-          const matches = text.match(pattern);
-          if (matches) {
-            uiMatchCount += matches.length;
-          }
-        }
-        
-        // If excessive UI chrome (>8 matches), likely wrong content
-        if (uiMatchCount > 8) {
-          console.log('[INJECTED] ⚠️  Quality check: excessive UI chrome detected');
-          return true;
-        }
-        
-        // If text is very repetitive (same phrases over and over), likely UI/navigation
-        const words = text.split(/\s+/);
-        if (words.length > 100) {
-          const uniqueWords = new Set(words.map(w => w.toLowerCase()));
-          const uniqueRatio = uniqueWords.size / words.length;
-          
-          // If less than 40% unique words, very repetitive (likely UI chrome)
-          if (uniqueRatio < 0.4) {
-            console.log('[INJECTED] ⚠️  Quality check: high repetition detected (UI chrome)');
-            return true;
-          }
-        }
-        
-        return false;
-      };
-
-      // Check if Readability output is low quality
-      const readabilityIsLowQuality = readable?.textContent && isLowQualityContent(readable.textContent);
-      
-      if (readabilityIsLowQuality) {
-        console.log('[INJECTED] Readability extracted low-quality content, forcing fallback extraction...');
-      }
-
-      // Fallback: If Readability failed, returned minimal content, OR extracted low-quality content
-      if (!readable || !readable.textContent || readable.textContent.length < 1000 || readabilityIsLowQuality) {
-        if (!readabilityIsLowQuality) {
-          console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
-        }
+      // Fallback: If Readability failed or returned minimal content, try direct extraction
+      if (!readable || !readable.textContent || readable.textContent.length < 1000) {
+        console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
 
         // Try to find main content containers
         const vendorSelectors = (matchVendor(location.href)?.extraSelectors || []);
@@ -1161,11 +1043,7 @@ async function getRenderedCapture(tabId, {
       const textLen = (document.body?.innerText || '').length + shadowContent.length;
       const xhrLogs = (window.__applytideLogs || []);
 
-      // Final quality check on the readable content we're returning
-      const contentQualityLow = readable?.textContent && isLowQualityContent(readable.textContent);
-
       console.log('[INJECTED] Accessibility issues detected:', accessibilityIssues);
-      console.log('[INJECTED] Content quality check:', contentQualityLow ? 'LOW' : 'OK');
       console.log('[INJECTED] Capture complete, returning data');
       return {
         html,
@@ -1175,8 +1053,7 @@ async function getRenderedCapture(tabId, {
         textLen,
         xhrLogs,
         accessibilityIssues,
-        shadowContent,
-        contentQualityLow
+        shadowContent
       };
     })();
   } // end INJECTED_CAPTURE
@@ -1219,7 +1096,7 @@ async function getRenderedCapture(tabId, {
     );
     const textEnough = (result?.textLen || 0) >= 1400; // a tad safer for SPAs
     const hasReadable = !!result?.readable?.textContent && result.readable.textContent.length > 800;
-    const contentQualityOk = !result?.contentQualityLow; // Reject if quality is low
+    const contentQualityOk = !result?.contentQualityLow; // Check if content quality is acceptable
 
     console.log(`[CAPTURE] Attempt ${attempt} results:`);
     console.log(`  - Text length: ${result?.textLen || 0}`);
@@ -1232,7 +1109,9 @@ async function getRenderedCapture(tabId, {
     console.log(`  - Title: ${result?.readable?.title || 'none'}`);
     console.log(`  - Text preview: ${(result?.readable?.textContent || '').substring(0, 200)}...`);
 
-    // Accept if we have structured data OR (enough content AND good quality)
+    // Accept if we have:
+    // 1. Structured JSON-LD data (most reliable), OR
+    // 2. Enough content AND good quality (not legal boilerplate)
     if (hasJobPosting || ((hasReadable || textEnough) && contentQualityOk)) {
       console.log(`[CAPTURE] ✓ Capture criteria met after ${attempt} attempts`);
       break;
@@ -1361,10 +1240,171 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       switch (message.type) {
         case 'APPLYTIDE_GET_STATUS': {
+          console.warn('[BACKGROUND] GET_STATUS called');
           const ok = await ensureAccessToken();
           // Tell popup which mode to show
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-          const mode = tab?.url ? classifyPage(tab.url) : 'restricted';
+          let mode = tab?.url ? classifyPage(tab.url) : 'restricted';
+          console.warn('[BACKGROUND] Initial mode:', mode, 'for URL:', tab?.url);
+
+          // If mode is 'allowed', check robots.txt and content quality
+          if (tab?.id && mode === 'allowed') {
+            console.warn('[BACKGROUND] Running pre-check on tab', tab.id);
+            
+            // Step 1: Check robots.txt to respect site's scraping policies
+            try {
+              const url = new URL(tab.url);
+              const robotsUrl = `${url.protocol}//${url.host}/robots.txt`;
+              console.warn('[BACKGROUND] Checking robots.txt:', robotsUrl);
+              
+              const robotsResponse = await fetch(robotsUrl, { 
+                method: 'GET',
+                cache: 'default',
+                signal: AbortSignal.timeout(5000) // 5 second timeout
+              });
+              
+              if (robotsResponse.ok) {
+                const robotsText = await robotsResponse.text();
+                console.warn('[BACKGROUND] robots.txt found, length:', robotsText.length);
+                
+                // Parse robots.txt - check for Disallow rules that apply to us
+                const lines = robotsText.split('\n');
+                let inRelevantSection = false;
+                let disallowAll = false;
+                
+                for (const line of lines) {
+                  const trimmed = line.trim().toLowerCase();
+                  
+                  // Check if this section applies to us (* or common bot names)
+                  if (trimmed.startsWith('user-agent:')) {
+                    const agent = trimmed.substring(11).trim();
+                    inRelevantSection = (agent === '*' || agent.includes('bot') || agent.includes('crawler'));
+                  }
+                  
+                  // If we're in relevant section, check for Disallow rules
+                  if (inRelevantSection && trimmed.startsWith('disallow:')) {
+                    const path = trimmed.substring(9).trim();
+                    
+                    // Check if current page is disallowed
+                    if (path === '/' || path === '') {
+                      // Disallow: / means entire site is blocked
+                      disallowAll = true;
+                      console.warn('[BACKGROUND] ⛔ robots.txt disallows all access');
+                      break;
+                    } else if (url.pathname.startsWith(path)) {
+                      // Current path matches a disallow rule
+                      console.warn('[BACKGROUND] ⛔ robots.txt disallows this path:', path);
+                      disallowAll = true;
+                      break;
+                    }
+                  }
+                }
+                
+                if (disallowAll) {
+                  console.warn('[BACKGROUND] Switching to manual mode due to robots.txt restrictions');
+                  mode = 'restricted';
+                }
+              } else {
+                console.warn('[BACKGROUND] No robots.txt found (OK to proceed)');
+              }
+            } catch (robotsError) {
+              // If robots.txt check fails, log but don't block (404 or timeout is OK)
+              console.warn('[BACKGROUND] robots.txt check failed (proceeding):', robotsError.message);
+            }
+            
+            // Step 2: Content quality pre-check (only if robots.txt didn't block)
+            if (mode === 'allowed') {
+              try {
+                // Quick check: try to get readable content and test quality
+                const [{ result: preCheck }] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                world: 'MAIN',
+                func: () => {
+                  // Quick quality check on current page text
+                  // Use textContent (includes hidden text) instead of innerText
+                  const bodyText = document.body?.textContent || document.body?.innerText || '';
+                  const htmlText = document.documentElement?.innerHTML || '';
+                  
+                  if (bodyText.length < 500 && htmlText.length < 1000) {
+                    return { quality: 'unknown', reason: 'insufficient-content' };
+                  }
+                  
+                  // Combine both for checking (some content might be in HTML but not visible)
+                  const text = bodyText + ' ' + htmlText;
+                  const lowerText = text.toLowerCase();
+                  
+                  console.warn('[PRE-CHECK] Text length:', text.length, 'bodyText:', bodyText.length, 'htmlText:', htmlText.length);
+                  
+                  // STRICT CHECK: If page contains substantial legal/compliance forms,
+                  // it's likely the scraper will capture them instead of job content
+                  const legalIndicators = [
+                    'voluntary self-identification',
+                    'affirmative action program',
+                    'vevraa',
+                    'vietnam era veterans',
+                    'federal contractor',
+                  ];
+                  
+                  // Count how many legal indicators are present
+                  let legalIndicatorCount = 0;
+                  const foundIndicators = [];
+                  for (const indicator of legalIndicators) {
+                    if (lowerText.includes(indicator)) {
+                      legalIndicatorCount++;
+                      foundIndicators.push(indicator);
+                    }
+                  }
+                  
+                  console.warn('[PRE-CHECK] Legal indicators found:', legalIndicatorCount, foundIndicators);
+                  
+                  // If 2+ legal indicators found, very likely problematic page
+                  // (normal job pages don't have multiple legal compliance sections)
+                  if (legalIndicatorCount >= 2) {
+                    return { quality: 'low', reason: 'multiple-legal-forms', count: legalIndicatorCount, indicators: foundIndicators };
+                  }
+                  
+                  // Also check for extremely long legal text (>3000 chars of legal content)
+                  const legalSectionPatterns = [
+                    /voluntary self-identification.{0,3000}/gi,
+                    /affirmative action.{0,2000}/gi,
+                    /equal employment opportunity.{0,2000}/gi
+                  ];
+                  
+                  let totalLegalLength = 0;
+                  for (const pattern of legalSectionPatterns) {
+                    const matches = text.match(pattern);
+                    if (matches) {
+                      totalLegalLength += matches.join('').length;
+                    }
+                  }
+                  
+                  console.warn('[PRE-CHECK] Total legal text length:', totalLegalLength);
+                  
+                  // If >3000 chars of legal text, probably will interfere with extraction
+                  if (totalLegalLength > 3000) {
+                    return { quality: 'low', reason: 'extensive-legal-text', length: totalLegalLength };
+                  }
+                  
+                  return { quality: 'ok' };
+                }
+              });
+              
+              // If pre-check shows low quality, switch to manual mode
+              if (preCheck?.quality === 'low') {
+                console.warn('[BACKGROUND] ⚠️  Pre-check detected low quality content');
+                console.warn('[BACKGROUND] Reason:', preCheck.reason);
+                console.warn('[BACKGROUND] Details:', preCheck);
+                console.warn('[BACKGROUND] Switching to manual mode');
+                mode = 'restricted';
+              } else {
+                console.warn('[BACKGROUND] ✓ Pre-check passed, content quality OK');
+              }
+              } catch (e) {
+                console.warn('[BACKGROUND] Content quality pre-check failed:', e);
+                // Continue with original mode if pre-check fails
+              }
+            }
+          }
 
           // Run comprehensive accessibility check on current page
           let accessibilityIssues = null;

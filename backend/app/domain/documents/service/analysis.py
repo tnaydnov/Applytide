@@ -549,7 +549,16 @@ Rules:
             if job.company_id:
                 comp = db.get(models.Company, job.company_id)
                 company_name = comp.name if comp else ""
-            job_meta = f"TITLE: {job_title}\nLOCATION: {job_location}\nCOMPANY: {company_name or ''}"
+            
+            # Include full job description for comprehensive analysis
+            # This ensures LLM sees advantages, culture, benefits, nice-to-haves, etc.
+            job_description = job.description or ""
+            job_meta = f"""TITLE: {job_title}
+LOCATION: {job_location}
+COMPANY: {company_name or ''}
+
+FULL JOB DESCRIPTION:
+{job_description}"""
             
             analysis = self.analyze_against_job(
                 resume_text=resume_text,

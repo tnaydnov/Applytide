@@ -3,6 +3,11 @@
   "name": "Applytide",
   "version": "1.2.0",
   "description": "Save jobs to Applytide.",
+  "icons": {
+    "16": "logomark.png",
+    "48": "logomark.png",
+    "128": "logomark.png"
+  },
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "windows"],
   "host_permissions": [
@@ -10,7 +15,7 @@
     "http://localhost/*"
   ],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Applytide", "default_popup": "popup.html" },
+  "action": { "default_title": "Applytide", "default_popup": "popup.html", "default_icon": "logomark.png" },
 
   "content_scripts": [
     {

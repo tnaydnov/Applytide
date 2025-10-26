@@ -30,6 +30,8 @@ const userInfo = document.getElementById('userInfo');
 const loginBtn = document.getElementById('loginBtn');
 const googleBtn = document.getElementById('googleBtn');
 const saveJobBtn = document.getElementById('saveJobBtn');
+const useManualInsteadBtn = document.getElementById('useManualInsteadBtn');
+const backToAutoBtn = document.getElementById('backToAutoBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
 const pasteBox = document.getElementById('pasteBox');
@@ -42,6 +44,7 @@ const resultContent = document.getElementById('resultContent');
 
 // ---------- State ----------
 let currentUser = null;
+let currentProgress = 0; // Track current progress to prevent backwards movement
 
 // Progress tracking
 const progressSteps = {
@@ -72,15 +75,22 @@ function setStatus(type, message) {
 }
 
 function setProgress(phase, message = null) {
-  const pct = Math.max(0, Math.min(100, progressSteps[phase] ?? 0));
-  progressBar.style.width = pct + '%';
+  const targetPct = Math.max(0, Math.min(100, progressSteps[phase] ?? 0));
+  
+  // Only move forward, never backwards
+  if (targetPct > currentProgress) {
+    currentProgress = targetPct;
+    progressBar.style.width = currentProgress + '%';
+  }
+  
   if (message) processingStatus.textContent = message;
-  if (pct >= 100) {
+  if (currentProgress >= 100) {
     setTimeout(() => { progressBar.style.width = '0%'; }, 1000);
   }
 }
 
 function resetProgressBar() {
+  currentProgress = 0; // Reset tracking variable
   progressBar.classList.remove('error');
   progressBar.style.width = '0%';
 }
@@ -412,6 +422,21 @@ googleBtn.addEventListener('click', loginWithGoogle);
 logoutBtn.addEventListener('click', logout);
 saveJobBtn.addEventListener('click', saveCurrentJob);
 usePastedBtn.addEventListener('click', extractFromText);
+
+// Manual override buttons
+useManualInsteadBtn.addEventListener('click', () => {
+  quickSaveCard.style.display = 'none';
+  manualCard.style.display = 'block';
+  backToAutoBtn.style.display = 'block'; // Show back button
+  pasteBox.value = ''; // Clear textarea
+  pasteBox.focus();
+});
+
+backToAutoBtn.addEventListener('click', () => {
+  manualCard.style.display = 'none';
+  quickSaveCard.style.display = 'block';
+  backToAutoBtn.style.display = 'none';
+});
 
 document.getElementById('usePastedPDFBtn')?.addEventListener('click', () => {
   const text = document.getElementById('pasteBoxPDF').value;
