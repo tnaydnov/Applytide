@@ -449,49 +449,51 @@ class AdminService:
         if hours:
             cutoff = datetime.utcnow() - timedelta(hours=hours)
         
-        stmt = select(models.LLMUsage)
+        # Build base filter
+        filters = []
         if cutoff:
-            stmt = stmt.where(models.LLMUsage.timestamp >= cutoff)
+            filters.append(models.LLMUsage.timestamp >= cutoff)
         
-        # Total calls
-        total_calls = self.db.scalar(select(func.count(models.LLMUsage.id)).select_from(stmt.subquery())) or 0
+        # Total calls - simplified query
+        stmt = select(func.count(models.LLMUsage.id))
+        if filters:
+            stmt = stmt.where(*filters)
+        total_calls = self.db.scalar(stmt) or 0
         
-        # Successful calls
-        successful_calls = self.db.scalar(
-            select(func.count(models.LLMUsage.id))
-            .select_from(stmt.subquery())
-            .where(models.LLMUsage.success == True)
-        ) or 0
+        # Successful calls - simplified query
+        stmt = select(func.count(models.LLMUsage.id)).where(models.LLMUsage.success == True)
+        if filters:
+            stmt = stmt.where(*filters)
+        successful_calls = self.db.scalar(stmt) or 0
         
-        # Total cost
-        total_cost = self.db.scalar(
-            select(func.sum(models.LLMUsage.estimated_cost))
-            .select_from(stmt.subquery())
-        ) or 0.0
+        # Total cost - simplified query
+        stmt = select(func.sum(models.LLMUsage.estimated_cost))
+        if filters:
+            stmt = stmt.where(*filters)
+        total_cost = self.db.scalar(stmt) or 0.0
         
-        # Total tokens
-        total_tokens = self.db.scalar(
-            select(func.sum(models.LLMUsage.total_tokens))
-            .select_from(stmt.subquery())
-        ) or 0
+        # Total tokens - simplified query
+        stmt = select(func.sum(models.LLMUsage.total_tokens))
+        if filters:
+            stmt = stmt.where(*filters)
+        total_tokens = self.db.scalar(stmt) or 0
         
-        # Average response time
-        avg_response_time = self.db.scalar(
-            select(func.avg(models.LLMUsage.response_time_ms))
-            .select_from(stmt.subquery())
-        ) or 0
+        # Average response time - simplified query
+        stmt = select(func.avg(models.LLMUsage.response_time_ms))
+        if filters:
+            stmt = stmt.where(*filters)
+        avg_response_time = self.db.scalar(stmt) or 0
         
-        # Usage by endpoint
-        endpoint_stats = self.db.execute(
-            select(
-                models.LLMUsage.endpoint,
-                func.count(models.LLMUsage.id).label('calls'),
-                func.sum(models.LLMUsage.estimated_cost).label('cost'),
-                func.sum(models.LLMUsage.total_tokens).label('tokens')
-            )
-            .select_from(stmt.subquery())
-            .group_by(models.LLMUsage.endpoint)
-        ).all()
+        # Usage by endpoint - simplified query
+        stmt = select(
+            models.LLMUsage.endpoint,
+            func.count(models.LLMUsage.id).label('calls'),
+            func.sum(models.LLMUsage.estimated_cost).label('cost'),
+            func.sum(models.LLMUsage.total_tokens).label('tokens')
+        ).group_by(models.LLMUsage.endpoint)
+        if filters:
+            stmt = stmt.where(*filters)
+        endpoint_stats = self.db.execute(stmt).all()
         
         by_endpoint = [
             {
@@ -503,16 +505,15 @@ class AdminService:
             for row in endpoint_stats
         ]
         
-        # Usage by model
-        model_stats = self.db.execute(
-            select(
-                models.LLMUsage.model,
-                func.count(models.LLMUsage.id).label('calls'),
-                func.sum(models.LLMUsage.estimated_cost).label('cost')
-            )
-            .select_from(stmt.subquery())
-            .group_by(models.LLMUsage.model)
-        ).all()
+        # Usage by model - simplified query
+        stmt = select(
+            models.LLMUsage.model,
+            func.count(models.LLMUsage.id).label('calls'),
+            func.sum(models.LLMUsage.estimated_cost).label('cost')
+        ).group_by(models.LLMUsage.model)
+        if filters:
+            stmt = stmt.where(*filters)
+        model_stats = self.db.execute(stmt).all()
         
         by_model = [
             {
@@ -523,17 +524,16 @@ class AdminService:
             for row in model_stats
         ]
         
-        # Usage by usage_type (NEW)
-        usage_type_stats = self.db.execute(
-            select(
-                models.LLMUsage.usage_type,
-                func.count(models.LLMUsage.id).label('calls'),
-                func.sum(models.LLMUsage.estimated_cost).label('cost'),
-                func.sum(models.LLMUsage.total_tokens).label('tokens')
-            )
-            .select_from(stmt.subquery())
-            .group_by(models.LLMUsage.usage_type)
-        ).all()
+        # Usage by usage_type - simplified query
+        stmt = select(
+            models.LLMUsage.usage_type,
+            func.count(models.LLMUsage.id).label('calls'),
+            func.sum(models.LLMUsage.estimated_cost).label('cost'),
+            func.sum(models.LLMUsage.total_tokens).label('tokens')
+        ).group_by(models.LLMUsage.usage_type)
+        if filters:
+            stmt = stmt.where(*filters)
+        usage_type_stats = self.db.execute(stmt).all()
         
         by_usage_type = [
             {
