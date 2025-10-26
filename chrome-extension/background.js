@@ -987,9 +987,127 @@ async function getRenderedCapture(tabId, {
         }
       }
 
-      // Fallback: If Readability failed or returned minimal content, try direct extraction
-      if (!readable || !readable.textContent || readable.textContent.length < 1000) {
-        console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
+      // Quality check: detect if Readability extracted UI chrome/legal text instead of job content
+      const isLowQualityContent = (text) => {
+        if (!text || text.length < 200) return true;
+        
+        const lowerText = text.toLowerCase();
+        const textLen = text.length;
+        
+        // Detect common legal/compliance patterns that dominate the content
+        const legalPatterns = [
+          'voluntary self-identification',
+          'equal opportunity employer',
+          'equal employment opportunity',
+          'affirmative action',
+          'disability accommodation',
+          'reasonable accommodation',
+          'protected veteran',
+          'federal contractor',
+          'applicant privacy',
+          'privacy policy',
+          'cookie policy',
+          'terms of service',
+          'terms and conditions',
+          'data protection',
+          'gdpr',
+          'california privacy rights',
+          'ccpa'
+        ];
+        
+        // Count how much of the text is legal boilerplate
+        let legalCharCount = 0;
+        for (const pattern of legalPatterns) {
+          const regex = new RegExp(pattern, 'gi');
+          const matches = text.match(regex);
+          if (matches) {
+            // Estimate: each match represents ~300 chars of legal text around it
+            legalCharCount += matches.length * 300;
+          }
+        }
+        
+        // If more than 40% is legal text, it's low quality
+        if (legalCharCount > textLen * 0.4) {
+          console.log('[INJECTED] ⚠️  Quality check: detected dominant legal/compliance text');
+          return true;
+        }
+        
+        // Check for job-specific keywords (good signal)
+        const jobKeywords = [
+          'responsibilities', 'qualifications', 'requirements', 'experience',
+          'skills', 'role', 'position', 'candidate', 'team', 'work with',
+          'develop', 'manage', 'lead', 'collaborate', 'design', 'implement',
+          'bachelor', 'master', 'degree', 'years of experience', 'salary', 'benefits'
+        ];
+        
+        let jobKeywordCount = 0;
+        for (const keyword of jobKeywords) {
+          if (lowerText.includes(keyword)) {
+            jobKeywordCount++;
+          }
+        }
+        
+        // If we have very few job keywords (< 3), likely wrong content
+        if (jobKeywordCount < 3 && textLen > 500) {
+          console.log('[INJECTED] ⚠️  Quality check: missing job-specific keywords');
+          return true;
+        }
+        
+        // Check for excessive navigation/UI patterns
+        const uiPatterns = [
+          /back to (jobs|search|results)/gi,
+          /apply now/gi,
+          /save (job|this)/gi,
+          /share (job|this)/gi,
+          /sign in/gi,
+          /log in/gi,
+          /create account/gi,
+          /upload resume/gi,
+          /search jobs/gi
+        ];
+        
+        let uiMatchCount = 0;
+        for (const pattern of uiPatterns) {
+          const matches = text.match(pattern);
+          if (matches) {
+            uiMatchCount += matches.length;
+          }
+        }
+        
+        // If excessive UI chrome (>8 matches), likely wrong content
+        if (uiMatchCount > 8) {
+          console.log('[INJECTED] ⚠️  Quality check: excessive UI chrome detected');
+          return true;
+        }
+        
+        // If text is very repetitive (same phrases over and over), likely UI/navigation
+        const words = text.split(/\s+/);
+        if (words.length > 100) {
+          const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+          const uniqueRatio = uniqueWords.size / words.length;
+          
+          // If less than 40% unique words, very repetitive (likely UI chrome)
+          if (uniqueRatio < 0.4) {
+            console.log('[INJECTED] ⚠️  Quality check: high repetition detected (UI chrome)');
+            return true;
+          }
+        }
+        
+        return false;
+      };
+
+      // Check if Readability output is low quality
+      const readabilityIsLowQuality = readable?.textContent && isLowQualityContent(readable.textContent);
+      
+      if (readabilityIsLowQuality) {
+        console.log('[INJECTED] Readability extracted low-quality content, forcing fallback extraction...');
+      }
+
+      // Fallback: If Readability failed, returned minimal content, OR extracted low-quality content
+      if (!readable || !readable.textContent || readable.textContent.length < 1000 || readabilityIsLowQuality) {
+        if (!readabilityIsLowQuality) {
+          console.log('[INJECTED] Readability insufficient, trying direct content extraction...');
+        }
 
         // Try to find main content containers
         const vendorSelectors = (matchVendor(location.href)?.extraSelectors || []);
@@ -1043,7 +1161,11 @@ async function getRenderedCapture(tabId, {
       const textLen = (document.body?.innerText || '').length + shadowContent.length;
       const xhrLogs = (window.__applytideLogs || []);
 
+      // Final quality check on the readable content we're returning
+      const contentQualityLow = readable?.textContent && isLowQualityContent(readable.textContent);
+
       console.log('[INJECTED] Accessibility issues detected:', accessibilityIssues);
+      console.log('[INJECTED] Content quality check:', contentQualityLow ? 'LOW' : 'OK');
       console.log('[INJECTED] Capture complete, returning data');
       return {
         html,
@@ -1053,7 +1175,8 @@ async function getRenderedCapture(tabId, {
         textLen,
         xhrLogs,
         accessibilityIssues,
-        shadowContent
+        shadowContent,
+        contentQualityLow
       };
     })();
   } // end INJECTED_CAPTURE
@@ -1096,6 +1219,7 @@ async function getRenderedCapture(tabId, {
     );
     const textEnough = (result?.textLen || 0) >= 1400; // a tad safer for SPAs
     const hasReadable = !!result?.readable?.textContent && result.readable.textContent.length > 800;
+    const contentQualityOk = !result?.contentQualityLow; // Reject if quality is low
 
     console.log(`[CAPTURE] Attempt ${attempt} results:`);
     console.log(`  - Text length: ${result?.textLen || 0}`);
@@ -1104,10 +1228,12 @@ async function getRenderedCapture(tabId, {
     console.log(`  - Has JobPosting: ${hasJobPosting}`);
     console.log(`  - Text enough (≥1400): ${textEnough}`);
     console.log(`  - Readable enough (≥800): ${hasReadable}`);
+    console.log(`  - Content quality: ${contentQualityOk ? 'OK' : 'LOW'}`);
     console.log(`  - Title: ${result?.readable?.title || 'none'}`);
     console.log(`  - Text preview: ${(result?.readable?.textContent || '').substring(0, 200)}...`);
 
-    if (hasJobPosting || hasReadable || textEnough) {
+    // Accept if we have structured data OR (enough content AND good quality)
+    if (hasJobPosting || ((hasReadable || textEnough) && contentQualityOk)) {
       console.log(`[CAPTURE] ✓ Capture criteria met after ${attempt} attempts`);
       break;
     }
