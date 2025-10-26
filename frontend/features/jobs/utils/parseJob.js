@@ -24,12 +24,13 @@ export function parseJobForDisplay(job) {
     "who we are", "our company", "our story", "our mission", "our vision",
     "the company", "company background", "company profile", "company description",
     "organization overview", "about the team", "the team", "our team",
-    "meet the team", "who you'll work with",
+    "meet the team", "who you'll work with", "who you’ll work with",
     
     // Responsibilities
     "key responsibilities", "responsibilities", "your responsibilities",
     "main responsibilities", "core responsibilities", "day-to-day responsibilities",
     "what you'll do", "what you will do", "what you'll be doing",
+    "What You’ll Do", "what you’ll be doing", // fancy apostrophe variations
     "your day-to-day", "daily responsibilities", "duties", "key duties",
     "role responsibilities", "your role", "your mission",
     "in this role you will", "you will", "day to day", "a day in the life",
@@ -37,10 +38,10 @@ export function parseJobForDisplay(job) {
     // Requirements/Qualifications
     "qualifications", "required qualifications", "minimum qualifications",
     "preferred qualifications", "requirements", "required skills",
-    "what we're looking for", "what we are looking for",
+    "what we're looking for", "what we’re looking for", "what we are looking for",
     "who you are", "ideal candidate", "about you",
     "you have", "you bring", "what you bring", "what you bring to the table",
-    "what you'll need", "what you will need", "what we need",
+    "what you'll need", "what you’ll need", "what you will need", "what we need",
     "must have", "experience", "required experience",
     
     // Nice to Have / Bonus
@@ -55,7 +56,7 @@ export function parseJobForDisplay(job) {
     
     // Work Environment
     "work environment", "working environment", "our environment",
-    "work location", "location", "where you'll work", "workplace",
+    "work location", "location", "where you'll work", "where you’ll work", "workplace",
     "remote work", "hybrid work", "work arrangement", "flexible work",
     "flexibility", "work flexibility",
     
@@ -69,7 +70,7 @@ export function parseJobForDisplay(job) {
     "why join us", "why join us?", "why work here", "why work here?",
     "why work with us", "why work with us?", "why us", "why us?",
     "why join", "why join?", "join us", "what makes us different",
-    "what sets us apart", "why you'll love it here", "why you should join",
+    "what sets us apart", "why you'll love it here", "why you’ll love it here", "why you should join",
     
     // Mission/Vision/Impact
     "mission", "our mission", "vision", "our vision",

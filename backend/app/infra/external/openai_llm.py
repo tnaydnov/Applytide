@@ -24,6 +24,31 @@ OUTPUT CONTRACT (JSON ONLY):
   "skills": string[]           # extracted skills/keywords
 }
 
+INTELLIGENT FIELD INFERENCE:
+
+company_name:
+- Look for the company name in MULTIPLE places (in order of priority):
+  1. Explicit headers: "Company:", "About [Company Name]", "Join [Company Name]", etc.
+  2. The SOURCE URL - extract company name from domain (e.g., "microsoft.com" → "Microsoft", "greenhouse.io/acme" → "Acme")
+  3. Text patterns: "We at [Company]", "[Company] is hiring", "About us at [Company]"
+  4. Job board URLs: Extract from paths like "lever.co/company-name", "jobs.company.com", "company.breezy.hr"
+  5. Career site branding: Look for company name in headers, footers, or "About Us" sections
+- Be intelligent about variations: "Google Inc." and "Google" are the same company
+- If found in URL but not in text, still use the URL-derived name (many job posts don't explicitly state the company name)
+- If genuinely not found anywhere, return empty string (don't guess or make up names)
+
+location:
+- Look for location information in MULTIPLE places (in order of priority):
+  1. Explicit fields: "Location:", "Office Location:", "Based in:", "Work Location:", etc.
+  2. Geographic mentions in text: "Our [City] office", "Join our team in [City]", "Located in [City, State]"
+  3. Remote/hybrid indicators: "Remote - US", "Hybrid - New York", "Remote (EU timezone)", "Anywhere in Canada"
+  4. Address patterns: City, State/Country formats (e.g., "San Francisco, CA", "London, UK")
+  5. Implicit locations: "Must be authorized to work in [Country]" suggests that country
+- Standardize format when possible: "City, State" or "City, Country" or "Remote - Region"
+- For fully remote positions, include any geographic restrictions: "Remote - US Only", "Remote - EU", "Remote - Worldwide"
+- If multiple locations listed, include the primary location or all if it's "Multiple Locations: NYC, SF, Austin"
+- If genuinely not found anywhere, return empty string (don't guess or assume location)
+
 CONTENT FILTERING:
 1. KEEP only text related to the job posting itself
 2. REMOVE website navigation, UI elements, irrelevant footers/headers
