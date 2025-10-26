@@ -40,6 +40,9 @@ description:
 - IMPORTANT: If a requirements section contains BOTH mandatory and nice-to-have items (e.g., "Ability to support the following: Item A - advantage, Item B - advantage"), keep the ENTIRE section including its header in the description since not all items are being extracted
 - Keep EXACT original wording - do not rewrite or rephrase
 - Add TWO line breaks (\\n\\n) before section headers
+- CRITICAL FORMATTING: When listing bullet points or responsibilities, add ONE line break (\\n) after EACH bullet point to ensure readability
+  * Example: "Design systems\\nBuild features\\nCollaborate with teams" (each bullet on its own line)
+  * Do NOT run bullets together like "Design systems.Build features.Collaborate with teams"
 - Preserve bullet points and list formatting
 
 requirements[]:
