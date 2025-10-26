@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Button, Input } from "../../../components/ui";
+import LegalAgreements from "../../../components/auth/LegalAgreements";
 
 export default function AuthForm({
   mode,
@@ -12,7 +14,17 @@ export default function AuthForm({
   setFullName,
   setRemember,
   submit,
+  // Legal agreements for registration
+  legalAgreements,
+  setLegalAgreements,
+  allAgreed,
+  setAllAgreed,
 }) {
+  const handleAgreementsChange = (allChecked, agreements) => {
+    setAllAgreed(allChecked);
+    setLegalAgreements(agreements);
+  };
+
   return (
     <div className="glass-card glass-cyan">
       {/* Match original dark input theme */}
@@ -131,7 +143,21 @@ export default function AuthForm({
           </div>
         )}
 
-        <Button type="submit" className="w-full" size="lg" loading={loading} disabled={!email || !password}>
+        {/* Legal Agreements for Registration */}
+        {mode === "register" && (
+          <LegalAgreements
+            onAgreementsChange={handleAgreementsChange}
+            disabled={loading}
+          />
+        )}
+
+        <Button 
+          type="submit" 
+          className="w-full" 
+          size="lg" 
+          loading={loading} 
+          disabled={!email || !password || (mode === "register" && !allAgreed)}
+        >
           {loading ? (mode === "login" ? "Signing in..." : "Creating account...") : (mode === "login" ? "Sign In" : "Create Account")}
         </Button>
       </form>

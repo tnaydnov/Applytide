@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+from datetime import datetime
 
 class RegisterIn(BaseModel):
     email: EmailStr
@@ -10,6 +11,36 @@ class RegisterIn(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     timezone: Optional[str] = Field(None, max_length=50)
     language: Optional[str] = Field("en", max_length=10)
+    
+    # Legal Agreements (Required)
+    terms_accepted: bool = Field(..., description="User must accept Terms of Service")
+    privacy_accepted: bool = Field(..., description="User must accept Privacy Policy")
+    age_verified: bool = Field(..., description="User must confirm they are 13+ years old")
+    data_processing_consent: bool = Field(..., description="User must consent to data processing (GDPR/CCPA)")
+
+class GoogleOAuthRegisterIn(BaseModel):
+    """Schema for Google OAuth registration with legal agreements"""
+    google_id: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    
+    # Legal Agreements (Required even for OAuth)
+    terms_accepted: bool = Field(..., description="User must accept Terms of Service")
+    privacy_accepted: bool = Field(..., description="User must accept Privacy Policy")
+    age_verified: bool = Field(..., description="User must confirm they are 13+ years old")
+    data_processing_consent: bool = Field(..., description="User must consent to data processing (GDPR/CCPA)")
+
+class AccountDeletionRequestIn(BaseModel):
+    """Request to delete user account (7-day recovery period)"""
+    password: Optional[str] = Field(None, description="Required for non-OAuth users")
+    confirmation: str = Field(..., description="Must type 'DELETE' to confirm")
+
+class AccountRecoveryIn(BaseModel):
+    """Recover a deleted account within 7-day grace period"""
+    recovery_token: str
 
 class LoginRequest(BaseModel):
     email: EmailStr

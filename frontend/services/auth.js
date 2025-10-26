@@ -31,13 +31,37 @@ export async function loginWithEmail(email, password, remember = false) {
 }
 
 /** Register user */
-export async function registerUser({ email, password, full_name }) {
+export async function registerUser({ 
+  email, 
+  password, 
+  full_name,
+  terms_accepted,
+  privacy_accepted,
+  age_verified,
+  data_processing_consent
+}) {
   if (libApi?.register) {
-    return libApi.register({ email, password, full_name });
+    return libApi.register({ 
+      email, 
+      password, 
+      full_name,
+      terms_accepted,
+      privacy_accepted,
+      age_verified,
+      data_processing_consent
+    });
   }
   return jsonFetch("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password, full_name }),
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      full_name,
+      terms_accepted,
+      privacy_accepted,
+      age_verified,
+      data_processing_consent
+    }),
   });
 }
 

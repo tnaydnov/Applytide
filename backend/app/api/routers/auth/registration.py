@@ -45,6 +45,22 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
         }
     )
     
+    # Validate legal agreements (all must be True)
+    if not all([
+        payload.terms_accepted,
+        payload.privacy_accepted,
+        payload.age_verified,
+        payload.data_processing_consent
+    ]):
+        logger.warning(
+            "Registration rejected: legal agreements not accepted",
+            extra={"email": payload.email, "ip_address": ip_address}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must accept all legal agreements to register"
+        )
+    
     # Rate limiting
     is_allowed, retry_after = login_limiter.check_rate_limit(ip_address)
     if not is_allowed:
@@ -88,6 +104,7 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
 
     # Create new user
     try:
+        now = datetime.now(timezone.utc)
         user = models.User(
             id=uuid.uuid4(),
             email=payload.email,
@@ -100,7 +117,12 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
             password_hash=hash_password(payload.password),
             role="user",
             calendar_token=secrets.token_urlsafe(32),
-            created_at=datetime.now(timezone.utc),
+            # Legal agreement acceptance tracking
+            terms_accepted_at=now,
+            privacy_accepted_at=now,
+            terms_version="1.0",  # Update this when terms change
+            acceptance_ip=ip_address,
+            created_at=now,
         )
         db.add(user)
         db.commit()

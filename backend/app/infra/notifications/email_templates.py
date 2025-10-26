@@ -622,3 +622,241 @@ def reminder_email(
     """
     
     return base_template(content, preview_text=f"⏰ {title} - {config['title']}")
+
+
+def deletion_confirmation_email(name: str, deletion_date: str, recovery_token: str, recovery_url: str) -> str:
+    """Account deletion confirmation with 7-day recovery period"""
+    content = f"""
+        <!-- Warning Icon -->
+        <div style="text-align: center; margin-bottom: 35px;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); padding: 25px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);">
+                <span style="font-size: 56px; line-height: 1;">⚠️</span>
+            </div>
+            <div style="display: block; margin-top: 15px;">
+                <span style="display: inline-block; background: {BRAND_COLORS['danger']}; color: white; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+                    ACCOUNT DELETION SCHEDULED
+                </span>
+            </div>
+        </div>
+        
+        <!-- Main Title -->
+        <h2 style="color: {BRAND_COLORS['danger']}; font-size: 32px; font-weight: 700; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
+            Your Account Will Be Deleted
+        </h2>
+        
+        <!-- Greeting -->
+        <p style="color: #64748b; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
+            Hi {name}, we've received your request to delete your Applytide account.
+        </p>
+        
+        <!-- Deletion Date Card -->
+        <div style="background: #fef2f2; border: 2px solid {BRAND_COLORS['danger']}; border-radius: 16px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);">
+            <div style="text-align: center;">
+                <p style="color: #64748b; margin: 0 0 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Deletion Date
+                </p>
+                <p style="color: {BRAND_COLORS['danger']}; margin: 0; font-size: 28px; font-weight: 800; line-height: 1.4;">
+                    {deletion_date}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Recovery Section -->
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 2px solid {BRAND_COLORS['neon_blue']}; border-radius: 16px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <span style="font-size: 48px; line-height: 1;">🔄</span>
+            </div>
+            
+            <h3 style="color: {BRAND_COLORS['neon_blue']}; margin: 0 0 15px 0; font-size: 24px; font-weight: 700; text-align: center;">
+                Changed Your Mind?
+            </h3>
+            
+            <p style="color: #1e40af; margin: 0 0 30px 0; line-height: 1.8; font-size: 16px; text-align: center; font-weight: 500;">
+                You have <strong style="font-size: 20px; color: {BRAND_COLORS['neon_blue']};">7 days</strong> to recover your account.<br>
+                Click the button below or simply log in to cancel the deletion.
+            </p>
+            
+            <!-- Recovery Button -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td align="center">
+                        <a href="{recovery_url}" style="display: inline-block; background: {BRAND_COLORS['neon_blue']}; color: white !important; padding: 18px 45px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 17px; box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4); transition: all 0.3s;">
+                            🔄 Recover My Account
+                        </a>
+                    </td>
+                </tr>
+            </table>
+            
+            <!-- Recovery Link -->
+            <p style="color: #1e40af; font-size: 13px; margin: 20px 0 0 0; text-align: center; line-height: 1.6;">
+                Or copy this link:<br>
+                <a href="{recovery_url}" style="color: {BRAND_COLORS['neon_blue']}; text-decoration: none; word-break: break-all; font-family: monospace; font-size: 12px;">
+                    {recovery_url}
+                </a>
+            </p>
+        </div>
+        
+        <!-- What Will Be Deleted -->
+        <div style="background: {BRAND_COLORS['light']}; border-left: 4px solid #94a3b8; padding: 30px; border-radius: 12px; margin: 35px 0;">
+            <h3 style="color: {BRAND_COLORS['dark']}; margin: 0 0 20px 0; font-size: 20px; font-weight: 700;">
+                📋 What Will Be Deleted
+            </h3>
+            <ul style="color: #475569; margin: 0; padding-left: 20px; line-height: 2; font-size: 15px;">
+                <li><strong>All resumes and documents</strong> - Your uploaded files and generated content</li>
+                <li><strong>Job applications and analytics</strong> - All saved jobs and tracking data</li>
+                <li><strong>Profile and preferences</strong> - Your personal information and settings</li>
+                <li><strong>Reminders and calendar events</strong> - All scheduled notifications</li>
+            </ul>
+            
+            <div style="background: white; border-left: 4px solid {BRAND_COLORS['danger']}; padding: 20px; border-radius: 8px; margin-top: 25px;">
+                <p style="color: {BRAND_COLORS['danger']}; margin: 0; font-weight: 700; font-size: 16px;">
+                    ⚠️ After 7 days, all data will be permanently deleted and cannot be recovered.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Divider -->
+        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); margin: 40px 0;"></div>
+        
+        <!-- Security Notice -->
+        <div style="background: #fff7ed; border-left: 4px solid {BRAND_COLORS['warning']}; padding: 25px; border-radius: 12px; margin: 30px 0;">
+            <p style="color: #78350f; margin: 0; line-height: 1.8; font-size: 15px;">
+                <strong style="font-size: 16px;">🔒 Security Notice:</strong><br>
+                If you didn't request this deletion, please contact us immediately at 
+                <a href="mailto:support@applytide.com" style="color: {BRAND_COLORS['warning']}; text-decoration: none; font-weight: 600;">support@applytide.com</a>
+            </p>
+        </div>
+        
+        <!-- Footer Message -->
+        <p style="color: #64748b; font-size: 14px; margin: 30px 0 0 0; text-align: center; line-height: 1.6;">
+            Need help? Reply to this email or contact 
+            <a href="mailto:support@applytide.com" style="color: {BRAND_COLORS['primary']}; text-decoration: none; font-weight: 600;">support@applytide.com</a>
+        </p>
+    """
+    
+    return base_template(content, preview_text=f"Your Applytide account will be deleted in 7 days - Recover now")
+
+
+def recovery_success_email(name: str) -> str:
+    """Account recovery success confirmation"""
+    content = f"""
+        <!-- Success Icon -->
+        <div style="text-align: center; margin-bottom: 35px;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 25px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);">
+                <span style="font-size: 56px; line-height: 1;">✓</span>
+            </div>
+            <div style="display: block; margin-top: 15px;">
+                <span style="display: inline-block; background: {BRAND_COLORS['success']}; color: white; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                    ACCOUNT RECOVERED
+                </span>
+            </div>
+        </div>
+        
+        <!-- Main Title -->
+        <h2 style="color: {BRAND_COLORS['success']}; font-size: 32px; font-weight: 700; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
+            Welcome Back! 🎉
+        </h2>
+        
+        <!-- Greeting -->
+        <p style="color: #64748b; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
+            Hi {name}, your account has been successfully recovered!
+        </p>
+        
+        <!-- Success Card -->
+        <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid {BRAND_COLORS['success']}; border-radius: 16px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);">
+            <div style="text-align: center;">
+                <h3 style="color: {BRAND_COLORS['success']}; margin: 0 0 25px 0; font-size: 24px; font-weight: 700;">
+                    Great News!
+                </h3>
+                
+                <div style="background: white; padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+                                <span style="font-size: 24px; margin-right: 12px;">✅</span>
+                                <span style="color: {BRAND_COLORS['success']}; font-weight: 700; font-size: 16px;">
+                                    Account deletion cancelled
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0;">
+                                <span style="font-size: 24px; margin-right: 12px;">✅</span>
+                                <span style="color: {BRAND_COLORS['success']}; font-weight: 700; font-size: 16px;">
+                                    All your data has been preserved
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0;">
+                                <span style="font-size: 24px; margin-right: 12px;">✅</span>
+                                <span style="color: {BRAND_COLORS['success']}; font-weight: 700; font-size: 16px;">
+                                    You can continue using Applytide
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Button -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 40px 0 35px;">
+            <tr>
+                <td align="center">
+                    <a href="https://applytide.com/dashboard" style="display: inline-block; background: {BRAND_COLORS['gradient']}; color: white !important; padding: 18px 45px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 17px; box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35); transition: all 0.3s;">
+                        Go to Dashboard →
+                    </a>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Divider -->
+        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); margin: 40px 0;"></div>
+        
+        <!-- Security Warning -->
+        <div style="background: #fff7ed; border: 2px solid {BRAND_COLORS['warning']}; border-radius: 12px; padding: 30px; margin: 35px 0;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 40px; line-height: 1;">🔒</span>
+            </div>
+            
+            <h3 style="color: #92400e; margin: 0 0 15px 0; font-size: 20px; font-weight: 700; text-align: center;">
+                Security Notice
+            </h3>
+            
+            <p style="color: #78350f; margin: 0 0 20px 0; line-height: 1.8; font-size: 15px; text-align: center;">
+                If you didn't request this account recovery, please take these steps immediately:
+            </p>
+            
+            <div style="background: white; padding: 25px; border-radius: 8px;">
+                <ol style="color: #78350f; margin: 0; padding-left: 20px; line-height: 2; font-size: 15px; font-weight: 500;">
+                    <li><strong>Change your password</strong> - Update it to a strong, unique password</li>
+                    <li><strong>Review your account activity</strong> - Check for any suspicious changes</li>
+                    <li><strong>Contact support</strong> - Email us at 
+                        <a href="mailto:security@applytide.com" style="color: {BRAND_COLORS['warning']}; text-decoration: none; font-weight: 600;">security@applytide.com</a>
+                    </li>
+                </ol>
+            </div>
+        </div>
+        
+        <!-- Welcome Back Message -->
+        <div style="background: {BRAND_COLORS['light']}; padding: 30px; border-radius: 12px; margin: 35px 0; text-align: center;">
+            <p style="color: {BRAND_COLORS['dark']}; margin: 0; font-size: 18px; font-weight: 600; line-height: 1.8;">
+                We're glad to have you back! 🎊<br>
+                <span style="color: #64748b; font-size: 15px; font-weight: 400;">
+                    Continue tracking your job applications and land your dream job.
+                </span>
+            </p>
+        </div>
+        
+        <!-- Footer Message -->
+        <p style="color: #64748b; font-size: 14px; margin: 30px 0 0 0; text-align: center; line-height: 1.6;">
+            Questions? Reply to this email or contact 
+            <a href="mailto:support@applytide.com" style="color: {BRAND_COLORS['primary']}; text-decoration: none; font-weight: 600;">support@applytide.com</a>
+        </p>
+    """
+    
+    return base_template(content, preview_text=f"Your Applytide account has been recovered - Welcome back!")
+
+
+    return base_template(content, preview_text=f"⏰ {title} - {config['title']}")

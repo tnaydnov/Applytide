@@ -112,7 +112,12 @@ class OAuthService:
         return r.json()
 
     # ----- High-level login flow -----
-    def process_google_login(self, code: str) -> Tuple[models.User, bool]:
+    def process_google_login(
+        self, 
+        code: str,
+        legal_agreements: dict = None,
+        ip_address: str = None
+    ) -> Tuple[models.User, bool]:
         token_data = self.exchange_code_for_token(code)
         access_token = token_data.get("access_token")
         info = self.get_google_user_info(access_token)
@@ -134,13 +139,21 @@ class OAuthService:
                 self.db.commit()
             else:
                 is_new = True
+                now = datetime.now(timezone.utc)
+                
+                # Store legal agreements for new OAuth users
                 user = models.User(
                     id=uuid.uuid4(),
                     email=email,
                     full_name=name,
                     google_id=google_id,
                     is_oauth_user=True,
-                    email_verified_at=datetime.now(timezone.utc),
+                    email_verified_at=now,
+                    # Legal agreement tracking
+                    terms_accepted_at=now if legal_agreements else None,
+                    privacy_accepted_at=now if legal_agreements else None,
+                    terms_version="1.0" if legal_agreements else None,
+                    acceptance_ip=ip_address if legal_agreements else None,
                 )
                 self.db.add(user)
                 self.db.commit()

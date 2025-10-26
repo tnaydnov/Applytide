@@ -83,6 +83,17 @@ class User(Base):
     # Calendar & API Access
     calendar_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     
+    # Legal Agreements (GDPR/CCPA Compliance)
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    privacy_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    terms_version: Mapped[str | None] = mapped_column(String(20), nullable=True)  # e.g., "1.0", "2.0"
+    acceptance_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv6 support
+    
+    # Account Deletion (7-day Recovery Period)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deletion_scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # Set to deleted_at + 7 days
+    deletion_recovery_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)

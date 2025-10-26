@@ -2,13 +2,16 @@
 from __future__ import annotations
 import uuid
 import secrets
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from ....db.session import get_db
-from ....infra.security.tokens import create_access_token, create_refresh_token
+from ....db import models
+from ....infra.security.tokens import create_access_token, create_refresh_token, decode_access_token
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
 from ....infra.external.google_oauth import OAuthService as GoogleOAuthService
@@ -22,6 +25,14 @@ router = APIRouter()
 # Initialize logging
 logger = get_logger(__name__)
 event_logger = BusinessEventLogger()
+
+
+class LegalAgreementsIn(BaseModel):
+    """Legal agreements from OAuth flow"""
+    terms_accepted: bool
+    privacy_accepted: bool
+    age_verified: bool
+    data_processing_consent: bool
 
 
 @router.get("/google/login")
@@ -171,4 +182,85 @@ async def callback_google(
         )
         return RedirectResponse(
             f"{settings.FRONTEND_URL}/login?error=oauth_failure"
+        )
+
+
+@router.post("/google/store-agreements")
+async def store_google_agreements(
+    payload: LegalAgreementsIn,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Store legal agreements for OAuth user after callback."""
+    user_agent, ip_address = get_client_info(request)
+    
+    # Get user from access token cookie
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    try:
+        token_data = decode_access_token(access_token)
+        user_id = token_data.get("sub")
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Validate all agreements are True
+        if not all([
+            payload.terms_accepted,
+            payload.privacy_accepted,
+            payload.age_verified,
+            payload.data_processing_consent
+        ]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="All legal agreements must be accepted"
+            )
+        
+        # Get user and update legal agreements
+        user = db.query(models.User).filter(models.User.id == uuid.UUID(user_id)).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Store legal agreement acceptance
+        now = datetime.now(timezone.utc)
+        user.terms_accepted_at = now
+        user.privacy_accepted_at = now
+        user.terms_version = "1.0"
+        user.acceptance_ip = ip_address
+        
+        db.commit()
+        
+        logger.info(
+            "Legal agreements stored for OAuth user",
+            extra={
+                "user_id": user_id,
+                "email": user.email,
+                "ip_address": ip_address
+            }
+        )
+        
+        return {"success": True, "message": "Legal agreements stored successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to store legal agreements",
+            extra={"error": str(e), "ip_address": ip_address},
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to store legal agreements"
         )

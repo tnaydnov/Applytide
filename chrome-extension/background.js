@@ -1240,22 +1240,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       switch (message.type) {
         case 'APPLYTIDE_GET_STATUS': {
-          console.warn('[BACKGROUND] GET_STATUS called');
           const ok = await ensureAccessToken();
           // Tell popup which mode to show
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           let mode = tab?.url ? classifyPage(tab.url) : 'restricted';
-          console.warn('[BACKGROUND] Initial mode:', mode, 'for URL:', tab?.url);
 
           // If mode is 'allowed', check robots.txt and content quality
           if (tab?.id && mode === 'allowed') {
-            console.warn('[BACKGROUND] Running pre-check on tab', tab.id);
-            
             // Step 1: Check robots.txt to respect site's scraping policies
             try {
               const url = new URL(tab.url);
               const robotsUrl = `${url.protocol}//${url.host}/robots.txt`;
-              console.warn('[BACKGROUND] Checking robots.txt:', robotsUrl);
               
               const robotsResponse = await fetch(robotsUrl, { 
                 method: 'GET',
@@ -1265,7 +1260,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               
               if (robotsResponse.ok) {
                 const robotsText = await robotsResponse.text();
-                console.warn('[BACKGROUND] robots.txt found, length:', robotsText.length);
                 
                 // Parse robots.txt - check for Disallow rules that apply to us
                 const lines = robotsText.split('\n');
@@ -1289,11 +1283,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     if (path === '/' || path === '') {
                       // Disallow: / means entire site is blocked
                       disallowAll = true;
-                      console.warn('[BACKGROUND] ⛔ robots.txt disallows all access');
                       break;
                     } else if (url.pathname.startsWith(path)) {
                       // Current path matches a disallow rule
-                      console.warn('[BACKGROUND] ⛔ robots.txt disallows this path:', path);
                       disallowAll = true;
                       break;
                     }
@@ -1301,17 +1293,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
                 
                 if (disallowAll) {
-                  console.warn('[BACKGROUND] Switching to manual mode due to robots.txt restrictions');
                   mode = 'restricted';
                 }
-              } else {
-                console.warn('[BACKGROUND] No robots.txt found (OK to proceed)');
               }
             } catch (robotsError) {
-              // If robots.txt check fails, log but don't block (404 or timeout is OK)
-              console.warn('[BACKGROUND] robots.txt check failed (proceeding):', robotsError.message);
+              // If robots.txt check fails, don't block (404 or timeout is OK)
             }
-            
             // Step 2: Content quality pre-check (only if robots.txt didn't block)
             if (mode === 'allowed') {
               try {
@@ -1333,8 +1320,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   const text = bodyText + ' ' + htmlText;
                   const lowerText = text.toLowerCase();
                   
-                  console.warn('[PRE-CHECK] Text length:', text.length, 'bodyText:', bodyText.length, 'htmlText:', htmlText.length);
-                  
                   // STRICT CHECK: If page contains substantial legal/compliance forms,
                   // it's likely the scraper will capture them instead of job content
                   const legalIndicators = [
@@ -1354,8 +1339,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       foundIndicators.push(indicator);
                     }
                   }
-                  
-                  console.warn('[PRE-CHECK] Legal indicators found:', legalIndicatorCount, foundIndicators);
                   
                   // If 2+ legal indicators found, very likely problematic page
                   // (normal job pages don't have multiple legal compliance sections)
@@ -1378,8 +1361,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }
                   }
                   
-                  console.warn('[PRE-CHECK] Total legal text length:', totalLegalLength);
-                  
                   // If >3000 chars of legal text, probably will interfere with extraction
                   if (totalLegalLength > 3000) {
                     return { quality: 'low', reason: 'extensive-legal-text', length: totalLegalLength };
@@ -1391,16 +1372,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               
               // If pre-check shows low quality, switch to manual mode
               if (preCheck?.quality === 'low') {
-                console.warn('[BACKGROUND] ⚠️  Pre-check detected low quality content');
-                console.warn('[BACKGROUND] Reason:', preCheck.reason);
-                console.warn('[BACKGROUND] Details:', preCheck);
-                console.warn('[BACKGROUND] Switching to manual mode');
                 mode = 'restricted';
-              } else {
-                console.warn('[BACKGROUND] ✓ Pre-check passed, content quality OK');
               }
               } catch (e) {
-                console.warn('[BACKGROUND] Content quality pre-check failed:', e);
                 // Continue with original mode if pre-check fails
               }
             }

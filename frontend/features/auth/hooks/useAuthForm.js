@@ -11,6 +11,15 @@ export default function useAuthForm() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
+  
+  // Legal agreements for registration
+  const [legalAgreements, setLegalAgreements] = useState({
+    terms: false,
+    privacy: false,
+    age: false,
+    dataProcessing: false,
+  });
+  const [allAgreed, setAllAgreed] = useState(false);
 
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -27,6 +36,13 @@ export default function useAuthForm() {
 
   const submit = async (e) => {
     e?.preventDefault?.();
+    
+    // Validate legal agreements for registration
+    if (mode === "register" && !allAgreed) {
+      toast.error("Please accept all legal agreements to continue");
+      return;
+    }
+    
     setLoading(true);
     try {
       if (mode === "login") {
@@ -40,7 +56,16 @@ export default function useAuthForm() {
           toast.error("Login failed");
         }
       } else {
-        await registerUser({ email, password, full_name: fullName });
+        // Include legal agreements in registration
+        await registerUser({ 
+          email, 
+          password, 
+          full_name: fullName,
+          terms_accepted: legalAgreements.terms,
+          privacy_accepted: legalAgreements.privacy,
+          age_verified: legalAgreements.age,
+          data_processing_consent: legalAgreements.dataProcessing,
+        });
         toast.success("Account created successfully! Welcome to Applytide!");
         window.location.href = "/dashboard";
       }
@@ -59,6 +84,8 @@ export default function useAuthForm() {
     fullName,
     loading,
     remember,
+    legalAgreements,
+    allAgreed,
 
     // setters
     setEmail,
@@ -66,6 +93,8 @@ export default function useAuthForm() {
     setFullName,
     setRemember,
     setMode: toggleMode,
+    setLegalAgreements,
+    setAllAgreed,
 
     // actions
     submit,

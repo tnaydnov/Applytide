@@ -12,10 +12,11 @@ All authentication endpoints are organized by feature:
 - profile.py: User profile and preferences
 - avatar.py: Avatar upload
 - oauth.py: Google OAuth integration
+- deletion.py: Account deletion and recovery
 """
 from fastapi import APIRouter
 
-from . import tokens, registration, core, password, profile, avatar, oauth
+from . import tokens, registration, core, password, profile, avatar, oauth, deletion
 
 # Create main auth router with prefix and tags
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -28,6 +29,7 @@ router.include_router(password.router)
 router.include_router(profile.router)
 router.include_router(avatar.router)
 router.include_router(oauth.router)
+router.include_router(deletion.router)
 
 # Re-export router for backward compatibility
 __all__ = ["router"]

@@ -13,10 +13,14 @@ export default function LoginPage() {
     fullName,
     loading,
     remember,
+    legalAgreements,
+    allAgreed,
     setEmail,
     setPassword,
     setFullName,
     setRemember,
+    setLegalAgreements,
+    setAllAgreed,
     setMode,
     submit,
   } = useAuthForm();
@@ -47,10 +51,14 @@ export default function LoginPage() {
           fullName={fullName}
           loading={loading}
           remember={remember}
+          legalAgreements={legalAgreements}
+          allAgreed={allAgreed}
           setEmail={setEmail}
           setPassword={setPassword}
           setFullName={setFullName}
           setRemember={setRemember}
+          setLegalAgreements={setLegalAgreements}
+          setAllAgreed={setAllAgreed}
           submit={submit}
         />
 

@@ -202,5 +202,24 @@ class EmailService:
         
         return self._send_email(to_email, f"{subject_prefix} Reminder: {title}", html_content)
 
+    def send_deletion_confirmation_email(self, to_email: str, name: str, deletion_date: datetime, recovery_token: str):
+        """Send account deletion confirmation email with recovery link"""
+        from .email_templates import deletion_confirmation_email
+        
+        recovery_url = f"{self.frontend_url}/auth/recover?token={recovery_token}"
+        formatted_date = deletion_date.strftime("%B %d, %Y at %I:%M %p UTC")
+        
+        html_content = deletion_confirmation_email(name, formatted_date, recovery_token, recovery_url)
+        
+        return self._send_email(to_email, "⚠️ Your Applytide Account Will Be Deleted", html_content)
+
+    def send_recovery_success_email(self, to_email: str, name: str):
+        """Send account recovery success confirmation email"""
+        from .email_templates import recovery_success_email
+        
+        html_content = recovery_success_email(name)
+        
+        return self._send_email(to_email, "✅ Your Applytide Account Has Been Recovered", html_content)
+
 email_service = EmailService()
 
