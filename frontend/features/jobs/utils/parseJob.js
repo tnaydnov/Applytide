@@ -34,6 +34,8 @@ export function parseJobForDisplay(job) {
     "your day-to-day", "daily responsibilities", "duties", "key duties",
     "role responsibilities", "your role", "your mission",
     "in this role you will", "you will", "day to day", "a day in the life",
+    "job responsibilities", "your chain of impact", "your impact chain", "your scope",
+    "what will you do", "what will you be doing",
     
     // Requirements/Qualifications
     "qualifications", "required qualifications", "minimum qualifications",
@@ -43,6 +45,9 @@ export function parseJobForDisplay(job) {
     "you have", "you bring", "what you bring", "what you bring to the table",
     "what you'll need", "what you’ll need", "what you will need", "what we need",
     "must have", "experience", "required experience",
+    "your chain of strengths", "your strengths", "what makes you great",
+    "what you should have", "you should have", "what we expect",
+    "minimum requirements", "basic qualifications",
     
     // Nice to Have / Bonus
     "nice to have", "nice-to-have", "nice to haves", "nice-to-haves",
@@ -71,10 +76,14 @@ export function parseJobForDisplay(job) {
     "why work with us", "why work with us?", "why us", "why us?",
     "why join", "why join?", "join us", "what makes us different",
     "what sets us apart", "why you'll love it here", "why you’ll love it here", "why you should join",
+    "why join our team", "what's in it for you", "what you get", "what you'll get",
+    "your journey", "your career growth", "growth opportunities",
     
     // Mission/Vision/Impact
     "mission", "our mission", "vision", "our vision",
     "impact", "our impact", "your impact", "making an impact",
+    "what we believe", "what we stand for", "our purpose", "the challenge",
+    "the problem", "the solution", "what drives us",
     
     // Process/Next Steps
     "interview process", "hiring process", "application process",
@@ -83,6 +92,19 @@ export function parseJobForDisplay(job) {
     // Diversity/Equal Opportunity
     "diversity", "diversity and inclusion", "equal opportunity",
     "eeo statement", "commitment to diversity",
+
+    // Success Metrics/Expectations
+    "success in this role", "what success looks like", "success metrics",
+    "expectations", "how you'll succeed",
+    "measuring success", "key performance indicators", "kpis",
+
+    // Career & Development
+    "career development", "professional development", "learning opportunities",
+    "training", "mentorship", "growth path", "advancement opportunities",
+
+    // Projects & Initiatives
+    "key projects", "current projects", "what you'll work on",
+    "initiatives", "priorities", "focus areas",
   ];
 
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

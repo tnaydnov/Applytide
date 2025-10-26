@@ -157,12 +157,19 @@ class OpenAILLMExtractor(LLMExtractor):
         self.client = OpenAI(api_key=api)
         self.db_session = db_session  # Store DB session for tracking
         
-        # Use GPT-4.1-mini for better instruction following at reasonable cost
-        # Cost: gpt-4.1-mini ~$0.40/1M input, $1.60/1M output (middle ground between mini and full)
-        # Average job extraction: ~$0.002-0.003 - better quality than 4o-mini, cheaper than 4o
+        # Available models with pricing (Standard tier - as of 2025):
+        # gpt-4.1-mini: $0.40/1M input ($0.10 cached), $1.60/1M output - CURRENT DEFAULT
+        # gpt-4.1-nano: $0.10/1M input ($0.025 cached), $0.40/1M output - cheapest quality option
+        # gpt-4o-mini: $0.15/1M input ($0.075 cached), $0.60/1M output - faster, cheaper
+        # gpt-4.1: $2.00/1M input ($0.50 cached), $8.00/1M output - best quality
+        # gpt-5-nano: $0.05/1M input ($0.005 cached), $0.40/1M output - latest, cheapest
+        # gpt-5-mini: $0.25/1M input ($0.025 cached), $2.00/1M output - latest, balanced
+        # gpt-5: $1.25/1M input ($0.125 cached), $10.00/1M output - latest flagship
+        # Average job extraction cost with gpt-4.1-mini: ~$0.002-0.003 per job
         self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4.1-mini")
         self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4.1-mini")
-        # To use cheaper: set JOB_EXTRACT_MODEL=gpt-4o-mini or upgrade: gpt-4o or gpt-4.1
+        # To optimize costs: set JOB_EXTRACT_MODEL=gpt-4.1-nano or gpt-4o-mini
+        # To upgrade quality: set JOB_EXTRACT_MODEL=gpt-4.1 or gpt-5-mini
         logger.info("OpenAI LLM initialized", extra={
             "text_model": self.text_model,
             "image_model": self.image_model,

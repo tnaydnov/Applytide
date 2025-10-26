@@ -42,17 +42,73 @@ from ..logging import get_logger
 
 logger = get_logger(__name__)
 
-# Model pricing per 1M tokens (last updated: Oct 25, 2025)
-# Source: https://openai.com/pricing
+# Model pricing per 1M tokens (last updated: Oct 26, 2025)
+# Source: https://openai.com/api/pricing/ (Standard tier)
 # Updated regularly to reflect current OpenAI pricing
-# Includes: GPT-4o, GPT-4.1, GPT-4 Turbo, GPT-4, GPT-3.5, o-series reasoning models
+# Includes: GPT-5, GPT-4.1, GPT-4o, GPT-4 Turbo, GPT-4, GPT-3.5, o-series reasoning models
 MODEL_PRICING = {
-    # GPT-4o models (newest, most capable)
-    "gpt-4o": {
-        "prompt": 2.50,     # $2.50 per 1M input tokens
+    # GPT-5 series (latest flagship models)
+    "gpt-5": {
+        "prompt": 1.25,      # $1.25 per 1M input tokens
         "completion": 10.00  # $10.00 per 1M output tokens
     },
-    "gpt-4o-2024-11-20": {  # Latest version
+    "gpt-5-mini": {
+        "prompt": 0.25,      # $0.25 per 1M input tokens
+        "completion": 2.00   # $2.00 per 1M output tokens
+    },
+    "gpt-5-nano": {
+        "prompt": 0.05,      # $0.05 per 1M input tokens
+        "completion": 0.40   # $0.40 per 1M output tokens
+    },
+    "gpt-5-pro": {
+        "prompt": 15.00,     # $15.00 per 1M input tokens
+        "completion": 120.00 # $120.00 per 1M output tokens
+    },
+    "gpt-5-chat-latest": {
+        "prompt": 1.25,
+        "completion": 10.00
+    },
+    "gpt-5-codex": {
+        "prompt": 1.25,
+        "completion": 10.00
+    },
+    "gpt-5-search-api": {
+        "prompt": 1.25,
+        "completion": 10.00
+    },
+    
+    # GPT-4.1 models (improved versions)
+    "gpt-4.1": {
+        "prompt": 2.00,      # $2.00 per 1M input tokens
+        "completion": 8.00   # $8.00 per 1M output tokens
+    },
+    "gpt-4.1-mini": {
+        "prompt": 0.40,      # $0.40 per 1M input tokens
+        "completion": 1.60   # $1.60 per 1M output tokens
+    },
+    "gpt-4.1-nano": {
+        "prompt": 0.10,      # $0.10 per 1M input tokens
+        "completion": 0.40   # $0.40 per 1M output tokens
+    },
+    "gpt-4.1-2025-04-14": {  # Fine-tuned version (Standard tier)
+        "prompt": 3.00,      # Fine-tuned: $3.00 per 1M input tokens
+        "completion": 12.00  # Fine-tuned: $12.00 per 1M output tokens
+    },
+    "gpt-4.1-mini-2025-04-14": {  # Fine-tuned version (Standard tier)
+        "prompt": 0.80,      # Fine-tuned: $0.80 per 1M input tokens
+        "completion": 3.20   # Fine-tuned: $3.20 per 1M output tokens
+    },
+    "gpt-4.1-nano-2025-04-14": {  # Fine-tuned version (Standard tier)
+        "prompt": 0.20,      # Fine-tuned: $0.20 per 1M input tokens
+        "completion": 0.80   # Fine-tuned: $0.80 per 1M output tokens
+    },
+    
+    # GPT-4o models (multimodal, most capable)
+    "gpt-4o": {
+        "prompt": 2.50,      # $2.50 per 1M input tokens
+        "completion": 10.00  # $10.00 per 1M output tokens
+    },
+    "gpt-4o-2024-11-20": {
         "prompt": 2.50,
         "completion": 10.00
     },
@@ -64,32 +120,66 @@ MODEL_PRICING = {
         "prompt": 5.00,
         "completion": 15.00
     },
+    "chatgpt-4o-latest": {
+        "prompt": 5.00,
+        "completion": 15.00
+    },
     
     # GPT-4o mini (cost-effective, fast)
     "gpt-4o-mini": {
-        "prompt": 0.150,    # $0.15 per 1M input tokens
-        "completion": 0.600  # $0.60 per 1M output tokens
+        "prompt": 0.15,      # $0.15 per 1M input tokens
+        "completion": 0.60   # $0.60 per 1M output tokens
     },
     "gpt-4o-mini-2024-07-18": {
-        "prompt": 0.150,
-        "completion": 0.600
+        "prompt": 0.15,
+        "completion": 0.60
     },
     
-    # GPT-4.1 models (newer, improved)
-    "gpt-4.1": {
-        "prompt": 5.00,     # $5.00 per 1M input tokens
-        "completion": 15.00  # $15.00 per 1M output tokens
+    # GPT-4o audio/realtime models
+    "gpt-4o-audio-preview": {
+        "prompt": 2.50,
+        "completion": 10.00
     },
-    "gpt-4.1-mini": {
-        "prompt": 0.40,     # $0.40 per 1M input tokens
-        "completion": 1.60   # $1.60 per 1M output tokens
+    "gpt-4o-mini-audio-preview": {
+        "prompt": 0.15,
+        "completion": 0.60
     },
-    "gpt-4.1-nano": {
-        "prompt": 0.10,     # $0.10 per 1M input tokens
-        "completion": 0.40   # $0.40 per 1M output tokens
+    "gpt-4o-realtime-preview": {
+        "prompt": 5.00,
+        "completion": 20.00
+    },
+    "gpt-4o-mini-realtime-preview": {
+        "prompt": 0.60,
+        "completion": 2.40
+    },
+    "gpt-4o-search-preview": {
+        "prompt": 2.50,
+        "completion": 10.00
+    },
+    "gpt-4o-mini-search-preview": {
+        "prompt": 0.15,
+        "completion": 0.60
     },
     
-    # GPT-4 Turbo models
+    # GPT realtime/audio models
+    "gpt-realtime": {
+        "prompt": 4.00,
+        "completion": 16.00
+    },
+    "gpt-realtime-mini": {
+        "prompt": 0.60,
+        "completion": 2.40
+    },
+    "gpt-audio": {
+        "prompt": 2.50,
+        "completion": 10.00
+    },
+    "gpt-audio-mini": {
+        "prompt": 0.60,
+        "completion": 2.40
+    },
+    
+    # GPT-4 Turbo models (legacy)
     "gpt-4-turbo": {
         "prompt": 10.00,
         "completion": 30.00
@@ -110,13 +200,21 @@ MODEL_PRICING = {
         "prompt": 10.00,
         "completion": 30.00
     },
+    "gpt-4-1106-vision-preview": {
+        "prompt": 10.00,
+        "completion": 30.00
+    },
     
-    # GPT-4 (original, most expensive)
+    # GPT-4 (original, legacy)
     "gpt-4": {
         "prompt": 30.00,
         "completion": 60.00
     },
     "gpt-4-0613": {
+        "prompt": 30.00,
+        "completion": 60.00
+    },
+    "gpt-4-0314": {
         "prompt": 30.00,
         "completion": 60.00
     },
@@ -139,38 +237,116 @@ MODEL_PRICING = {
         "completion": 1.50
     },
     "gpt-3.5-turbo-1106": {
-        "prompt": 0.50,
-        "completion": 1.50
+        "prompt": 1.00,
+        "completion": 2.00
+    },
+    "gpt-3.5-turbo-0613": {
+        "prompt": 1.50,
+        "completion": 2.00
+    },
+    "gpt-3.5-0301": {
+        "prompt": 1.50,
+        "completion": 2.00
+    },
+    "gpt-3.5-turbo-instruct": {
+        "prompt": 1.50,
+        "completion": 2.00
+    },
+    "gpt-3.5-turbo-16k-0613": {
+        "prompt": 3.00,
+        "completion": 4.00
     },
     
     # o-series reasoning models
     "o1": {
-        "prompt": 15.00,    # $15.00 per 1M input tokens
+        "prompt": 15.00,     # $15.00 per 1M input tokens
         "completion": 60.00  # $60.00 per 1M output tokens
     },
     "o1-mini": {
-        "prompt": 3.00,     # $3.00 per 1M input tokens
-        "completion": 12.00  # $12.00 per 1M output tokens
+        "prompt": 1.10,      # $1.10 per 1M input tokens
+        "completion": 4.40   # $4.40 per 1M output tokens
     },
     "o1-preview": {
         "prompt": 15.00,
         "completion": 60.00
     },
+    "o1-pro": {
+        "prompt": 150.00,    # $150.00 per 1M input tokens
+        "completion": 600.00 # $600.00 per 1M output tokens
+    },
     "o3": {
-        "prompt": 20.00,    # $20.00 per 1M input tokens (estimated)
-        "completion": 80.00  # $80.00 per 1M output tokens (estimated)
+        "prompt": 2.00,      # $2.00 per 1M input tokens
+        "completion": 8.00   # $8.00 per 1M output tokens
     },
     "o3-mini": {
-        "prompt": 1.10,     # $1.10 per 1M input tokens
+        "prompt": 1.10,      # $1.10 per 1M input tokens
         "completion": 4.40   # $4.40 per 1M output tokens
     },
-    "o4-mini": {
-        "prompt": 1.10,     # $1.10 per 1M input tokens (estimated)
-        "completion": 4.40   # $4.40 per 1M output tokens (estimated)
+    "o3-pro": {
+        "prompt": 20.00,     # $20.00 per 1M input tokens
+        "completion": 80.00  # $80.00 per 1M output tokens
     },
-    "gpt-3.5-turbo-instruct": {
+    "o3-deep-research": {
+        "prompt": 10.00,     # $10.00 per 1M input tokens
+        "completion": 40.00  # $40.00 per 1M output tokens
+    },
+    "o4-mini": {
+        "prompt": 1.10,      # $1.10 per 1M input tokens
+        "completion": 4.40   # $4.40 per 1M output tokens
+    },
+    "o4-mini-2025-04-16": {  # Specific version for fine-tuning
+        "prompt": 1.10,
+        "completion": 4.40
+    },
+    "o4-mini-deep-research": {
+        "prompt": 2.00,      # $2.00 per 1M input tokens
+        "completion": 8.00   # $8.00 per 1M output tokens
+    },
+    
+    # Image generation models
+    "gpt-image-1": {
+        "prompt": 5.00,      # $5.00 per 1M input tokens (text)
+        "completion": 0.00   # No output tokens for image models
+    },
+    "gpt-image-1-mini": {
+        "prompt": 2.00,      # $2.00 per 1M input tokens (text)
+        "completion": 0.00   # No output tokens for image models
+    },
+    
+    # Transcription models
+    "gpt-4o-transcribe": {
+        "prompt": 2.50,
+        "completion": 10.00
+    },
+    "gpt-4o-transcribe-diarize": {
+        "prompt": 2.50,
+        "completion": 10.00
+    },
+    "gpt-4o-mini-transcribe": {
+        "prompt": 1.25,
+        "completion": 5.00
+    },
+    "gpt-4o-mini-tts": {
+        "prompt": 0.60,
+        "completion": 0.00   # TTS charges by output audio, not tokens
+    },
+    
+    # Other models
+    "computer-use-preview": {
+        "prompt": 3.00,
+        "completion": 12.00
+    },
+    "codex-mini-latest": {
         "prompt": 1.50,
+        "completion": 6.00
+    },
+    "davinci-002": {
+        "prompt": 2.00,
         "completion": 2.00
+    },
+    "babbage-002": {
+        "prompt": 0.40,
+        "completion": 0.40
     }
 }
 
