@@ -1,6 +1,6 @@
 """Add legal agreements and account deletion fields to users
 
-Revision ID: 20250128_legal_agreements_deletion
+Revision ID: 20250128_legal_deletion
 Revises: 20251025_reminder_timezone
 Create Date: 2025-01-28 00:00:00.000000
 
@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 
 # revision identifiers, used by Alembic.
-revision = '20250128_legal_agreements_deletion'
+revision = '20250128_legal_deletion'
 down_revision = '20251025_reminder_timezone'
 branch_labels = None
 depends_on = None
@@ -29,20 +29,20 @@ def upgrade():
     op.add_column('users', sa.Column('deletion_scheduled_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('users', sa.Column('deletion_recovery_token', sa.String(length=64), nullable=True))
     
-    # Create index on deletion_recovery_token for fast lookups
+    # Create index for deletion recovery token lookups
     op.create_index('ix_users_deletion_recovery_token', 'users', ['deletion_recovery_token'], unique=False)
 
 
 def downgrade():
-    # Drop index first
+    # Remove index
     op.drop_index('ix_users_deletion_recovery_token', table_name='users')
     
-    # Drop account deletion fields
+    # Remove account deletion fields
     op.drop_column('users', 'deletion_recovery_token')
     op.drop_column('users', 'deletion_scheduled_at')
     op.drop_column('users', 'deleted_at')
     
-    # Drop legal agreement fields
+    # Remove legal agreement fields
     op.drop_column('users', 'acceptance_ip')
     op.drop_column('users', 'terms_version')
     op.drop_column('users', 'privacy_accepted_at')
