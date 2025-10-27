@@ -437,20 +437,13 @@ async def delete_user_account(
         user_name = current_user.full_name
         
         # Import here to avoid circular imports
-        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences
-        from ...domain.documents.service import DocumentService
+        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken, Document
         from ...infra.cache import get_redis
         
-        # 1. Delete all documents (files + DB records)
+        # 1. Delete all documents (DB records only - files handled by cascade)
         try:
-            doc_service = DocumentService()
-            documents = doc_service.list_documents(db=db, user_id=str(user_id))
-            for doc in documents:
-                try:
-                    doc_service.delete_document(db=db, user_id=str(user_id), document_id=str(doc.id))
-                    logger.info(f"Deleted document {doc.id} for user {user_id}")
-                except Exception as e:
-                    logger.error(f"Failed to delete document {doc.id}: {str(e)}", exc_info=True)
+            db.query(Document).filter(Document.user_id == user_id).delete()
+            logger.info(f"Deleted documents for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to delete documents: {str(e)}", exc_info=True)
         
@@ -483,17 +476,22 @@ async def delete_user_account(
         except Exception as e:
             logger.error(f"Failed to delete profile: {str(e)}", exc_info=True)
         
-        # 6. Revoke all refresh tokens (Redis)
+        # 6. Delete OAuth tokens
         try:
-            redis = get_redis()
-            # Revoke all refresh tokens for this user
+            db.query(OAuthToken).filter(OAuthToken.user_id == user_id).delete()
+            logger.info(f"Deleted OAuth tokens for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete OAuth tokens: {str(e)}", exc_info=True)
+        
+        # 7. Revoke all refresh tokens (database)
+        try:
             from ...infra.security.tokens import revoke_all_user_tokens
-            revoke_all_user_tokens(user_id, redis)
+            revoke_all_user_tokens(str(user_id))
             logger.info(f"Revoked all tokens for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to revoke tokens: {str(e)}", exc_info=True)
         
-        # 7. Delete user account (LAST - after all related data)
+        # 8. Delete user account (LAST - after all related data)
         db.delete(current_user)
         db.commit()
         
