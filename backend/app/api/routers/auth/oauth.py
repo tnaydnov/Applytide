@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from ....db.session import get_db
 from ....db import models
-from ....infra.security.tokens import create_access_token, create_refresh_token, decode_access_token
+from ....infra.security.tokens import create_access_token, create_refresh_token, decode_access
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
 from ....infra.external.google_oauth import OAuthService as GoogleOAuthService
@@ -203,7 +203,7 @@ async def store_google_agreements(
         )
     
     try:
-        token_data = decode_access_token(access_token)
+        token_data = decode_access(access_token)
         user_id = token_data.get("sub")
         
         if not user_id:
