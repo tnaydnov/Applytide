@@ -198,9 +198,9 @@ export default function ProfilePage() {
 
       toast.success("Account deleted successfully. Goodbye! 👋");
       
-      // Wait a moment for user to see the message, then logout
+      // Wait a moment for user to see the message, then force full page reload to clear auth state
       setTimeout(() => {
-        router.push("/login");
+        window.location.href = "/";
       }, 2000);
     } catch (error) {
       toast.error(error?.message || "Failed to delete account");

@@ -141,7 +141,12 @@ async def callback_google(
         )
 
         # Create redirect response with cookies
-        resp = RedirectResponse(f"{settings.FRONTEND_URL}/dashboard")
+        # Add is_new flag to redirect URL so frontend knows if legal agreements needed
+        redirect_url = f"{settings.FRONTEND_URL}/dashboard"
+        if is_new:
+            redirect_url = f"{settings.FRONTEND_URL}/auth/google-callback?new_user=true"
+        
+        resp = RedirectResponse(redirect_url)
         resp.set_cookie(
             "access_token", access_token,
             httponly=True,
