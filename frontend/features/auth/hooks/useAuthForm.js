@@ -11,6 +11,7 @@ export default function useAuthForm() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [validationError, setValidationError] = useState("");
   
   // Legal agreements for registration
   const [legalAgreements, setLegalAgreements] = useState({
@@ -37,8 +38,12 @@ export default function useAuthForm() {
   const submit = async (e) => {
     e?.preventDefault?.();
     
+    // Clear previous errors
+    setValidationError("");
+    
     // Validate legal agreements for registration
     if (mode === "register" && !allAgreed) {
+      setValidationError("Please accept all legal agreements to continue");
       toast.error("Please accept all legal agreements to continue");
       return;
     }
@@ -70,7 +75,33 @@ export default function useAuthForm() {
         window.location.href = "/dashboard";
       }
     } catch (err) {
-      toast.error(err?.message || String(err));
+      // Parse validation errors from Pydantic
+      let errorMessage = err?.message || String(err);
+      
+      // Check if it's a Pydantic validation error
+      if (err?.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        
+        // Handle array of validation errors
+        if (Array.isArray(detail)) {
+          // Find password-related errors
+          const passwordErrors = detail.filter(e => 
+            e.loc && e.loc.includes('password') || 
+            e.msg && e.msg.toLowerCase().includes('password')
+          );
+          
+          if (passwordErrors.length > 0) {
+            errorMessage = passwordErrors.map(e => e.msg).join('. ');
+          } else {
+            errorMessage = detail.map(e => e.msg || e.message).join('. ');
+          }
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
+      setValidationError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,6 +117,7 @@ export default function useAuthForm() {
     remember,
     legalAgreements,
     allAgreed,
+    validationError,
 
     // setters
     setEmail,

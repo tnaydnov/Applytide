@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
+import re
 
 class RegisterIn(BaseModel):
     email: EmailStr
@@ -17,6 +18,26 @@ class RegisterIn(BaseModel):
     privacy_accepted: bool = Field(..., description="User must accept Privacy Policy")
     age_verified: bool = Field(..., description="User must confirm they are 13+ years old")
     data_processing_consent: bool = Field(..., description="User must consent to data processing (GDPR/CCPA)")
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        """
+        Validate password strength:
+        - At least 8 characters
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one number
+        """
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one number')
+        return v
 
 class GoogleOAuthRegisterIn(BaseModel):
     """Schema for Google OAuth registration with legal agreements"""
@@ -59,6 +80,20 @@ class PasswordResetRequestIn(BaseModel):
 class PasswordResetIn(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one number')
+        return v
 
 class VerifyEmailIn(BaseModel):
     token: str
@@ -84,6 +119,20 @@ class PreferencesUpdateIn(BaseModel):
 class PasswordChangeIn(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        """Validate password strength"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one number')
+        return v
 
 class MessageResponse(BaseModel):
     message: str

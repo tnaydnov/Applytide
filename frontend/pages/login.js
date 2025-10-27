@@ -15,6 +15,7 @@ export default function LoginPage() {
     remember,
     legalAgreements,
     allAgreed,
+    validationError,
     setEmail,
     setPassword,
     setFullName,
@@ -51,6 +52,7 @@ export default function LoginPage() {
           fullName={fullName}
           loading={loading}
           remember={remember}
+          validationError={validationError}
           legalAgreements={legalAgreements}
           allAgreed={allAgreed}
           setEmail={setEmail}
