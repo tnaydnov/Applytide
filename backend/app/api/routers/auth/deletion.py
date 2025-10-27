@@ -11,7 +11,7 @@ from ....db.session import get_db
 from ....db import models
 from ....api.schemas import auth as schemas
 from ....infra.security.passwords import verify_password
-from ....infra.security.tokens import decode_access_token
+from ....infra.security.tokens import decode_access
 from ....infra.notifications.email_service import email_service
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
@@ -46,7 +46,7 @@ async def request_account_deletion(
         )
     
     try:
-        token_data = decode_access_token(access_token)
+        token_data = decode_access(access_token)
         user_id = token_data.get("sub")
         
         if not user_id:
@@ -262,7 +262,7 @@ async def check_deletion_status(
         )
     
     try:
-        token_data = decode_access_token(access_token)
+        token_data = decode_access(access_token)
         user_id = token_data.get("sub")
         
         if not user_id:
