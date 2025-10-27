@@ -437,17 +437,50 @@ async def delete_user_account(
         user_name = current_user.full_name
         
         # Import here to avoid circular imports
-        from ...db.models import UserProfile, Job, Reminder, ReminderNote, UserPreferences, OAuthToken, Document
-        from ...infra.cache import get_redis
+        from ...db.models import (
+            UserProfile, Job, Reminder, ReminderNote, UserPreferences, 
+            OAuthToken, Resume, Application, Stage, Note, MatchResult
+        )
         
-        # 1. Delete all documents (DB records only - files handled by cascade)
+        # 1. Delete all resumes
         try:
-            db.query(Document).filter(Document.user_id == user_id).delete()
-            logger.info(f"Deleted documents for user {user_id}")
+            db.query(Resume).filter(Resume.user_id == user_id).delete()
+            logger.info(f"Deleted resumes for user {user_id}")
         except Exception as e:
-            logger.error(f"Failed to delete documents: {str(e)}", exc_info=True)
+            logger.error(f"Failed to delete resumes: {str(e)}", exc_info=True)
         
-        # 2. Delete all reminders and notes
+        # 2. Delete all match results
+        try:
+            db.query(MatchResult).filter(MatchResult.user_id == user_id).delete()
+            logger.info(f"Deleted match results for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete match results: {str(e)}", exc_info=True)
+        
+        # 3. Delete all notes
+        try:
+            db.query(Note).filter(Note.user_id == user_id).delete()
+            logger.info(f"Deleted notes for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete notes: {str(e)}", exc_info=True)
+        
+        # 4. Delete all stages (via applications)
+        try:
+            # Get all application IDs for this user
+            app_ids = [app.id for app in db.query(Application.id).filter(Application.user_id == user_id).all()]
+            if app_ids:
+                db.query(Stage).filter(Stage.application_id.in_(app_ids)).delete(synchronize_session=False)
+            logger.info(f"Deleted stages for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete stages: {str(e)}", exc_info=True)
+        
+        # 5. Delete all applications
+        try:
+            db.query(Application).filter(Application.user_id == user_id).delete()
+            logger.info(f"Deleted applications for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete applications: {str(e)}", exc_info=True)
+        
+        # 6. Delete all reminders and notes
         try:
             db.query(ReminderNote).filter(ReminderNote.user_id == user_id).delete()
             db.query(Reminder).filter(Reminder.user_id == user_id).delete()
@@ -455,35 +488,35 @@ async def delete_user_account(
         except Exception as e:
             logger.error(f"Failed to delete reminders: {str(e)}", exc_info=True)
         
-        # 3. Delete all job applications
+        # 7. Delete all job applications
         try:
             db.query(Job).filter(Job.user_id == user_id).delete()
             logger.info(f"Deleted jobs for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to delete jobs: {str(e)}", exc_info=True)
         
-        # 4. Delete user preferences
+        # 8. Delete user preferences
         try:
             db.query(UserPreferences).filter(UserPreferences.user_id == user_id).delete()
             logger.info(f"Deleted preferences for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to delete preferences: {str(e)}", exc_info=True)
         
-        # 5. Delete user profile
+        # 9. Delete user profile
         try:
             db.query(UserProfile).filter(UserProfile.user_id == user_id).delete()
             logger.info(f"Deleted profile for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to delete profile: {str(e)}", exc_info=True)
         
-        # 6. Delete OAuth tokens
+        # 10. Delete OAuth tokens
         try:
             db.query(OAuthToken).filter(OAuthToken.user_id == user_id).delete()
             logger.info(f"Deleted OAuth tokens for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to delete OAuth tokens: {str(e)}", exc_info=True)
         
-        # 7. Revoke all refresh tokens (database)
+        # 11. Revoke all refresh tokens (database)
         try:
             from ...infra.security.tokens import revoke_all_user_tokens
             revoke_all_user_tokens(str(user_id))
@@ -491,7 +524,7 @@ async def delete_user_account(
         except Exception as e:
             logger.error(f"Failed to revoke tokens: {str(e)}", exc_info=True)
         
-        # 8. Delete user account (LAST - after all related data)
+        # 12. Delete user account (LAST - after all related data)
         db.delete(current_user)
         db.commit()
         
