@@ -30,7 +30,7 @@ export default function VerifyEmailPage() {
         setStatus("success");
         setMessage(data.message || "Email verified successfully!");
         setTimeout(() => {
-          router.push("/pipeline");
+          router.push("/dashboard");
         }, 3000);
       } else {
         setStatus("error");
