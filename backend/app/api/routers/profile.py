@@ -439,7 +439,7 @@ async def delete_user_account(
         # Import here to avoid circular imports
         from ...db.models import (
             UserProfile, Job, Reminder, ReminderNote, UserPreferences, 
-            OAuthToken, Resume, Application, Stage, Note, MatchResult
+            OAuthToken, Resume, Application, Stage, Note, MatchResult, RefreshToken
         )
         
         # 1. Delete all resumes
@@ -516,13 +516,12 @@ async def delete_user_account(
         except Exception as e:
             logger.error(f"Failed to delete OAuth tokens: {str(e)}", exc_info=True)
         
-        # 11. Revoke all refresh tokens (database)
+        # 11. Delete all refresh tokens (database)
         try:
-            from ...infra.security.tokens import revoke_all_user_tokens
-            revoke_all_user_tokens(str(user_id))
-            logger.info(f"Revoked all tokens for user {user_id}")
+            db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete()
+            logger.info(f"Deleted refresh tokens for user {user_id}")
         except Exception as e:
-            logger.error(f"Failed to revoke tokens: {str(e)}", exc_info=True)
+            logger.error(f"Failed to delete refresh tokens: {str(e)}", exc_info=True)
         
         # 12. Delete user account (LAST - after all related data)
         db.delete(current_user)
