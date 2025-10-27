@@ -412,6 +412,7 @@ async def update_career_goals(
 
 @router.delete("/account")
 async def delete_user_account(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -427,6 +428,38 @@ async def delete_user_account(
     - All sessions/refresh tokens
     """
     try:
+        # Parse request body for password verification (if provided)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        
+        password = body.get("password")
+        confirmation = body.get("confirmation")
+        
+        # Verify confirmation text (if provided, otherwise allow for backward compatibility)
+        if confirmation and confirmation != "DELETE":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You must type DELETE exactly to confirm deletion"
+            )
+        
+        # For non-OAuth users, require password verification
+        if not current_user.is_oauth_user:
+            if not password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Password is required for security verification"
+                )
+            
+            # Verify password
+            from ...infra.security.passwords import verify_password
+            if not verify_password(password, current_user.hashed_password):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Incorrect password"
+                )
+        
         logger.warning("ACCOUNT DELETION initiated", extra={
             "user_id": str(current_user.id),
             "email": current_user.email

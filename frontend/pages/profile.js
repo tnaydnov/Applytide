@@ -12,6 +12,7 @@ import SecurityForm from "../features/profile/components/SecurityForm";
 import ActivityPanel from "../features/profile/components/ActivityPanel";
 import PageContainer from "../components/layout/PageContainer";
 import PageHeader from "../components/layout/PageHeader";
+import DeleteAccountModal from "../components/settings/DeleteAccountModal";
 
 import {
   updateProfile,
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState("personal");
   const [loading, setLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const avatar = useAvatarUpload();
   const router = useRouter();
@@ -162,50 +164,8 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      "⚠️ WARNING: This will PERMANENTLY delete your account and ALL data.\n\n" +
-      "This includes:\n" +
-      "• Your profile and account\n" +
-      "• All job applications\n" +
-      "• All documents (resumes, cover letters)\n" +
-      "• All reminders and notes\n" +
-      "• All settings and preferences\n\n" +
-      "This action CANNOT be undone!\n\n" +
-      "Are you absolutely sure you want to delete your account?"
-    );
-
-    if (!confirmed) return;
-
-    const doubleConfirm = window.confirm(
-      "🛑 FINAL WARNING\n\n" +
-      "Please confirm one more time that you want to permanently delete your account.\n\n" +
-      "Type your email to confirm deletion: " + user.email
-    );
-
-    if (!doubleConfirm) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch("/api/profile/account", {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to delete account");
-      }
-
-      toast.success("Account deleted successfully. Goodbye! 👋");
-      
-      // Wait a moment for user to see the message, then force full page reload to clear auth state
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
-    } catch (error) {
-      toast.error(error?.message || "Failed to delete account");
-      setLoading(false);
-    }
+    // Open the delete account modal
+    setShowDeleteModal(true);
   };
 
   const handleExportData = async () => {
@@ -360,6 +320,13 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        isOAuthUser={user?.is_oauth_user || false}
+      />
     </PageContainer>
   );
 }

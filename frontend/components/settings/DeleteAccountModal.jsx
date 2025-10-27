@@ -24,8 +24,8 @@ export default function DeleteAccountModal({ isOpen, onClose, isOAuthUser }) {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/delete-account', {
-        method: 'POST',
+      const response = await fetch('/api/profile/account', {
+        method: 'DELETE',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -43,11 +43,13 @@ export default function DeleteAccountModal({ isOpen, onClose, isOAuthUser }) {
 
       const data = await response.json();
 
-      // Show success message and redirect
-      alert(`Account deletion scheduled for ${new Date(data.deletion_date).toLocaleDateString()}. You have ${data.recovery_days_remaining} days to recover your account.`);
+      // Show success message
+      alert('Account deleted successfully. Goodbye! 👋');
       
-      // Log out and redirect
-      window.location.href = '/login';
+      // Force full page reload to clear auth state
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,7 +72,7 @@ export default function DeleteAccountModal({ isOpen, onClose, isOAuthUser }) {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-red-500">Delete Account</h2>
-              <p className="text-sm text-slate-400">This action can be undone within 7 days</p>
+              <p className="text-sm text-slate-400">This action cannot be undone</p>
             </div>
           </div>
         </div>
@@ -84,26 +86,14 @@ export default function DeleteAccountModal({ isOpen, onClose, isOAuthUser }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="text-sm text-slate-300">
-                <p className="font-semibold text-red-400 mb-2">Warning: Account Deletion</p>
+                <p className="font-semibold text-red-400 mb-2">⚠️ Permanent Account Deletion</p>
                 <ul className="space-y-1 list-disc list-inside">
-                  <li>All your resumes and documents will be deleted</li>
-                  <li>Your job applications and analytics will be removed</li>
-                  <li>Your profile and preferences will be lost</li>
+                  <li>All your resumes and documents will be <strong>permanently deleted</strong></li>
+                  <li>Your job applications and analytics will be <strong>permanently removed</strong></li>
+                  <li>Your profile and preferences will be <strong>permanently lost</strong></li>
                   <li>You will be logged out immediately</li>
+                  <li><strong className="text-red-400">This action CANNOT be undone!</strong></li>
                 </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Recovery Period Info */}
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-            <div className="flex gap-3">
-              <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-sm text-slate-300">
-                <p className="font-semibold text-blue-400 mb-1">7-Day Recovery Period</p>
-                <p>You have <strong>7 days</strong> to change your mind. We'll send you a recovery link via email, or you can simply log in during this period to cancel the deletion.</p>
               </div>
             </div>
           </div>
