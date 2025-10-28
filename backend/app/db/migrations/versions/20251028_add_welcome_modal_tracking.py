@@ -1,6 +1,6 @@
 """add_welcome_modal_tracking
 
-Revision ID: 20251028_add_welcome_modal_tracking
+Revision ID: 20251028_welcome_modal
 Revises: 20250128_legal_deletion
 Create Date: 2025-10-28
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '20251028_add_welcome_modal_tracking'
+revision = '20251028_welcome_modal'
 down_revision = '20250128_legal_deletion'
 branch_labels = None
 depends_on = None
