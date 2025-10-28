@@ -14,21 +14,40 @@ export default function NavLinks({
   const [showNewBadge, setShowNewBadge] = useState(false);
 
   useEffect(() => {
-    // Check if user has seen the "How It Works" page
-    const hasSeenGuide = localStorage.getItem('hasSeenHowItWorks');
-    const dismissedDate = localStorage.getItem('howItWorksBadgeDismissed');
-    
-    if (!hasSeenGuide && !dismissedDate) {
-      setShowNewBadge(true);
-    } else if (dismissedDate) {
-      // Check if 7 days have passed since dismissal
-      const daysSinceDismissed = (Date.now() - parseInt(dismissedDate)) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        setShowNewBadge(false);
-      } else {
+    // Function to check badge visibility
+    const checkBadgeVisibility = () => {
+      const hasSeenGuide = localStorage.getItem('hasSeenHowItWorks');
+      const dismissedDate = localStorage.getItem('howItWorksBadgeDismissed');
+      
+      if (!hasSeenGuide && !dismissedDate) {
         setShowNewBadge(true);
+      } else if (dismissedDate) {
+        // Check if 7 days have passed since dismissal
+        const daysSinceDismissed = (Date.now() - parseInt(dismissedDate)) / (1000 * 60 * 60 * 24);
+        if (daysSinceDismissed < 7) {
+          setShowNewBadge(false);
+        } else {
+          setShowNewBadge(true);
+        }
+      } else {
+        setShowNewBadge(false);
       }
-    }
+    };
+
+    // Check on mount
+    checkBadgeVisibility();
+
+    // Listen for custom event when page is visited
+    const handlePageVisit = () => {
+      checkBadgeVisibility();
+    };
+    
+    window.addEventListener('howItWorksVisited', handlePageVisit);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('howItWorksVisited', handlePageVisit);
+    };
   }, []);
 
   return (

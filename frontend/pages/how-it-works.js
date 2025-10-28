@@ -46,6 +46,8 @@ export default function HowItWorks() {
   // Mark that user has seen this page (to hide NEW badge)
   useEffect(() => {
     localStorage.setItem('hasSeenHowItWorks', 'true');
+    // Dispatch custom event to update badge immediately
+    window.dispatchEvent(new Event('howItWorksVisited'));
   }, []);
 
   return (
