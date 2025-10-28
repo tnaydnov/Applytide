@@ -629,3 +629,52 @@ async def delete_user_profile(
             "error": str(e)
         }, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete profile")
+
+
+# ============================================================================
+# Welcome Modal Onboarding
+# ============================================================================
+
+class WelcomeModalStatusResponse(BaseModel):
+    has_seen_welcome_modal: bool
+    welcome_modal_seen_at: Optional[datetime] = None
+
+@router.get("/welcome-modal-status", response_model=WelcomeModalStatusResponse)
+async def get_welcome_modal_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Check if user has seen the welcome modal"""
+    return {
+        "has_seen_welcome_modal": current_user.has_seen_welcome_modal,
+        "welcome_modal_seen_at": current_user.welcome_modal_seen_at
+    }
+
+@router.post("/welcome-modal-seen")
+async def mark_welcome_modal_seen(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark that user has seen the welcome modal"""
+    try:
+        current_user.has_seen_welcome_modal = True
+        current_user.welcome_modal_seen_at = datetime.now(timezone.utc)
+        db.commit()
+        
+        logger.info("Welcome modal marked as seen", extra={
+            "user_id": current_user.id,
+            "seen_at": current_user.welcome_modal_seen_at
+        })
+        
+        return {
+            "message": "Welcome modal status updated",
+            "has_seen_welcome_modal": True,
+            "welcome_modal_seen_at": current_user.welcome_modal_seen_at
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to update welcome modal status", extra={
+            "user_id": current_user.id,
+            "error": str(e)
+        }, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update welcome modal status")

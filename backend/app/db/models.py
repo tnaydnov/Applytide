@@ -83,6 +83,10 @@ class User(Base):
     # Calendar & API Access
     calendar_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     
+    # Onboarding & User Experience
+    has_seen_welcome_modal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    welcome_modal_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
     # Legal Agreements (GDPR/CCPA Compliance)
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     privacy_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

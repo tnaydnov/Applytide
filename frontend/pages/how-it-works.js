@@ -43,6 +43,11 @@ export default function HowItWorks() {
   const [activeTab, setActiveTab] = useState('overview');
   const [expandedFeature, setExpandedFeature] = useState(null);
 
+  // Mark that user has seen this page (to hide NEW badge)
+  useEffect(() => {
+    localStorage.setItem('hasSeenHowItWorks', 'true');
+  }, []);
+
   return (
     <>
       <Head>

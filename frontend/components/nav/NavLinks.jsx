@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "./icons";
+import { useEffect, useState } from "react";
 
 export default function NavLinks({
   links,
@@ -10,6 +11,26 @@ export default function NavLinks({
   setActiveDropdown,
   dropdownRef,
 }) {
+  const [showNewBadge, setShowNewBadge] = useState(false);
+
+  useEffect(() => {
+    // Check if user has seen the "How It Works" page
+    const hasSeenGuide = localStorage.getItem('hasSeenHowItWorks');
+    const dismissedDate = localStorage.getItem('howItWorksBadgeDismissed');
+    
+    if (!hasSeenGuide && !dismissedDate) {
+      setShowNewBadge(true);
+    } else if (dismissedDate) {
+      // Check if 7 days have passed since dismissal
+      const daysSinceDismissed = (Date.now() - parseInt(dismissedDate)) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismissed < 7) {
+        setShowNewBadge(false);
+      } else {
+        setShowNewBadge(true);
+      }
+    }
+  }, []);
+
   return (
     <div className="flex items-center space-x-1">
       {links.map((item) => {
@@ -109,7 +130,7 @@ export default function NavLinks({
           <Link
             key={item.href}
             href={item.href}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group ${
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center space-x-2 group relative ${
               isActive(item.href)
                 ? "bg-white/10 text-white shadow-lg backdrop-blur-sm border border-white/20"
                 : "text-gray-300 hover:text-white hover:bg-white/5"
@@ -119,6 +140,12 @@ export default function NavLinks({
               <Icon name={item.icon} />
             </span>
             <span>{item.label}</span>
+            {/* NEW badge for "How It Works" */}
+            {item.href === "/how-it-works" && showNewBadge && (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-full shadow-lg animate-pulse">
+                NEW
+              </span>
+            )}
           </Link>
         );
       })}

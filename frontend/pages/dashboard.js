@@ -4,6 +4,7 @@ import { Button, Card, Input } from "../components/ui";
 import { useToast } from '../lib/toast';
 import AuthGuard from "../components/guards/AuthGuard";
 import { usePremiumFeature } from '../components/PremiumFeature';
+import WelcomeModal from '../components/WelcomeModal';
 import Link from "next/link";
 import Head from "next/head";
 
@@ -66,12 +67,38 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('week'); // week, month, all
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const toast = useToast();
   const { checkPremium, PremiumModal } = usePremiumFeature();
 
   useEffect(() => {
     loadData();
+    checkWelcomeModalStatus();
   }, []);
+
+  async function checkWelcomeModalStatus() {
+    try {
+      const response = await api.get('/profile/welcome-modal-status');
+      const hasSeenModal = response.has_seen_welcome_modal;
+      
+      // Only show modal if user hasn't seen it (backend decides this)
+      if (!hasSeenModal) {
+        // Show modal after a short delay for better UX
+        setTimeout(() => {
+          setShowWelcomeModal(true);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to check welcome modal status:', error);
+      // Fallback to localStorage if API fails
+      const hasSeenWelcome = localStorage.getItem('welcomeModalDismissed');
+      if (!hasSeenWelcome) {
+        setTimeout(() => {
+          setShowWelcomeModal(true);
+        }, 500);
+      }
+    }
+  }
 
   async function loadData() {
     try {
@@ -139,6 +166,12 @@ export default function Dashboard() {
       <Head>
         <title>Command Center - Applytide</title>
       </Head>
+
+      {/* Welcome Modal */}
+      <WelcomeModal 
+        isOpen={showWelcomeModal} 
+        onClose={() => setShowWelcomeModal(false)} 
+      />
 
       <div className="mobile-p-4 space-y-6 max-w-7xl mx-auto">
         {/* AI-Powered Header with Personalized Insights */}
