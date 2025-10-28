@@ -7,6 +7,7 @@ import { Icon } from "./icons";
 import UserMenu, { UserMenuMobile } from "./UserMenu";
 
 const publicLinks = [
+  { label: "How It Works", href: "/how-it-works", icon: "lightbulb" },
   { label: "Pricing", href: "/pricing", icon: "pricing" },
 ];
 

@@ -315,9 +315,14 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-black text-slate-200 mb-6">
               Everything You Need to Track Applications
             </h2>
-            <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+            <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-6">
               Stop losing track of opportunities. Organize your entire job search in one powerful platform.
             </p>
+            <Link href="/how-it-works">
+              <Button variant="outline" className="border-indigo-500 text-indigo-300 hover:bg-indigo-500/10">
+                See How It Works →
+              </Button>
+            </Link>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
