@@ -212,7 +212,7 @@ class AttachmentOperationsService:
             
             logger.debug(
                 f"Retrieved attachment {attachment_id}",
-                extra={"attachment_id": str(attachment_id), "filename": a.filename}
+                extra={"attachment_id": str(attachment_id), "file_name": a.filename}
             )
             return a
             
@@ -282,7 +282,7 @@ class AttachmentOperationsService:
                 dst, size, filename, content_type = await self.store.save_upload(file)
                 logger.debug(
                     f"File saved: {filename} ({size} bytes)",
-                    extra={"filename": filename, "size": size, "content_type": content_type}
+                    extra={"file_name": filename, "size": size, "content_type": content_type}
                 )
             except Exception as e:
                 logger.error(
@@ -306,7 +306,7 @@ class AttachmentOperationsService:
                     extra={
                         "app_id": str(app_id),
                         "attachment_id": str(attachment.id),
-                        "filename": filename,
+                        "file_name": filename,
                         "size": size
                     }
                 )
@@ -385,7 +385,7 @@ class AttachmentOperationsService:
                 )
                 logger.debug(
                     f"Resolved document: {filename}",
-                    extra={"filename": filename, "media_type": media_type}
+                    extra={"file_name": filename, "media_type": media_type}
                 )
             except Exception as e:
                 logger.error(
@@ -401,7 +401,7 @@ class AttachmentOperationsService:
                 )
                 logger.debug(
                     f"Copied file: {out_name} ({size} bytes)",
-                    extra={"filename": out_name, "size": size}
+                    extra={"file_name": out_name, "size": size}
                 )
             except Exception as e:
                 logger.error(
@@ -426,7 +426,7 @@ class AttachmentOperationsService:
                         "app_id": str(app_id),
                         "attachment_id": str(attachment.id),
                         "document_id": document_id,
-                        "filename": out_name
+                        "file_name": out_name
                     }
                 )
                 return attachment
@@ -523,7 +523,7 @@ class AttachmentOperationsService:
                     extra={
                         "attachment_id": str(attachment_id),
                         "app_id": str(app_id),
-                        "filename": a.filename
+                        "file_name": a.filename
                     }
                 )
             except Exception as e:

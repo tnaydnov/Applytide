@@ -339,7 +339,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
                 "src": str(src),
                 "dst": str(dst),
                 "size_bytes": file_size,
-                "filename": filename,
+                "file_name": filename,
                 "content_type": content_type
             }
         )
@@ -396,7 +396,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
         logger.debug(
             "Starting file upload",
             extra={
-                "filename": file.filename,
+                "file_name": file.filename,
                 "content_type": file.content_type,
                 "dst": str(dst)
             }
@@ -419,7 +419,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
                         logger.warning(
                             "Upload exceeded size limit",
                             extra={
-                                "filename": file.filename,
+                                "file_name": file.filename,
                                 "size_bytes": total,
                                 "max_bytes": self.max,
                                 "size_mb": round(total / (1024 * 1024), 2)
@@ -470,7 +470,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
             logger.error(
                 "Failed to save upload",
                 extra={
-                    "filename": file.filename,
+                    "file_name": file.filename,
                     "bytes_written": total,
                     "error": str(e),
                     "error_type": type(e).__name__
@@ -489,7 +489,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
         logger.info(
             "Upload saved successfully",
             extra={
-                "filename": filename,
+                "file_name": filename,
                 "dst": str(dst),
                 "size_bytes": total,
                 "content_type": content_type

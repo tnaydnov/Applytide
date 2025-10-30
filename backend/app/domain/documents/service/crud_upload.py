@@ -95,7 +95,7 @@ class DocumentUploader:
         if len(file_content) > MAX_FILE_SIZE:
             logger.warning(
                 f"File too large: {len(file_content)} bytes",
-                extra={"filename": filename, "size": len(file_content)}
+                extra={"file_name": filename, "size": len(file_content)}
             )
             raise DocumentValidationError(
                 f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
@@ -110,7 +110,7 @@ class DocumentUploader:
         if ext not in SUPPORTED_EXTENSIONS:
             logger.warning(
                 f"Unsupported file type: {ext}",
-                extra={"filename": filename, "extension": ext}
+                extra={"file_name": filename, "extension": ext}
             )
             raise DocumentValidationError(
                 f"Unsupported file type: {ext}. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
@@ -173,7 +173,7 @@ class DocumentUploader:
                 f"Uploading document: {filename}",
                 extra={
                     "user_id": user_id,
-                    "filename": filename,
+                    "file_name": filename,
                     "type": document_type.value,
                     "size": len(file_content)
                 }
@@ -209,7 +209,7 @@ class DocumentUploader:
             except Exception as e:
                 logger.error(
                     f"Failed to save file to storage: {e}",
-                    extra={"filename": filename, "user_id": user_id},
+                    extra={"file_name": filename, "user_id": user_id},
                     exc_info=True
                 )
                 raise DocumentStorageError(f"Failed to save file: {e}")
@@ -224,7 +224,7 @@ class DocumentUploader:
             except Exception as e:
                 logger.error(
                     f"Text extraction failed: {e}",
-                    extra={"filename": filename, "path": str(file_path)},
+                    extra={"file_name": filename, "path": str(file_path)},
                     exc_info=True
                 )
                 # Don't fail upload if text extraction fails

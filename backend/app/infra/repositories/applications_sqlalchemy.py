@@ -1127,7 +1127,7 @@ class AttachmentSQLARepository(_GuardMixin, IAttachmentRepo):
             
             logger.info(
                 f"Created attachment {a.id} for application {app_id}",
-                extra={"attachment_id": str(a.id), "filename": filename, "size": file_size}
+                extra={"attachment_id": str(a.id), "file_name": filename, "size": file_size}
             )
             return _attach_to_dto(a)
             

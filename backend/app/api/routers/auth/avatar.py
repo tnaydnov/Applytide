@@ -85,7 +85,7 @@ async def upload_avatar(
         "Avatar upload requested",
         extra={
             "user_id": str(current_user.id),
-            "filename": file.filename,
+            "file_name": file.filename,
             "content_type": file.content_type
         }
     )

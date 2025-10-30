@@ -180,7 +180,7 @@ class DocumentPreview:
                 "Document download prepared",
                 extra={
                     "document_id": document_id,
-                    "filename": filename,
+                    "file_name": filename,
                     "media_type": media,
                     "file_size": path.stat().st_size if path.exists() else 0
                 }

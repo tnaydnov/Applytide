@@ -201,7 +201,7 @@ async def upload_attachment(
             extra={
                 "user_id": str(current_user.id),
                 "application_id": str(app_id),
-                "filename": file.filename,
+                "file_name": file.filename,
                 "content_type": file.content_type,
                 "document_type": document_type
             }
@@ -226,7 +226,7 @@ async def upload_attachment(
                 "user_id": str(current_user.id),
                 "application_id": str(app_id),
                 "attachment_id": str(a.id),
-                "filename": a.filename,
+                "file_name": a.filename,
                 "file_size": a.file_size
             }
         )
@@ -426,7 +426,7 @@ def download_attachment(
                 "user_id": str(current_user.id),
                 "application_id": str(app_id),
                 "attachment_id": str(attachment_id),
-                "filename": a.filename,
+                "file_name": a.filename,
                 "file_size": a.file_size
             }
         )

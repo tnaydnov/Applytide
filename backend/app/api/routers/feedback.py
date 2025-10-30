@@ -147,7 +147,7 @@ async def submit_feedback(
                     "Invalid file type for screenshot",
                     extra={
                         "content_type": screenshot.content_type,
-                        "filename": screenshot.filename,
+                        "file_name": screenshot.filename,
                     },
                 )
                 raise HTTPException(
@@ -157,7 +157,7 @@ async def submit_feedback(
             if len(content) > 5 * 1024 * 1024:
                 logger.warning(
                     "Screenshot file too large",
-                    extra={"size": len(content), "filename": screenshot.filename},
+                    extra={"size": len(content), "file_name": screenshot.filename},
                 )
                 raise HTTPException(
                     status_code=400, detail="File size must be less than 5MB"
