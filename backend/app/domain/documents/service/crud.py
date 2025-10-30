@@ -32,9 +32,9 @@ from .crud_modify import DocumentModifier
 from .crud_upload import (
     DocumentCRUDError,
     DocumentValidationError,
-    DocumentNotFoundError,
     DocumentStorageError,
 )
+from .crud_query import DocumentNotFoundError
 
 logger = get_logger(__name__)
 
