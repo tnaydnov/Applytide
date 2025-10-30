@@ -25,6 +25,9 @@ Authentication & Authorization:
     - get_current_user_optional: Optional authentication for public endpoints
     - get_admin_user: Admin role verification for admin-only endpoints
 
+Database:
+    - get_db: Database session dependency for direct DB access
+
 Module Structure:
     - jobs.py: Job-related service dependencies
     - documents.py: Document service dependencies
@@ -64,6 +67,9 @@ Example:
     ):
         return await service.get_job(user.id, job_id)
 """
+# Database session dependency
+from ...db.session import get_db
+
 # Re-export all service dependencies for backward compatibility
 from .jobs import get_job_service, get_job_extraction_service
 from .documents import get_document_service
@@ -75,6 +81,8 @@ from .auth import get_current_user, get_current_user_optional
 from .admin import get_admin_user
 
 __all__ = [
+    # Database
+    "get_db",
     # Service dependencies
     "get_job_service",
     "get_job_extraction_service",
