@@ -126,7 +126,7 @@ def get_llm_usage_stats(
         )
 
 
-@router.get("", response_model=dto.PaginatedLLMUsageDTO)
+@router.get("/", response_model=dto.PaginatedLLMUsageDTO)
 def list_llm_usage(
     page: int = 1,
     page_size: int = 50,

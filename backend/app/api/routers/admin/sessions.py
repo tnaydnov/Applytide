@@ -38,7 +38,7 @@ router = APIRouter(prefix="/sessions", tags=["admin-sessions"])
 logger = get_logger(__name__)
 
 
-@router.get("", response_model=dto.PaginatedSessionsDTO)
+@router.get("/", response_model=dto.PaginatedSessionsDTO)
 def list_sessions(
     page: int = 1,
     page_size: int = 20,

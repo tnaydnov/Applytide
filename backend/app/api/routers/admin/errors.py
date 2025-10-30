@@ -33,7 +33,7 @@ router = APIRouter(prefix="/errors", tags=["admin-errors"])
 logger = get_logger(__name__)
 
 
-@router.get("", response_model=dto.PaginatedErrorsDTO)
+@router.get("/", response_model=dto.PaginatedErrorsDTO)
 def list_errors(
     page: int = 1,
     page_size: int = 20,

@@ -41,7 +41,7 @@ def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
     return AdminService(db)
 
 
-@router.get("", response_model=dto.PaginatedUsersDTO)
+@router.get("/", response_model=dto.PaginatedUsersDTO)
 def list_users(
     page: int = 1,
     page_size: int = 20,
