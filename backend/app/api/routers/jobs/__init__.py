@@ -21,14 +21,14 @@ from .schemas import (
     JobSearchOut,
 )
 
-# Create main jobs router
-router = APIRouter()
+# Create main jobs router with prefix
+router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 # Include all sub-routers
-router.include_router(crud_router, tags=["jobs"])
-router.include_router(listing_router, tags=["jobs"])
-router.include_router(search_router, tags=["jobs"])
-router.include_router(manual_router, tags=["jobs"])
+router.include_router(crud_router)
+router.include_router(listing_router)
+router.include_router(search_router)
+router.include_router(manual_router)
 
 # Export router and schemas for main app
 __all__ = [

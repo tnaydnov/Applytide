@@ -22,13 +22,13 @@ from .schemas import (
     ReminderNoteOut,
 )
 
-# Create main reminders router
-router = APIRouter()
+# Create main reminders router with prefix
+router = APIRouter(prefix="/api/reminders", tags=["reminders"])
 
 # Include all sub-routers
-router.include_router(notes_router, tags=["reminders"])
-router.include_router(google_router, tags=["reminders"])
-router.include_router(crud_router, tags=["reminders"])
+router.include_router(notes_router)
+router.include_router(google_router)
+router.include_router(crud_router)
 
 # Export router and schemas for main app
 __all__ = [

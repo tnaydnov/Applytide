@@ -31,12 +31,32 @@ import { applicationsApi } from '../features/applications/api';
 import { analyticsApi } from '../features/analytics/api';
 import { profileApi } from '../features/profile/api';
 import { searchApi } from '../features/search/api';
+import { apiFetch } from './api/core';
 
 /**
  * Main API object - maintains exact same structure as original
  * This ensures all existing code using `import { api } from '../lib/api'` works unchanged
  */
 export const api = {
+  // Generic HTTP methods for direct API calls
+  get: async (endpoint) => {
+    const response = await apiFetch(endpoint, { method: 'GET' });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+  post: async (endpoint, data) => {
+    const response = await apiFetch(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
   // Auth methods (from features/auth/api.js)
   register: authApi.register,
   login: authApi.login,

@@ -30,16 +30,16 @@ from .schemas import (
     CoverLetterRequest,
 )
 
-# Create main documents router
-router = APIRouter()
+# Create main documents router with prefix
+router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 # Include all sub-routers
-router.include_router(upload_router, tags=["documents"])
-router.include_router(management_router, tags=["documents"])
-router.include_router(analysis_router, tags=["documents"])
-router.include_router(templates_router, tags=["documents"])
-router.include_router(export_router, tags=["documents"])
-router.include_router(generation_router, tags=["documents"])
+router.include_router(upload_router)
+router.include_router(management_router)
+router.include_router(analysis_router)
+router.include_router(templates_router)
+router.include_router(export_router)
+router.include_router(generation_router)
 
 # Export router and schemas for main app
 __all__ = [
