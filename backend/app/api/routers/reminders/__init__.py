@@ -23,7 +23,7 @@ from .schemas import (
 )
 
 # Create main reminders router with prefix
-router = APIRouter(prefix="/api/reminders", tags=["reminders"])
+router = APIRouter(prefix="/api/calendars/reminders", tags=["reminders"])
 
 # Include all sub-routers
 router.include_router(notes_router)

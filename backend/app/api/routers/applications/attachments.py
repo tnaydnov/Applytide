@@ -216,7 +216,7 @@ def upload_attachment(
         a = svc.upload_attachment(
             user_id=current_user.id,
             app_id=app_id,
-            upload=file,
+            file=file,
             document_type=document_type,
         )
         
@@ -244,7 +244,7 @@ def upload_attachment(
             extra={
                 "user_id": str(current_user.id),
                 "application_id": str(app_id),
-                "filename": file.filename if file else None,
+                "file_name": file.filename if file else None,
                 "error": str(e)
             },
             exc_info=True

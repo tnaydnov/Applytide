@@ -296,7 +296,7 @@ class DocumentUploader:
                     "document_id": str(file_id),
                     "user_id": user_id,
                     "type": document_type.value,
-                    "filename": filename,
+                    "file_name": filename,
                     "size": len(file_content)
                 }
             )
@@ -308,7 +308,7 @@ class DocumentUploader:
         except Exception as e:
             logger.error(
                 f"Unexpected error uploading document: {e}",
-                extra={"filename": filename, "user_id": user_id},
+                extra={"file_name": filename, "user_id": user_id},
                 exc_info=True
             )
             raise DocumentCRUDError(f"Failed to upload document: {e}")
