@@ -572,7 +572,7 @@ class EmailService:
         
         logger.info(
             "Sending welcome email",
-            extra={"to_email": to_email, "name": name}
+            extra={"to_email": to_email, "user_name": name}
         )
         
         return self._send_email(to_email, f"Welcome to Applytide, {name}! 🎉", html_content)
@@ -611,7 +611,7 @@ class EmailService:
         
         logger.info(
             "Sending password changed alert",
-            extra={"to_email": to_email, "name": name}
+            extra={"to_email": to_email, "user_name": name}
         )
         
         return self._send_email(to_email, "Your Applytide Password Was Changed", html_content)
@@ -646,7 +646,7 @@ class EmailService:
         
         logger.info(
             "Sending account deleted confirmation",
-            extra={"to_email": to_email, "name": name}
+            extra={"to_email": to_email, "user_name": name}
         )
         
         return self._send_email(to_email, "Your Applytide Account Has Been Deleted", html_content)
@@ -836,7 +836,7 @@ class EmailService:
         
         logger.info(
             "Sending recovery success email",
-            extra={"to_email": to_email, "name": name}
+            extra={"to_email": to_email, "user_name": name}
         )
         
         return self._send_email(to_email, "✅ Your Applytide Account Has Been Recovered", html_content)

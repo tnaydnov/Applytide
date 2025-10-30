@@ -83,6 +83,9 @@ export default function Dashboard() {
       
       // Only show modal if user hasn't seen it (backend decides this)
       if (!hasSeenModal) {
+        // Clear any stale localStorage data
+        localStorage.removeItem('welcomeModalDismissed');
+        
         // Show modal after a short delay for better UX
         setTimeout(() => {
           setShowWelcomeModal(true);
@@ -90,13 +93,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Failed to check welcome modal status:', error);
-      // Fallback to localStorage if API fails
-      const hasSeenWelcome = localStorage.getItem('welcomeModalDismissed');
-      if (!hasSeenWelcome) {
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-        }, 500);
-      }
+      // If API fails, don't show modal to avoid annoying users
+      // This is better than relying on potentially stale localStorage
     }
   }
 

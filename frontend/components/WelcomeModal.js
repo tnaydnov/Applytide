@@ -11,10 +11,10 @@ export default function WelcomeModal({ isOpen, onClose }) {
       // Mark as seen in backend
       try {
         await api.post('/profile/welcome-modal-seen');
+        // Clear localStorage to ensure backend is source of truth
+        localStorage.removeItem('welcomeModalDismissed');
       } catch (error) {
         console.error('Failed to update welcome modal status:', error);
-        // Fallback to localStorage
-        localStorage.setItem('welcomeModalDismissed', 'true');
       }
     }
     onClose();
@@ -24,10 +24,10 @@ export default function WelcomeModal({ isOpen, onClose }) {
     // Always mark as seen when user clicks "Show Me How It Works"
     try {
       await api.post('/profile/welcome-modal-seen');
+      // Clear localStorage to ensure backend is source of truth
+      localStorage.removeItem('welcomeModalDismissed');
     } catch (error) {
       console.error('Failed to update welcome modal status:', error);
-      // Fallback to localStorage
-      localStorage.setItem('welcomeModalDismissed', 'true');
     }
     // The Link component will handle navigation
   };
