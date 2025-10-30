@@ -24,7 +24,7 @@ def _paginate(total: int, page: int, page_size: int):
     return pages, page < pages, page > 1
 
 
-@router.get("", response_model=PaginatedResponse[JobOut])
+@router.get("/", response_model=PaginatedResponse[JobOut])
 def list_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),

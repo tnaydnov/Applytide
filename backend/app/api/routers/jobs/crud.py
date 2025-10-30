@@ -18,7 +18,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("", response_model=JobOut)
+@router.post("/", response_model=JobOut)
 def create_job(
     payload: JobCreate,
     svc: JobService = Depends(get_job_service),
