@@ -1,4 +1,14 @@
-"""User profile management endpoints."""
+"""
+User Profile Management Endpoints
+
+Handles user profile data operations:
+- Get current user information
+- Update profile fields (name, contact, links)
+- Update user preferences (language, theme, notifications)
+
+All endpoints require authentication and only allow users to
+manage their own profiles.
+"""
 from __future__ import annotations
 from datetime import datetime, timezone
 
@@ -7,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from ....db.session import get_db
 from ....db import models
-from ....api.deps_auth import get_current_user
+from ....api.deps import get_current_user
 from ....api.schemas import auth as schemas
 from ....infra.logging import get_logger
 
@@ -18,8 +28,60 @@ logger = get_logger(__name__)
 
 
 @router.get("/me")
-def get_current_user_info(current_user: models.User = Depends(get_current_user)):
-    """Get current authenticated user information."""
+def get_current_user_info(
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get current authenticated user information.
+    
+    Returns complete user profile data including:
+    - Basic info (name, email, avatar)
+    - Contact details (phone, location)
+    - Social links (LinkedIn, GitHub, website)
+    - Preferences (language, theme, notifications)
+    - Account status (premium, verified, OAuth)
+    - Timestamps (created, updated, last login)
+    
+    Args:
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        dict: Complete user profile with all fields:
+            - id, email, role, full_name, first_name, last_name
+            - avatar_url, bio, phone, location, timezone
+            - website, linkedin_url, github_url
+            - language, theme_preference
+            - notification_email, notification_push
+            - is_premium, premium_expires_at
+            - created_at, updated_at, last_login_at
+            - email_verified, is_oauth_user, google_id
+            
+    Raises:
+        HTTPException: 401 if not authenticated
+        HTTPException: 500 if retrieval fails
+        
+    Security:
+        Requires user authentication
+        Returns only authenticated user's data
+        
+    Notes:
+        - Used by frontend for user context
+        - Called after login and token refresh
+        - Includes premium status for feature gating
+        - OAuth users have google_id and google_avatar_url
+        - Use for: user profile display, settings initialization
+        
+    Example:
+        GET /api/auth/me
+        Headers: Cookie: access_token=<valid>
+        Returns: {
+            "id": "...",
+            "email": "user@example.com",
+            "full_name": "John Doe",
+            "is_premium": true,
+            ...
+        }
+    """
     try:
         logger.debug(
             "User info requested",
@@ -67,8 +129,64 @@ def get_current_user_info(current_user: models.User = Depends(get_current_user))
 
 
 @router.put("/profile", response_model=schemas.MessageResponse)
-def update_profile(payload: schemas.ProfileUpdateIn, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Update user profile information."""
+def update_profile(
+    payload: schemas.ProfileUpdateIn, 
+    current_user: models.User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Update user profile information.
+    
+    Updates user profile fields with partial update semantics.
+    Only provided fields are updated; omitted fields remain unchanged.
+    
+    Request Body (all optional):
+        full_name (str): Complete name
+        first_name (str): First name only
+        last_name (str): Last name only
+        bio (str): User biography/description
+        phone (str): Phone number
+        location (str): City, country, or full address
+        timezone (str): IANA timezone (e.g., "America/New_York")
+        website (str): Personal website URL
+        linkedin_url (str): LinkedIn profile URL
+        github_url (str): GitHub profile URL
+        
+    Args:
+        payload: Profile update data (from request body)
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Profile updated successfully"
+            
+    Raises:
+        HTTPException: 401 if not authenticated
+        HTTPException: 500 if update fails
+        
+    Security:
+        Requires user authentication
+        Only updates authenticated user's profile
+        Updates updated_at timestamp automatically
+        
+    Notes:
+        - Partial update: Only send changed fields
+        - All fields optional
+        - Validates URLs if provided
+        - Logs updated field names (not values)
+        - Updates timestamp for change tracking
+        - Use for: profile editing forms
+        
+    Example:
+        PUT /api/auth/profile
+        Body: {
+            "full_name": "John Smith",
+            "location": "New York, USA",
+            "linkedin_url": "https://linkedin.com/in/johnsmith"
+        }
+        Returns: {"message": "Profile updated successfully"}
+    """
     try:
         logger.info(
             "Profile update requested",
@@ -134,8 +252,58 @@ def update_profile(payload: schemas.ProfileUpdateIn, current_user: models.User =
 
 
 @router.put("/preferences", response_model=schemas.MessageResponse)
-def update_preferences(payload: schemas.PreferencesUpdateIn, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Update user preferences."""
+def update_preferences(
+    payload: schemas.PreferencesUpdateIn, 
+    current_user: models.User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    """
+    Update user preferences.
+    
+    Updates user preference settings with partial update semantics.
+    Controls UI behavior, notifications, and localization.
+    
+    Request Body (all optional):
+        language (str): UI language code (e.g., "en", "es", "fr")
+        theme_preference (str): UI theme ("light", "dark", "system")
+        notification_email (bool): Email notifications enabled
+        notification_push (bool): Push notifications enabled
+        
+    Args:
+        payload: Preferences update data (from request body)
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Preferences updated successfully"
+            
+    Raises:
+        HTTPException: 401 if not authenticated
+        HTTPException: 500 if update fails
+        
+    Security:
+        Requires user authentication
+        Only updates authenticated user's preferences
+        Updates updated_at timestamp automatically
+        
+    Notes:
+        - Partial update: Only send changed fields
+        - All fields optional
+        - Language codes: ISO 639-1 (2-letter)
+        - Theme options: "light", "dark", "system"
+        - Notification toggles: true/false
+        - Frontend reads these for UI configuration
+        - Use for: settings page, preference dialogs
+        
+    Example:
+        PUT /api/auth/preferences
+        Body: {
+            "theme_preference": "dark",
+            "notification_email": false
+        }
+        Returns: {"message": "Preferences updated successfully"}
+    """
     try:
         logger.info(
             "Preferences update requested",

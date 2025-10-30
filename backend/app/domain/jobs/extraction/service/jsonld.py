@@ -1,15 +1,57 @@
-"""JSON-LD structured data extraction."""
+"""
+JSON-LD structured data extraction.
+
+This module handles extraction and mapping of JSON-LD JobPosting structured data
+as well as hint extraction from raw pasted text.
+
+Features:
+- JSON-LD JobPosting detection and parsing
+- Nested @graph structure flattening
+- Hint extraction from raw text patterns (LinkedIn, job boards)
+- Address parsing from jobLocation
+- Remote type detection from jobLocationType
+
+Supported Patterns:
+- "Company · Location (Remote/Hybrid)"
+- "Save Job Title at Company"
+- Job type keywords (Full-time, Part-time, Contract, Internship)
+- Standalone title lines repeated before company name
+"""
 from __future__ import annotations
 import re
 from typing import Dict, Any, List, Optional, Generator
 from .utils import ExtractionUtils
+from .....infra.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Configuration constants
+MAX_JSONLD_DEPTH = 3  # Maximum nesting depth to search
+MAX_TITLE_LENGTH = 200  # Maximum title length
+MAX_COMPANY_LENGTH = 200  # Maximum company name length
+MAX_LOCATION_LENGTH = 300  # Maximum location string length
 
 
 class JSONLDExtractor:
-    """Extracts and maps JSON-LD JobPosting structured data."""
+    """
+    Extracts and maps JSON-LD JobPosting structured data.
+    
+    This class handles both JSON-LD parsing and hint extraction from raw text,
+    providing a unified interface for structured data extraction.
+    
+    Attributes:
+        utils: Utility functions for text processing
+    """
     
     def __init__(self, utils: ExtractionUtils):
+        """
+        Initialize JSON-LD extractor.
+        
+        Args:
+            utils: Utility functions instance
+        """
         self.utils = utils
+        logger.debug("JSONLDExtractor initialized")
     
     def iter_jsonld_items(self, arr: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
         """

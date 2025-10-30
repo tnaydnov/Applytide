@@ -1,4 +1,16 @@
-"""User registration and email verification endpoints."""
+"""
+User Registration and Email Verification Endpoints
+
+Handles new user account creation:
+- User registration with legal agreements
+- Email verification requests
+- Email verification confirmation
+- Rate limiting and validation
+- Welcome and verification emails
+
+Implements secure registration flow with mandatory legal agreement
+tracking and email verification.
+"""
 from __future__ import annotations
 import uuid
 import secrets
@@ -32,8 +44,84 @@ event_logger = BusinessEventLogger()
 
 
 @router.post("/register", response_model=schemas.TokenPairOut)
-def register(payload: schemas.RegisterIn, request: Request, db: Session = Depends(get_db)):
-    """Register a new user account."""
+def register(
+    payload: schemas.RegisterIn, 
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    """
+    Register a new user account.
+    
+    Creates new user account with:
+    1. Legal agreement validation (all must be true)
+    2. Email uniqueness check
+    3. Password hashing
+    4. Initial token generation
+    5. Welcome and verification emails
+    
+    Request Body:
+        email (str): User's email address (must be unique)
+        password (str): Password (will be hashed)
+        full_name (str): Complete name
+        first_name (str): First name (optional)
+        last_name (str): Last name (optional)
+        phone (str): Phone number (optional)
+        timezone (str): IANA timezone (optional)
+        language (str): Language code (default: "en")
+        terms_accepted (bool): Terms of Service accepted (required: true)
+        privacy_accepted (bool): Privacy Policy accepted (required: true)
+        age_verified (bool): Age 13+ verified (required: true)
+        data_processing_consent (bool): GDPR consent (required: true)
+        
+    Args:
+        payload: Registration data (from request body)
+        request: FastAPI request for client info extraction
+        db: Database session (from dependency)
+        
+    Returns:
+        TokenPairOut: Initial tokens with:
+            - access_token: JWT access token
+            - refresh_token: JWT refresh token
+            Sets cookies: access_token, refresh_token
+            
+    Raises:
+        HTTPException: 400 if legal agreements not all true
+        HTTPException: 400 if email already registered
+        HTTPException: 429 if rate limit exceeded
+        HTTPException: 500 if registration fails
+        
+    Security:
+        - Rate limiting: 10 attempts per IP/15 min
+        - Password hashing: bcrypt with strong work factor
+        - Legal tracking: All agreements timestamped with IP
+        - Email uniqueness: Prevents duplicate accounts
+        - Audit logging: Registration event logged
+        
+    Notes:
+        - All legal agreements MUST be true
+        - Email verification sent (non-blocking)
+        - Welcome email sent (non-blocking)
+        - User starts as unverified (email_verified_at = null)
+        - Tokens allow immediate login
+        - Calendar token generated for integrations
+        - Use for: sign-up flow
+        
+    Example:
+        POST /api/auth/register
+        Body: {
+            "email": "user@example.com",
+            "password": "securePass123!",
+            "full_name": "John Doe",
+            "terms_accepted": true,
+            "privacy_accepted": true,
+            "age_verified": true,
+            "data_processing_consent": true
+        }
+        Returns: {
+            "access_token": "eyJ...",
+            "refresh_token": "eyJ..."
+        }
+    """
     user_agent, ip_address = get_client_info(request)
     
     logger.info(
@@ -206,8 +294,52 @@ def register(payload: schemas.RegisterIn, request: Request, db: Session = Depend
 
 
 @router.post("/send_verification", response_model=schemas.MessageResponse)
-def send_verification_email(payload: schemas.EmailVerificationIn, request: Request, db: Session = Depends(get_db)):
-    """Send email verification link."""
+def send_verification_email(
+    payload: schemas.EmailVerificationIn, 
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    """
+    Send email verification link.
+    
+    Sends verification email to user with time-limited token link.
+    Can be called to resend verification if previous email lost.
+    
+    Request Body:
+        email (str): User's registered email address
+        
+    Args:
+        payload: Email verification request (from request body)
+        request: FastAPI request for client info extraction
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Generic success message (anti-enumeration):
+            - message: "Verification email sent"
+            
+    Raises:
+        HTTPException: 429 if rate limit exceeded (3 per IP/15 min)
+        HTTPException: 500 if email sending fails
+        
+    Security:
+        - Rate limiting: 3 attempts per IP/15 min
+        - Anti-enumeration: Generic response regardless of email existence
+        - Time-limited tokens: Expire after configured duration
+        - Already verified: Returns success without sending
+        
+    Notes:
+        - Generic response prevents email enumeration
+        - Returns success even if email not found
+        - Returns success if already verified (no email sent)
+        - Token embedded in email link
+        - Multiple requests send new tokens
+        - Use for: resend verification email
+        
+    Example:
+        POST /api/auth/send_verification
+        Body: {"email": "user@example.com"}
+        Returns: {"message": "Verification email sent"}
+    """
     user_agent, ip_address = get_client_info(request)
     
     logger.info(
@@ -287,8 +419,52 @@ def send_verification_email(payload: schemas.EmailVerificationIn, request: Reque
 
 
 @router.post("/verify_email", response_model=schemas.MessageResponse)
-def verify_email(payload: schemas.VerifyEmailIn, db: Session = Depends(get_db)):
-    """Verify user email with token."""
+def verify_email(
+    payload: schemas.VerifyEmailIn, 
+    db: Session = Depends(get_db)
+):
+    """
+    Verify user email with token.
+    
+    Completes email verification by:
+    1. Validating verification token
+    2. Setting email_verified_at timestamp
+    3. Sending confirmation email
+    
+    Request Body:
+        token (str): Verification token from email link
+        
+    Args:
+        payload: Verification confirmation (from request body)
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Email verified successfully"
+            
+    Raises:
+        HTTPException: 400 if token invalid or expired
+        HTTPException: 400 if email already verified
+        HTTPException: 500 if verification update fails
+        
+    Security:
+        - Token validation: Verifies signature and expiration
+        - Single-use: Token type checked (VERIFY)
+        - Already verified: Rejected with error
+        - Audit logging: Verification logged
+        
+    Notes:
+        - Token single-use (type: VERIFY)
+        - Sets email_verified_at timestamp
+        - Confirmation email sent (non-blocking)
+        - Already verified returns error
+        - Use for: email verification confirmation
+        
+    Example:
+        POST /api/auth/verify_email
+        Body: {"token": "eyJ..."}
+        Returns: {"message": "Email verified successfully"}
+    """
     logger.info("Email verification attempt")
     
     try:

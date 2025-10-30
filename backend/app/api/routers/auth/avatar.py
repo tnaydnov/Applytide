@@ -1,4 +1,15 @@
-"""Avatar upload endpoint."""
+"""
+User Avatar Upload Endpoint
+
+Handles user profile picture uploads with:
+- File type validation (images only)
+- File size limits (5MB max)
+- Avatar URL storage in database
+- Comprehensive error handling and logging
+
+Avatar files are validated but not stored by this endpoint - actual file
+storage should be handled by a separate file storage service.
+"""
 from __future__ import annotations
 from datetime import datetime, timezone
 
@@ -7,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from ....db.session import get_db
 from ....db import models
-from ....api.deps_auth import get_current_user
+from ....api.deps import get_current_user
 from ....infra.logging import get_logger
 
 router = APIRouter()
@@ -22,7 +33,54 @@ async def upload_avatar(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upload user avatar image."""
+    """
+    Upload user avatar image.
+    
+    Accepts image file upload and stores avatar URL reference in user
+    profile. Validates file type (images only) and size (max 5MB).
+    
+    Form Data:
+        file (UploadFile): Image file (multipart/form-data)
+                          Accepted: image/* MIME types
+                          Max size: 5MB
+                          
+    Args:
+        file: Uploaded image file (from form data)
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+        
+    Returns:
+        dict: Upload result with:
+            - message: "Avatar uploaded successfully"
+            - avatar_url: URL path to avatar image
+            
+    Raises:
+        HTTPException: 400 if file type invalid or size exceeds limit
+        HTTPException: 500 if upload or database update fails
+        
+    Security:
+        Requires user authentication
+        Only image MIME types accepted
+        File size limited to 5MB
+        Updates only authenticated user's avatar
+        
+    Notes:
+        - Validates MIME type starts with 'image/'
+        - File size checked after reading (prevents abuse)
+        - Avatar URL format: /avatars/{user_id}/{filename}
+        - Updates user.avatar_url and user.updated_at
+        - TODO: Implement actual file storage service
+        - Currently only stores URL reference
+        
+    Example:
+        POST /api/auth/upload-avatar
+        Content-Type: multipart/form-data
+        Body: file=<image_binary>
+        Returns: {
+            "message": "Avatar uploaded successfully",
+            "avatar_url": "/avatars/user123/profile.jpg"
+        }
+    """
     logger.info(
         "Avatar upload requested",
         extra={

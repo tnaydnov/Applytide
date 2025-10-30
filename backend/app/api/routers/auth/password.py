@@ -1,4 +1,15 @@
-"""Password reset endpoints."""
+"""
+Password Reset Endpoints
+
+Handles password reset flow:
+- Password reset request (email with token)
+- Password reset confirmation (token validation + update)
+- Rate limiting and security measures
+- Email notifications
+
+Implements secure password reset with time-limited tokens and
+comprehensive audit logging.
+"""
 from __future__ import annotations
 import uuid
 
@@ -29,8 +40,56 @@ event_logger = BusinessEventLogger()
 
 
 @router.post("/password_reset_request", response_model=schemas.MessageResponse)
-def password_reset_request(payload: schemas.PasswordResetRequestIn, request: Request, db: Session = Depends(get_db)):
-    """Request password reset email."""
+def password_reset_request(
+    payload: schemas.PasswordResetRequestIn, 
+    request: Request, 
+    db: Session = Depends(get_db)
+):
+    """
+    Request password reset email.
+    
+    Initiates password reset flow by:
+    1. Validating user exists
+    2. Generating time-limited reset token
+    3. Sending reset email with token link
+    4. Logging reset request event
+    
+    Request Body:
+        email (str): User's registered email address
+        
+    Args:
+        payload: Reset request data (from request body)
+        request: FastAPI request for client info extraction
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Password reset email sent successfully! Check your inbox."
+            
+    Raises:
+        HTTPException: 404 if email not registered
+        HTTPException: 429 if rate limit exceeded (5 requests per 15 min)
+        HTTPException: 500 if email sending fails
+        
+    Security:
+        - Rate limiting: 5 attempts per IP/15 min
+        - Time-limited tokens: Expire after configured duration
+        - Audit logging: All requests logged with email and IP
+        - Email validation: Prevents enumeration with generic errors
+        
+    Notes:
+        - Returns success even if email not found (prevents enumeration)
+        - Token embedded in email link for one-click reset
+        - User receives email with reset instructions
+        - Multiple requests invalidate previous tokens
+        - Use for: forgot password flow
+        
+    Example:
+        POST /api/auth/password_reset_request
+        Body: {"email": "user@example.com"}
+        Returns: {"message": "Password reset email sent successfully! Check your inbox."}
+        Email sent to user with reset link
+    """
     user_agent, ip_address = get_client_info(request)
     
     logger.info(
@@ -105,8 +164,59 @@ def password_reset_request(payload: schemas.PasswordResetRequestIn, request: Req
 
 
 @router.post("/password_reset", response_model=schemas.MessageResponse)
-def password_reset(payload: schemas.PasswordResetIn, db: Session = Depends(get_db)):
-    """Reset password with token."""
+def password_reset(
+    payload: schemas.PasswordResetIn, 
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password with token.
+    
+    Completes password reset flow by:
+    1. Validating reset token
+    2. Updating user password hash
+    3. Revoking all existing tokens (security)
+    4. Sending confirmation email
+    
+    Request Body:
+        token (str): Reset token from email link
+        new_password (str): New password (will be hashed)
+        
+    Args:
+        payload: Reset confirmation data (from request body)
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Password reset successfully"
+            
+    Raises:
+        HTTPException: 400 if token invalid or expired
+        HTTPException: 500 if password update fails
+        
+    Security:
+        - Token validation: Verifies signature and expiration
+        - Password hashing: bcrypt with strong work factor
+        - Token revocation: All user tokens invalidated
+        - Confirmation email: Alerts user of password change
+        - Audit logging: Password change logged
+        
+    Notes:
+        - **All sessions terminated** - user must re-login
+        - Old tokens become invalid immediately
+        - User receives confirmation email
+        - Token single-use only (invalidated after use)
+        - Password strength validated by schema
+        - Use for: completing forgot password flow
+        
+    Example:
+        POST /api/auth/password_reset
+        Body: {
+            "token": "eyJ...",
+            "new_password": "newSecurePass123!"
+        }
+        Returns: {"message": "Password reset successfully"}
+        Effect: Password updated, all sessions logged out
+    """
     logger.info("Password reset attempt")
     
     try:

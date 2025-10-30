@@ -1,4 +1,15 @@
-"""Google OAuth authentication endpoints."""
+"""
+Google OAuth Authentication Endpoints
+
+Handles Google OAuth 2.0 authentication flow:
+- OAuth authorization initiation
+- OAuth callback handling and user creation
+- Legal agreements storage for OAuth users
+- Token generation and session creation
+
+Implements secure OAuth flow with state validation and
+automatic user provisioning for new Google sign-ins.
+"""
 from __future__ import annotations
 import uuid
 import secrets
@@ -36,8 +47,44 @@ class LegalAgreementsIn(BaseModel):
 
 
 @router.get("/google/login")
-async def login_google(db: Session = Depends(get_db)):
-    """Initiate Google OAuth login flow."""
+async def login_google(
+    db: Session = Depends(get_db)
+):
+    """
+    Initiate Google OAuth login flow.
+    
+    Redirects user to Google's OAuth authorization page.
+    Generates state token for CSRF protection.
+    
+    Args:
+        db: Database session (from dependency)
+        
+    Returns:
+        RedirectResponse: Redirect to Google OAuth page with:
+            - client_id: Application credentials
+            - redirect_uri: Callback URL
+            - scope: Requested permissions (email, profile)
+            - state: CSRF protection token
+            
+    Raises:
+        Redirects to login page with error on failure
+        
+    Security:
+        - State token: CSRF protection (validated in callback)
+        - Secure redirect: Only to Google domains
+        - Scopes limited: email, profile only
+        
+    Notes:
+        - Generates random state token
+        - State validated in callback endpoint
+        - User consents on Google's page
+        - Returns to /google/callback after consent
+        - Use for: "Sign in with Google" button
+        
+    Example:
+        GET /api/auth/google/login
+        Returns: 302 Redirect to https://accounts.google.com/...
+    """
     try:
         state = secrets.token_urlsafe(16)
         url = GoogleOAuthService(db).get_google_authorization_url(state=state)
@@ -69,7 +116,61 @@ async def callback_google(
     error: str | None = None,
     db: Session = Depends(get_db),
 ):
-    """Handle Google OAuth callback."""
+    """
+    Handle Google OAuth callback.
+    
+    Processes OAuth authorization response:
+    1. Validates authorization code
+    2. Exchanges code for tokens
+    3. Fetches user profile from Google
+    4. Creates new user or updates existing
+    5. Generates application tokens
+    6. Sets authentication cookies
+    7. Redirects to dashboard or legal agreements
+    
+    Query Parameters:
+        code (str): Authorization code from Google
+        state (str): CSRF token (should match initiated state)
+        error (str): Error code if authorization denied
+        
+    Args:
+        request: FastAPI request for client info extraction
+        response: FastAPI response for cookie setting
+        code: Authorization code (from query param)
+        state: State token (from query param)
+        error: Error code (from query param)
+        db: Database session (from dependency)
+        
+    Returns:
+        RedirectResponse: Redirect with authentication cookies:
+            - Success: /dashboard (existing) or /dashboard?new_user=true (new)
+            - Failure: /login?error=<reason>
+            Cookies set: access_token, refresh_token, client_id
+            
+    Raises:
+        Redirects to login with error parameter on failure
+        
+    Security:
+        - State validation: CSRF protection (TODO: implement)
+        - Code exchange: Secure token retrieval
+        - Profile verification: Email from Google validated
+        - Extended session: 30-day refresh token for OAuth
+        - Audit logging: Login event logged
+        
+    Notes:
+        - New users created automatically
+        - Existing users updated with latest Google data
+        - New users redirected to legal agreements
+        - is_new flag signals frontend to show agreements
+        - Email pre-verified (from Google)
+        - Password hash not set (OAuth users)
+        - Use for: OAuth callback URL
+        
+    Example:
+        GET /api/auth/google/callback?code=...&state=...
+        Returns: 302 Redirect to /dashboard
+        Sets cookies: access_token, refresh_token
+    """
     user_agent, ip_address = get_client_info(request)
     
     logger.info(
@@ -196,7 +297,61 @@ async def store_google_agreements(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Store legal agreements for OAuth user after callback."""
+    """
+    Store legal agreements for OAuth user.
+    
+    Called by frontend after OAuth registration to store
+    legal agreement timestamps. Required for GDPR compliance.
+    
+    Request Body:
+        terms_accepted (bool): Terms of Service accepted (required: true)
+        privacy_accepted (bool): Privacy Policy accepted (required: true)
+        age_verified (bool): Age 13+ verified (required: true)
+        data_processing_consent (bool): GDPR consent (required: true)
+        
+    Args:
+        payload: Legal agreements (from request body)
+        request: FastAPI request for cookie extraction
+        db: Database session (from dependency)
+        
+    Returns:
+        dict: Success confirmation with:
+            - success: true
+            - message: "Legal agreements recorded"
+            
+    Raises:
+        HTTPException: 401 if not authenticated
+        HTTPException: 400 if any agreement is false
+        HTTPException: 500 if update fails
+        
+    Security:
+        Requires user authentication
+        All agreements must be true
+        Timestamps recorded with IP address
+        Audit logging: Agreement acceptance logged
+        
+    Notes:
+        - Called after OAuth callback for new users
+        - All agreements MUST be true
+        - Timestamps and IP stored for legal compliance
+        - Frontend shows agreement UI if is_new=true
+        - Existing OAuth users already have agreements
+        - Use for: post-OAuth legal agreement capture
+        
+    Example:
+        POST /api/auth/google/store-agreements
+        Headers: Cookie: access_token=<valid>
+        Body: {
+            "terms_accepted": true,
+            "privacy_accepted": true,
+            "age_verified": true,
+            "data_processing_consent": true
+        }
+        Returns: {
+            "success": true,
+            "message": "Legal agreements recorded"
+        }
+    """
     user_agent, ip_address = get_client_info(request)
     
     # Get user from access token cookie

@@ -1,8 +1,78 @@
 """
-Real AI-powered cover letter generation using OpenAI GPT-4o-mini (or override via env).
-- Uses AsyncOpenAI (non-blocking in FastAPI)
-- Compatible with openai==1.x
-- Optional HTTP(S) proxy support via env or settings
+AI-Powered Cover Letter Generation Module.
+
+This module provides intelligent cover letter generation using OpenAI GPT models
+with async/await support for non-blocking operation in FastAPI applications.
+
+Features:
+    - Async API calls (AsyncOpenAI) for non-blocking operation
+    - Intelligent analysis of resume, job description, and candidate profile
+    - Multiple tone options (professional, conversational, confident, creative, enthusiastic)
+    - Flexible length options (short: 200-300, medium: 300-400, long: 400-500 words)
+    - ATS-friendly formatting and keyword optimization
+    - LLM usage tracking for cost monitoring
+    - HTTP(S) proxy support for enterprise environments
+    - Template fallback for offline or error scenarios
+
+Architecture:
+    - Compatible with openai>=1.x (AsyncOpenAI)
+    - Uses httpx for async HTTP with configurable timeouts
+    - Integrates with SQLAlchemy for job/company lookups
+    - Optional LLM usage tracking via llm_tracker
+
+Model Selection:
+    - Default: gpt-4o-mini (cost-effective, fast, high quality)
+    - Override via: COVER_LETTER_MODEL environment variable or settings
+    - Configurable: base_url, organization, project for enterprise deployments
+
+Cost Estimation:
+    - gpt-4o-mini: ~$0.002-0.004 per cover letter (300-500 words)
+    - Automatic usage tracking when db_session provided
+    - See llm_tracker for detailed cost analytics
+
+Usage Example:
+    ```python
+    service = AICoverLetterService(db_session=db)
+    try:
+        result = await service.generate_intelligent_cover_letter(
+            db=db,
+            job_id="uuid-here",
+            resume_content="...",
+            user_profile={"skills": [...], "education": [...]},
+            tone="professional",
+            length="medium"
+        )
+        if result["success"]:
+            print(result["cover_letter"])
+    finally:
+        await service.aclose()
+    ```
+
+Error Handling:
+    - Rate limit errors: Automatic retry with exponential backoff
+    - API errors: Graceful degradation to template fallback
+    - Validation errors: Clear error messages for missing/invalid data
+    - Comprehensive logging throughout
+
+Security:
+    - API key from environment variable (OPENAI_API_KEY)
+    - Never logs API keys or sensitive data
+    - Input validation and sanitization
+    - Respects maximum input lengths to prevent abuse
+
+CRITICAL WARNING:
+    DO NOT MODIFY THE SYSTEM PROMPT OR DETAILED INSTRUCTIONS.
+    The prompts are carefully engineered for optimal quality and factual accuracy.
+    Changes may result in fabricated information or poor output quality.
+
+Dependencies:
+    - openai>=1.x
+    - httpx
+    - sqlalchemy
+    - Python 3.10+ (uses modern type hints)
+
+Author: ApplyTide Team
+Last Updated: 2025-01-18
 """
 
 from __future__ import annotations
@@ -10,14 +80,53 @@ from __future__ import annotations
 import os
 import json
 import uuid
+import time
 from datetime import datetime
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 import httpx
 from sqlalchemy.orm import Session
 from openai import AsyncOpenAI
+from openai import APIError, APITimeoutError, RateLimitError, APIConnectionError
 
-# If your project exposes settings, try to import them; else fall back to env
+# Configuration constants
+MIN_RESUME_LENGTH: int = 50  # Minimum resume content length
+MAX_RESUME_LENGTH: int = 10000  # Maximum resume content for API
+MAX_DESCRIPTION_LENGTH: int = 6000  # Maximum job description length
+MAX_PROFILE_LENGTH: int = 4000  # Maximum user profile JSON length
+MAX_TITLE_LENGTH: int = 180  # Maximum title/location length
+HTTP_TIMEOUT_SECONDS: int = 60  # HTTP request timeout
+HTTP_READ_TIMEOUT_SECONDS: int = 60  # HTTP read timeout
+HTTP_CONNECT_TIMEOUT_SECONDS: int = 20  # HTTP connection timeout
+MAX_TOKENS: int = 1000  # Maximum tokens for response
+TEMPERATURE: float = 0.6  # LLM temperature for creativity
+DEFAULT_MODEL: str = "gpt-4o-mini"  # Default model if not configured
+
+# Valid tone options
+VALID_TONES = {"professional", "conversational", "confident", "creative", "enthusiastic"}
+
+# Valid length options
+VALID_LENGTHS = {"short", "medium", "long"}
+
+# Word count mappings
+WORD_COUNTS = {
+    "short": "200-300",
+    "medium": "300-400",
+    "long": "400-500",
+}
+
+# Tone instruction mappings
+TONE_INSTRUCTIONS = {
+    "professional": "formal and professional",
+    "conversational": "warm and conversational while maintaining professionalism",
+    "confident": "confident and assertive while remaining respectful",
+    "creative": "creative and engaging while staying professional",
+    "enthusiastic": "enthusiastic and energetic while staying professional",
+}
+
+
+
+# Load configuration from settings or environment
 try:
     from ...config import settings  # type: ignore
     OPENAI_API_KEY = settings.OPENAI_API_KEY
@@ -26,15 +135,16 @@ try:
     OPENAI_PROJECT = getattr(settings, "OPENAI_PROJECT", None)
     HTTP_PROXY = getattr(settings, "HTTP_PROXY", None) or os.getenv("HTTP_PROXY")
     HTTPS_PROXY = getattr(settings, "HTTPS_PROXY", None) or os.getenv("HTTPS_PROXY")
-    DEFAULT_MODEL = getattr(settings, "COVER_LETTER_MODEL", None) or os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
+    COVER_LETTER_MODEL = getattr(settings, "COVER_LETTER_MODEL", None) or os.getenv("COVER_LETTER_MODEL", DEFAULT_MODEL)
 except Exception:
+    # Fallback to environment variables if settings import fails
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
     OPENAI_ORG = os.getenv("OPENAI_ORGANIZATION")
     OPENAI_PROJECT = os.getenv("OPENAI_PROJECT")
     HTTP_PROXY = os.getenv("HTTP_PROXY")
     HTTPS_PROXY = os.getenv("HTTPS_PROXY")
-    DEFAULT_MODEL = os.getenv("COVER_LETTER_MODEL", "gpt-4o-mini")
+    COVER_LETTER_MODEL = os.getenv("COVER_LETTER_MODEL", DEFAULT_MODEL)
 
 from ...db import models
 from .llm_tracker import track_openai_call
@@ -44,6 +154,29 @@ logger = get_logger(__name__)
 
 
 def _safe_str(x: object, limit: int | None = None) -> str:
+    """
+    Safely convert object to string with optional length limit.
+    
+    Args:
+        x: Object to convert to string (can be None)
+        limit: Optional maximum length (None for no limit)
+    
+    Returns:
+        str: String representation (empty if None, truncated if over limit)
+    
+    Examples:
+        >>> _safe_str(None)
+        ''
+        >>> _safe_str("Hello World", 5)
+        'Hello'
+        >>> _safe_str(12345)
+        '12345'
+    
+    Notes:
+        - Returns empty string for None values
+        - Truncates without ellipsis (simple truncation)
+        - Negative limits treated as no limit
+    """
     s = "" if x is None else str(x)
     if limit is not None and limit >= 0 and len(s) > limit:
         return s[:limit]
@@ -51,50 +184,228 @@ def _safe_str(x: object, limit: int | None = None) -> str:
 
 
 def _resolve_job_and_company(db: Session, job_id: str) -> Tuple[models.Job, Optional[str]]:
-    q = (
-        db.query(models.Job, models.Company.name.label("company_name"))
-        .outerjoin(models.Company, models.Job.company_id == models.Company.id)
-        .filter(models.Job.id == uuid.UUID(job_id))
-        .first()
-    )
+    """
+    Resolve job and company information from database.
+    
+    Args:
+        db: Database session
+        job_id: Job UUID string
+    
+    Returns:
+        Tuple of (Job model, company_name or None)
+    
+    Raises:
+        ValueError: If job_id is invalid UUID or job not found
+    
+    Examples:
+        >>> job, company = _resolve_job_and_company(db, "550e8400-e29b-41d4-a716-446655440000")
+        >>> print(f"{job.title} at {company}")
+    
+    Notes:
+        - Uses left join (company may be None)
+        - Validates UUID format automatically
+        - Returns company_name as string, not Company model
+    """
+    if not job_id:
+        logger.error("Empty job_id provided to _resolve_job_and_company")
+        raise ValueError("job_id cannot be empty")
+    
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except (ValueError, TypeError) as e:
+        logger.error(
+            "Invalid job_id UUID format",
+            extra={
+                "job_id": job_id,
+                "error": str(e)
+            }
+        )
+        raise ValueError(f"Invalid job_id UUID format: {job_id}")
+    
+    try:
+        q = (
+            db.query(models.Job, models.Company.name.label("company_name"))
+            .outerjoin(models.Company, models.Job.company_id == models.Company.id)
+            .filter(models.Job.id == job_uuid)
+            .first()
+        )
+    except Exception as e:
+        logger.error(
+            "Database error resolving job",
+            extra={
+                "job_id": job_id,
+                "error": str(e),
+                "error_type": type(e).__name__
+            },
+            exc_info=True
+        )
+        raise ValueError(f"Database error: {str(e)}")
+    
     if not q:
-        raise ValueError("Job not found")
+        logger.error(
+            "Job not found",
+            extra={"job_id": job_id}
+        )
+        raise ValueError(f"Job not found: {job_id}")
+    
     job, company_name = q
+    
+    logger.debug(
+        "Job and company resolved",
+        extra={
+            "job_id": job_id,
+            "job_title": job.title[:100] if job.title else None,
+            "company_name": company_name
+        }
+    )
+    
     return job, company_name
 
 
 class AICoverLetterService:
+    """
+    AI-powered cover letter generation service.
+    
+    Generates personalized, professional cover letters using OpenAI GPT models
+    with async/await support for non-blocking operation.
+    
+    Attributes:
+        db_session: Optional database session for LLM usage tracking
+        client: AsyncOpenAI client for API calls
+        model: OpenAI model name (default: gpt-4o-mini)
+        _http_client: httpx AsyncClient with proxy support
+    
+    Thread Safety:
+        - Async methods are safe for concurrent use
+        - Each instance manages its own HTTP client
+        - Close with aclose() to cleanup resources
+    """
+    
     def __init__(self, db_session=None) -> None:
-        if not OPENAI_API_KEY:
+        """
+        Initialize AI cover letter service.
+        
+        Args:
+            db_session: Optional database session for usage tracking
+        
+        Raises:
+            ValueError: If OPENAI_API_KEY not set or empty
+        
+        Notes:
+            - Requires OPENAI_API_KEY environment variable
+            - HTTP(S) proxy configured via environment variables
+            - Always call aclose() when done to cleanup HTTP client
+        """
+        if not OPENAI_API_KEY or not OPENAI_API_KEY.strip():
+            logger.error("OPENAI_API_KEY not set or empty")
             raise ValueError("OPENAI_API_KEY environment variable is required")
 
         self.db_session = db_session  # Store for tracking
         
+        # Configure HTTP client with proxy support
         proxy_url = HTTPS_PROXY or HTTP_PROXY
         transport = None
         if proxy_url:
-            transport = httpx.AsyncHTTPTransport(proxy=proxy_url)
+            logger.info(
+                "Configuring HTTP proxy for OpenAI",
+                extra={"proxy": proxy_url[:50]}  # Don't log full proxy URL
+            )
+            try:
+                transport = httpx.AsyncHTTPTransport(proxy=proxy_url)
+            except Exception as e:
+                logger.warning(
+                    "Failed to configure proxy, continuing without proxy",
+                    extra={
+                        "error": str(e),
+                        "proxy": proxy_url[:50]
+                    }
+                )
+                transport = None
 
-        self._http_client = httpx.AsyncClient(
-            transport=transport,
-            timeout=httpx.Timeout(60.0, read=60.0, write=60.0, connect=20.0),
+        try:
+            self._http_client = httpx.AsyncClient(
+                transport=transport,
+                timeout=httpx.Timeout(
+                    HTTP_TIMEOUT_SECONDS,
+                    read=HTTP_READ_TIMEOUT_SECONDS,
+                    write=HTTP_TIMEOUT_SECONDS,
+                    connect=HTTP_CONNECT_TIMEOUT_SECONDS
+                ),
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to create HTTP client",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                },
+                exc_info=True
+            )
+            raise ValueError(f"Failed to create HTTP client: {str(e)}")
+
+        try:
+            self.client = AsyncOpenAI(
+                api_key=OPENAI_API_KEY,
+                base_url=OPENAI_BASE_URL or None,
+                organization=OPENAI_ORG or None,
+                project=OPENAI_PROJECT or None,
+                http_client=self._http_client,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to initialize AsyncOpenAI client",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                },
+                exc_info=True
+            )
+            raise ValueError(f"Failed to initialize OpenAI client: {str(e)}")
+
+        self.model = COVER_LETTER_MODEL or DEFAULT_MODEL
+        
+        # Validate model name
+        if not self.model or not self.model.strip():
+            logger.warning(
+                "Empty model name, using default",
+                extra={"default": DEFAULT_MODEL}
+            )
+            self.model = DEFAULT_MODEL
+
+        logger.info(
+            "AI cover letter service initialized",
+            extra={
+                "model": self.model,
+                "tracking_enabled": self.db_session is not None,
+                "proxy_enabled": proxy_url is not None
+            }
         )
-
-        self.client = AsyncOpenAI(
-            api_key=OPENAI_API_KEY,
-            base_url=OPENAI_BASE_URL or None,
-            organization=OPENAI_ORG or None,
-            project=OPENAI_PROJECT or None,
-            http_client=self._http_client,
-        )
-
-        self.model = DEFAULT_MODEL
 
     async def aclose(self) -> None:
+        """
+        Close HTTP client and cleanup resources.
+        
+        Should be called when service is no longer needed to free resources.
+        Safe to call multiple times (idempotent).
+        
+        Example:
+            >>> service = AICoverLetterService(db)
+            >>> try:
+            ...     result = await service.generate_intelligent_cover_letter(...)
+            ... finally:
+            ...     await service.aclose()
+        """
         try:
             await self._http_client.aclose()
-        except Exception:
-            pass
+            logger.debug("HTTP client closed successfully")
+        except Exception as e:
+            logger.warning(
+                "Error closing HTTP client",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+            )
 
     async def generate_intelligent_cover_letter(
         self,
@@ -324,3 +635,12 @@ class AICoverLetterService:
             f"Thank you for your time and consideration.\n\n"
             f"Sincerely,\n[Your Name]"
         )
+
+
+# Export all public classes and constants
+__all__ = [
+    'AICoverLetterService',
+    'VALID_TONES',
+    'VALID_LENGTHS',
+    'DEFAULT_MODEL',
+]

@@ -1,4 +1,31 @@
-"""Main extraction orchestration logic."""
+"""
+Main extraction orchestration logic.
+
+This module coordinates the complete job extraction process, managing multiple
+extraction sources and fallback strategies to ensure robust extraction even
+when individual components fail.
+
+Extraction Strategies:
+1. Manual Text Path (LLM-first):
+   - Clean text → Extract hints → LLM extraction → Return result
+   - Trusts LLM completely for requirement/description separation
+   - Used when user provides manually pasted text
+
+2. HTML Path (Multi-source):
+   - Phase 0: DOM hints (title/company)
+   - Phase 1: Structured data (JSON-LD)
+   - Phase 2: Main content extraction (Readability/DOM)
+   - Phase 3: Fallbacks (XHR logs, location/remote type)
+   - Phase 4: LLM enhancement (optional)
+   - Phase 5-6: Requirement splitting (if LLM unavailable)
+   - Phase 7: Source merging with priority (LLM > Structured > DOM > Fallbacks)
+
+Features:
+- Graceful degradation with multiple fallback strategies
+- Non-fatal error handling for best-effort extraction
+- Comprehensive logging at each extraction phase
+- Input validation with detailed error messages
+"""
 from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from .utils import ExtractionUtils
@@ -13,7 +40,19 @@ logger = get_logger(__name__)
 
 
 class ExtractionOrchestrator:
-    """Orchestrates job extraction from multiple sources with fallback strategies."""
+    """
+    Orchestrates job extraction from multiple sources with fallback strategies.
+    
+    This class manages the complete extraction workflow, coordinating between
+    different extraction handlers and ensuring graceful fallbacks when components fail.
+    
+    Attributes:
+        utils: Utility functions for text processing and validation
+        jsonld: JSON-LD structured data extractor
+        requirements: Requirement splitting logic
+        llm: LLM-based extraction handler
+        dom: DOM-based extraction handler
+    """
     
     def __init__(
         self,
@@ -23,11 +62,23 @@ class ExtractionOrchestrator:
         llm: LLMExtractionHandler,
         dom: DOMExtractionHandler
     ):
+        """
+        Initialize orchestrator with extraction dependencies.
+        
+        Args:
+            utils: Utility functions instance
+            jsonld: JSON-LD extractor instance
+            requirements: Requirement splitter instance
+            llm: LLM handler instance
+            dom: DOM handler instance
+        """
         self.utils = utils
         self.jsonld = jsonld
         self.requirements = requirements
         self.llm = llm
         self.dom = dom
+        
+        logger.debug("ExtractionOrchestrator initialized")
     
     def extract_job(
         self,

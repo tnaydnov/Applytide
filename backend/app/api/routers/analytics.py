@@ -1,3 +1,35 @@
+"""
+Job Search Analytics Router
+
+This module provides comprehensive analytics endpoints for tracking and analyzing
+job search progress, success rates, timelines, and optimization opportunities.
+
+Key Features:
+- Multi-dimensional analytics (applications, interviews, companies, timeline)
+- Time range filtering (1m, 3m, 6m, 1y, all)
+- CSV and PDF export functionality
+- Success metrics and conversion rates
+- Application trends and patterns
+- Best time to apply analysis
+- Company comparison data
+- Stage transition tracking
+
+Analytics Dimensions:
+- Overview: High-level KPIs and trends
+- Applications: Status breakdown, monthly trends, top titles
+- Interviews: Success rates, types, outcomes, conversion
+- Companies: Top employers, application density, size distribution
+- Timeline: Process duration, stage transitions, bottlenecks
+- Sources: Application source breakdown
+- Best Time: Optimal application timing analysis
+
+Dependencies:
+- AnalyticsService for data aggregation
+- ReportLab for PDF generation
+- CSV writer for export
+
+Router: /api/analytics
+"""
 from __future__ import annotations
 import tempfile, csv
 from io import BytesIO
@@ -6,7 +38,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 
-from ...api.deps_auth import get_current_user
+from ...api.deps import get_current_user
 from ...db.models import User
 from ...domain.analytics.service import AnalyticsService, time_range_start
 from ..deps import get_analytics_service
@@ -21,10 +53,68 @@ def get_analytics(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
+    """
+    Get comprehensive job search analytics.
+    
+    Retrieves multi-dimensional analytics data for user's job search including
+    applications, interviews, timeline, companies, and optimization insights.
+    
+    Query Parameters:
+        - range: Time range for analysis (default: "6m")
+          Options: "1m", "3m", "6m", "1y", "all"
+    
+    Args:
+        range_param: Time range filter
+        user: Authenticated user from dependency injection
+        svc: Analytics service from dependency injection
+    
+    Returns:
+        dict: Comprehensive analytics object with sections:
+            - overview: KPIs (totals, rates, trends)
+            - applications: Status breakdown, monthly trends, top titles
+            - interviews: Success rates, types, outcomes, conversion rates
+            - companies: Top companies, size distribution, application density
+            - timeline: Process duration, stage transitions, bottlenecks
+            - sources: Application source breakdown
+            - bestTime: Optimal application timing analysis
+    
+    Raises:
+        HTTPException: 500 if analytics calculation fails
+    
+    Security:
+        - Requires authentication via get_current_user dependency
+        - User only sees their own analytics
+        - Automatic user_id filtering
+    
+    Notes:
+        - Data calculated dynamically from database
+        - Complex aggregations for multi-dimensional analysis
+        - Response time increases with longer ranges
+        - "all" range includes entire history
+        - Used by frontend analytics dashboard
+        - Includes trend analysis and predictions
+    
+    Example:
+        GET /api/analytics?range=6m
+        Response:
+        {
+            "overview": {
+                "totalApplications": 45,
+                "interviewRate": 22.2,
+                "offerRate": 8.9,
+                "avgResponseTime": 7.5,
+                "statusDistribution": [...]
+            },
+            "applications": {...},
+            "interviews": {...},
+            "companies": {...},
+            "timeline": {...}
+        }
+    """
     try:
         logger.debug(
             "User requesting analytics",
-            extra={"user_id": str(user.id), "range": range_param}
+            extra={"user_id": str(user.id), "range": range_param},
         )
         result = svc.get_analytics(user_id=user.id, range_param=range_param)
         return result
@@ -32,7 +122,7 @@ def get_analytics(
         logger.error(
             "Error retrieving analytics",
             extra={"user_id": str(user.id), "error": str(e)},
-            exc_info=True
+            exc_info=True,
         )
         raise HTTPException(status_code=500, detail="Failed to retrieve analytics")
 
@@ -42,6 +132,53 @@ def export_analytics_csv(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
+    """
+    Export analytics data as CSV file.
+    
+    Generates comprehensive CSV export of all analytics dimensions for offline
+    analysis, reporting, or archival.
+    
+    Query Parameters:
+        - range: Time range for analysis (default: "6m")
+          Options: "1m", "3m", "6m", "1y", "all"
+    
+    Args:
+        range_param: Time range filter
+        user: Authenticated user from dependency injection
+        svc: Analytics service from dependency injection
+    
+    Returns:
+        FileResponse: CSV file download with all analytics sections
+    
+    Raises:
+        HTTPException: 500 if CSV generation fails
+    
+    CSV Structure:
+        - Section headers separate different analytics dimensions
+        - Overview: Key metrics and trends
+        - Applications: Status breakdowns, trends, top titles
+        - Interviews: Types, outcomes, conversion rates
+        - Companies: Top employers, size distribution
+        - Timeline: Stage transitions, bottlenecks, weekly trends
+        - Sources: Application source breakdown
+        - Best Time: Optimal timing by weekday and hour
+    
+    Security:
+        - Requires authentication via get_current_user dependency
+        - User only exports their own data
+        - Temporary file automatically cleaned up
+    
+    Notes:
+        - Generates temporary file for streaming
+        - Filename includes time range: analytics-data-{range}.csv
+        - CSV compatible with Excel, Google Sheets, etc.
+        - All analytics sections included
+        - Suitable for data analysis tools
+    
+    Example:
+        GET /api/analytics/export/csv?range=1y
+        Response: CSV file download (analytics-data-1y.csv)
+    """
     try:
         logger.info("Generating CSV analytics export", extra={
             "user_id": user.id,
@@ -153,6 +290,60 @@ def export_analytics_pdf(
     user: User = Depends(get_current_user),
     svc: AnalyticsService = Depends(get_analytics_service),
 ):
+    """
+    Export analytics as formatted PDF report.
+    
+    Generates professional PDF report with formatted tables, charts, and insights.
+    Falls back to text export if PDF generation fails.
+    
+    Query Parameters:
+        - range: Time range for analysis (default: "6m")
+          Options: "1m", "3m", "6m", "1y", "all"
+    
+    Args:
+        range_param: Time range filter
+        user: Authenticated user from dependency injection
+        svc: Analytics service from dependency injection
+    
+    Returns:
+        StreamingResponse: PDF file download or text fallback
+    
+    Raises:
+        HTTPException: 500 if both PDF and fallback fail
+    
+    PDF Structure:
+        - Title page with range
+        - Overview section with KPIs
+        - Applications breakdown tables
+        - Interview analysis tables
+        - Company comparison tables
+        - Timeline and stage transitions
+        - Best time to apply recommendations
+        - Formatted tables with headers and styling
+    
+    Fallback Behavior:
+        - If ReportLab fails, generates plain text report
+        - Includes basic overview metrics
+        - Logs warning and serves fallback automatically
+    
+    Security:
+        - Requires authentication via get_current_user dependency
+        - User only exports their own data
+        - No data persistence (generated on demand)
+    
+    Notes:
+        - Requires reportlab library for PDF generation
+        - Filename includes time range: analytics-report-{range}.pdf
+        - Professional formatting with tables and styling
+        - Suitable for presentations and reporting
+        - Memory-efficient streaming response
+        - Fallback ensures export always succeeds
+    
+    Example:
+        GET /api/analytics/export/pdf?range=3m
+        Response: PDF file download (analytics-report-3m.pdf)
+        Or fallback: Text file (analytics-report-3m.txt)
+    """
     try:
         logger.info("Generating PDF analytics export", extra={
             "user_id": user.id,

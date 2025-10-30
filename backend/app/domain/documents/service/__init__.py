@@ -1,4 +1,15 @@
-"""Refactored DocumentService - barrel export for backward compatibility."""
+"""
+Refactored DocumentService - unified facade with backward compatibility.
+
+This module provides a single entry point for all document operations including:
+- CRUD operations (upload, list, get, delete, update)
+- Preview and download functionality
+- ATS analysis (AI-powered or heuristic)
+- Document generation (cover letters, optimization)
+
+All operations are delegated to specialized modules while maintaining
+backward compatibility with the original API.
+"""
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -16,12 +27,46 @@ from ....api.schemas.documents import (
     DocumentResponse, DocumentListResponse
 )
 
+# Import specialized modules
 from .utils import DocumentUtils
 from .cache import AnalysisCache
 from .crud import DocumentCRUD
 from .preview import DocumentPreview
 from .analysis import DocumentAnalysisModule
 from .generation import DocumentGeneration
+
+# Import all exception classes for external use
+from .crud import (
+    DocumentCRUDError,
+    DocumentValidationError,
+    DocumentNotFoundError,
+    DocumentStorageError,
+)
+from .cache import (
+    CacheError,
+    CacheValidationError,
+    CacheStorageError,
+)
+from .utils import (
+    DocumentUtilsError,
+    LLMError,
+    ValidationError,
+)
+from .preview import (
+    PreviewError,
+    PreviewValidationError,
+    PreviewNotFoundError,
+)
+from .analysis import (
+    AnalysisError,
+    AnalysisValidationError,
+    AnalysisLLMError,
+)
+from .generation import (
+    GenerationError,
+    GenerationValidationError,
+    DocumentNotFoundError as GenerationDocumentNotFoundError,
+)
 
 logger = get_logger(__name__)
 
@@ -189,4 +234,32 @@ class DocumentService:
 
 
 # Export for backward compatibility
-__all__ = ["DocumentService"]
+__all__ = [
+    # Main service
+    "DocumentService",
+    # CRUD exceptions
+    "DocumentCRUDError",
+    "DocumentValidationError",
+    "DocumentNotFoundError",
+    "DocumentStorageError",
+    # Cache exceptions
+    "CacheError",
+    "CacheValidationError",
+    "CacheStorageError",
+    # Utils exceptions
+    "DocumentUtilsError",
+    "LLMError",
+    "ValidationError",
+    # Preview exceptions
+    "PreviewError",
+    "PreviewValidationError",
+    "PreviewNotFoundError",
+    # Analysis exceptions
+    "AnalysisError",
+    "AnalysisValidationError",
+    "AnalysisLLMError",
+    # Generation exceptions
+    "GenerationError",
+    "GenerationValidationError",
+    "GenerationDocumentNotFoundError",
+]

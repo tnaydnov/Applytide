@@ -1,6 +1,12 @@
 """
-Token generation endpoints for browser extensions and WebSocket authentication.
-Extracted from api.routers.auth during refactoring.
+Token Generation Endpoints
+
+Generates special-purpose authentication tokens for:
+- Browser extension authentication (long-lived access tokens)
+- WebSocket connection authentication (short-lived tickets)
+
+These endpoints require user authentication and return tokens that
+bypass the standard cookie-based authentication flow.
 """
 from __future__ import annotations
 
@@ -9,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from ....db.session import get_db
 from ....db import models
-from ....api.deps_auth import get_current_user
+from ....api.deps import get_current_user
 from ....api.schemas import auth as schemas
 from ....infra.security.tokens import create_access_token
 from ....infra.logging import get_logger
@@ -23,7 +29,43 @@ async def get_extension_token(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Generate extension token for browser extension authentication."""
+    """
+    Generate access token for browser extension.
+    
+    Creates a standard access token for use in the browser extension.
+    Extension uses this token for API authentication instead of cookies.
+    Token has same TTL as regular access tokens (15 minutes).
+    
+    Args:
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+        
+    Returns:
+        ExtensionTokenOut: Token response with:
+            - access_token: JWT access token string
+            Valid for 15 minutes
+            
+    Raises:
+        HTTPException: 401 if not authenticated
+        HTTPException: 500 if token generation fails
+        
+    Security:
+        Requires user authentication via cookies
+        Returns standard JWT access token
+        Token has 15-minute expiration
+        Use for: browser extension Bearer authentication
+        
+    Notes:
+        - Extension stores token in chrome.storage
+        - Token refreshed via extension's refresh flow
+        - Same token format as cookie-based auth
+        - Use in Authorization header: Bearer <token>
+        
+    Example:
+        POST /api/auth/extension-token
+        Headers: Cookie: access_token=<valid>
+        Returns: {"access_token": "eyJ..."}
+    """
     try:
         logger.info(
             "Extension token requested",
@@ -56,9 +98,41 @@ def create_ws_ticket(
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    Mint a short-lived access token for WebSocket auth.
-    Using get_current_user means if the access cookie is stale,
-    your frontend's apiFetch() will auto-refresh then retry this call.
+    Create short-lived token for WebSocket authentication.
+    
+    Generates a JWT access token specifically for WebSocket connection
+    authentication. Token should be used immediately to establish WS
+    connection before expiration.
+    
+    Args:
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        dict: Token response with:
+            - token: JWT access token string
+            Valid for 15 minutes (use immediately)
+            
+    Raises:
+        HTTPException: 401 if not authenticated or token generation fails
+        
+    Security:
+        Requires user authentication via cookies
+        Frontend auto-refreshes if access cookie stale
+        Token valid for 15 minutes (same as access token)
+        Use immediately for WS connection
+        
+    Notes:
+        - Frontend calls this before WebSocket connect
+        - Token sent as query param or first WS message
+        - Server validates JWT on WebSocket handshake
+        - Use for: real-time notifications, live updates
+        - Short TTL recommended for security (5-15 min)
+        
+    Example:
+        POST /api/auth/ws-ticket
+        Headers: Cookie: access_token=<valid>
+        Returns: {"token": "eyJ..."}
+        Usage: ws://api/ws?token=eyJ...
     """
     try:
         logger.info(

@@ -1,14 +1,23 @@
-"""Note management endpoints for applications."""
+"""
+Application Note Management Endpoints
+
+Handles note-taking for applications:
+- Add notes to applications
+- List all notes for an application
+
+All endpoints require user authentication and ownership verification.
+Notes allow users to record thoughts, reminders, and context about applications.
+"""
 from __future__ import annotations
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends
-from ...deps_auth import get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from ...deps import get_current_user
 from ....db import models
 from ...schemas.applications import NoteCreate, NoteOut
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
-from .utils import broadcast_event
+from .utils import broadcast_event, logger
 
 router = APIRouter()
 
@@ -20,17 +29,98 @@ def add_note(
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Add a note to an application."""
-    n = svc.add_note(
-        user_id=current_user.id,
-        app_id=app_id,
-        body=payload.body
-    )
+    """
+    Add a note to an application.
     
-    # Best-effort WebSocket broadcast
-    broadcast_event("note_added", str(app_id))
+    Creates a text note for recording thoughts, reminders, or
+    context about the application. Useful for tracking conversation
+    details, follow-up actions, or personal observations.
     
-    return NoteOut(**n.__dict__)
+    Path Parameters:
+        app_id (UUID): ID of the application to add note to
+        
+    Request Body:
+        body (str): Note content (markdown supported)
+        
+    Args:
+        svc: Application service instance (from dependency)
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        NoteOut: Created note object with:
+            - id: Note UUID
+            - application_id: Parent application UUID
+            - body: Note content
+            - created_at: Creation timestamp
+            - updated_at: Last update timestamp
+            
+    Raises:
+        HTTPException: 404 if application not found or access denied
+        HTTPException: 500 if note cannot be created
+        
+    Security:
+        Requires user authentication
+        Only allows adding notes to user's own applications
+        
+    Notes:
+        - Notes are ordered by created_at (newest first)
+        - Markdown formatting supported in body
+        - Broadcasts 'note_added' WebSocket event
+        - Use for: interview notes, follow-up reminders, observations
+        
+    Example:
+        POST /api/applications/123e4567-e89b-12d3-a456-426614174000/notes
+        Body: {"body": "Great conversation about React - mentioned new project"}
+    """
+    try:
+        logger.debug(
+            "Adding note to application",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_length": len(payload.body)
+            }
+        )
+        
+        n = svc.add_note(
+            user_id=current_user.id,
+            app_id=app_id,
+            body=payload.body
+        )
+        
+        logger.info(
+            "Note added successfully",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(n.id)
+            }
+        )
+        
+        # Best-effort WebSocket broadcast
+        broadcast_event("note_added", str(app_id))
+        
+        return NoteOut(**n.__dict__)
+        
+    except Exception as e:
+        logger.error(
+            "Failed to add note",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        if "not found" in str(e).lower() or "access" in str(e).lower():
+            raise HTTPException(
+                status_code=404,
+                detail="Application not found"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to add note"
+        )
 
 
 @router.get("/{app_id}/notes", response_model=List[NoteOut])
@@ -39,6 +129,77 @@ def list_notes(
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user)
 ):
-    """List all notes for an application."""
-    items = svc.list_notes(user_id=current_user.id, app_id=app_id)
-    return [NoteOut(**i.__dict__) for i in items]
+    """
+    Retrieve all notes for an application.
+    
+    Returns complete note history for the application,
+    ordered chronologically for timeline display.
+    
+    Path Parameters:
+        app_id (UUID): ID of the application whose notes to retrieve
+        
+    Args:
+        svc: Application service instance (from dependency)
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        List[NoteOut]: List of note objects ordered by created_at
+        
+    Raises:
+        HTTPException: 404 if application not found or access denied
+        HTTPException: 500 if notes cannot be retrieved
+        
+    Security:
+        Requires user authentication
+        Only returns notes from user's own applications
+        
+    Notes:
+        - Notes ordered by creation date
+        - Returns empty list if no notes exist
+        - Use for: activity timelines, context review
+        
+    Example:
+        GET /api/applications/123e4567-e89b-12d3-a456-426614174000/notes
+        Returns all notes for the application
+    """
+    try:
+        logger.debug(
+            "Listing application notes",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id)
+            }
+        )
+        
+        items = svc.list_notes(user_id=current_user.id, app_id=app_id)
+        
+        logger.debug(
+            "Notes retrieved",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_count": len(items)
+            }
+        )
+        
+        return [NoteOut(**i.__dict__) for i in items]
+        
+    except Exception as e:
+        logger.error(
+            "Failed to list notes",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        if "not found" in str(e).lower() or "access" in str(e).lower():
+            raise HTTPException(
+                status_code=404,
+                detail="Application not found"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve notes"
+        )

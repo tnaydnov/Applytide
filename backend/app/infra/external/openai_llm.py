@@ -1,11 +1,87 @@
+"""
+OpenAI LLM Job Extraction Module
+
+This module provides intelligent job posting extraction using OpenAI's GPT models.
+It handles text-based extraction with comprehensive error handling and LLM usage tracking.
+
+Features:
+    - Intelligent field inference (company from URL, location from context)
+    - Content filtering (removes navigation, keeps job-relevant text)
+    - Skills normalization (js→JavaScript, k8s→Kubernetes)
+    - Requirements extraction with nice-to-have detection
+    - Comprehensive error handling and logging
+    - LLM usage tracking for cost monitoring
+
+Architecture:
+    - Implements LLMExtractor port (Hexagonal Architecture)
+    - Uses OpenAI Chat Completions API with JSON mode
+    - Configurable model selection via environment variables
+    - Automatic LLM usage tracking when DB session provided
+
+Model Selection:
+    - Default: gpt-4.1-mini ($0.40/1M input, $1.60/1M output)
+    - Cheapest: gpt-4.1-nano ($0.10/1M input, $0.40/1M output)
+    - Latest: gpt-5-nano ($0.05/1M input, $0.40/1M output)
+    - Best Quality: gpt-4.1 ($2.00/1M input, $8.00/1M output)
+    - Configure via: JOB_EXTRACT_MODEL environment variable
+
+Cost Estimation:
+    - Average cost per job extraction: $0.002-0.003 (with gpt-4.1-mini)
+    - Use gpt-4.1-nano or gpt-5-nano for lower costs
+    - Use gpt-4.1 or gpt-5 for higher quality
+
+Usage Example:
+    from app.infra.external.openai_llm import OpenAILLMExtractor
+    
+    extractor = OpenAILLMExtractor(db_session=db)
+    job_data = extractor.extract_job(
+        url="https://company.com/jobs/123",
+        text="Job posting text...",
+        hints={"company_name": "Acme Corp"}
+    )
+    
+    print(f"Title: {job_data['title']}")
+    print(f"Company: {job_data['company_name']}")
+    print(f"Skills: {job_data['skills']}")
+
+Error Handling:
+    - Validates text length (minimum 50 characters)
+    - Handles rate limits with clear error messages
+    - Handles quota errors with billing suggestions
+    - Handles authentication errors
+    - Validates JSON response format
+    - Tracks failures for monitoring
+
+Security:
+    - API key from environment (not logged)
+    - Input validation prevents injection
+    - Output validation ensures data integrity
+
+CRITICAL: DO NOT MODIFY THE SYSTEM PROMPT (_EXTRACT_TEXT_SYSTEM)
+The prompt is carefully engineered and tested. Changes may break extraction quality.
+"""
+
 from __future__ import annotations
-import os, json
+import os
+import json
+import time
+from typing import Optional, Dict, Any
+
 from openai import OpenAI
+from openai import APIError, APITimeoutError, RateLimitError, APIConnectionError
+
 from ...domain.jobs.extraction.ports import LLMExtractor
 from ..logging import get_logger
 from .llm_tracker import track_openai_call
 
 logger = get_logger(__name__)
+
+# Configuration constants
+MIN_TEXT_LENGTH: int = 50  # Minimum text length for extraction
+MAX_TOKENS: int = 2500  # Maximum tokens for response
+TEMPERATURE: float = 0.1  # Low temperature for deterministic output
+DEFAULT_TEXT_MODEL: str = "gpt-4.1-mini"  # Default model for text extraction
+DEFAULT_IMAGE_MODEL: str = "gpt-4.1-mini"  # Default model for image extraction
 
 # System prompt for TEXT-based extraction (when user pastes text)
 _EXTRACT_TEXT_SYSTEM = """
@@ -149,12 +225,57 @@ Return ONLY the JSON object.
 
 
 class OpenAILLMExtractor(LLMExtractor):
+    """
+    OpenAI-powered job posting extractor.
+    
+    Uses GPT models to intelligently extract structured job data from text.
+    Supports hints for known fields and tracks LLM usage for cost monitoring.
+    
+    Attributes:
+        client: OpenAI API client
+        db_session: Optional database session for usage tracking
+        text_model: Model name for text extraction
+        image_model: Model name for image extraction (future use)
+    
+    Thread Safety:
+        - Not thread-safe (uses shared client)
+        - Create one instance per request/async task
+    """
+    
     def __init__(self, model: str | None = None, db_session=None):
+        """
+        Initialize OpenAI LLM extractor.
+        
+        Args:
+            model: Optional model name override (defaults to env or gpt-4.1-mini)
+            db_session: Optional database session for usage tracking
+        
+        Raises:
+            RuntimeError: If OPENAI_API_KEY environment variable not set
+        
+        Notes:
+            - API key must be set in OPENAI_API_KEY environment variable
+            - Model selection: JOB_EXTRACT_MODEL env (default: gpt-4.1-mini)
+            - Usage tracking enabled when db_session provided
+        """
         api = os.getenv("OPENAI_API_KEY", "")
-        if not api:
+        if not api or not api.strip():
+            logger.error("OPENAI_API_KEY not set or empty")
             raise RuntimeError("OPENAI_API_KEY not set")
         
-        self.client = OpenAI(api_key=api)
+        try:
+            self.client = OpenAI(api_key=api)
+        except Exception as e:
+            logger.error(
+                "Failed to initialize OpenAI client",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                },
+                exc_info=True
+            )
+            raise RuntimeError(f"Failed to initialize OpenAI client: {str(e)}")
+        
         self.db_session = db_session  # Store DB session for tracking
         
         # Available models with pricing (Standard tier - as of 2025):
@@ -166,47 +287,146 @@ class OpenAILLMExtractor(LLMExtractor):
         # gpt-5-mini: $0.25/1M input ($0.025 cached), $2.00/1M output - latest, balanced
         # gpt-5: $1.25/1M input ($0.125 cached), $10.00/1M output - latest flagship
         # Average job extraction cost with gpt-4.1-mini: ~$0.002-0.003 per job
-        self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", "gpt-4.1-mini")
-        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", "gpt-4.1-mini")
+        self.text_model = model or os.getenv("JOB_EXTRACT_MODEL", DEFAULT_TEXT_MODEL)
+        self.image_model = os.getenv("JOB_EXTRACT_IMAGE_MODEL", DEFAULT_IMAGE_MODEL)
+        
+        # Validate model names
+        if not self.text_model or not self.text_model.strip():
+            logger.warning(
+                "Empty text_model, using default",
+                extra={"default": DEFAULT_TEXT_MODEL}
+            )
+            self.text_model = DEFAULT_TEXT_MODEL
+        
         # To optimize costs: set JOB_EXTRACT_MODEL=gpt-4.1-nano or gpt-4o-mini
         # To upgrade quality: set JOB_EXTRACT_MODEL=gpt-4.1 or gpt-5-mini
-        logger.info("OpenAI LLM initialized", extra={
-            "text_model": self.text_model,
-            "image_model": self.image_model,
-            "tracking_enabled": self.db_session is not None
-        })
+        logger.info(
+            "OpenAI LLM extractor initialized",
+            extra={
+                "text_model": self.text_model,
+                "image_model": self.image_model,
+                "tracking_enabled": self.db_session is not None
+            }
+        )
 
-    def extract_job(self, url: str, text: str, hints=None) -> dict:
+
+    def extract_job(self, url: str, text: str, hints: Optional[Dict[str, Any]] = None) -> dict:
+        """
+        Extract structured job data from text using OpenAI LLM.
+        
+        Args:
+            url: Source URL of the job posting
+            text: Job posting text content
+            hints: Optional dict with known fields (company_name, location, etc.)
+        
+        Returns:
+            dict: Extracted job data with fields:
+                - title (str): Job title
+                - company_name (str): Company name
+                - source_url (str): Source URL
+                - location (str): Job location
+                - remote_type (str): "Remote", "Hybrid", "On-site", or ""
+                - job_type (str): "Full-time", "Part-time", "Contract", "Internship", or ""
+                - description (str): Filtered job description
+                - requirements (list[str]): Extracted requirements
+                - skills (list[str]): Extracted skills/keywords
+        
+        Raises:
+            ValueError: If text too short (<50 chars), JSON parsing fails, or API error
+            RuntimeError: If OpenAI API returns empty response
+        
+        Example:
+            >>> extractor = OpenAILLMExtractor(db_session=db)
+            >>> job = extractor.extract_job(
+            ...     url="https://company.com/jobs/123",
+            ...     text="Software Engineer position at Acme Corp...",
+            ...     hints={"company_name": "Acme Corp"}
+            ... )
+            >>> print(f"Title: {job['title']}")
+            >>> print(f"Skills: {', '.join(job['skills'])}")
+        
+        Notes:
+            - Minimum text length: 50 characters
+            - Automatic usage tracking if db_session provided
+            - Comprehensive error messages for common API errors
+            - Handles rate limits, quota, and authentication errors
+        """
         hints = hints or {}
+        
+        # Validate URL
+        if not url:
+            logger.warning("extract_job called with empty URL")
+            url = ""
+        
+        # Validate text
+        if not text:
+            logger.error("extract_job called with empty text")
+            raise ValueError("Text cannot be empty")
+        
+        text = text.strip()
         text_len = len(text)
         
-        logger.info("OpenAI LLM extraction started", extra={
-            "url": url[:100] if url else None,
-            "text_length": text_len,
-            "has_hints": bool(hints)
-        })
-        logger.debug("Text validation", extra={
-            "text_length": text_len,
-            "text_empty": not text,
-            "text_preview": repr(text[:500]) if text else None,
-            "model": self.text_model,
-            "hints_keys": list(hints.keys()) if hints else []
-        })
+        logger.info(
+            "OpenAI LLM extraction started",
+            extra={
+                "url": url[:100] if url else None,
+                "text_length": text_len,
+                "has_hints": bool(hints),
+                "model": self.text_model
+            }
+        )
         
-        if text_len < 50:
-            logger.error("Text too short for extraction", extra={"text_length": text_len, "minimum_required": 50})
-            raise ValueError(f"Text too short for extraction: {text_len} characters")
+        logger.debug(
+            "Text validation",
+            extra={
+                "text_length": text_len,
+                "text_preview": repr(text[:500]) if text else None,
+                "hints_keys": list(hints.keys()) if hints else []
+            }
+        )
+        
+        if text_len < MIN_TEXT_LENGTH:
+            logger.error(
+                "Text too short for extraction",
+                extra={
+                    "text_length": text_len,
+                    "minimum_required": MIN_TEXT_LENGTH
+                }
+            )
+            raise ValueError(
+                f"Text too short for extraction: {text_len} characters (minimum {MIN_TEXT_LENGTH})"
+            )
         
         logger.debug("Text length validation passed")
 
-        # Prepare text for LLM (single view - no line numbering needed since LLM handles text removal directly)
-        logger.debug("Preparing text for LLM")
-
+        # Build message array
         logger.debug("Building message array")
         messages = [{"role": "system", "content": _EXTRACT_TEXT_SYSTEM}]
+        
         if hints:
-            logger.debug("Adding hints message", extra={"hints": hints})
-            messages.append({"role": "user", "content": f"HINTS: {json.dumps(hints, ensure_ascii=False)}"})
+            # Validate hints is a dict
+            if not isinstance(hints, dict):
+                logger.warning(
+                    "hints is not a dict, ignoring",
+                    extra={"hints_type": type(hints).__name__}
+                )
+                hints = {}
+            else:
+                logger.debug(
+                    "Adding hints message",
+                    extra={"hints": hints}
+                )
+                try:
+                    hints_json = json.dumps(hints, ensure_ascii=False)
+                    messages.append({"role": "user", "content": f"HINTS: {hints_json}"})
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to serialize hints, skipping",
+                        extra={
+                            "error": str(e),
+                            "hints": str(hints)[:200]
+                        }
+                    )
         
         user_content = (
             f"Source URL: {url}\n\n"
@@ -217,40 +437,59 @@ class OpenAILLMExtractor(LLMExtractor):
         )
         messages.append({"role": "user", "content": user_content})
         
-        logger.debug("Message array prepared", extra={
-            "message_count": len(messages),
-            "total_prompt_size": sum(len(m['content']) for m in messages)
-        })
+        total_prompt_size = sum(len(m['content']) for m in messages)
+        logger.debug(
+            "Message array prepared",
+            extra={
+                "message_count": len(messages),
+                "total_prompt_size": total_prompt_size,
+                "estimated_tokens": total_prompt_size // 4  # Rough estimate
+            }
+        )
 
-        logger.debug("Making OpenAI API call", extra={
-            "model": self.text_model,
-            "temperature": 0.1,
-            "max_tokens": 2500,
-            "response_format": "json_object"
-        })
+        logger.debug(
+            "Making OpenAI API call",
+            extra={
+                "model": self.text_model,
+                "temperature": TEMPERATURE,
+                "max_tokens": MAX_TOKENS,
+                "response_format": "json_object"
+            }
+        )
 
         # Track LLM usage if DB session available
         tracker = None
         if self.db_session:
-            tracker = track_openai_call(
-                self.db_session,
-                endpoint="job_extraction",
-                usage_type="chrome_extension",
-                url=url[:200] if url else None,
-                text_length=text_len
-            )
+            try:
+                tracker = track_openai_call(
+                    self.db_session,
+                    endpoint="job_extraction",
+                    usage_type="chrome_extension",
+                    url=url[:200] if url else None,
+                    text_length=text_len
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to create LLM tracker, continuing without tracking",
+                    extra={
+                        "error": str(e),
+                        "error_type": type(e).__name__
+                    }
+                )
+                tracker = None
         
+        raw_content = None
         try:
-            api_start = __import__('time').time()
+            api_start = time.time()
             
             if tracker:
                 with tracker:
                     resp = self.client.chat.completions.create(
                         model=self.text_model,
-                        temperature=0.1,
+                        temperature=TEMPERATURE,
                         response_format={"type": "json_object"},
                         messages=messages,
-                        max_tokens=2500
+                        max_tokens=MAX_TOKENS
                     )
                     # Record usage
                     if resp.usage:
@@ -263,56 +502,125 @@ class OpenAILLMExtractor(LLMExtractor):
             else:
                 resp = self.client.chat.completions.create(
                     model=self.text_model,
-                    temperature=0.1,
+                    temperature=TEMPERATURE,
                     response_format={"type": "json_object"},
                     messages=messages,
-                    max_tokens=2500
+                    max_tokens=MAX_TOKENS
                 )
             
-            api_time = __import__('time').time() - api_start
+            api_time = time.time() - api_start
             
-            logger.info("OpenAI API call successful", extra={
-                "duration": f"{api_time:.2f}s",
-                "model": resp.model,
-                "finish_reason": resp.choices[0].finish_reason if resp.choices else None,
-                "total_tokens": resp.usage.total_tokens if resp.usage else None,
-                "prompt_tokens": resp.usage.prompt_tokens if resp.usage else None,
-                "completion_tokens": resp.usage.completion_tokens if resp.usage else None
-            })
+            logger.info(
+                "OpenAI API call successful",
+                extra={
+                    "duration": f"{api_time:.2f}s",
+                    "model": resp.model,
+                    "finish_reason": resp.choices[0].finish_reason if resp.choices else None,
+                    "total_tokens": resp.usage.total_tokens if resp.usage else None,
+                    "prompt_tokens": resp.usage.prompt_tokens if resp.usage else None,
+                    "completion_tokens": resp.usage.completion_tokens if resp.usage else None
+                }
+            )
 
-            if not resp.choices or not resp.choices[0].message.content:
-                logger.error("OpenAI returned empty response", extra={"response": str(resp)})
-                raise ValueError("OpenAI returned empty response")
+            # Validate response structure
+            if not resp.choices:
+                logger.error(
+                    "OpenAI returned response with no choices",
+                    extra={"response": str(resp)[:500]}
+                )
+                raise RuntimeError("OpenAI returned empty response (no choices)")
+            
+            if not resp.choices[0].message:
+                logger.error(
+                    "OpenAI returned choice with no message",
+                    extra={"choice": str(resp.choices[0])[:500]}
+                )
+                raise RuntimeError("OpenAI returned empty response (no message)")
+            
+            if not resp.choices[0].message.content:
+                logger.error(
+                    "OpenAI returned message with no content",
+                    extra={"message": str(resp.choices[0].message)[:500]}
+                )
+                raise RuntimeError("OpenAI returned empty response (no content)")
 
             raw_content = resp.choices[0].message.content
-            logger.debug("Response received", extra={
-                "content_length": len(raw_content),
-                "content_preview": raw_content[:300]
-            })
+            
+            logger.debug(
+                "Response received",
+                extra={
+                    "content_length": len(raw_content),
+                    "content_preview": raw_content[:300]
+                }
+            )
+            
             logger.debug("Parsing JSON response")
             
-            data = json.loads(raw_content)
+            try:
+                data = json.loads(raw_content)
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "JSON decode error from OpenAI response",
+                    extra={
+                        "error": str(e),
+                        "error_line": e.lineno,
+                        "error_col": e.colno,
+                        "raw_content": raw_content[:1000]
+                    },
+                    exc_info=True
+                )
+                raise ValueError(f"OpenAI returned invalid JSON response: {str(e)}")
+            
+            # Handle nested job field or direct response
             job = data.get("job") or data
             
+            # Validate required fields exist
+            if not isinstance(job, dict):
+                logger.error(
+                    "Parsed JSON is not a dict",
+                    extra={
+                        "job_type": type(job).__name__,
+                        "job_value": str(job)[:200]
+                    }
+                )
+                raise ValueError(f"Expected dict, got {type(job).__name__}")
+            
             logger.debug("JSON parsed successfully")
-            logger.debug("Extracted fields from LLM", extra={
-                "title": job.get('title'),
-                "company_name": job.get('company_name'),
-                "location": job.get('location'),
-                "remote_type": job.get('remote_type'),
-                "job_type": job.get('job_type'),
-                "description_length": len(job.get('description', '')),
-                "requirements_count": len(job.get('requirements', [])),
-                "skills_count": len(job.get('skills', []))
-            })
+            logger.debug(
+                "Extracted fields from LLM",
+                extra={
+                    "title": job.get('title'),
+                    "company_name": job.get('company_name'),
+                    "location": job.get('location'),
+                    "remote_type": job.get('remote_type'),
+                    "job_type": job.get('job_type'),
+                    "description_length": len(job.get('description', '')),
+                    "requirements_count": len(job.get('requirements', [])),
+                    "skills_count": len(job.get('skills', []))
+                }
+            )
 
             # Trust LLM completely - use its cleaned description
             logger.debug("Using LLM's cleaned description directly (NO override)")
-            # job["description"] is already set from LLM response
             
-            # Trust LLM to return properly formatted, deduplicated arrays
+            # Validate and normalize fields
             job["requirements"] = job.get("requirements") or []
+            if not isinstance(job["requirements"], list):
+                logger.warning(
+                    "requirements is not a list, converting",
+                    extra={"requirements_type": type(job["requirements"]).__name__}
+                )
+                job["requirements"] = []
+            
             job["skills"] = job.get("skills") or []
+            if not isinstance(job["skills"], list):
+                logger.warning(
+                    "skills is not a list, converting",
+                    extra={"skills_type": type(job["skills"]).__name__}
+                )
+                job["skills"] = []
+            
+            # Ensure source_url is set
             if not job.get("source_url"):
                 job["source_url"] = url
 
@@ -329,10 +637,16 @@ class OpenAILLMExtractor(LLMExtractor):
             return job
 
         except json.JSONDecodeError as e:
-            logger.error("JSON decode error from OpenAI response", extra={
-                "error": str(e),
-                "raw_content": raw_content if 'raw_content' in locals() else 'Response not available'
-            }, exc_info=True)
+            logger.error(
+                "JSON decode error from OpenAI response",
+                extra={
+                    "error": str(e),
+                    "error_line": e.lineno,
+                    "error_col": e.colno,
+                    "raw_content": raw_content[:1000] if raw_content else 'Response not available'
+                },
+                exc_info=True
+            )
             raise ValueError(f"OpenAI returned invalid JSON response: {str(e)}")
         except Exception as e:
             logger.error("OpenAI API error", extra={
@@ -349,3 +663,11 @@ class OpenAILLMExtractor(LLMExtractor):
                 raise ValueError("Invalid OpenAI API key - please check configuration")
             else:
                 raise ValueError(f"OpenAI API error: {str(e)}")
+
+# Export all public classes and constants
+__all__ = [
+    'OpenAILLMExtractor',
+    'MIN_TEXT_LENGTH',
+    'MAX_TOKENS',
+    'DEFAULT_TEXT_MODEL',
+]
