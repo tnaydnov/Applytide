@@ -25,14 +25,18 @@ from .schemas import (
 # Create main reminders router with prefix
 router = APIRouter(prefix="/api/calendars/reminders", tags=["reminders"])
 
-# Include all sub-routers
+# Include reminder-specific sub-routers
 router.include_router(notes_router)
-router.include_router(google_router)
 router.include_router(crud_router)
 
-# Export router and schemas for main app
+# Create separate Google Calendar router (not under /reminders)
+google_calendar_router = APIRouter(prefix="/api/calendars", tags=["google-calendar"])
+google_calendar_router.include_router(google_router)
+
+# Export routers and schemas for main app
 __all__ = [
     "router",
+    "google_calendar_router",
     "ReminderBase",
     "ReminderCreate",
     "ReminderUpdate",

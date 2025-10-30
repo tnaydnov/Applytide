@@ -136,7 +136,7 @@ def attach_from_document(
 
 
 @router.post("/{app_id}/attachments", response_model=AttachmentOut)
-def upload_attachment(
+async def upload_attachment(
     app_id: uuid.UUID,
     file: UploadFile = File(...),
     document_type: str = Form("other"),
@@ -213,7 +213,7 @@ def upload_attachment(
                 detail="File must have a filename"
             )
         
-        a = svc.upload_attachment(
+        a = await svc.upload_attachment(
             user_id=current_user.id,
             app_id=app_id,
             file=file,

@@ -44,7 +44,7 @@ from .api.routers.ai import router as ai_router
 from .api.routers.feedback import router as feedback_router
 from .db.session import get_db
 from .infra.cache.redis_client import get_redis
-from .api.routers.reminders import router as reminders_router
+from .api.routers.reminders import router as reminders_router, google_calendar_router
 from .api.routers.auth import router as auth_router
 from .api.routers.admin import router as admin_router
 from .api.routers.errors import router as errors_router
@@ -129,6 +129,7 @@ app.include_router(preferences_router)
 app.include_router(ai_router)
 app.include_router(feedback_router)
 app.include_router(reminders_router)
+app.include_router(google_calendar_router)
 app.include_router(admin_router)
 
 # --- Proxy headers (outermost - must be first in middleware stack)
