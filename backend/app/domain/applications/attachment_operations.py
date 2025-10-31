@@ -445,7 +445,7 @@ class AttachmentOperationsService:
                 )
                 raise BadRequest("Failed to create attachment record")
                 
-        except (ValueError, ApplicationNotFound, BadRequest):
+        except (ValueError, ApplicationNotFound, BadRequest, PreviewNotFoundError):
             raise
         except Exception as e:
             logger.error(
