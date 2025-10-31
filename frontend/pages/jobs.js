@@ -105,17 +105,17 @@ export default function JobsPage() {
 
         {/* Extension Banner */}
         {showExtensionBanner && (
-          <div className="mb-6 relative overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 bg-[length:200%_100%] animate-shimmer rounded-xl p-6 border border-blue-400/30 shadow-lg shadow-blue-500/20">
+          <div className="mb-6 relative">
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 border border-blue-400/30 shadow-lg">
               <button
                 onClick={dismissExtensionBanner}
-                className="absolute top-4 right-4 p-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
                 aria-label="Dismiss"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
               
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 pr-8">
                 <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
                   <Chrome className="h-8 w-8 text-white" />
                 </div>
@@ -141,13 +141,6 @@ export default function JobsPage() {
                       <Chrome className="h-5 w-5" />
                       Add to Chrome - It's Free!
                     </a>
-                    
-                    <button
-                      onClick={dismissExtensionBanner}
-                      className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-lg font-medium hover:bg-white/20 transition-all border border-white/20"
-                    >
-                      Maybe Later
-                    </button>
                   </div>
                   
                   <div className="mt-4 flex items-center gap-4 text-xs text-blue-100">

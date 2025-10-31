@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showGoalMenu, setShowGoalMenu] = useState(false);
+  const [customGoalInput, setCustomGoalInput] = useState('');
 
   useEffect(() => {
     if (user && !user.has_seen_welcome_modal) {
@@ -67,11 +68,22 @@ export default function Dashboard() {
     try {
       setWeeklyGoal(newGoal);
       setShowGoalMenu(false);
+      setCustomGoalInput('');
       await api.updatePreference('weekly_goal', newGoal);
       toast.success(`Weekly goal updated to ${newGoal} applications`);
     } catch (err) {
       console.error('Failed to update weekly goal:', err);
       toast.error('Failed to update weekly goal');
+    }
+  };
+
+  const handleCustomGoalSubmit = (e) => {
+    e.preventDefault();
+    const value = parseInt(customGoalInput, 10);
+    if (value > 0 && value <= 100) {
+      updateWeeklyGoal(value);
+    } else {
+      toast.error('Please enter a number between 1 and 100');
     }
   };
 
@@ -171,11 +183,29 @@ export default function Dashboard() {
             </button>
 
             {showGoalMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
-                <div className="p-2 border-b border-slate-700">
-                  <p className="text-xs text-slate-400 px-2">Select weekly target</p>
+              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="p-3 border-b border-slate-700">
+                  <p className="text-xs text-slate-400 font-medium mb-2">Set your weekly goal</p>
+                  <form onSubmit={handleCustomGoalSubmit} className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={customGoalInput}
+                      onChange={(e) => setCustomGoalInput(e.target.value)}
+                      placeholder="Custom"
+                      className="flex-1 px-3 py-1.5 text-sm bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                    >
+                      Set
+                    </button>
+                  </form>
                 </div>
                 <div className="py-1">
+                  <p className="px-4 py-2 text-xs text-slate-500">Quick presets:</p>
                   {[3, 5, 7, 10, 15, 20].map((goal) => (
                     <button
                       key={goal}
