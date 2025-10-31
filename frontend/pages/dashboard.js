@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../lib/api';
-import { toast } from '../../lib/toast';
-import WelcomeModal from '../../components/WelcomeModal';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
+import { toast } from '../lib/toast';
+import WelcomeModal from '../components/WelcomeModal';
 import {
   Sparkles, TrendingUp, Target, Award, Zap, FileText, 
   Bell, BarChart3, Calendar, ArrowRight, Clock, AlertCircle,

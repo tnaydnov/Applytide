@@ -66,6 +66,7 @@ export const api = {
   updatePreferences: authApi.updatePreferences,
   changePassword: authApi.changePassword,
   uploadAvatar: authApi.uploadAvatar,
+  markWelcomeModalSeen: authApi.markWelcomeModalSeen,
 
   // Jobs methods (from features/jobs/api.js)
   listJobs: jobsApi.listJobs,

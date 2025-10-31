@@ -91,4 +91,11 @@ export const authApi = {
       headers: {}
     }).then((r) => r.json());
   },
+
+  /**
+   * Mark welcome modal as seen
+   * @returns {Promise<Object>} Success response
+   */
+  markWelcomeModalSeen: () =>
+    apiFetch("/auth/welcome-modal-seen", { method: "POST" }).then((r) => r.json()),
 };
