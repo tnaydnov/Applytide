@@ -216,7 +216,19 @@ export function PieChart({ data, height = 400, className = "" }) {
 
 export function DonutChart({ data, height = 400, className = "" }) {
   const items = toArray(data);
-  const total = Math.max(1, sum(items.map((d) => Math.max(0, safeNumber(d.value)))));
+  const total = sum(items.map((d) => Math.max(0, safeNumber(d.value))));
+
+  // Show empty state if no data
+  if (items.length === 0 || total === 0) {
+    return (
+      <div className={`w-full flex items-center justify-center ${className}`} style={{ minHeight: height }} role="img" aria-label="Donut chart with no data">
+        <div className="text-center text-slate-400">
+          <div className="text-3xl mb-2">📊</div>
+          <div>No data</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full ${className}`} style={{ minHeight: height }} role="img" aria-label="Donut chart">

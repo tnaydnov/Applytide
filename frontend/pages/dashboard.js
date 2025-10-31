@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [weeklyGoal, setWeeklyGoal] = useState(5);
   const [loading, setLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showGoalMenu, setShowGoalMenu] = useState(false);
 
   useEffect(() => {
     if (user && !user.has_seen_welcome_modal) {
@@ -56,9 +57,21 @@ export default function Dashboard() {
   const handleCloseWelcome = async () => {
     setShowWelcomeModal(false);
     try {
-      await api.markWelcomeModalSeen();
+      await api.post('/profile/welcome-modal-seen', {});
     } catch (err) {
       console.error('Failed to mark welcome modal as seen:', err);
+    }
+  };
+
+  const updateWeeklyGoal = async (newGoal) => {
+    try {
+      setWeeklyGoal(newGoal);
+      setShowGoalMenu(false);
+      await api.updatePreference('weekly_goal', newGoal);
+      toast.success(`Weekly goal updated to ${newGoal} applications`);
+    } catch (err) {
+      console.error('Failed to update weekly goal:', err);
+      toast.error('Failed to update weekly goal');
     }
   };
 
@@ -148,13 +161,38 @@ export default function Dashboard() {
             <p className="text-slate-400 mt-1">Here's your job search progress</p>
           </div>
           
-          <button
-            onClick={() => router.push('/profile#goals')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 transition-all text-slate-300 hover:text-white"
-          >
-            <Settings className="h-4 w-4" />
-            <span className="text-sm">Weekly Goal: {weeklyGoal}</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowGoalMenu(!showGoalMenu)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 transition-all text-slate-300 hover:text-white"
+            >
+              <Target className="h-4 w-4" />
+              <span className="text-sm">Weekly Goal: {weeklyGoal}</span>
+            </button>
+
+            {showGoalMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="p-2 border-b border-slate-700">
+                  <p className="text-xs text-slate-400 px-2">Select weekly target</p>
+                </div>
+                <div className="py-1">
+                  {[3, 5, 7, 10, 15, 20].map((goal) => (
+                    <button
+                      key={goal}
+                      onClick={() => updateWeeklyGoal(goal)}
+                      className={`w-full px-4 py-2 text-left text-sm transition-colors ${
+                        weeklyGoal === goal
+                          ? 'bg-blue-500/20 text-blue-400 font-medium'
+                          : 'text-slate-300 hover:bg-slate-700/50'
+                      }`}
+                    >
+                      {goal} applications/week
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* AI Insights Bar - REAL INSIGHTS! */}
@@ -266,12 +304,12 @@ export default function Dashboard() {
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* AI Job Matching */}
+                {/* Track Jobs */}
                 <ActionCard
-                  icon={Sparkles}
-                  title="AI Job Matching"
-                  subtitle="Smart recommendations"
-                  description="Find perfect jobs with AI"
+                  icon={Briefcase}
+                  title="Track Your Jobs"
+                  subtitle="Organize saved jobs"
+                  description="Manage and track job opportunities"
                   gradientClass="from-blue-500/20 to-cyan-500/20"
                   borderClass="border-blue-500/30"
                   onClick={() => router.push('/jobs')}
@@ -365,7 +403,7 @@ export default function Dashboard() {
                     onClick={() => router.push('/jobs')}
                     className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-medium hover:from-blue-600 hover:to-cyan-600 transition-all"
                   >
-                    Find Jobs
+                    Track Jobs
                   </button>
                 </div>
               )}

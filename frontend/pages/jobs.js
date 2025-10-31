@@ -14,6 +14,7 @@ import { useJobs } from "../features/jobs/hooks/useJobs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { api } from "../lib/api";
+import { Sparkles, Chrome, X } from "lucide-react";
 
 
 export default function JobsPage() {
@@ -78,6 +79,20 @@ export default function JobsPage() {
 
   // local: manual job modal
   const [showManualModal, setShowManualModal] = useState(false);
+  const [showExtensionBanner, setShowExtensionBanner] = useState(true);
+
+  useEffect(() => {
+    // Check if user has dismissed the banner
+    const dismissed = localStorage.getItem('extensionBannerDismissed');
+    if (dismissed === 'true') {
+      setShowExtensionBanner(false);
+    }
+  }, []);
+
+  const dismissExtensionBanner = () => {
+    setShowExtensionBanner(false);
+    localStorage.setItem('extensionBannerDismissed', 'true');
+  };
 
   return (
     <AuthGuard>
@@ -87,6 +102,79 @@ export default function JobsPage() {
           subtitle="Discover and track amazing opportunities"
           actions={<span className="text-sm text-slate-400">{pagination.total} job{pagination.total !== 1 ? "s" : ""}</span>}
         />
+
+        {/* Extension Banner */}
+        {showExtensionBanner && (
+          <div className="mb-6 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 bg-[length:200%_100%] animate-shimmer rounded-xl p-6 border border-blue-400/30 shadow-lg shadow-blue-500/20">
+              <button
+                onClick={dismissExtensionBanner}
+                className="absolute top-4 right-4 p-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4 text-white" />
+              </button>
+              
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                  <Chrome className="h-8 w-8 text-white" />
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-5 w-5 text-yellow-300" />
+                    <h3 className="text-xl font-bold text-white">Save Jobs Instantly with Our Chrome Extension!</h3>
+                  </div>
+                  
+                  <p className="text-blue-50 mb-4 text-sm leading-relaxed max-w-3xl">
+                    Browse jobs on LinkedIn, Indeed, or any job board and save them to Applytide with a single click. 
+                    No more copy-pasting! The extension automatically extracts job details and adds them to your tracker.
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href="https://chrome.google.com/webstore"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <Chrome className="h-5 w-5" />
+                      Add to Chrome - It's Free!
+                    </a>
+                    
+                    <button
+                      onClick={dismissExtensionBanner}
+                      className="px-6 py-2.5 bg-white/10 backdrop-blur-sm text-white rounded-lg font-medium hover:bg-white/20 transition-all border border-white/20"
+                    >
+                      Maybe Later
+                    </button>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center gap-4 text-xs text-blue-100">
+                    <div className="flex items-center gap-1">
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>Works on all job sites</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>Auto-extracts details</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>100% secure</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick create card */}
         <Card className="glass-card glass-rose">
