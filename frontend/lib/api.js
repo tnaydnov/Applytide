@@ -117,6 +117,7 @@ export const api = {
   exportAnalyticsPDF: analyticsApi.exportAnalyticsPDF,
   exportAnalyticsCSV: analyticsApi.exportAnalyticsCSV,
   getMetrics: analyticsApi.getMetrics,
+  getDashboardInsights: analyticsApi.getDashboardInsights,
 
   // Profile methods (from features/profile/api.js)
   getUserProfile: profileApi.getUserProfile,
@@ -129,6 +130,7 @@ export const api = {
   getPreference: profileApi.getPreference,
   savePreference: profileApi.savePreference,
   updatePreference: profileApi.updatePreference,
+  markWelcomeModalSeen: profileApi.markWelcomeModalSeen,
 
   // Search methods (from features/search/api.js)
   advancedSearch: searchApi.advancedSearch,

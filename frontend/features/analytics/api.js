@@ -85,4 +85,10 @@ export const analyticsApi = {
    * @returns {Promise<Object>} Dashboard metrics
    */
   getMetrics: () => apiFetch("/dashboard/metrics").then((r) => r.json()),
+
+  /**
+   * Get dashboard AI insights
+   * @returns {Promise<Object>} Dashboard insights with weekly goal
+   */
+  getDashboardInsights: () => apiFetch("/dashboard/insights").then((r) => r.json()),
 };

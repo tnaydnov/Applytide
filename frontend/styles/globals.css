@@ -182,12 +182,25 @@ a {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .animate-slideIn {
   animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
 }
 
 /* ============================================================================ */

@@ -1,517 +1,558 @@
-import { useEffect, useState } from "react";
-import { api } from "../lib/api";
-import { Button, Card, Input } from "../components/ui";
-import { useToast } from '../lib/toast';
-import AuthGuard from "../components/guards/AuthGuard";
-import { usePremiumFeature } from '../components/PremiumFeature';
-import WelcomeModal from '../components/WelcomeModal';
-import Link from "next/link";
-import Head from "next/head";
-
-function ActionCard({
-  icon = "✨",
-  title,
-  accentClass = "text-indigo-300",
-  subtitle,
-  description,
-  gradientClass = "from-indigo-500/10 to-purple-500/10",
-  borderClass = "border-indigo-500/20",
-  href,
-  onClick,
-}) {
-  const Inner = (
-    <div
-      className={`
-        relative rounded-xl border ${borderClass}
-        bg-gradient-to-r ${gradientClass}
-        p-4 md:p-5 h-full
-        transition-all
-        hover:border-white/30 hover:shadow-lg
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400
-        flex flex-col
-      `}
-    >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 grid place-items-center w-9 h-9 rounded-lg bg-white/10">
-          <span className="text-xl">{icon}</span>
-        </div>
-        <div className="min-w-0">
-          <h3 className={`font-semibold ${accentClass} leading-tight`}>{title}</h3>
-          {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
-        </div>
-      </div>
-
-      {description && (
-        <p className="mt-3 text-sm text-slate-300 line-clamp-2">{description}</p>
-      )}
-    </div>
-  );
-
-  // Always render as a single block so spacing/hover are consistent
-  if (href) {
-    return (
-      <Link href={href} className="block h-full">
-        {Inner}
-      </Link>
-    );
-  }
-  return (
-    <button onClick={onClick} className="block w-full text-left h-full">
-      {Inner}
-    </button>
-  );
-}
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../lib/api';
+import { toast } from '../../lib/toast';
+import WelcomeModal from '../../components/WelcomeModal';
+import {
+  Sparkles, TrendingUp, Target, Award, Zap, FileText, 
+  Bell, BarChart3, Calendar, ArrowRight, Clock, AlertCircle,
+  CheckCircle2, Briefcase, Users, ChevronRight, Settings
+} from 'lucide-react';
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [applications, setApplications] = useState([]);
-  const [metrics, setMetrics] = useState(null);
+  const [metrics, setMetrics] = useState({});
+  const [insights, setInsights] = useState([]);
+  const [weeklyGoal, setWeeklyGoal] = useState(5);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('week'); // week, month, all
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const toast = useToast();
-  const { checkPremium, PremiumModal } = usePremiumFeature();
 
   useEffect(() => {
-    loadData();
-    checkWelcomeModalStatus();
-  }, []);
-
-  async function checkWelcomeModalStatus() {
-    try {
-      const response = await api.get('/profile/welcome-modal-status');
-      const hasSeenModal = response.has_seen_welcome_modal;
-      
-      // Only show modal if user hasn't seen it (backend decides this)
-      if (!hasSeenModal) {
-        // Clear any stale localStorage data
-        localStorage.removeItem('welcomeModalDismissed');
-        
-        // Show modal after a short delay for better UX
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Failed to check welcome modal status:', error);
-      // If API fails, don't show modal to avoid annoying users
-      // This is better than relying on potentially stale localStorage
+    if (user && !user.has_seen_welcome_modal) {
+      setShowWelcomeModal(true);
     }
-  }
+  }, [user]);
 
-  async function loadData() {
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
+
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [applicationsResponse, metricsData] = await Promise.all([
+      const [appsRes, metricsRes, insightsRes] = await Promise.all([
         api.getApplicationCards(),
-        api.getMetrics()
+        api.getMetrics(),
+        api.getDashboardInsights()
       ]);
-
-      const applicationsData = applicationsResponse.items || applicationsResponse;
-      setApplications(applicationsData);
-      setMetrics(metricsData);
+      
+      setApplications(appsRes.applications || []);
+      setMetrics(metricsRes || {});
+      setInsights(insightsRes.insights || []);
+      setWeeklyGoal(insightsRes.weekly_goal || 5);
     } catch (err) {
-      console.error("Dashboard load error:", err);
-      toast.error("Failed to load dashboard data");
+      console.error('Failed to load dashboard:', err);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const handleCloseWelcome = async () => {
+    setShowWelcomeModal(false);
+    try {
+      await api.markWelcomeModalSeen();
+    } catch (err) {
+      console.error('Failed to mark welcome modal as seen:', err);
+    }
+  };
+
+  // Calculate metrics
+  const totalApps = metrics.total_applications || 0;
+  const statusCounts = metrics.applications_by_status || {};
+  const thisWeekApps = applications.filter(app => {
+    const created = new Date(app.created_at);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return created >= weekAgo;
+  }).length;
+
+  const inProgressCount = Object.entries(statusCounts)
+    .filter(([status]) => !['Rejected', 'Withdrawn', 'Offer Accepted', 'Offer Declined'].includes(status))
+    .reduce((sum, [, count]) => sum + count, 0);
+
+  const responseRate = totalApps > 0 
+    ? Math.round(((totalApps - (statusCounts['Applied'] || 0)) / totalApps) * 100) 
+    : 0;
+
+  const offerCount = (statusCounts['Offer'] || 0) + (statusCounts['Offer Accepted'] || 0);
+
+  const weeklyProgress = weeklyGoal > 0 ? Math.min((thisWeekApps / weeklyGoal) * 100, 100) : 0;
+
+  // Get recent applications (last 3)
+  const recentApps = applications.slice(0, 3);
+
+  // Insight type styling
+  const getInsightStyle = (type) => {
+    switch (type) {
+      case 'warning':
+        return {
+          bg: 'bg-gradient-to-br from-amber-500/10 to-orange-500/10',
+          border: 'border-amber-500/30',
+          icon: 'text-amber-400',
+          IconComponent: AlertCircle
+        };
+      case 'success':
+        return {
+          bg: 'bg-gradient-to-br from-emerald-500/10 to-green-500/10',
+          border: 'border-emerald-500/30',
+          icon: 'text-emerald-400',
+          IconComponent: CheckCircle2
+        };
+      case 'tip':
+        return {
+          bg: 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10',
+          border: 'border-blue-500/30',
+          icon: 'text-blue-400',
+          IconComponent: Sparkles
+        };
+      default:
+        return {
+          bg: 'bg-gradient-to-br from-slate-500/10 to-slate-600/10',
+          border: 'border-slate-500/30',
+          icon: 'text-slate-400',
+          IconComponent: Sparkles
+        };
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-indigo-500/20 border-t-indigo-500 mx-auto"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20 border-t-purple-500 mx-auto animate-spin animation-delay-300"></div>
-          </div>
-          <p className="text-slate-300 text-xl font-medium">Loading your command center...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent"></div>
+          <p className="mt-4 text-slate-400">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
-  // Enhanced calculations
-  const now = new Date();
-  const weekStart = new Date(now.getTime() - (now.getDay() * 24 * 60 * 60 * 1000));
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const thisWeekApps = applications.filter(app => new Date(app.created_at) >= weekStart).length;
-  const thisMonthApps = applications.filter(app => new Date(app.created_at) >= monthStart).length;
-  const totalApps = metrics?.total_applications || 0;
-
-  // Calculate response rate and other insights
-  const responseRate = totalApps > 0 ? Math.round(((applications.filter(app =>
-    ['interview', 'phone screen', 'tech', 'on-site', 'offer'].includes(app.status?.toLowerCase() || '')).length / totalApps) * 100)) : 0;
-
-  const inProgressCount = Object.entries(metrics?.applications_by_status || {})
-    .filter(([status]) => ['interview', 'phone screen', 'tech', 'on-site'].includes(status.toLowerCase()))
-    .reduce((sum, [, count]) => sum + count, 0);
-
-  const offerCount = metrics?.applications_by_status?.offer || 0;
-
-  // Get recent applications (last 3 for better UX)
-  const recentApps = applications
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 3);
-
-  // Calculate weekly goal progress (assuming 5 apps per week goal)
-  const weeklyGoal = 5;
-  const weekProgress = Math.min((thisWeekApps / weeklyGoal) * 100, 100);
-
   return (
-    <AuthGuard>
-      <Head>
-        <title>Command Center - Applytide</title>
-      </Head>
-
-      {/* Welcome Modal */}
-      <WelcomeModal 
-        isOpen={showWelcomeModal} 
-        onClose={() => setShowWelcomeModal(false)} 
-      />
-
-      <div className="mobile-p-4 space-y-6 max-w-7xl mx-auto">
-        {/* AI-Powered Header with Personalized Insights */}
-        <div className="relative overflow-hidden rounded-xl mobile-m-2 bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-pink-900/40 p-4 md:p-8 border border-indigo-500/20">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10"></div>
-          <div className="relative z-10">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
-              <div className="mb-4 md:mb-0">
-                <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}! 👋</h1>
-                <p className="text-indigo-200 mobile-text-base md:text-lg">Your job search is gaining momentum</p>
-              </div>
-              <div className="text-left md:text-right">
-                <div className="text-xl md:text-2xl font-bold text-white">{responseRate}%</div>
-                <div className="text-indigo-200 text-sm">Response Rate</div>
-              </div>
-            </div>
-
-            {/* AI Insights Bar */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl mobile-p-3 md:p-4 border border-white/20">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">AI</span>
-                </div>
-                <h3 className="text-white font-semibold mobile-text-base">Today's Intelligence</h3>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4 mobile-text-sm">
-                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
-                  <span className="text-indigo-300">💡 Insight:</span> Tuesday applications get 23% more responses
-                </div>
-                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
-                  <span className="text-indigo-300">🎯 Trend:</span> Tech companies respond faster (avg. 3.2 days)
-                </div>
-                <div className="text-indigo-100 p-2 bg-white/5 rounded-lg md:bg-transparent md:p-0">
-                  <span className="text-indigo-300">⚡ Action:</span> 2 follow-ups are overdue - send today
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcome} />}
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        {/* Header with greeting */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-blue-400" />
+              Welcome back{user?.first_name ? `, ${user.first_name}` : ''}!
+            </h1>
+            <p className="text-slate-400 mt-1">Here's your job search progress</p>
           </div>
+          
+          <button
+            onClick={() => router.push('/profile#goals')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 transition-all text-slate-300 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="text-sm">Weekly Goal: {weeklyGoal}</span>
+          </button>
         </div>
 
-        {/* Smart Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mobile-p-2 *:min-w-0">{/* Applications This Week with Progress */}
-          <div className="glass-card glass-violet mobile-p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-xl md:text-2xl">📊</div>
-              <div className="text-xs text-slate-400">This Week</div>
+        {/* AI Insights Bar - REAL INSIGHTS! */}
+        {insights.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+              <Sparkles className="h-4 w-4 text-blue-400" />
+              <span className="font-medium">AI Insights</span>
             </div>
-            <div className="space-y-3">
-              <div>
-                <div className="text-2xl md:text-3xl font-bold text-indigo-400">{thisWeekApps}</div>
-                <div className="text-slate-300 font-medium mobile-text-sm">Applications</div>
-              </div>
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Weekly Goal</span>
-                  <span>{thisWeekApps}/{weeklyGoal}</span>
-                </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
+            
+            <div className="grid grid-cols-1 gap-3">
+              {insights.map((insight, idx) => {
+                const style = getInsightStyle(insight.type);
+                const Icon = style.IconComponent;
+                
+                return (
                   <div
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${weekProgress}%` }}
-                  ></div>
-                </div>
-              </div>
+                    key={idx}
+                    className={`${style.bg} ${style.border} border backdrop-blur-sm rounded-xl p-4 flex items-center justify-between group hover:scale-[1.02] transition-all cursor-pointer`}
+                    onClick={() => insight.action && router.push(insight.action)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`${style.icon} p-2 rounded-lg bg-slate-800/50`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <p className="text-slate-200 text-sm font-medium">{insight.text}</p>
+                    </div>
+                    
+                    {insight.action && (
+                      <ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          </div>
+        )}
+
+        {/* Smart Metrics Grid - 4 Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* This Week Progress */}
+          <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all group">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
+                <Target className="h-6 w-6 text-blue-400" />
+              </div>
+              <span className="text-2xl font-bold text-white">{thisWeekApps}/{weeklyGoal}</span>
+            </div>
+            <h3 className="text-slate-400 text-sm font-medium mb-3">This Week</h3>
+            <div className="w-full bg-slate-700/30 rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all duration-500"
+                style={{ width: `${weeklyProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              {thisWeekApps >= weeklyGoal ? '🎉 Goal reached!' : `${weeklyGoal - thisWeekApps} more to goal`}
+            </p>
           </div>
 
           {/* Active Pipeline */}
-          <div className="glass-card glass-amber mobile-p-4 md:p-6">
+          <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-2xl">🔥</div>
-              <div className="text-xs text-slate-400">Active</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-amber-400">{inProgressCount}</div>
-              <div className="text-slate-300 font-medium">In Pipeline</div>
-              <div className="text-xs text-slate-400 mt-1">
-                {inProgressCount > 0 ? 'Interviews coming up!' : 'Ready to apply more'}
+              <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                <Briefcase className="h-6 w-6 text-purple-400" />
               </div>
+              <span className="text-2xl font-bold text-white">{inProgressCount}</span>
             </div>
+            <h3 className="text-slate-400 text-sm font-medium">Active Pipeline</h3>
+            <p className="text-xs text-slate-500 mt-2">Applications in progress</p>
           </div>
 
-          {/* Success Rate */}
-          <div className="glass-card glass-rose mobile-p-4 md:p-6">
+          {/* Response Rate */}
+          <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/50 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-xl md:text-2xl">🎯</div>
-              <div className="text-xs text-slate-400">Performance</div>
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-rose-400">{responseRate}%</div>
-              <div className="text-slate-300 font-medium mobile-text-sm">Response Rate</div>
-              <div className="text-xs text-slate-400 mt-1">
-                {responseRate > 15 ? 'Above average!' : 'Room for improvement'}
+              <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/20 to-green-500/20 border border-emerald-500/30">
+                <TrendingUp className="h-6 w-6 text-emerald-400" />
               </div>
+              <span className="text-2xl font-bold text-white">{responseRate}%</span>
             </div>
+            <h3 className="text-slate-400 text-sm font-medium">Response Rate</h3>
+            <p className="text-xs text-slate-500 mt-2">Companies responding</p>
           </div>
 
-          {/* Offers & Success */}
-          <div className="glass-card glass-cyan mobile-p-4 md:p-6">
+          {/* Offers */}
+          <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:border-amber-500/50 transition-all group">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-xl md:text-2xl">🏆</div>
-              <div className="text-xs text-slate-400">Success</div>
-            </div>
-            <div>
-              <div className="text-2xl md:text-3xl font-bold text-emerald-400">{offerCount}</div>
-              <div className="text-slate-300 font-medium mobile-text-sm">Offers Received</div>
-              <div className="text-xs text-slate-400 mt-1">
-                {offerCount > 0 ? 'Congratulations!' : 'Keep pushing!'}
+              <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+                <Award className="h-6 w-6 text-amber-400" />
               </div>
+              <span className="text-2xl font-bold text-white">{offerCount}</span>
             </div>
+            <h3 className="text-slate-400 text-sm font-medium">Offers</h3>
+            <p className="text-xs text-slate-500 mt-2">Job offers received</p>
           </div>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mobile-p-2">
-
-          {/* Left Column - Pipeline & Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Left Column - Quick Actions + Pipeline */}
           <div className="lg:col-span-2 space-y-6">
-
-            {/* AI-Powered Quick Actions */}
-            <div className="glass-card glass-violet">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-[1fr]">
+            
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-400" />
+                Quick Actions
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* AI Job Matching */}
                 <ActionCard
-                  icon="🎯"
+                  icon={Sparkles}
                   title="AI Job Matching"
-                  subtitle="Find perfect matches"
-                  description="3 new high-match positions found based on your profile"
-                  gradientClass="from-indigo-500/10 to-purple-500/10"
-                  borderClass="border-indigo-500/20"
-                  accentClass="text-indigo-300"
-                  onClick={() => checkPremium(() => { }, "AI Job Matching")}
+                  subtitle="Smart recommendations"
+                  description="Find perfect jobs with AI"
+                  gradientClass="from-blue-500/20 to-cyan-500/20"
+                  borderClass="border-blue-500/30"
+                  onClick={() => router.push('/jobs')}
                 />
 
+                {/* Generate Cover Letter */}
                 <ActionCard
-                  icon="✨"
+                  icon={FileText}
                   title="Generate Cover Letter"
-                  subtitle="AI-powered personalization"
-                  description="Create tailored cover letters in seconds"
-                  gradientClass="from-emerald-500/10 to-cyan-500/10"
-                  borderClass="border-emerald-500/20"
-                  accentClass="text-emerald-300"
+                  subtitle="AI-powered writing"
+                  description="Create tailored cover letters"
+                  gradientClass="from-purple-500/20 to-pink-500/20"
+                  borderClass="border-purple-500/30"
                   href="/documents"
                 />
 
+                {/* Smart Follow-ups */}
                 <ActionCard
-                  icon="📧"
+                  icon={Bell}
                   title="Smart Follow-ups"
-                  subtitle="Automated reminders"
-                  description="2 applications need follow-up this week"
-                  gradientClass="from-amber-500/10 to-orange-500/10"
-                  borderClass="border-amber-500/20"
-                  accentClass="text-amber-300"
-                  onClick={() => checkPremium(() => { }, "Follow-up Automation")}
+                  subtitle="Never miss a deadline"
+                  description="Set intelligent reminders"
+                  gradientClass="from-emerald-500/20 to-green-500/20"
+                  borderClass="border-emerald-500/30"
+                  onClick={() => router.push('/reminders')}
                 />
 
+                {/* Performance Insights */}
                 <ActionCard
-                  icon="📈"
+                  icon={BarChart3}
                   title="Performance Insights"
                   subtitle="Track your progress"
-                  description="Your response rate improved 12% this month"
-                  gradientClass="from-rose-500/10 to-pink-500/10"
-                  borderClass="border-rose-500/20"
-                  accentClass="text-rose-300"
-                  onClick={() => checkPremium(() => { }, "Analytics Dashboard")}
+                  description="Detailed analytics & trends"
+                  gradientClass="from-amber-500/20 to-orange-500/20"
+                  borderClass="border-amber-500/30"
+                  onClick={() => router.push('/analytics')}
                 />
               </div>
             </div>
 
-            {/* Pipeline Overview */}
-            <div className="glass-card glass-cyan">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-slate-200">Active Pipeline</h2>
-                  <Link href="/pipeline">
-                    <Button variant="outline" className="border-white/15 text-white/80 hover:bg-white/10 hover:text-white text-sm">
-                      View Full Pipeline
-                    </Button>
-                  </Link>
-                </div>
+            {/* Active Pipeline */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-purple-400" />
+                  Active Pipeline
+                </h2>
+                <button
+                  onClick={() => router.push('/pipeline')}
+                  className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                >
+                  View all
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
 
-                {recentApps.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-6xl mb-4">�</div>
-                    <h3 className="text-xl font-semibold text-slate-200 mb-2">Ready to launch your job search?</h3>
-                    <p className="text-slate-400 mb-6">Add your first application to start tracking your progress</p>
-                    <Link href="/jobs">
-                      <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium px-6 py-2">
-                        Browse Jobs
-                      </Button>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentApps.map((app, index) => (
-                      <div key={app.id} className="bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:border-slate-600/50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                                {(app.job?.company_name || app.company_name || 'UK').slice(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-slate-100">
-                                  {app.job?.title || app.job_title || 'Unknown Position'}
-                                </h3>
-                                <p className="text-sm text-slate-400">
-                                  {app.job?.company_name || app.job?.company || app.company_name || 'Unknown Company'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-slate-500">
-                              <span>Applied {new Date(app.created_at).toLocaleDateString()}</span>
-                              <span>•</span>
-                              <span>{Math.floor((Date.now() - new Date(app.created_at)) / (1000 * 60 * 60 * 24))} days ago</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className={`inline-flex px-3 py-2 text-xs font-medium rounded-lg border ${app.status === 'offer' ? 'text-emerald-300 bg-emerald-300/15 border-emerald-300/25' :
-                                app.status === 'interview' ? 'text-indigo-300 bg-indigo-300/15 border-indigo-300/25' :
-                                  app.status === 'applied' ? 'text-amber-300 bg-amber-300/15 border-amber-300/25' :
-                                    app.status === 'rejected' ? 'text-rose-300 bg-rose-300/15 border-rose-300/25' :
-                                      'text-slate-300 bg-white/10 border-white/15'
-                              }`}>
-                              {(app.status || 'applied').charAt(0).toUpperCase() + (app.status || 'applied').slice(1)}
+              {recentApps.length > 0 ? (
+                <div className="space-y-3">
+                  {recentApps.map((app) => (
+                    <div
+                      key={app.id}
+                      onClick={() => router.push(`/pipeline?app=${app.id}`)}
+                      className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 hover:border-blue-500/50 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                            {app.job_title}
+                          </h3>
+                          <p className="text-slate-400 text-sm mt-1">{app.company_name}</p>
+                          <div className="flex items-center gap-3 mt-3">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
+                              {app.status}
+                            </span>
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDate(app.created_at)}
                             </span>
                           </div>
                         </div>
+                        <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-8 text-center">
+                  <Briefcase className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400 mb-4">No applications yet</p>
+                  <button
+                    onClick={() => router.push('/jobs')}
+                    className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-medium hover:from-blue-600 hover:to-cyan-600 transition-all"
+                  >
+                    Find Jobs
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column - Insights & Tools */}
+          {/* Right Column - Sidebar */}
           <div className="space-y-6">
+            
+            {/* Weekly Progress Card */}
+            <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <Target className="h-5 w-5 text-blue-400" />
+                Weekly Progress
+              </h3>
+              
+              <div className="text-center mb-6">
+                <div className="text-4xl font-bold text-white mb-2">
+                  {thisWeekApps}<span className="text-2xl text-slate-500">/{weeklyGoal}</span>
+                </div>
+                <p className="text-slate-400 text-sm">Applications this week</p>
+              </div>
 
-            {/* Weekly Progress */}
-            <div className="glass-card glass-violet">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-slate-200 mb-4">This Week's Progress</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-300">Applications</span>
-                      <span className="text-indigo-400 font-medium">{thisWeekApps} / {weeklyGoal}</span>
-                    </div>
-                    <div className="w-full bg-slate-700 rounded-full h-3">
-                      <div
-                        className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-1000 shadow-lg shadow-indigo-500/20"
-                        style={{ width: `${weekProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">
-                      {weekProgress >= 100 ? '🎉 Goal achieved!' :
-                        weekProgress >= 80 ? '🔥 Almost there!' :
-                          '� Keep pushing!'}
-                    </p>
-                  </div>
+              <div className="w-full bg-slate-700/30 rounded-full h-3 overflow-hidden mb-4">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 bg-[length:200%_100%] rounded-full transition-all duration-500 animate-shimmer"
+                  style={{ width: `${weeklyProgress}%` }}
+                />
+              </div>
 
-                  <div className="pt-4 border-t border-white/10">
-                    <h4 className="text-sm font-medium text-slate-300 mb-3">Quick Stats</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Response Rate</span>
-                        <span className="text-slate-300">{responseRate}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">In Pipeline</span>
-                        <span className="text-slate-300">{inProgressCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">This Month</span>
-                        <span className="text-slate-300">{thisMonthApps}</span>
-                      </div>
-                    </div>
-                  </div>
+              <div className="space-y-2 pt-4 border-t border-slate-700/50">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Total Applications</span>
+                  <span className="text-white font-medium">{totalApps}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Active</span>
+                  <span className="text-white font-medium">{inProgressCount}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Response Rate</span>
+                  <span className="text-white font-medium">{responseRate}%</span>
                 </div>
               </div>
             </div>
 
             {/* Smart Tools */}
-            <div className="glass-card glass-amber">
-              <div className="mobile-p-4 md:p-6">
-                <h3 className="text-lg font-semibold text-slate-200 mb-4">Smart Tools</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <Link href="/documents">
-                    <div className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
-                      <div className="text-xl">�</div>
-                      <div>
-                        <div className="text-sm font-medium text-slate-200">Documents</div>
-                        <div className="text-xs text-slate-400">Manage resumes & cover letters</div>
-                      </div>
-                    </div>
-                  </Link>
+            <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-blue-400" />
+                Smart Tools
+              </h3>
 
-                  <Link href="/reminders">
-                    <div className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30">
-                      <div className="text-xl">⏰</div>
-                      <div>
-                        <div className="text-sm font-medium text-slate-200">Reminders</div>
-                        <div className="text-xs text-slate-400">Never miss a follow-up</div>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <div
-                    className="flex items-center gap-3 mobile-p-3 md:p-4 bg-slate-800/30 hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-600/30"
-                    onClick={() => checkPremium(() => { }, "Advanced Analytics")}
-                  >
-                    <div className="text-xl">📊</div>
-                    <div>
-                      <div className="text-sm font-medium text-slate-200 flex items-center gap-2">
-                        Analytics
-                        <span className="px-1.5 py-0.5 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-md">PRO</span>
-                      </div>
-                      <div className="text-xs text-slate-400">Deep performance insights</div>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-3">
+                <ToolButton
+                  icon={FileText}
+                  label="Documents"
+                  description="Resumes & cover letters"
+                  onClick={() => router.push('/documents')}
+                />
+                <ToolButton
+                  icon={Bell}
+                  label="Reminders"
+                  description="Follow-up notifications"
+                  onClick={() => router.push('/reminders')}
+                />
+                <ToolButton
+                  icon={BarChart3}
+                  label="Analytics"
+                  description="Track your performance"
+                  onClick={() => router.push('/analytics')}
+                  badge="PRO"
+                />
               </div>
             </div>
 
             {/* Motivation Box */}
-            <div className="glass-card bg-gradient-to-br from-emerald-900/20 to-cyan-900/20 border-emerald-500/20">
-              <div className="p-6 text-center">
-                <div className="text-3xl mb-3">🌟</div>
-                <h3 className="text-lg font-semibold text-emerald-300 mb-2">You're doing great!</h3>
-                <p className="text-sm text-slate-300">
-                  {totalApps === 0 ? "Every expert was once a beginner. Start your journey today!" :
-                    responseRate > 20 ? `${responseRate}% response rate is excellent! Keep it up!` :
-                      inProgressCount > 0 ? `${inProgressCount} active opportunities - you're in the game!` :
-                        "Consistency is key. Every application gets you closer to your goal!"}
-                </p>
+            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
+                  <Sparkles className="h-5 w-5 text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="text-white font-medium mb-1">Keep Going!</h4>
+                  <p className="text-slate-300 text-sm">
+                    {getMotivationMessage(totalApps, responseRate, inProgressCount)}
+                  </p>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
-        <PremiumModal feature="advanced dashboard features" />
       </div>
-    </AuthGuard>
+    </div>
   );
+}
+
+// Action Card Component
+function ActionCard({ icon: Icon, title, subtitle, description, gradientClass, borderClass, onClick, href }) {
+  const router = useRouter();
+  
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (href) {
+      router.push(href);
+    }
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`bg-gradient-to-br ${gradientClass} backdrop-blur-sm border ${borderClass} rounded-xl p-5 hover:scale-[1.02] transition-all cursor-pointer group`}
+    >
+      <Icon className="h-8 w-8 text-white mb-3 group-hover:scale-110 transition-transform" />
+      <h3 className="text-white font-bold text-lg mb-1">{title}</h3>
+      <p className="text-slate-400 text-xs mb-2">{subtitle}</p>
+      <p className="text-slate-300 text-sm">{description}</p>
+    </div>
+  );
+}
+
+// Tool Button Component
+function ToolButton({ icon: Icon, label, description, onClick, badge }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50 hover:border-blue-500/50 hover:bg-slate-800/50 transition-all group text-left"
+    >
+      <div className="p-2 rounded-lg bg-slate-700/50 group-hover:bg-blue-500/20 transition-colors">
+        <Icon className="h-5 w-5 text-slate-400 group-hover:text-blue-400 transition-colors" />
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-white font-medium text-sm">{label}</span>
+          {badge && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+              {badge}
+            </span>
+          )}
+        </div>
+        <span className="text-slate-400 text-xs">{description}</span>
+      </div>
+      <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+    </button>
+  );
+}
+
+// Helper Functions
+function getStatusColor(status) {
+  const colors = {
+    'Applied': 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    'Screening': 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+    'Interview': 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+    'Offer': 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    'Rejected': 'bg-red-500/20 text-red-400 border border-red-500/30',
+  };
+  return colors[status] || 'bg-slate-500/20 text-slate-400 border border-slate-500/30';
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
+}
+
+function getMotivationMessage(totalApps, responseRate, inProgress) {
+  if (totalApps === 0) {
+    return "Start your journey! Every great success begins with a single application.";
+  }
+  if (responseRate >= 30) {
+    return "Outstanding! Your applications are getting great responses. Keep up the excellent work!";
+  }
+  if (inProgress > 5) {
+    return "Wow! You've got a strong pipeline. Stay organized and follow up consistently.";
+  }
+  if (totalApps < 10) {
+    return "You're building momentum! Keep applying to increase your chances of success.";
+  }
+  return "Stay consistent! Every application brings you closer to your dream job.";
 }

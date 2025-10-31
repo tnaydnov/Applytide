@@ -79,6 +79,7 @@ class User(Base):
     notification_email: Mapped[bool] = mapped_column(default=True, nullable=False)
     notification_push: Mapped[bool] = mapped_column(default=True, nullable=False)
     theme_preference: Mapped[str] = mapped_column(String(20), default="dark", nullable=False)
+    weekly_goal: Mapped[int] = mapped_column(default=5, nullable=False)  # Weekly application goal
     
     # Calendar & API Access
     calendar_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)

@@ -87,4 +87,11 @@ export const profileApi = {
     apiFetch(`/preferences/${key}`, { method: "PUT", body: JSON.stringify({ preference_value: value }) }).then((r) =>
       r.json()
     ),
+
+  /**
+   * Mark welcome modal as seen
+   * @returns {Promise<Object>} Success response
+   */
+  markWelcomeModalSeen: () =>
+    apiFetch("/profile/welcome-modal-seen", { method: "POST" }).then((r) => r.json()),
 };
