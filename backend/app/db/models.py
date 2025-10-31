@@ -87,6 +87,7 @@ class User(Base):
     # Onboarding & User Experience
     has_seen_welcome_modal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     welcome_modal_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    has_dismissed_extension_banner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Legal Agreements (GDPR/CCPA Compliance)
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

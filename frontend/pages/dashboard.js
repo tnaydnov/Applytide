@@ -12,7 +12,7 @@ import {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [applications, setApplications] = useState([]);
   const [metrics, setMetrics] = useState({});
   const [insights, setInsights] = useState([]);
@@ -59,6 +59,8 @@ export default function Dashboard() {
     setShowWelcomeModal(false);
     try {
       await api.post('/profile/welcome-modal-seen', {});
+      // Refresh user data to update has_seen_welcome_modal
+      await refreshUser();
     } catch (err) {
       console.error('Failed to mark welcome modal as seen:', err);
     }

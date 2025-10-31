@@ -15,10 +15,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { api } from "../lib/api";
 import { Sparkles, Chrome, X } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 
 export default function JobsPage() {
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
   const {
     jobs,
     pagination,
@@ -79,19 +81,28 @@ export default function JobsPage() {
 
   // local: manual job modal
   const [showManualModal, setShowManualModal] = useState(false);
-  const [showExtensionBanner, setShowExtensionBanner] = useState(true);
+  const [showExtensionBanner, setShowExtensionBanner] = useState(false);
 
   useEffect(() => {
-    // Check if user has dismissed the banner
-    const dismissed = localStorage.getItem('extensionBannerDismissed');
-    if (dismissed === 'true') {
+    // Check backend state for extension banner dismissal
+    if (user && !user.has_dismissed_extension_banner) {
+      setShowExtensionBanner(true);
+    } else {
       setShowExtensionBanner(false);
     }
-  }, []);
+  }, [user]);
 
-  const dismissExtensionBanner = () => {
-    setShowExtensionBanner(false);
-    localStorage.setItem('extensionBannerDismissed', 'true');
+  const dismissExtensionBanner = async () => {
+    try {
+      await api.post('/profile/extension-banner-dismissed');
+      setShowExtensionBanner(false);
+      // Refresh user data to update has_dismissed_extension_banner
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to dismiss extension banner:', error);
+      // Still hide it locally even if backend fails
+      setShowExtensionBanner(false);
+    }
   };
 
   return (

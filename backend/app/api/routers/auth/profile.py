@@ -114,7 +114,10 @@ def get_current_user_info(
             "email_verified": bool(current_user.email_verified_at),
             "is_oauth_user": current_user.is_oauth_user,
             "google_id": current_user.google_id,
-            "role": getattr(current_user, 'role', 'user')
+            "role": getattr(current_user, 'role', 'user'),
+            "has_seen_welcome_modal": current_user.has_seen_welcome_modal,
+            "has_dismissed_extension_banner": current_user.has_dismissed_extension_banner,
+            "weekly_goal": current_user.weekly_goal
         }
     except Exception as e:
         logger.error(
@@ -347,4 +350,87 @@ def update_preferences(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update preferences"
+        )
+
+
+@router.post("/welcome-modal-seen", response_model=schemas.MessageResponse)
+def mark_welcome_modal_seen(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Mark that the user has seen the welcome modal.
+    
+    Used to track onboarding progress and avoid showing the modal again.
+    
+    Args:
+        db: Database session
+        current_user: Authenticated user
+        
+    Returns:
+        MessageResponse: Success message
+    """
+    try:
+        current_user.has_seen_welcome_modal = True
+        current_user.welcome_modal_seen_at = datetime.now(timezone.utc)
+        db.commit()
+        
+        logger.info(
+            "Welcome modal marked as seen",
+            extra={"user_id": str(current_user.id)}
+        )
+        
+        return schemas.MessageResponse(message="Welcome modal marked as seen")
+    
+    except Exception as e:
+        db.rollback()
+        logger.error(
+            "Failed to mark welcome modal as seen",
+            extra={"user_id": str(current_user.id), "error": str(e)},
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update welcome modal status"
+        )
+
+
+@router.post("/extension-banner-dismissed", response_model=schemas.MessageResponse)
+def mark_extension_banner_dismissed(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Mark that the user has dismissed the extension banner.
+    
+    Used to avoid showing the extension promotion banner again.
+    
+    Args:
+        db: Database session
+        current_user: Authenticated user
+        
+    Returns:
+        MessageResponse: Success message
+    """
+    try:
+        current_user.has_dismissed_extension_banner = True
+        db.commit()
+        
+        logger.info(
+            "Extension banner marked as dismissed",
+            extra={"user_id": str(current_user.id)}
+        )
+        
+        return schemas.MessageResponse(message="Extension banner dismissed")
+    
+    except Exception as e:
+        db.rollback()
+        logger.error(
+            "Failed to mark extension banner as dismissed",
+            extra={"user_id": str(current_user.id), "error": str(e)},
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update extension banner status"
         )
