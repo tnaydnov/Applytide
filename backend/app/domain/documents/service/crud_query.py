@@ -357,6 +357,20 @@ class DocumentQuerier:
                     )
                     continue
                 
+                # Skip documents with missing physical files
+                from pathlib import Path
+                file_path = Path(r.file_path)
+                if not file_path.exists():
+                    logger.warning(
+                        f"Document file missing, hiding from list: {r.file_path}",
+                        extra={
+                            "document_id": str(r.id),
+                            "file_path": r.file_path,
+                            "user_id": user_id
+                        }
+                    )
+                    continue
+                
                 # Apply type filter
                 if filter_type and resp.type != filter_type:
                     continue

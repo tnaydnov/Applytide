@@ -25,6 +25,7 @@ export default function MissingDocumentsBanner() {
     const [missingInfo, setMissingInfo] = useState(null);
     const [dismissed, setDismissed] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [cleaning, setCleaning] = useState(false);
 
     useEffect(() => {
         // Check if banner was dismissed this session
@@ -57,6 +58,37 @@ export default function MissingDocumentsBanner() {
             console.error('checkMissingFiles error:', e);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleCleanup() {
+        if (!confirm('This will hide all documents with missing files from your list. The metadata will be preserved but documents will be archived. Continue?')) {
+            return;
+        }
+
+        setCleaning(true);
+        try {
+            const res = await apiFetch('/documents/cleanup/orphaned', {
+                method: 'POST'
+            });
+
+            if (!res.ok) {
+                throw new Error('Cleanup failed');
+            }
+
+            const data = await res.json();
+            
+            // Show success and refresh
+            alert(`Successfully cleaned up ${data.cleaned_count} orphaned document(s). The page will now refresh.`);
+            
+            // Dismiss banner and reload
+            handleDismiss();
+            window.location.reload();
+        } catch (e) {
+            console.error('cleanup error:', e);
+            alert('Failed to cleanup orphaned documents. Please try again.');
+        } finally {
+            setCleaning(false);
         }
     }
 
@@ -100,16 +132,23 @@ export default function MissingDocumentsBanner() {
                     {missingInfo.missing_count} of your {missingInfo.total_documents} documents{' '}
                     {missingInfo.missing_count === 1 ? 'is' : 'are'} missing from storage. 
                     This may happen after file cleanup or migration. 
-                    Please re-upload the affected documents.
+                    You can hide these documents or re-upload them.
                 </p>
 
                 {/* Actions */}
                 <div className="flex gap-2">
                     <button
-                        onClick={handleViewDocuments}
-                        className="px-3 py-1.5 text-sm font-medium text-yellow-200 bg-yellow-900/40 hover:bg-yellow-900/60 border border-yellow-700/40 rounded transition-colors"
+                        onClick={handleCleanup}
+                        disabled={cleaning}
+                        className="px-3 py-1.5 text-sm font-medium text-yellow-200 bg-yellow-900/40 hover:bg-yellow-900/60 border border-yellow-700/40 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        View Documents
+                        {cleaning ? 'Cleaning...' : 'Hide These Documents'}
+                    </button>
+                    <button
+                        onClick={handleViewDocuments}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-white border border-gray-600 hover:border-gray-500 rounded transition-colors"
+                    >
+                        View All Documents
                     </button>
                     <button
                         onClick={handleDismiss}

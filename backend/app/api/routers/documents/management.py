@@ -435,3 +435,97 @@ def check_missing_files(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to check missing files")
+
+
+@router.post("/cleanup/orphaned")
+def cleanup_orphaned_documents(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    svc: DocumentService = Depends(get_document_service),
+):
+    """
+    Archive documents with missing physical files.
+    
+    Finds all documents in the database where the physical file no longer exists
+    and marks them as archived. This prevents them from appearing in document lists
+    while preserving the metadata for audit purposes.
+    
+    Returns:
+        {
+            "cleaned_count": number of documents archived,
+            "cleaned_ids": list of document IDs that were archived
+        }
+    
+    Security:
+        - Requires authentication
+        - Only affects current user's documents
+    
+    Notes:
+        - Documents are archived, not deleted (soft delete)
+        - Metadata remains in database for reference
+        - Use this after file system issues or manual file deletions
+    
+    Example:
+        POST /api/documents/cleanup/orphaned
+        Response: {"cleaned_count": 2, "cleaned_ids": ["uuid1", "uuid2"]}
+    """
+    try:
+        # Get all user documents
+        result = svc.list_documents(
+            db=db,
+            user_id=str(current_user.id),
+            page=1,
+            page_size=1000,  # High limit to get all docs
+            filter_type=None,
+            filter_status=None,
+            query=None,
+        )
+        
+        docs = result.get("documents", []) if isinstance(result, dict) else []
+        cleaned_ids = []
+        
+        for doc in docs:
+            file_path = doc.get("file_path") if isinstance(doc, dict) else getattr(doc, "file_path", None)
+            doc_id = doc.get("id") if isinstance(doc, dict) else getattr(doc, "id", None)
+            
+            if file_path and doc_id:
+                if not Path(file_path).exists():
+                    try:
+                        # Archive the document (soft delete)
+                        svc.update_status(
+                            db=db,
+                            user_id=str(current_user.id),
+                            document_id=str(doc_id),
+                            new_status=DocumentStatus.ARCHIVED
+                        )
+                        cleaned_ids.append(str(doc_id))
+                        logger.info(
+                            f"Archived orphaned document: {doc_id}",
+                            extra={"document_id": str(doc_id), "file_path": file_path}
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to archive document {doc_id}: {e}",
+                            extra={"document_id": str(doc_id)}
+                        )
+        
+        logger.info(
+            f"Orphaned documents cleanup completed",
+            extra={
+                "user_id": str(current_user.id),
+                "cleaned_count": len(cleaned_ids)
+            }
+        )
+        
+        return {
+            "cleaned_count": len(cleaned_ids),
+            "cleaned_ids": cleaned_ids
+        }
+        
+    except Exception as e:
+        logger.error(
+            f"Failed to cleanup orphaned documents: {e}",
+            extra={"user_id": str(current_user.id)},
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to cleanup orphaned documents")

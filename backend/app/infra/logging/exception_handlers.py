@@ -14,6 +14,7 @@ import traceback
 
 from app.infra.logging import get_logger
 from app.db.session import get_db
+from app.domain.documents.service.preview import PreviewNotFoundError
 
 
 logger = get_logger(__name__)
@@ -92,6 +93,61 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+async def preview_not_found_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Handle PreviewNotFoundError - when document file is missing from storage
+    
+    Returns 404 with helpful message for users
+    """
+    logger.warning(
+        f"Document file not found: {str(exc)}",
+        extra={
+            "event_type": "preview_not_found",
+            "path": str(request.url),
+            "exception_message": str(exc)
+        }
+    )
+    
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": {
+                "message": "Document file missing from storage. Please re-upload the document and try again.",
+                "status_code": 404,
+                "type": "preview_not_found",
+                "detail": str(exc)
+            }
+        }
+    )
+
+
+async def preview_not_found_handler(request: Request, exc: PreviewNotFoundError) -> JSONResponse:
+    """
+    Handle PreviewNotFoundError specifically (404)
+    
+    Returns user-friendly message about missing document file
+    """
+    
+    logger.warning(
+        f"Document file not found: {str(exc)}",
+        extra={
+            "event_type": "preview_not_found",
+            "path": str(request.url)
+        }
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": {
+                "message": "Document file missing from storage. Please re-upload the document.",
+                "status_code": 404,
+                "type": "file_not_found"
+            }
+        }
+    )
+
+
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handle all unhandled exceptions
@@ -143,4 +199,5 @@ def setup_exception_handlers(app):
     """
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(PreviewNotFoundError, preview_not_found_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
