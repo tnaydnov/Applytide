@@ -70,6 +70,71 @@ class DocumentPreview:
         self.utils = utils
         logger.debug("DocumentPreview initialized successfully")
     
+    def _get_fallback_paths(self, original_path: Path, document_id: str) -> list[Path]:
+        """
+        Generate fallback path candidates for missing document files.
+        
+        Tries alternative path patterns that may occur due to:
+        - Path refactoring (absolute vs relative)
+        - Docker volume mount differences
+        - Directory structure migrations
+        
+        Args:
+            original_path: The primary path from database
+            document_id: Document UUID for path reconstruction
+        
+        Returns:
+            List of Path objects to check as fallbacks
+        """
+        fallbacks = []
+        
+        # Get original components
+        filename = original_path.name
+        stem = original_path.stem
+        suffix = original_path.suffix
+        
+        # Fallback 1: /app/uploads/documents/{filename} (absolute path in container)
+        if not str(original_path).startswith("/app/"):
+            fallbacks.append(Path(f"/app/uploads/documents/{filename}"))
+        
+        # Fallback 2: uploads/documents/{filename} (relative path)
+        if str(original_path).startswith("/"):
+            fallbacks.append(Path(f"uploads/documents/{filename}"))
+        
+        # Fallback 3: Try reconstructing with document_id as filename base
+        # In case the file was renamed but UUID matches
+        try:
+            import uuid
+            uuid.UUID(document_id)  # Validate it's a UUID
+            fallbacks.append(Path(f"/app/uploads/documents/{document_id}{suffix}"))
+            fallbacks.append(Path(f"uploads/documents/{document_id}{suffix}"))
+        except (ValueError, AttributeError):
+            pass
+        
+        # Fallback 4: Check if stem is a UUID and try with document_id
+        try:
+            uuid.UUID(stem)  # If stem is already a UUID
+            # Already tried in fallback 3
+        except (ValueError, AttributeError):
+            # Stem is not a UUID, so original_path might be using label
+            # Try with document_id as stem instead
+            try:
+                uuid.UUID(document_id)
+                fallbacks.append(Path(f"/app/uploads/documents/{document_id}{suffix}"))
+            except (ValueError, AttributeError):
+                pass
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_fallbacks = []
+        for p in fallbacks:
+            p_str = str(p)
+            if p_str not in seen and p_str != str(original_path):
+                seen.add(p_str)
+                unique_fallbacks.append(p)
+        
+        return unique_fallbacks
+    
     def resolve_download(
         self, 
         db: Session, 
@@ -151,12 +216,42 @@ class DocumentPreview:
                 raise PreviewNotFoundError("Document not found")
             
             path = Path(doc.file_path)
-            if not path.exists():
-                logger.error(
-                    f"Stored file missing",
+            
+            # Try primary path first
+            if path.exists():
+                logger.debug(
+                    f"Document found at primary path",
                     extra={"document_id": document_id, "path": str(path)}
                 )
-                raise PreviewNotFoundError("Stored file missing")
+            else:
+                # Attempt fallback: try alternative path patterns
+                fallback_paths = self._get_fallback_paths(path, document_id)
+                found_path = None
+                
+                for fallback in fallback_paths:
+                    if fallback.exists():
+                        logger.warning(
+                            f"Document found at fallback path",
+                            extra={
+                                "document_id": document_id,
+                                "original_path": str(path),
+                                "fallback_path": str(fallback)
+                            }
+                        )
+                        path = fallback
+                        found_path = fallback
+                        break
+                
+                if not found_path:
+                    logger.error(
+                        f"Stored file missing (checked {len(fallback_paths) + 1} paths)",
+                        extra={
+                            "document_id": document_id,
+                            "primary_path": str(path),
+                            "fallback_paths": [str(p) for p in fallback_paths]
+                        }
+                    )
+                    raise PreviewNotFoundError("Stored file missing")
             
             # Get display name from sidecar
             try:

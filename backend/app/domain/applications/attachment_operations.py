@@ -13,6 +13,7 @@ from uuid import UUID
 from .repository import IApplicationRepo, IAttachmentRepo
 from .dto import AttachmentDTO
 from .errors import ApplicationNotFound, AttachmentNotFound, BadRequest
+from app.domain.documents.service.preview import PreviewNotFoundError
 from app.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -387,6 +388,13 @@ class AttachmentOperationsService:
                     f"Resolved document: {filename}",
                     extra={"file_name": filename, "media_type": media_type}
                 )
+            except PreviewNotFoundError as e:
+                # Propagate not-found so API can return a 404 with a helpful message
+                logger.warning(
+                    f"Document file missing for {document_id}: {e}",
+                    extra={"document_id": document_id}
+                )
+                raise
             except Exception as e:
                 logger.error(
                     f"Failed to resolve document {document_id}: {e}",

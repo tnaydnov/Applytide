@@ -17,6 +17,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from ...deps import get_current_user
+from app.domain.documents.service.preview import PreviewNotFoundError
 from ....db import models
 from ...schemas.applications import AttachmentOut
 from ....domain.applications.service import ApplicationService
@@ -124,11 +125,23 @@ def attach_from_document(
             },
             exc_info=True
         )
+        # If the underlying document preview reported the stored file is missing,
+        # return a 404 with a clear message so the frontend can prompt the user
+        # to re-upload the original document.
+        if isinstance(e, PreviewNotFoundError) or (
+            getattr(e, "__cause__", None) and isinstance(e.__cause__, PreviewNotFoundError)
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail="Document file missing from storage. Please re-upload the document and try again."
+            )
+
         if "not found" in str(e).lower():
             raise HTTPException(
                 status_code=404,
                 detail="Application or document not found"
             )
+
         raise HTTPException(
             status_code=500,
             detail="Failed to attach document"
