@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
 
@@ -159,8 +159,10 @@ class ReminderDTO:
             if not isinstance(self.updated_at, datetime):
                 raise ValueError(f"updated_at must be datetime, got {type(self.updated_at).__name__}")
             
-            # Check if reminder is in the past
-            if self.due_date < datetime.now():
+            # Check if reminder is in the past (use timezone-aware comparison)
+            now = datetime.now(timezone.utc)
+            due_date_aware = self.due_date if self.due_date.tzinfo else self.due_date.replace(tzinfo=timezone.utc)
+            if due_date_aware < now:
                 logger.info(
                     "Reminder due date is in the past",
                     extra={
