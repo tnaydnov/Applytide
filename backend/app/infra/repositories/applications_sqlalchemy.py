@@ -1070,6 +1070,113 @@ class NoteSQLARepository(_GuardMixin, INoteRepo):
         except SQLAlchemyError as e:
             logger.error(f"Database error listing notes: {e}", exc_info=True)
             raise DatabaseOperationError(f"Failed to list notes: {str(e)}")
+    
+    def get(self, note_id) -> NoteDTO:
+        """
+        Get a specific note by ID
+        
+        Args:
+            note_id: Note UUID
+            
+        Returns:
+            NoteDTO
+            
+        Raises:
+            LookupError: If note not found
+            DatabaseOperationError: If query fails
+        """
+        try:
+            logger.debug(f"Getting note {note_id}")
+            
+            stmt = select(models.Note).where(models.Note.id == note_id)
+            n = self.db.execute(stmt).scalar_one_or_none()
+            
+            if not n:
+                logger.warning(f"Note {note_id} not found")
+                raise LookupError(f"Note {note_id} not found")
+            
+            return _note_to_dto(n)
+            
+        except LookupError:
+            raise
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting note: {e}", exc_info=True)
+            raise DatabaseOperationError(f"Failed to get note: {str(e)}")
+    
+    def update(self, note_id, body: str) -> NoteDTO:
+        """
+        Update note body
+        
+        Args:
+            note_id: Note UUID
+            body: New note text
+            
+        Returns:
+            Updated NoteDTO
+            
+        Raises:
+            ValidationError: If body is empty or too long
+            LookupError: If note not found
+            DatabaseOperationError: If update fails
+        """
+        try:
+            _validate_note_body(body)
+            
+            logger.debug(f"Updating note {note_id}")
+            
+            stmt = select(models.Note).where(models.Note.id == note_id)
+            n = self.db.execute(stmt).scalar_one_or_none()
+            
+            if not n:
+                logger.warning(f"Note {note_id} not found")
+                raise LookupError(f"Note {note_id} not found")
+            
+            n.body = body
+            self.db.commit()
+            self.db.refresh(n)
+            
+            logger.info(f"Updated note {note_id}", extra={"note_id": str(note_id)})
+            return _note_to_dto(n)
+            
+        except (ValidationError, LookupError):
+            raise
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Database error updating note: {e}", exc_info=True)
+            raise DatabaseOperationError(f"Failed to update note: {str(e)}")
+    
+    def delete(self, note_id) -> None:
+        """
+        Delete a note
+        
+        Args:
+            note_id: Note UUID
+            
+        Raises:
+            LookupError: If note not found
+            DatabaseOperationError: If deletion fails
+        """
+        try:
+            logger.debug(f"Deleting note {note_id}")
+            
+            stmt = select(models.Note).where(models.Note.id == note_id)
+            n = self.db.execute(stmt).scalar_one_or_none()
+            
+            if not n:
+                logger.warning(f"Note {note_id} not found")
+                raise LookupError(f"Note {note_id} not found")
+            
+            self.db.delete(n)
+            self.db.commit()
+            
+            logger.info(f"Deleted note {note_id}", extra={"note_id": str(note_id)})
+            
+        except LookupError:
+            raise
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Database error deleting note: {e}", exc_info=True)
+            raise DatabaseOperationError(f"Failed to delete note: {str(e)}")
 
 # ==================== Attachment Repository ====================
 

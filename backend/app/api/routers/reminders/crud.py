@@ -19,7 +19,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/reminders", response_model=ReminderResponse)
+@router.post("/", response_model=ReminderResponse)
 async def create_reminder(
     reminder: ReminderCreate,
     user: User = Depends(get_current_user),
@@ -121,7 +121,7 @@ async def create_reminder(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/reminders", response_model=List[ReminderResponse])
+@router.get("/", response_model=List[ReminderResponse])
 async def get_reminders(
     skip: int = 0,
     limit: int = 100,
@@ -169,7 +169,7 @@ async def get_reminders(
     return await svc.list_reminders(user_id=user.id, skip=skip, limit=limit)
 
 
-@router.patch("/reminders/{reminder_id}", response_model=ReminderResponse)
+@router.patch("/{reminder_id}", response_model=ReminderResponse)
 async def update_reminder(
     reminder_id: uuid.UUID,
     patch: ReminderUpdate,
@@ -241,7 +241,7 @@ async def update_reminder(
     )
 
 
-@router.delete("/reminders/{reminder_id}", status_code=204)
+@router.delete("/{reminder_id}", status_code=204)
 async def delete_reminder(
     reminder_id: uuid.UUID,
     user: User = Depends(get_current_user),

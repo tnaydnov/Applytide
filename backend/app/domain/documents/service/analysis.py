@@ -739,7 +739,7 @@ FULL JOB DESCRIPTION:
                     ats_score=ats,
                     suggested_improvements=gen["suggestions"],
                     missing_sections=gen.get("missing_sections", []),
-                    job_match_summary={"summary": "General resume analysis - select a job for detailed matching"},
+                    job_match_summary=None,
                     keyword_analysis=None,
                     missing_skills={"skills": []},
                     ai_detailed_analysis=gen.get("ai_detailed_analysis", {}),

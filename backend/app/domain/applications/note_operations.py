@@ -12,7 +12,7 @@ from typing import List
 from uuid import UUID
 from .repository import IApplicationRepo, INoteRepo
 from .dto import NoteDTO
-from .errors import ApplicationNotFound, BadRequest
+from .errors import ApplicationNotFound, BadRequest, NoteNotFound
 from app.infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -202,3 +202,180 @@ class NoteOperationsService:
                 exc_info=True
             )
             raise BadRequest("An unexpected error occurred while listing notes")
+
+    def update_note(
+        self, *, user_id: UUID, app_id: UUID, note_id: UUID, body: str
+    ) -> NoteDTO:
+        """
+        Update an existing note's content.
+        
+        Updates the note body and sets updated_at timestamp.
+        Verifies both application ownership and note existence.
+        
+        Args:
+            user_id: UUID of the user (must own application)
+            app_id: UUID of the application
+            note_id: UUID of the note to update
+            body: New content for the note
+        
+        Returns:
+            Updated NoteDTO
+        
+        Raises:
+            ValueError: If parameters are invalid
+            ApplicationNotFound: If application doesn't exist or user doesn't own it
+            NoteNotFound: If note doesn't exist or doesn't belong to application
+            BadRequest: If update fails
+        """
+        try:
+            if not isinstance(user_id, UUID):
+                logger.warning(f"Invalid user_id type: {type(user_id)}")
+                raise ValueError("user_id must be a UUID")
+            
+            if not isinstance(app_id, UUID):
+                logger.warning(f"Invalid app_id type: {type(app_id)}")
+                raise ValueError("app_id must be a UUID")
+            
+            if not isinstance(note_id, UUID):
+                logger.warning(f"Invalid note_id type: {type(note_id)}")
+                raise ValueError("note_id must be a UUID")
+            
+            if not isinstance(body, str) or not body:
+                logger.warning(f"Invalid note body: {body}")
+                raise ValueError("body must be a non-empty string")
+            
+            if len(body) > 5000:
+                logger.warning(f"Note body too long: {len(body)} characters")
+                raise ValueError("body must be 5000 characters or less")
+            
+            logger.debug(
+                f"Updating note {note_id} for application {app_id}",
+                extra={"app_id": str(app_id), "note_id": str(note_id)}
+            )
+            
+            # Verify ownership
+            self._verify_ownership(app_id, user_id)
+            
+            # Get note to verify it belongs to this application
+            try:
+                existing = self.notes.get(note_id)
+                if existing.application_id != app_id:
+                    logger.warning(
+                        f"Note {note_id} doesn't belong to application {app_id}"
+                    )
+                    raise NoteNotFound(f"Note {note_id} not found")
+            except LookupError:
+                logger.warning(f"Note {note_id} not found")
+                raise NoteNotFound(f"Note {note_id} not found")
+            
+            # Update note
+            try:
+                updated_note = self.notes.update(note_id, body)
+                logger.info(
+                    f"Updated note {note_id} for application {app_id}",
+                    extra={
+                        "app_id": str(app_id),
+                        "note_id": str(note_id),
+                        "body_length": len(body)
+                    }
+                )
+                return updated_note
+            except Exception as e:
+                logger.error(
+                    f"Failed to update note {note_id}: {e}",
+                    exc_info=True
+                )
+                raise BadRequest("Failed to update note")
+                
+        except (ValueError, ApplicationNotFound, NoteNotFound, BadRequest):
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in update_note: {e}",
+                extra={
+                    "app_id": str(app_id),
+                    "note_id": str(note_id),
+                    "user_id": str(user_id)
+                },
+                exc_info=True
+            )
+            raise BadRequest("An unexpected error occurred while updating note")
+
+    def delete_note(self, *, user_id: UUID, app_id: UUID, note_id: UUID) -> None:
+        """
+        Delete a note from an application.
+        
+        Permanently removes the note. Verifies both application
+        ownership and note existence before deletion.
+        
+        Args:
+            user_id: UUID of the user (must own application)
+            app_id: UUID of the application
+            note_id: UUID of the note to delete
+        
+        Raises:
+            ValueError: If parameters are invalid
+            ApplicationNotFound: If application doesn't exist or user doesn't own it
+            NoteNotFound: If note doesn't exist or doesn't belong to application
+            BadRequest: If deletion fails
+        """
+        try:
+            if not isinstance(user_id, UUID):
+                logger.warning(f"Invalid user_id type: {type(user_id)}")
+                raise ValueError("user_id must be a UUID")
+            
+            if not isinstance(app_id, UUID):
+                logger.warning(f"Invalid app_id type: {type(app_id)}")
+                raise ValueError("app_id must be a UUID")
+            
+            if not isinstance(note_id, UUID):
+                logger.warning(f"Invalid note_id type: {type(note_id)}")
+                raise ValueError("note_id must be a UUID")
+            
+            logger.debug(
+                f"Deleting note {note_id} from application {app_id}",
+                extra={"app_id": str(app_id), "note_id": str(note_id)}
+            )
+            
+            # Verify ownership
+            self._verify_ownership(app_id, user_id)
+            
+            # Get note to verify it belongs to this application
+            try:
+                existing = self.notes.get(note_id)
+                if existing.application_id != app_id:
+                    logger.warning(
+                        f"Note {note_id} doesn't belong to application {app_id}"
+                    )
+                    raise NoteNotFound(f"Note {note_id} not found")
+            except LookupError:
+                logger.warning(f"Note {note_id} not found")
+                raise NoteNotFound(f"Note {note_id} not found")
+            
+            # Delete note
+            try:
+                self.notes.delete(note_id)
+                logger.info(
+                    f"Deleted note {note_id} from application {app_id}",
+                    extra={"app_id": str(app_id), "note_id": str(note_id)}
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to delete note {note_id}: {e}",
+                    exc_info=True
+                )
+                raise BadRequest("Failed to delete note")
+                
+        except (ValueError, ApplicationNotFound, NoteNotFound, BadRequest):
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in delete_note: {e}",
+                extra={
+                    "app_id": str(app_id),
+                    "note_id": str(note_id),
+                    "user_id": str(user_id)
+                },
+                exc_info=True
+            )
+            raise BadRequest("An unexpected error occurred while deleting note")

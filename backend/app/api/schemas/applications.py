@@ -73,11 +73,15 @@ class StageOut(BaseModel):
 class NoteCreate(BaseModel):
     body: str
 
+class NoteUpdate(BaseModel):
+    body: str
+
 class NoteOut(BaseModel):
     id: uuid.UUID
     application_id: uuid.UUID
     body: str
     created_at: datetime
+    updated_at: Optional[datetime] = None
     class Config:
         from_attributes = True
 

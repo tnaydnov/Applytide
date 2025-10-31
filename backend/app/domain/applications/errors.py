@@ -79,6 +79,18 @@ class AttachmentNotFound(ApplicationDomainError):
     pass
 
 
+class NoteNotFound(ApplicationDomainError):
+    """
+    Raised when a note is not found.
+    
+    This exception is raised when:
+    - Note ID does not exist
+    - Note does not belong to the application
+    - Note was deleted
+    """
+    pass
+
+
 class BadRequest(ApplicationDomainError):
     """
     Raised when request data is invalid.
@@ -104,5 +116,6 @@ __all__ = [
     'ApplicationOperationError',
     'StageNotFound',
     'AttachmentNotFound',
+    'NoteNotFound',
     'BadRequest',
 ]

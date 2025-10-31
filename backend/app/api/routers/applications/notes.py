@@ -14,7 +14,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from ...deps import get_current_user
 from ....db import models
-from ...schemas.applications import NoteCreate, NoteOut
+from ...schemas.applications import NoteCreate, NoteUpdate, NoteOut
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event, logger
@@ -202,4 +202,200 @@ def list_notes(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve notes"
+        )
+
+
+@router.patch("/{app_id}/notes/{note_id}", response_model=NoteOut)
+def update_note(
+    app_id: uuid.UUID,
+    note_id: uuid.UUID,
+    payload: NoteUpdate,
+    svc: ApplicationService = Depends(get_application_service),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Update an existing note's content.
+    
+    Modifies the note body and updates the timestamp.
+    Verifies user owns the application and note belongs to application.
+    
+    Path Parameters:
+        app_id (UUID): ID of the application containing the note
+        note_id (UUID): ID of the note to update
+        
+    Request Body:
+        body (str): New note content (markdown supported)
+        
+    Args:
+        svc: Application service instance (from dependency)
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        NoteOut: Updated note object with:
+            - id: Note UUID
+            - application_id: Parent application UUID
+            - body: Updated note content
+            - created_at: Original creation timestamp
+            - updated_at: Update timestamp
+            
+    Raises:
+        HTTPException: 404 if application or note not found
+        HTTPException: 500 if update fails
+        
+    Security:
+        Requires user authentication
+        Only allows updating notes in user's own applications
+        Verifies note belongs to specified application
+        
+    Notes:
+        - Preserves original created_at timestamp
+        - Updates updated_at to current time
+        - Broadcasts 'note_updated' WebSocket event
+        
+    Example:
+        PATCH /api/applications/{app_id}/notes/{note_id}
+        Body: {"body": "Updated note content"}
+    """
+    try:
+        logger.debug(
+            "Updating note",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id)
+            }
+        )
+        
+        n = svc.update_note(
+            user_id=current_user.id,
+            app_id=app_id,
+            note_id=note_id,
+            body=payload.body
+        )
+        
+        logger.info(
+            "Note updated successfully",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id)
+            }
+        )
+        
+        # Best-effort WebSocket broadcast
+        broadcast_event("note_updated", str(app_id))
+        
+        return NoteOut(**n.__dict__)
+        
+    except Exception as e:
+        logger.error(
+            "Failed to update note",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=404,
+                detail="Application or note not found"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update note"
+        )
+
+
+@router.delete("/{app_id}/notes/{note_id}")
+def delete_note(
+    app_id: uuid.UUID,
+    note_id: uuid.UUID,
+    svc: ApplicationService = Depends(get_application_service),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Delete a note from an application.
+    
+    Permanently removes the note. This action cannot be undone.
+    
+    Path Parameters:
+        app_id (UUID): ID of the application containing the note
+        note_id (UUID): ID of the note to delete
+        
+    Args:
+        svc: Application service instance (from dependency)
+        current_user: Authenticated user (from dependency)
+        
+    Returns:
+        dict: Success confirmation message
+            
+    Raises:
+        HTTPException: 404 if application or note not found
+        HTTPException: 500 if deletion fails
+        
+    Security:
+        Requires user authentication
+        Only allows deleting notes from user's own applications
+        Verifies note belongs to specified application
+        
+    Notes:
+        - **PERMANENT ACTION** - Cannot be undone
+        - Broadcasts 'note_deleted' WebSocket event
+        
+    Example:
+        DELETE /api/applications/{app_id}/notes/{note_id}
+        Returns: {"message": "Note deleted successfully"}
+    """
+    try:
+        logger.debug(
+            "Deleting note",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id)
+            }
+        )
+        
+        svc.delete_note(
+            user_id=current_user.id,
+            app_id=app_id,
+            note_id=note_id
+        )
+        
+        logger.info(
+            "Note deleted successfully",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id)
+            }
+        )
+        
+        # Best-effort WebSocket broadcast
+        broadcast_event("note_deleted", str(app_id))
+        
+        return {"message": "Note deleted successfully"}
+        
+    except Exception as e:
+        logger.error(
+            "Failed to delete note",
+            extra={
+                "user_id": str(current_user.id),
+                "application_id": str(app_id),
+                "note_id": str(note_id),
+                "error": str(e)
+            },
+            exc_info=True
+        )
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=404,
+                detail="Application or note not found"
+            )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete note"
         )

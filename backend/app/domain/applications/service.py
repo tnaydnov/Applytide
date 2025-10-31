@@ -259,6 +259,20 @@ class ApplicationService:
         """List all notes for application (newest first)."""
         return self._note_ops.list_notes(user_id=user_id, app_id=app_id)
 
+    def update_note(
+        self, *, user_id: UUID, app_id: UUID, note_id: UUID, body: str
+    ) -> NoteDTO:
+        """Update an existing note's content."""
+        return self._note_ops.update_note(
+            user_id=user_id, app_id=app_id, note_id=note_id, body=body
+        )
+
+    def delete_note(self, *, user_id: UUID, app_id: UUID, note_id: UUID) -> None:
+        """Delete a note permanently."""
+        return self._note_ops.delete_note(
+            user_id=user_id, app_id=app_id, note_id=note_id
+        )
+
     # ==============================================================================
     # Attachment Operations (delegated to AttachmentOperationsService)
     # ==============================================================================
