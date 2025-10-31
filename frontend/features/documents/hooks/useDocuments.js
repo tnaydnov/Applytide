@@ -104,8 +104,10 @@ export default function useDocuments() {
             return await api.previewDocument(doc.id);
         } catch (e) {
             console.error('previewDocument error:', e);
-            toast.error(e.message || 'Failed to preview document');
-            throw e; // Re-throw so caller knows it failed
+            // Extract meaningful error message
+            const errorMsg = e?.message || String(e) || 'Failed to preview document';
+            toast.error(errorMsg);
+            // Don't re-throw - we've already shown the error to the user
         }
     }, [toast]);
 
@@ -114,8 +116,10 @@ export default function useDocuments() {
             return await api.downloadDocument(doc.id);
         } catch (e) {
             console.error('downloadDocument error:', e);
-            toast.error(e.message || 'Failed to download document');
-            throw e; // Re-throw so caller knows it failed
+            // Extract meaningful error message
+            const errorMsg = e?.message || String(e) || 'Failed to download document';
+            toast.error(errorMsg);
+            // Don't re-throw - we've already shown the error to the user
         }
     }, [toast]);
 

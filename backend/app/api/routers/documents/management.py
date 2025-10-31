@@ -400,14 +400,18 @@ def check_missing_files(
             query=None,
         )
         
-        docs = result.get("documents", [])
+        # Extract documents array from response
+        docs = result.get("documents", []) if isinstance(result, dict) else []
         missing_ids = []
         
         for doc in docs:
-            file_path = doc.get("file_path")
-            if file_path:
+            # Handle both dict and object access patterns
+            file_path = doc.get("file_path") if isinstance(doc, dict) else getattr(doc, "file_path", None)
+            doc_id = doc.get("id") if isinstance(doc, dict) else getattr(doc, "id", None)
+            
+            if file_path and doc_id:
                 if not Path(file_path).exists():
-                    missing_ids.append(doc["id"])
+                    missing_ids.append(str(doc_id))
         
         logger.info(
             f"Missing files check completed",
