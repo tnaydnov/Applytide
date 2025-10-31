@@ -6,7 +6,6 @@ import { api, apiFetch } from '../../../lib/api';
 import { getReminders as getGoogleReminders, createReminder as createGoogleReminder } from '../../../services/googleCalendar';
 import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "../utils/docTypes";
 
-
 export default function ApplicationDrawer({ application, onClose }) {
     const toast = useToast();
     const router = useRouter();
@@ -40,7 +39,6 @@ export default function ApplicationDrawer({ application, onClose }) {
     const [pendingType, setPendingType] = useState('resume');
     const [showTypeChooser, setShowTypeChooser] = useState(false);
 
-
     // Docs picker
     const [showDocsPicker, setShowDocsPicker] = useState(false);
     const [docs, setDocs] = useState([]);
@@ -58,11 +56,13 @@ export default function ApplicationDrawer({ application, onClose }) {
         description: '',
     });
 
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'files' | 'reminders'
+
     const companyName = application?.job?.company?.name || application?.job?.company_name || '';
     const jobTitle = application?.job?.title || application?.title || 'Application';
+    const status = application?.status || 'Unknown';
 
     const [stages, setStages] = useState([]);
-
 
     const loadStages = useCallback(async () => {
         if (!appId) return setStages([]);
@@ -84,7 +84,6 @@ export default function ApplicationDrawer({ application, onClose }) {
         try {
             const res = await apiFetch(`/applications/${appId}/stages/${stageId}`, { method: "DELETE" });
             if (!res.ok) throw new Error(await res.text());
-            // Optimistic update
             setStages((prev) => prev.filter((s) => String(s.id) !== String(stageId)));
             toast.success("Stage removed");
         } catch (e) {
@@ -92,7 +91,6 @@ export default function ApplicationDrawer({ application, onClose }) {
             toast.error("Failed to remove stage");
         }
     }, [appId, toast]);
-
 
     /* ------------------------------ Attachments ------------------------------ */
     const loadAttachments = useCallback(async () => {
@@ -127,7 +125,6 @@ export default function ApplicationDrawer({ application, onClose }) {
         }
     };
 
-
     const removeAttachment = async (attachmentId) => {
         if (!appId || !attachmentId) return;
         try {
@@ -153,7 +150,7 @@ export default function ApplicationDrawer({ application, onClose }) {
             setDocs(Array.isArray(res?.documents) ? res.documents : []);
         } catch (e) {
             console.error('openDocsPicker error', e);
-            toast.error('Couldn’t load documents');
+            toast.error('Could not load documents');
             setDocs([]);
         } finally {
             setLoadingDocs(false);
@@ -167,9 +164,8 @@ export default function ApplicationDrawer({ application, onClose }) {
             const picked = docs.find(d => String(d?.id) === String(docId));
             const chosenType = picked?.document_type || picked?.type || 'other';
             const res = await postAppAttachmentFromDocument(docId, chosenType);
-            // Handle API response explicitly so we can surface clearer messages
+            
             if (!res.ok) {
-                // Try to parse JSON error body, fall back to text
                 let detail = null;
                 try {
                     const json = await res.json();
@@ -198,7 +194,6 @@ export default function ApplicationDrawer({ application, onClose }) {
             setAttachingId(null);
         }
     };
-
 
     /* -------------------------------- Reminders ------------------------------ */
     const loadReminders = useCallback(async () => {
@@ -275,7 +270,7 @@ export default function ApplicationDrawer({ application, onClose }) {
         loadAttachments();
         loadReminders();
         loadStages();
-    }, [appId]); // Only depend on appId, not the callback functions
+    }, [appId]);
 
     /* --------------------------------- Render -------------------------------- */
     return (
@@ -283,123 +278,231 @@ export default function ApplicationDrawer({ application, onClose }) {
             {/* Backdrop */}
             <div
                 onClick={onClose}
-                className="absolute inset-0 bg-black/50 backdrop-blur-[2px] pointer-events-auto"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
                 aria-label="Close drawer backdrop"
             />
 
-            {/* Drawer panel */}
+            {/* Drawer panel - WIDER */}
             <aside
                 className="
-                                absolute right-0 top-0 h-full
-                                w-[560px] max-w-[100vw] max-h-screen
-                                bg-[#0f1422] border-l border-white/10 shadow-2xl
-                                pointer-events-auto
-                                animate-[slideIn_.25s_ease-out]
-                            "
+                    absolute right-0 top-0 h-full
+                    w-[700px] max-w-[90vw] max-h-screen
+                    bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-900
+                    border-l border-white/10 shadow-2xl
+                    pointer-events-auto
+                    animate-[slideIn_.3s_ease-out]
+                "
             >
                 <style jsx global>{`
                     @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0.6; }
-                    to   { transform: translateX(0);   opacity: 1; }
+                        from { transform: translateX(100%); opacity: 0; }
+                        to   { transform: translateX(0);   opacity: 1; }
                     }
                 `}</style>
 
-                <div className="p-5 overflow-y-auto h-full">
-                    <div className="space-y-6">
-                        {/* Header */}
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <div className="text-2xl font-semibold text-slate-100">
+                {/* Fixed Header */}
+                <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-white/10">
+                    <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1 min-w-0 pr-4">
+                                <h2 className="text-2xl font-bold text-white mb-1 truncate">
                                     {jobTitle}
-                                </div>
-                                <div className="text-slate-400">{companyName || '—'}</div>
+                                </h2>
+                                <p className="text-indigo-100 text-lg">{companyName || 'Unknown Company'}</p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="px-3 py-1 rounded-md bg-slate-800/70 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                                className="flex-shrink-0 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                                 type="button"
+                                aria-label="Close"
                             >
-                                Close
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
-                        {/* Details row (Applied / Last update) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Card className="bg-slate-800/40 border-slate-700/50">
-                                <div className="text-sm text-slate-400">Applied</div>
-                                <div className="text-slate-200">
+                        {/* Quick Stats Row */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                                <div className="text-xs text-indigo-200 mb-1">Status</div>
+                                <div className="text-white font-semibold truncate">{status}</div>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                                <div className="text-xs text-indigo-200 mb-1">Applied</div>
+                                <div className="text-white font-semibold">
                                     {application?.applied_at
                                         ? new Date(application.applied_at).toLocaleDateString()
                                         : application?.created_at
                                             ? new Date(application.created_at).toLocaleDateString()
                                             : '—'}
                                 </div>
-                            </Card>
-                            <Card className="bg-slate-800/40 border-slate-700/50">
-                                <div className="text-sm text-slate-400">Last update</div>
-                                <div className="text-slate-200">
-                                    {application?.updated_at
-                                        ? new Date(application.updated_at).toLocaleDateString()
-                                        : '—'}
-                                </div>
-                            </Card>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                                <div className="text-xs text-indigo-200 mb-1">Files</div>
+                                <div className="text-white font-semibold">{attachments.length}</div>
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Stages */}
-                        <Card className="bg-slate-800/40 border-slate-700/50">
-                            <div className="mb-3 flex items-center justify-between">
-                                <h3 className="text-slate-200 font-semibold">Stage History</h3>
+                    {/* Tabs */}
+                    <div className="flex border-t border-white/10">
+                        <button
+                            onClick={() => setActiveTab('overview')}
+                            className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
+                                activeTab === 'overview'
+                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
+                                    : 'text-indigo-200 hover:bg-white/5'
+                            }`}
+                        >
+                            📊 Overview
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('files')}
+                            className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
+                                activeTab === 'files'
+                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
+                                    : 'text-indigo-200 hover:bg-white/5'
+                            }`}
+                        >
+                            📎 Files {attachments.length > 0 && `(${attachments.length})`}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('reminders')}
+                            className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
+                                activeTab === 'reminders'
+                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
+                                    : 'text-indigo-200 hover:bg-white/5'
+                            }`}
+                        >
+                            🔔 Events
+                        </button>
+                    </div>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="overflow-y-auto h-[calc(100%-240px)] px-6 py-6">
+                    {/* OVERVIEW TAB */}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-6">
+                            {/* Timeline/Stage History */}
+                            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Application Timeline
+                                </h3>
+
+                                {stages.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <svg className="w-12 h-12 mx-auto text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <p className="text-slate-400 text-sm">No timeline events yet</p>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 via-purple-500 to-transparent"></div>
+                                        <div className="space-y-4">
+                                            {stages
+                                                .slice()
+                                                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                                                .map((st, idx) => {
+                                                    const when = new Date(st.created_at);
+                                                    const whenStr = Number.isNaN(when.getTime()) ? "—" : when.toLocaleString();
+                                                    return (
+                                                        <div key={st.id} className="relative pl-10 group">
+                                                            <div className={`absolute left-2 top-2 w-4 h-4 rounded-full border-2 ${
+                                                                idx === 0 
+                                                                    ? 'bg-indigo-500 border-indigo-400 ring-4 ring-indigo-500/20'
+                                                                    : 'bg-slate-700 border-slate-600'
+                                                            }`}></div>
+                                                            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50 hover:border-slate-600 transition-colors">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="text-white font-medium mb-1">{st.name}</div>
+                                                                        <div className="text-xs text-slate-400">{whenStr}</div>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => deleteStage(st.id)}
+                                                                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                                        title="Delete"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {stages.length === 0 ? (
-                                <div className="text-sm text-slate-400">No stages yet.</div>
-                            ) : (
-                                <ol className="relative ml-3 pl-3 border-l border-slate-700/50 space-y-4">
-                                    {stages
-                                        .slice()
-                                        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-                                        .map((st) => {
-                                            const when = new Date(st.created_at);
-                                            const whenStr = Number.isNaN(when.getTime()) ? "—" : when.toLocaleString();
-                                            return (
-                                                <li key={st.id} className="relative pl-6">
-                                                    <span className="absolute left-0 top-2 h-2.5 w-2.5 rounded-full bg-indigo-500 border border-indigo-300/60" />
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <div className="text-slate-100 font-medium">{st.name}</div>
+                            {/* Quick Actions */}
+                            <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-xl p-5 border border-indigo-500/20">
+                                <h3 className="text-lg font-semibold text-white mb-3">Quick Actions</h3>
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        onClick={() => setActiveTab('files')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
+                                        Manage Files
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('reminders')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                        </svg>
+                                        Set Reminder
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const id = application?.job?.id || application?.job_id;
+                                            if (!id) return toast.error('No job linked');
+                                            router.push({ pathname: '/jobs', query: { job: String(id) } }, undefined, { shallow: true });
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        View Job Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="text-xs text-slate-400 whitespace-nowrap">{whenStr}</div>
-                                                            <button
-                                                                onClick={() => deleteStage(st.id)}
-                                                                className="p-1.5 rounded-md text-slate-400 hover:text-red-300 hover:bg-red-500/15 transition"
-                                                                title="Delete stage from history"
-                                                                aria-label="Delete stage"
-                                                            >
-                                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-3h4m-6 3h8M9 7v12m6-12v12" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </li>
-
-                                            );
-                                        })}
-                                </ol>
-                            )}
-                        </Card>
-
-
-
-
-                        {/* Attachments */}
-                        <Card className="bg-slate-800/40 border-slate-700/50">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-slate-200 font-semibold">Attachments</h3>
-
-                                <div className="flex items-center gap-2">
-                                    <label className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+                    {/* FILES TAB */}
+                    {activeTab === 'files' && (
+                        <div className="space-y-6">
+                            {/* Upload Section */}
+                            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
+                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    Add Files
+                                </h3>
+                                
+                                <div className="flex gap-3">
+                                    <label className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-lg cursor-pointer transition-colors bg-slate-900/30 hover:bg-indigo-500/5">
+                                        <svg className="w-8 h-8 text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <span className="text-sm text-slate-300 font-medium">
+                                            {uploading ? 'Uploading...' : 'Upload New File'}
+                                        </span>
                                         <input
                                             type="file"
                                             className="hidden"
@@ -412,217 +515,298 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                 setShowTypeChooser(true);
                                             }}
                                         />
-                                        {uploading ? 'Uploading…' : 'Upload'}
                                     </label>
 
-                                    <Button variant="outline" onClick={openDocsPicker}>
-                                        Choose from documents
-                                    </Button>
+                                    <button
+                                        onClick={openDocsPicker}
+                                        className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-slate-600 hover:border-purple-500 rounded-lg transition-colors bg-slate-900/30 hover:bg-purple-500/5"
+                                    >
+                                        <svg className="w-8 h-8 text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span className="text-sm text-slate-300 font-medium">From Library</span>
+                                    </button>
                                 </div>
-                            </div>
-                            {showTypeChooser && pendingFile && (
-                                <div className="mt-3 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="text-slate-300 font-medium">Choose file type</div>
-                                        <Button variant="outline" onClick={() => { setShowTypeChooser(false); setPendingFile(null); }}>
-                                            Cancel
-                                        </Button>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <select
-                                            value={pendingType}
-                                            onChange={(e) => setPendingType(e.target.value)}
-                                            className="rounded-md bg-slate-800 border border-slate-700 text-slate-200 px-2 py-1"
-                                        >
-                                            {DOC_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
-                                        </select>
-                                        <Button onClick={() => handleUploadFile(pendingFile, pendingType)} disabled={uploading}>
-                                            {uploading ? 'Uploading…' : 'Upload file'}
-                                        </Button>
-                                    </div>
-                                    <div className="text-xs text-slate-400 mt-2 truncate">{pendingFile.name}</div>
-                                </div>
-                            )}
 
-
-                            {attachments.length === 0 ? (
-                                <div className="text-sm text-slate-400">No files attached</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {attachments.map((att) => {
-                                        const dtype = att?.document_type || 'other';
-                                        const filename = att?.filename || att?.name || 'Untitled';
-                                        const id = att?.id;
-                                        return (
-                                            <div
-                                                key={id ?? filename}
-                                                className="flex items-center justify-between rounded-md bg-slate-900/40 px-3 py-2 border border-slate-700/50"
-                                            >
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs border ${typeChipClass(dtype)}`}>
-                                                        {typeLabel(dtype)}
-                                                    </span>
-                                                    <div className="truncate text-slate-200">{filename}</div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {id && (
-                                                        <a
-                                                            className="px-2 py-1 rounded-md bg-slate-700 text-slate-100"
-                                                            href={`/api/applications/${appId}/attachments/${id}/download`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                        >
-                                                            Open
-                                                        </a>
-                                                    )}
-                                                    {id && (
-                                                        <Button variant="outline" onClick={() => removeAttachment(id)}>
-                                                            Remove
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Documents picker modal (inline simple) */}
-                            {showDocsPicker && (
-                                <div className="mt-4 p-3 rounded-md bg-slate-900/60 border border-slate-700/60">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="text-slate-300 font-medium">Choose from Documents</div>
-                                        <Button variant="outline" onClick={() => setShowDocsPicker(false)}>
-                                            Close
-                                        </Button>
-                                    </div>
-                                    {loadingDocs ? (
-                                        <div className="text-sm text-slate-400">Loading…</div>
-                                    ) : docs.length === 0 ? (
-                                        <div className="text-sm text-slate-400">No documents found</div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {docs.map((d) => {
-                                                const dname = d?.name || d?.filename || 'Untitled';
-                                                return (
-                                                    <div key={d?.id ?? dname} className="flex items-center justify-between bg-slate-800/50 rounded px-3 py-2">
-                                                        <div className="truncate text-slate-200">{dname}</div>
-                                                        <Button size="sm" disabled={attachingId === d?.id} onClick={() => useExistingDocument(d?.id)}>
-                                                            {attachingId === d?.id ? 'Attaching…' : 'Attach'}
-                                                        </Button>
-                                                    </div>
-                                                );
-                                            })}
+                                {/* Type Chooser */}
+                                {showTypeChooser && pendingFile && (
+                                    <div className="mt-4 p-4 rounded-lg bg-slate-900/60 border border-slate-700">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="text-slate-200 font-medium">Choose file type</span>
+                                            <button onClick={() => { setShowTypeChooser(false); setPendingFile(null); }} className="text-slate-400 hover:text-white">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </Card>
-
-                        {/* Reminders */}
-                        <Card className="bg-slate-800/40 border-slate-700/50">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-slate-200 font-semibold">Reminders</h3>
-                                {!showCreateReminder && (
-                                    <Button size="sm" onClick={() => setShowCreateReminder(true)}>
-                                        Add reminder
-                                    </Button>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <select
+                                                value={pendingType}
+                                                onChange={(e) => setPendingType(e.target.value)}
+                                                className="flex-1 rounded-lg bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2"
+                                            >
+                                                {DOC_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                                            </select>
+                                            <Button onClick={() => handleUploadFile(pendingFile, pendingType)} disabled={uploading} className="bg-indigo-600 hover:bg-indigo-700">
+                                                {uploading ? 'Uploading...' : 'Upload'}
+                                            </Button>
+                                        </div>
+                                        <div className="text-xs text-slate-400 truncate">{pendingFile.name}</div>
+                                    </div>
                                 )}
                             </div>
 
-                            {!nextReminder && !showCreateReminder && (
-                                <div className="mt-2 text-sm text-slate-400">No reminders linked to this application.</div>
-                            )}
+                            {/* Files List */}
+                            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
+                                <h3 className="text-lg font-semibold text-white mb-4">Your Files</h3>
+                                
+                                {attachments.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <svg className="w-16 h-16 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p className="text-slate-400 mb-1">No files attached yet</p>
+                                        <p className="text-sm text-slate-500">Upload your resume, cover letter, or other documents</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {attachments.map((att) => {
+                                            const dtype = att?.document_type || 'other';
+                                            const filename = att?.filename || att?.name || 'Untitled';
+                                            const id = att?.id;
+                                            return (
+                                                <div
+                                                    key={id ?? filename}
+                                                    className="group flex items-center gap-3 p-4 rounded-lg bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-900/70 transition-all"
+                                                >
+                                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-white font-medium truncate mb-1">{filename}</div>
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${typeChipClass(dtype)}`}>
+                                                            {typeLabel(dtype)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {id && (
+                                                            <a
+                                                                href={`/api/applications/${appId}/attachments/${id}/download`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+                                                            >
+                                                                Open
+                                                            </a>
+                                                        )}
+                                                        {id && (
+                                                            <button
+                                                                onClick={() => removeAttachment(id)}
+                                                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                                title="Remove"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
 
-                            {nextReminder && !showCreateReminder && (
-                                <div className="mt-3 rounded-md bg-slate-900/50 border border-slate-700/50 p-3 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-slate-100">{nextReminder.title || nextReminder.name}</div>
-                                        <div className="text-slate-400 text-sm">
-                                            {(() => {
-                                                const d = new Date(nextReminder.due_date || nextReminder.scheduled_at || 0);
-                                                return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
-                                            })()}
+                            {/* Documents Picker Modal */}
+                            {showDocsPicker && (
+                                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                                    <div className="w-full max-w-2xl bg-slate-900 rounded-xl border border-slate-700 shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                                        <div className="p-6 border-b border-slate-700">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xl font-semibold text-white">Choose from Library</h3>
+                                                <button onClick={() => setShowDocsPicker(false)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6">
+                                            {loadingDocs ? (
+                                                <div className="flex items-center justify-center h-48">
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                                        <span className="text-slate-400">Loading documents...</span>
+                                                    </div>
+                                                </div>
+                                            ) : docs.length === 0 ? (
+                                                <div className="text-center py-12">
+                                                    <svg className="w-16 h-16 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <p className="text-slate-400">No documents in your library</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {docs.map((d) => {
+                                                        const dname = d?.name || d?.filename || 'Untitled';
+                                                        const isAttaching = attachingId === d?.id;
+                                                        return (
+                                                            <button
+                                                                key={d?.id ?? dname}
+                                                                onClick={() => useExistingDocument(d?.id)}
+                                                                disabled={isAttaching}
+                                                                className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 transition-all text-left disabled:opacity-50"
+                                                            >
+                                                                <span className="text-slate-200 truncate">{dname}</span>
+                                                                <span className="ml-3 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
+                                                                    {isAttaching ? 'Attaching...' : 'Attach'}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <a className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100" href="/reminders">
-                                        Open Events
-                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* REMINDERS TAB */}
+                    {activeTab === 'reminders' && (
+                        <div className="space-y-6">
+                            {/* Upcoming Reminder */}
+                            {nextReminder && !showCreateReminder && (
+                                <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-5 border border-amber-500/20">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                                            <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm text-amber-200 mb-1">Next Event</div>
+                                            <div className="text-white font-semibold mb-1">{nextReminder.title || nextReminder.name}</div>
+                                            <div className="text-sm text-amber-300">
+                                                {(() => {
+                                                    const d = new Date(nextReminder.due_date || nextReminder.scheduled_at || 0);
+                                                    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+                                                })()}
+                                            </div>
+                                        </div>
+                                        <a href="/reminders" className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors">
+                                            View All
+                                        </a>
+                                    </div>
                                 </div>
                             )}
 
-                            {showCreateReminder && (
-                                <form className="mt-3 space-y-3" onSubmit={createReminderInline}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <Select
-                                            value={newReminder.type}
-                                            onChange={(e) => setNewReminder((r) => ({ ...r, type: e.target.value }))}
-                                        >
-                                            <option value="Follow-up">Follow-up</option>
-                                            <option value="Interview">Interview</option>
-                                            <option value="Deadline">Application Deadline</option>
-                                            <option value="Custom">Custom</option>
-                                        </Select>
+                            {/* Create Reminder */}
+                            <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {showCreateReminder ? 'New Event' : 'Calendar Events'}
+                                    </h3>
+                                    {!showCreateReminder && (
+                                        <Button onClick={() => setShowCreateReminder(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                                            Add Event
+                                        </Button>
+                                    )}
+                                </div>
 
-                                        <Input
-                                            value={newReminder.title}
-                                            onChange={(e) => setNewReminder((r) => ({ ...r, title: e.target.value }))}
-                                            placeholder="Reminder title"
-                                        />
+                                {!showCreateReminder && !nextReminder && (
+                                    <div className="text-center py-12">
+                                        <svg className="w-16 h-16 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                        </svg>
+                                        <p className="text-slate-400 mb-1">No events scheduled</p>
+                                        <p className="text-sm text-slate-500">Create a reminder for interviews, follow-ups, or deadlines</p>
+                                    </div>
+                                )}
 
-                                        <Input
-                                            type="datetime-local"
-                                            value={newReminder.due_date}
-                                            onChange={(e) => setNewReminder((r) => ({ ...r, due_date: e.target.value }))}
-                                        />
+                                {showCreateReminder && (
+                                    <form className="space-y-4" onSubmit={createReminderInline}>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-2">Type</label>
+                                                <Select
+                                                    value={newReminder.type}
+                                                    onChange={(e) => setNewReminder((r) => ({ ...r, type: e.target.value }))}
+                                                    className="w-full"
+                                                >
+                                                    <option value="Follow-up">Follow-up</option>
+                                                    <option value="Interview">Interview</option>
+                                                    <option value="Deadline">Deadline</option>
+                                                    <option value="Custom">Custom</option>
+                                                </Select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-2">Title</label>
+                                                <Input
+                                                    value={newReminder.title}
+                                                    onChange={(e) => setNewReminder((r) => ({ ...r, title: e.target.value }))}
+                                                    placeholder="Event title"
+                                                    className="w-full"
+                                                />
+                                            </div>
+                                        </div>
 
-                                        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!newReminder.add_meet_link}
-                                                onChange={(e) => setNewReminder((r) => ({ ...r, add_meet_link: e.target.checked }))}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Date & Time</label>
+                                            <Input
+                                                type="datetime-local"
+                                                value={newReminder.due_date}
+                                                onChange={(e) => setNewReminder((r) => ({ ...r, due_date: e.target.value }))}
+                                                className="w-full"
                                             />
-                                            Create Google Meet link
-                                        </label>
-                                    </div>
+                                        </div>
 
-                                    <textarea
-                                        rows={3}
-                                        className="w-full rounded-md bg-slate-900/50 border border-slate-700 text-slate-200"
-                                        placeholder="Notes…"
-                                        value={newReminder.description}
-                                        onChange={(e) => setNewReminder((r) => ({ ...r, description: e.target.value }))}
-                                    />
+                                        <div>
+                                            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!newReminder.add_meet_link}
+                                                    onChange={(e) => setNewReminder((r) => ({ ...r, add_meet_link: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-indigo-600"
+                                                />
+                                                Create Google Meet link
+                                            </label>
+                                        </div>
 
-                                    <div className="flex gap-2 justify-end">
-                                        <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button">
-                                            Cancel
-                                        </Button>
-                                        <Button disabled={creatingReminder} type="submit">
-                                            {creatingReminder ? 'Creating…' : 'Create'}
-                                        </Button>
-                                    </div>
-                                </form>
-                            )}
-                        </Card>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Notes</label>
+                                            <textarea
+                                                rows={3}
+                                                className="w-full rounded-lg bg-slate-900/50 border border-slate-700 text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                placeholder="Add any notes or details..."
+                                                value={newReminder.description}
+                                                onChange={(e) => setNewReminder((r) => ({ ...r, description: e.target.value }))}
+                                            />
+                                        </div>
 
-                        {/* Job details deep link */}
-                        <div className="flex justify-between items-center">
-                            <Button
-                                className="btn-ghost"
-                                onClick={() => {
-                                    const id = application?.job?.id || application?.job_id;
-                                    if (!id) return toast.error('No job linked to this application');
-                                    router.push({ pathname: '/jobs', query: { job: String(id) } }, undefined, { shallow: true });
-                                }}
-                            >
-                                🔎 Job details
-                            </Button>
+                                        <div className="flex gap-3 pt-2">
+                                            <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button" className="flex-1">
+                                                Cancel
+                                            </Button>
+                                            <Button disabled={creatingReminder} type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+                                                {creatingReminder ? 'Creating...' : 'Create Event'}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </aside>
         </div>
     );
 }
-
