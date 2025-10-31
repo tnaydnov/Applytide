@@ -6,6 +6,7 @@ import AnalysisModal from "../features/documents/components/AnalysisModal";
 import CoverLetterModal from "../features/documents/components/CoverLetterModal";
 import JobPickerModal from "../features/documents/components/JobPickerModal";
 import DocxPreviewNotice from "../features/documents/components/DocxPreviewNotice";
+import MissingDocumentsBanner from "../components/MissingDocumentsBanner";
 import { DOCUMENT_TYPES, DOCUMENT_STATUS } from "../features/documents/utils/constants";
 import { getDocName } from "../features/documents/utils/helpers";
 import PageContainer from "../components/layout/PageContainer";
@@ -90,6 +91,10 @@ export default function DocumentsView() {
   return (
     <PageContainer>
       <PageHeader title="Documents" subtitle="Manage resumes, cover letters and exports" />
+      
+      {/* Missing Documents Banner */}
+      <MissingDocumentsBanner />
+      
       <DocumentsToolbar
         query={query}
         onQueryChange={setQuery}

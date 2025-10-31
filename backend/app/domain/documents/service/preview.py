@@ -240,6 +240,26 @@ class DocumentPreview:
                         )
                         path = fallback
                         found_path = fallback
+                        
+                        # Auto-heal: update database with correct path for future lookups
+                        try:
+                            doc.file_path = str(fallback)
+                            db.commit()
+                            logger.info(
+                                f"Auto-updated file_path to canonical location",
+                                extra={
+                                    "document_id": document_id,
+                                    "old_path": str(Path(doc.file_path)),
+                                    "new_path": str(fallback)
+                                }
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to update file_path (non-fatal): {e}",
+                                extra={"document_id": document_id}
+                            )
+                            db.rollback()
+                        
                         break
                 
                 if not found_path:

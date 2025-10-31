@@ -348,3 +348,86 @@ def set_document_status(
         Response: Updated DocumentResponse object
     """
     return svc.update_status(db=db, user_id=str(current_user.id), document_id=document_id, status=new_status)
+
+
+@router.get("/health/missing-files")
+def check_missing_files(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    svc: DocumentService = Depends(get_document_service),
+):
+    """
+    Check for documents with missing physical files.
+    
+    Scans user's documents and identifies which ones have missing files on disk.
+    Useful for detecting storage issues, showing warnings, or triggering re-uploads.
+    
+    Args:
+        db: Database session from dependency injection
+        current_user: Authenticated user from dependency injection
+        svc: Document service from dependency injection
+    
+    Returns:
+        dict: Summary of missing files containing:
+            - missing_count: Number of documents with missing files
+            - missing_ids: List of document UUIDs with missing files
+            - total_documents: Total documents checked
+    
+    Security:
+        - Requires authentication
+        - Only checks current user's documents
+    
+    Example:
+        GET /api/documents/health/missing-files
+        Response:
+        {
+            "missing_count": 2,
+            "missing_ids": ["uuid1", "uuid2"],
+            "total_documents": 10
+        }
+    """
+    try:
+        from pathlib import Path
+        
+        # Get all user documents
+        result = svc.list_documents(
+            db=db,
+            user_id=str(current_user.id),
+            page=1,
+            page_size=1000,  # Check all documents
+            filter_type=None,
+            filter_status=None,
+            query=None,
+        )
+        
+        docs = result.get("documents", [])
+        missing_ids = []
+        
+        for doc in docs:
+            file_path = doc.get("file_path")
+            if file_path:
+                if not Path(file_path).exists():
+                    missing_ids.append(doc["id"])
+        
+        logger.info(
+            f"Missing files check completed",
+            extra={
+                "user_id": str(current_user.id),
+                "missing_count": len(missing_ids),
+                "total_documents": len(docs)
+            }
+        )
+        
+        return {
+            "missing_count": len(missing_ids),
+            "missing_ids": missing_ids,
+            "total_documents": len(docs)
+        }
+        
+    except Exception as e:
+        logger.error(
+            f"Failed to check missing files: {e}",
+            extra={"user_id": str(current_user.id)},
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to check missing files")

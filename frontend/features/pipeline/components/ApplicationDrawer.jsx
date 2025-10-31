@@ -167,7 +167,27 @@ export default function ApplicationDrawer({ application, onClose }) {
             const picked = docs.find(d => String(d?.id) === String(docId));
             const chosenType = picked?.document_type || picked?.type || 'other';
             const res = await postAppAttachmentFromDocument(docId, chosenType);
-            if (!res.ok) throw new Error(await res.text());
+            // Handle API response explicitly so we can surface clearer messages
+            if (!res.ok) {
+                // Try to parse JSON error body, fall back to text
+                let detail = null;
+                try {
+                    const json = await res.json();
+                    detail = json?.detail || json?.error || JSON.stringify(json);
+                } catch (e) {
+                    try { detail = await res.text(); } catch { detail = null; }
+                }
+
+                if (res.status === 404) {
+                    toast.error('Document missing from storage. Please re-upload the document and try again.');
+                } else {
+                    console.error('attachExistingDocument failed', res.status, detail);
+                    toast.error('Failed to attach document');
+                }
+                setShowDocsPicker(false);
+                return;
+            }
+
             toast.success('Attached from Documents');
             setShowDocsPicker(false);
             await loadAttachments();
