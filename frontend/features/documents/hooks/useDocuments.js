@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sanitizeName } from "../utils/helpers";
 import { api, apiFetch } from "../../../lib/api";
+import { useToast } from "../../../lib/toast";
 
 export default function useDocuments() {
+    const toast = useToast();
     const [all, setAll] = useState([]);
     const [querying, setQuerying] = useState(false);
     const [query, setQuery] = useState("");
@@ -97,12 +99,25 @@ export default function useDocuments() {
         setAll((arr) => arr.filter((d) => d.id !== doc.id));
     }, []);
 
-    const previewDoc = useCallback((doc) => {
-        // Use the API helper that returns a Blob tab
-        return api.previewDocument(doc.id);
-    }, []);
+    const previewDoc = useCallback(async (doc) => {
+        try {
+            return await api.previewDocument(doc.id);
+        } catch (e) {
+            console.error('previewDocument error:', e);
+            toast.error(e.message || 'Failed to preview document');
+            throw e; // Re-throw so caller knows it failed
+        }
+    }, [toast]);
 
-    const downloadDoc = useCallback((doc) => api.downloadDocument(doc.id), []);
+    const downloadDoc = useCallback(async (doc) => {
+        try {
+            return await api.downloadDocument(doc.id);
+        } catch (e) {
+            console.error('downloadDocument error:', e);
+            toast.error(e.message || 'Failed to download document');
+            throw e; // Re-throw so caller knows it failed
+        }
+    }, [toast]);
 
     return {
         docs,

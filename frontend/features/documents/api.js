@@ -96,7 +96,28 @@ export const documentsApi = {
     const response = await fetch(`${API_BASE}/documents/${id}/download`, {
       credentials: 'include',
     });
-    if (!response.ok) throw new Error(await response.text());
+    
+    if (!response.ok) {
+      // Handle 404 specifically for missing files
+      if (response.status === 404) {
+        const errorMsg = 'Document file missing from storage. Please re-upload the document.';
+        throw new Error(errorMsg);
+      }
+      
+      // Try to get error detail from response
+      let errorDetail;
+      try {
+        const json = await response.json();
+        errorDetail = json?.detail || json?.error || `HTTP ${response.status}`;
+      } catch {
+        try {
+          errorDetail = await response.text() || `HTTP ${response.status}`;
+        } catch {
+          errorDetail = `HTTP ${response.status}`;
+        }
+      }
+      throw new Error(errorDetail);
+    }
 
     const cd = response.headers.get("content-disposition") || "";
     let filename = "document";
@@ -138,7 +159,29 @@ export const documentsApi = {
     const resp = await fetch(`${API_BASE}/documents/${id}/preview`, {
       credentials: 'include',
     });
-    if (!resp.ok) throw new Error(await resp.text());
+    
+    if (!resp.ok) {
+      // Handle 404 specifically for missing files
+      if (resp.status === 404) {
+        const errorMsg = 'Document file missing from storage. Please re-upload the document.';
+        throw new Error(errorMsg);
+      }
+      
+      // Try to get error detail from response
+      let errorDetail;
+      try {
+        const json = await resp.json();
+        errorDetail = json?.detail || json?.error || `HTTP ${resp.status}`;
+      } catch {
+        try {
+          errorDetail = await resp.text() || `HTTP ${resp.status}`;
+        } catch {
+          errorDetail = `HTTP ${resp.status}`;
+        }
+      }
+      throw new Error(errorDetail);
+    }
+    
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener,noreferrer");
