@@ -25,7 +25,7 @@ export function parseJobForDisplay(job) {
     "the company", "company background", "company profile", "company description",
     "organization overview", "about the team", "the team", "our team",
     "meet the team", "who you'll work with", "who you’ll work with",
-    "team overview", "team description", "team profile", "team background",
+    "team overview", "team description", "team profile", "team background", "About The Position",
     
     // Responsibilities
     "key responsibilities", "responsibilities", "your responsibilities",

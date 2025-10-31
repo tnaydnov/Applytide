@@ -4,7 +4,7 @@ Reminders API Schemas
 Pydantic models for reminder API request/response validation.
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 import uuid
 from datetime import datetime
 
@@ -23,7 +23,7 @@ class ReminderCreate(ReminderBase):
     create_google_event: bool = Field(default=True)
     add_meet_link: bool = Field(default=False)
     email_notifications_enabled: bool = Field(default=False)
-    notification_schedule: Optional[str] = None
+    notification_schedule: Optional[Dict[str, Any]] = None
     event_type: str = Field(default="general")
     timezone_str: str = Field(default="UTC")
 
