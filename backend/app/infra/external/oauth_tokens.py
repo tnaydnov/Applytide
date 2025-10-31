@@ -484,17 +484,16 @@ def get_valid_google_token(db: Session, user_id: uuid.UUID) -> Optional[str]:
         from .oauth_flow import OAuthService
         
         service = OAuthService(db)
-        new_token = service.refresh_google_token(user_id)
+        new_access_token = service.refresh_google_token(user_id)
         
-        if new_token:
+        if new_access_token:
             logger.info(
                 "Token refreshed successfully",
                 extra={
-                    "user_id": str(user_id),
-                    "new_token_id": str(new_token.id)
+                    "user_id": str(user_id)
                 }
             )
-            return new_token.access_token
+            return new_access_token
         else:
             logger.warning(
                 "Token refresh failed",

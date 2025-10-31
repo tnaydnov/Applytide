@@ -26,6 +26,7 @@ class ReminderCreate(ReminderBase):
     notification_schedule: Optional[Dict[str, Any]] = None
     event_type: str = Field(default="general")
     timezone_str: str = Field(default="UTC")
+    user_timezone: str = Field(default="UTC")
 
 
 class ReminderUpdate(BaseModel):
