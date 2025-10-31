@@ -51,10 +51,46 @@ export default function ApplicationDrawer({ application, onClose }) {
     const [newReminder, setNewReminder] = useState({
         title: 'Follow-up',
         type: 'Follow-up',
+        customType: '',
         due_date: '',
         add_meet_link: false,
+        email_notify: true,
         description: '',
     });
+
+    // Notification settings
+    const [notificationMode, setNotificationMode] = useState('presets');
+    const [selectedPresets, setSelectedPresets] = useState(['1_hour']);
+    const [customDateTime, setCustomDateTime] = useState('');
+    const [relativeValue, setRelativeValue] = useState(1);
+    const [relativeUnit, setRelativeUnit] = useState('hours');
+    const [recurringTime, setRecurringTime] = useState('09:00');
+    const [recurringStartDays, setRecurringStartDays] = useState(7);
+
+    const presetOptions = [
+        { id: '1_hour', label: '1 hour before', value: 1, unit: 'hour' },
+        { id: '1_day', label: '1 day before', value: 1, unit: 'day' },
+        { id: '1_week', label: '1 week before', value: 1, unit: 'week' },
+    ];
+
+    const togglePreset = (presetId) => {
+        if (selectedPresets.includes(presetId)) {
+            setSelectedPresets(selectedPresets.filter((id) => id !== presetId));
+        } else {
+            setSelectedPresets([...selectedPresets, presetId]);
+        }
+    };
+
+    const getEventType = (type) => {
+        const mapping = {
+            Interview: 'interview',
+            Deadline: 'deadline',
+            'Follow-up': 'follow-up',
+            Call: 'follow-up',
+            Custom: 'general',
+        };
+        return mapping[type] || 'general';
+    };
 
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'files' | 'reminders'
 
@@ -227,6 +263,50 @@ export default function ApplicationDrawer({ application, onClose }) {
             toast.error('Pick a date & time');
             return;
         }
+        
+        // Build notification schedule
+        let notificationSchedule = null;
+        if (newReminder.email_notify) {
+            const times = [];
+            
+            if (notificationMode === 'presets' && selectedPresets.length > 0) {
+                selectedPresets.forEach((presetId) => {
+                    const preset = presetOptions.find((p) => p.id === presetId);
+                    if (preset) {
+                        times.push({
+                            value: preset.value,
+                            unit: preset.unit,
+                            sent: false,
+                        });
+                    }
+                });
+                notificationSchedule = { type: 'multiple', times };
+            } else if (notificationMode === 'custom-time' && customDateTime) {
+                times.push({
+                    type: 'specific',
+                    datetime: new Date(customDateTime).toISOString(),
+                    sent: false,
+                });
+                notificationSchedule = { type: 'multiple', times };
+            } else if (notificationMode === 'custom-relative') {
+                times.push({
+                    value: parseInt(relativeValue),
+                    unit: relativeUnit === 'hours' ? 'hour' : relativeUnit === 'days' ? 'day' : 'week',
+                    sent: false,
+                });
+                notificationSchedule = { type: 'multiple', times };
+            } else if (notificationMode === 'recurring') {
+                times.push({
+                    type: 'recurring',
+                    frequency: 'daily',
+                    time: recurringTime,
+                    start_days_before: parseInt(recurringStartDays),
+                    last_sent: null,
+                });
+                notificationSchedule = { type: 'multiple', times };
+            }
+        }
+
         try {
             setCreatingReminder(true);
             const hydratedTitle =
@@ -241,7 +321,9 @@ export default function ApplicationDrawer({ application, onClose }) {
                 description: newReminder.description || '',
                 due_date: new Date(newReminder.due_date).toISOString(),
                 add_meet_link: !!newReminder.add_meet_link,
-                email_notify: true,
+                email_notifications_enabled: newReminder.email_notify,
+                notification_schedule: notificationSchedule,
+                event_type: getEventType(newReminder.type),
                 timezone_str: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
             };
 
@@ -251,10 +333,14 @@ export default function ApplicationDrawer({ application, onClose }) {
             setNewReminder({
                 title: 'Follow-up',
                 type: 'Follow-up',
+                customType: '',
                 due_date: '',
                 add_meet_link: false,
+                email_notify: true,
                 description: '',
             });
+            setNotificationMode('presets');
+            setSelectedPresets(['1_hour']);
             await loadReminders();
         } catch (e) {
             console.error('createReminderInline error', e);
@@ -301,14 +387,14 @@ export default function ApplicationDrawer({ application, onClose }) {
                 `}</style>
 
                 {/* Fixed Header */}
-                <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-white/10">
+                <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800 to-slate-700 border-b border-white/10">
                     <div className="p-6">
                         <div className="flex items-start justify-between mb-4">
                             <div className="flex-1 min-w-0 pr-4">
                                 <h2 className="text-2xl font-bold text-white mb-1 truncate">
                                     {jobTitle}
                                 </h2>
-                                <p className="text-indigo-100 text-lg">{companyName || 'Unknown Company'}</p>
+                                <p className="text-slate-300 text-lg">{companyName || 'Unknown Company'}</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -325,11 +411,11 @@ export default function ApplicationDrawer({ application, onClose }) {
                         {/* Quick Stats Row */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                                <div className="text-xs text-indigo-200 mb-1">Status</div>
+                                <div className="text-xs text-slate-400 mb-1">Status</div>
                                 <div className="text-white font-semibold truncate">{status}</div>
                             </div>
                             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                                <div className="text-xs text-indigo-200 mb-1">Applied</div>
+                                <div className="text-xs text-slate-400 mb-1">Applied</div>
                                 <div className="text-white font-semibold">
                                     {application?.applied_at
                                         ? new Date(application.applied_at).toLocaleDateString()
@@ -339,7 +425,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                 </div>
                             </div>
                             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                                <div className="text-xs text-indigo-200 mb-1">Files</div>
+                                <div className="text-xs text-slate-400 mb-1">Files</div>
                                 <div className="text-white font-semibold">{attachments.length}</div>
                             </div>
                         </div>
@@ -351,8 +437,8 @@ export default function ApplicationDrawer({ application, onClose }) {
                             onClick={() => setActiveTab('overview')}
                             className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
                                 activeTab === 'overview'
-                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
-                                    : 'text-indigo-200 hover:bg-white/5'
+                                    ? 'bg-slate-900 text-white border-b-2 border-blue-500'
+                                    : 'text-slate-300 hover:bg-white/5'
                             }`}
                         >
                             📊 Overview
@@ -361,8 +447,8 @@ export default function ApplicationDrawer({ application, onClose }) {
                             onClick={() => setActiveTab('files')}
                             className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
                                 activeTab === 'files'
-                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
-                                    : 'text-indigo-200 hover:bg-white/5'
+                                    ? 'bg-slate-900 text-white border-b-2 border-blue-500'
+                                    : 'text-slate-300 hover:bg-white/5'
                             }`}
                         >
                             📎 Files {attachments.length > 0 && `(${attachments.length})`}
@@ -371,8 +457,8 @@ export default function ApplicationDrawer({ application, onClose }) {
                             onClick={() => setActiveTab('reminders')}
                             className={`flex-1 px-6 py-3 text-sm font-medium transition-all ${
                                 activeTab === 'reminders'
-                                    ? 'bg-slate-900 text-white border-b-2 border-indigo-400'
-                                    : 'text-indigo-200 hover:bg-white/5'
+                                    ? 'bg-slate-900 text-white border-b-2 border-blue-500'
+                                    : 'text-slate-300 hover:bg-white/5'
                             }`}
                         >
                             🔔 Events
@@ -388,7 +474,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                             {/* Timeline/Stage History */}
                             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
                                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Application Timeline
@@ -403,7 +489,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                     </div>
                                 ) : (
                                     <div className="relative">
-                                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 via-purple-500 to-transparent"></div>
+                                        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-cyan-500 to-transparent"></div>
                                         <div className="space-y-4">
                                             {stages
                                                 .slice()
@@ -415,7 +501,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                         <div key={st.id} className="relative pl-10 group">
                                                             <div className={`absolute left-2 top-2 w-4 h-4 rounded-full border-2 ${
                                                                 idx === 0 
-                                                                    ? 'bg-indigo-500 border-indigo-400 ring-4 ring-indigo-500/20'
+                                                                    ? 'bg-blue-500 border-blue-400 ring-4 ring-blue-500/20'
                                                                     : 'bg-slate-700 border-slate-600'
                                                             }`}></div>
                                                             <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50 hover:border-slate-600 transition-colors">
@@ -444,7 +530,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                             </div>
 
                             {/* Quick Actions */}
-                            <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-xl p-5 border border-indigo-500/20">
+                            <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl p-5 border border-blue-500/20">
                                 <h3 className="text-lg font-semibold text-white mb-3">Quick Actions</h3>
                                 <div className="flex flex-wrap gap-3">
                                     <button
@@ -489,14 +575,14 @@ export default function ApplicationDrawer({ application, onClose }) {
                             {/* Upload Section */}
                             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
                                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                     </svg>
                                     Add Files
                                 </h3>
                                 
                                 <div className="flex gap-3">
-                                    <label className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-lg cursor-pointer transition-colors bg-slate-900/30 hover:bg-indigo-500/5">
+                                    <label className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-lg cursor-pointer transition-colors bg-slate-900/30 hover:bg-blue-500/5">
                                         <svg className="w-8 h-8 text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                         </svg>
@@ -519,7 +605,7 @@ export default function ApplicationDrawer({ application, onClose }) {
 
                                     <button
                                         onClick={openDocsPicker}
-                                        className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-slate-600 hover:border-purple-500 rounded-lg transition-colors bg-slate-900/30 hover:bg-purple-500/5"
+                                        className="flex-1 flex flex-col items-center justify-center h-24 border-2 border-slate-600 hover:border-cyan-500 rounded-lg transition-colors bg-slate-900/30 hover:bg-cyan-500/5"
                                     >
                                         <svg className="w-8 h-8 text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -547,7 +633,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                             >
                                                 {DOC_TYPES.map((t) => <option key={t} value={t}>{typeLabel(t)}</option>)}
                                             </select>
-                                            <Button onClick={() => handleUploadFile(pendingFile, pendingType)} disabled={uploading} className="bg-indigo-600 hover:bg-indigo-700">
+                                            <Button onClick={() => handleUploadFile(pendingFile, pendingType)} disabled={uploading} className="bg-blue-600 hover:bg-blue-700">
                                                 {uploading ? 'Uploading...' : 'Upload'}
                                             </Button>
                                         </div>
@@ -579,8 +665,8 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                     key={id ?? filename}
                                                     className="group flex items-center gap-3 p-4 rounded-lg bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-900/70 transition-all"
                                                 >
-                                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                                        <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                         </svg>
                                                     </div>
@@ -596,7 +682,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                                 href={`/api/applications/${appId}/attachments/${id}/download`}
                                                                 target="_blank"
                                                                 rel="noreferrer"
-                                                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+                                                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
                                                             >
                                                                 Open
                                                             </a>
@@ -638,7 +724,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                             {loadingDocs ? (
                                                 <div className="flex items-center justify-center h-48">
                                                     <div className="flex flex-col items-center gap-3">
-                                                        <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                                        <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                                                         <span className="text-slate-400">Loading documents...</span>
                                                     </div>
                                                 </div>
@@ -662,7 +748,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                                 className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 transition-all text-left disabled:opacity-50"
                                                             >
                                                                 <span className="text-slate-200 truncate">{dname}</span>
-                                                                <span className="ml-3 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
+                                                                <span className="ml-3 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
                                                                     {isAttaching ? 'Attaching...' : 'Attach'}
                                                                 </span>
                                                             </button>
@@ -710,13 +796,13 @@ export default function ApplicationDrawer({ application, onClose }) {
                             <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                         {showCreateReminder ? 'New Event' : 'Calendar Events'}
                                     </h3>
                                     {!showCreateReminder && (
-                                        <Button onClick={() => setShowCreateReminder(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                                        <Button onClick={() => setShowCreateReminder(true)} className="bg-blue-600 hover:bg-blue-700">
                                             Add Event
                                         </Button>
                                     )}
@@ -745,24 +831,39 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                     <option value="Follow-up">Follow-up</option>
                                                     <option value="Interview">Interview</option>
                                                     <option value="Deadline">Deadline</option>
+                                                    <option value="Call">Call</option>
                                                     <option value="Custom">Custom</option>
                                                 </Select>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-2">Title</label>
-                                                <Input
-                                                    value={newReminder.title}
-                                                    onChange={(e) => setNewReminder((r) => ({ ...r, title: e.target.value }))}
-                                                    placeholder="Event title"
-                                                    className="w-full"
-                                                />
-                                            </div>
+                                            {newReminder.type === 'Custom' && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-300 mb-2">Custom Type</label>
+                                                    <Input
+                                                        value={newReminder.customType}
+                                                        onChange={(e) => setNewReminder((r) => ({ ...r, customType: e.target.value }))}
+                                                        placeholder="e.g., Coffee chat"
+                                                        className="w-full"
+                                                    />
+                                                </div>
+                                            )}
+                                            {newReminder.type !== 'Custom' && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-300 mb-2">Title</label>
+                                                    <Input
+                                                        value={newReminder.title}
+                                                        onChange={(e) => setNewReminder((r) => ({ ...r, title: e.target.value }))}
+                                                        placeholder="Event title"
+                                                        className="w-full"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-2">Date & Time</label>
                                             <Input
                                                 type="datetime-local"
+                                                required
                                                 value={newReminder.due_date}
                                                 onChange={(e) => setNewReminder((r) => ({ ...r, due_date: e.target.value }))}
                                                 className="w-full"
@@ -770,33 +871,198 @@ export default function ApplicationDrawer({ application, onClose }) {
                                         </div>
 
                                         <div>
-                                            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={!!newReminder.add_meet_link}
-                                                    onChange={(e) => setNewReminder((r) => ({ ...r, add_meet_link: e.target.checked }))}
-                                                    className="w-4 h-4 rounded border-slate-600 text-indigo-600"
-                                                />
-                                                Create Google Meet link
-                                            </label>
-                                        </div>
-
-                                        <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-2">Notes</label>
                                             <textarea
                                                 rows={3}
-                                                className="w-full rounded-lg bg-slate-900/50 border border-slate-700 text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full rounded-lg bg-slate-900/50 border border-slate-700 text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                 placeholder="Add any notes or details..."
                                                 value={newReminder.description}
                                                 onChange={(e) => setNewReminder((r) => ({ ...r, description: e.target.value }))}
                                             />
                                         </div>
 
+                                        <div className="flex flex-col gap-3 text-slate-200">
+                                            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!newReminder.add_meet_link}
+                                                    onChange={(e) => setNewReminder((r) => ({ ...r, add_meet_link: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-blue-600"
+                                                />
+                                                Add Google Meet link
+                                            </label>
+                                            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!newReminder.email_notify}
+                                                    onChange={(e) => setNewReminder((r) => ({ ...r, email_notify: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-blue-600"
+                                                />
+                                                📧 Email me reminders
+                                            </label>
+                                        </div>
+
+                                        {/* Notification Schedule Options */}
+                                        {newReminder.email_notify && (
+                                            <div className="rounded-lg bg-slate-900/50 p-4 space-y-4 border border-slate-700">
+                                                <label className="text-sm font-semibold text-slate-200">📬 When to send email reminders:</label>
+                                                
+                                                {/* Mode Selection */}
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNotificationMode('presets')}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                                            notificationMode === 'presets'
+                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                        }`}
+                                                    >
+                                                        ⚡ Quick Presets
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNotificationMode('custom-time')}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                                            notificationMode === 'custom-time'
+                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                        }`}
+                                                    >
+                                                        🕐 Specific Time
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNotificationMode('custom-relative')}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                                            notificationMode === 'custom-relative'
+                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                        }`}
+                                                    >
+                                                        ⏱️ Before Event
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNotificationMode('recurring')}
+                                                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                                            notificationMode === 'recurring'
+                                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                        }`}
+                                                    >
+                                                        🔄 Daily Reminder
+                                                    </button>
+                                                </div>
+
+                                                {/* Quick Presets Mode */}
+                                                {notificationMode === 'presets' && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-xs text-slate-400">Select one or more quick reminders:</p>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {presetOptions.map((preset) => (
+                                                                <button
+                                                                    key={preset.id}
+                                                                    type="button"
+                                                                    onClick={() => togglePreset(preset.id)}
+                                                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border-2 ${
+                                                                        selectedPresets.includes(preset.id)
+                                                                            ? 'bg-blue-500/20 border-blue-500 text-blue-300'
+                                                                            : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:border-slate-500'
+                                                                    }`}
+                                                                >
+                                                                    {preset.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {selectedPresets.length === 0 && (
+                                                            <p className="text-xs text-amber-400">⚠️ Select at least one reminder time</p>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Custom Specific Time Mode */}
+                                                {notificationMode === 'custom-time' && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-xs text-slate-400">Send reminder at a specific date & time:</p>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            value={customDateTime}
+                                                            onChange={(e) => setCustomDateTime(e.target.value)}
+                                                            className="w-full"
+                                                        />
+                                                        <p className="text-xs text-slate-400">
+                                                            💡 Example: Send at 9:00 AM on the day of the interview
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Custom Relative Time Mode */}
+                                                {notificationMode === 'custom-relative' && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-xs text-slate-400">Send reminder before the event:</p>
+                                                        <div className="flex gap-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="1"
+                                                                value={relativeValue}
+                                                                onChange={(e) => setRelativeValue(e.target.value)}
+                                                                className="w-24"
+                                                            />
+                                                            <Select
+                                                                value={relativeUnit}
+                                                                onChange={(e) => setRelativeUnit(e.target.value)}
+                                                                className="flex-1"
+                                                            >
+                                                                <option value="hours">hours before</option>
+                                                                <option value="days">days before</option>
+                                                                <option value="weeks">weeks before</option>
+                                                            </Select>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Recurring Daily Reminder Mode */}
+                                                {notificationMode === 'recurring' && (
+                                                    <div className="space-y-3">
+                                                        <p className="text-xs text-slate-400">Send daily reminder at the same time:</p>
+                                                        <div className="space-y-2">
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 block mb-1">Time of day:</label>
+                                                                <Input
+                                                                    type="time"
+                                                                    value={recurringTime}
+                                                                    onChange={(e) => setRecurringTime(e.target.value)}
+                                                                    className="w-full"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 block mb-1">Start reminding:</label>
+                                                                <div className="flex gap-2 items-center">
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        value={recurringStartDays}
+                                                                        onChange={(e) => setRecurringStartDays(e.target.value)}
+                                                                        className="w-24"
+                                                                    />
+                                                                    <span className="text-sm text-slate-300">days before event</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-slate-400">
+                                                            💡 Example: Remind me at 9:00 AM every day starting 7 days before
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <div className="flex gap-3 pt-2">
                                             <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button" className="flex-1">
                                                 Cancel
                                             </Button>
-                                            <Button disabled={creatingReminder} type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700">
+                                            <Button disabled={creatingReminder} type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
                                                 {creatingReminder ? 'Creating...' : 'Create Event'}
                                             </Button>
                                         </div>
