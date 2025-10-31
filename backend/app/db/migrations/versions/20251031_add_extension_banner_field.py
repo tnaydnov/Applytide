@@ -1,7 +1,7 @@
 """add extension banner field
 
 Revision ID: 20251031_add_extension_banner
-Revises: 20251031_add_weekly_goal
+Revises: 20251031_weekly_goal
 Create Date: 2025-10-31
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20251031_add_extension_banner'
-down_revision = '20251031_add_weekly_goal'
+down_revision = '20251031_weekly_goal'
 branch_labels = None
 depends_on = None
 
