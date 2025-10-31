@@ -134,8 +134,12 @@ export default function DocumentsView() {
             onPreview={(doc) => previewDoc(doc)}
             onDownload={(doc) => downloadDoc(doc)}
             onDelete={async (doc) => {
+              const docName = getDocName(doc);
+              if (!confirm(`Are you sure you want to delete "${docName}"? This action cannot be undone.`)) {
+                return;
+              }
               await removeDocument(doc);
-              toast.success(`Deleted "${getDocName(doc)}"`);
+              toast.success(`Deleted "${docName}"`);
             }}
             onChangeStatus={(id, value) => changeStatus(id, value)}
           />
