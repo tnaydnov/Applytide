@@ -65,13 +65,8 @@ export default function Dashboard() {
 
   const handleCloseWelcome = async () => {
     setShowWelcomeModal(false);
-    try {
-      await api.post('/profile/welcome-modal-seen', {});
-      // Refresh user data to update has_seen_welcome_modal
-      await refreshUser();
-    } catch (err) {
-      console.error('Failed to mark welcome modal as seen:', err);
-    }
+    // Refresh user data in case the modal marked it as seen
+    await refreshUser();
   };
 
   const updateWeeklyGoal = async (newGoal) => {
@@ -79,7 +74,8 @@ export default function Dashboard() {
       setWeeklyGoal(newGoal);
       setShowGoalMenu(false);
       setCustomGoalInput('');
-      await api.updatePreference('weekly_goal', newGoal);
+      // Wrap the value in an object since the API expects preference_value to be a dict
+      await api.updatePreference('weekly_goal', { value: newGoal });
       toast.success(`Weekly goal updated to ${newGoal} applications`);
     } catch (err) {
       console.error('Failed to update weekly goal:', err);

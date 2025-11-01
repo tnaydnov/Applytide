@@ -88,7 +88,13 @@ export function AuthProvider({ children }) {
   // Check auth on mount only (no periodic polling)
   // Periodic checks are unnecessary - the fetch interceptor handles 401s automatically
   useEffect(() => {
-    // Check auth status on initial mount
+    // Skip auth check on public routes (login, register, etc.)
+    if (isPublicRoute(router.pathname)) {
+      setLoading(false);
+      return;
+    }
+    
+    // Check auth status on initial mount for protected routes
     checkAuthStatus();
   }, []); // Run only once on mount
 
