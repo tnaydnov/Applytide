@@ -179,6 +179,16 @@ export async function apiFetch(endpoint, options = {}, useCache = true) {
 
     return response;
   } catch (error) {
+    // Silence WebSocket ticket errors when backend is down (development only)
+    const isWsTicket = endpoint.includes('/auth/ws-ticket');
+    const isConnectionError = error.message?.includes('Failed to fetch');
+    
+    if (isWsTicket && isConnectionError && process.env.NODE_ENV === 'development') {
+      // Silently fail for WS ticket requests when backend is down
+      // This prevents console spam in development
+      throw error;
+    }
+    
     console.error(`API fetch error for ${endpoint}:`, error);
     throw error;
   }
