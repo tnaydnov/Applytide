@@ -117,21 +117,11 @@ export default function JobsPage() {
         {/* Extension Banner - WOW Version */}
         {showExtensionBanner && (
           <div className="mb-8 relative group animate-fade-in">
-            {/* Animated gradient border glow */}
+            {/* Animated gradient border glow - ONLY PULSE */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 via-pink-500 to-yellow-500 rounded-2xl opacity-75 blur-lg group-hover:opacity-100 transition duration-500 animate-pulse"></div>
             
-            {/* Main banner container */}
+            {/* Main banner container - COMPACT */}
             <div className="relative bg-gradient-to-br from-orange-600 via-red-600 to-pink-600 rounded-2xl overflow-hidden border border-orange-300/30 shadow-2xl">
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent animate-shimmer bg-[length:200%_100%]"></div>
-              </div>
-              
-              {/* Floating particles effect */}
-              <div className="absolute top-0 left-1/4 w-2 h-2 bg-yellow-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
-              <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 bg-orange-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '1s', animationDuration: '4s' }}></div>
-              <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-pink-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '2s', animationDuration: '5s' }}></div>
-              
               {/* Close button */}
               <button
                 onClick={dismissExtensionBanner}
@@ -141,11 +131,11 @@ export default function JobsPage() {
                 <X className="h-4 w-4 text-white" />
               </button>
               
-              {/* Content */}
-              <div className="relative p-8">
-                <div className="flex items-start gap-6">
-                  {/* MASSIVE Chrome icon with glow - THE STAR */}
-                  <div className="relative flex-shrink-0">
+              {/* Content - COMPACT */}
+              <div className="relative p-6">
+                <div className="flex items-center gap-6">
+                  {/* MASSIVE Chrome icon - CENTERED VERTICALLY */}
+                  <div className="relative flex-shrink-0 self-center">
                     <div className="absolute inset-0 bg-yellow-400/40 rounded-3xl blur-2xl animate-pulse"></div>
                     <div className="relative p-6 rounded-3xl bg-white/20 backdrop-blur-md border-2 border-yellow-400/50 shadow-2xl transform hover:scale-110 transition-transform duration-300">
                       <Chrome className="h-20 w-20 text-white drop-shadow-2xl" />
@@ -157,23 +147,17 @@ export default function JobsPage() {
                   </div>
                   
                   <div className="flex-1 pr-8">
-                    {/* Chrome Extension Badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-yellow-400/30 backdrop-blur-sm rounded-full border border-yellow-400/50 mb-3">
-                      <Chrome className="h-4 w-4 text-yellow-300 animate-pulse" />
-                      <span className="text-sm font-black text-yellow-100 uppercase tracking-wider">Chrome Extension</span>
-                    </div>
-                    
-                    {/* Headline - Chrome focused */}
+                    {/* Headline - Chrome focused, NO TOP BADGE */}
                     <h3 className="text-3xl font-black text-white mb-3 leading-tight tracking-tight">
                       Install Our{' '}
-                      <span className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]">
+                      <span className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 bg-clip-text text-transparent">
                         Chrome Extension
                       </span>
                       {' '}& Save Jobs in One Click!
                     </h3>
                     
                     {/* Description - Chrome focused */}
-                    <p className="text-orange-100 mb-6 text-base leading-relaxed max-w-2xl">
+                    <p className="text-orange-100 mb-5 text-base leading-relaxed max-w-2xl">
                       Browse any job site and click the{' '}
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded font-bold text-white">
                         <Chrome className="h-3 w-3" />
@@ -183,13 +167,13 @@ export default function JobsPage() {
                       <span className="font-bold text-white">no more copy-pasting</span>!
                     </p>
                     
-                    {/* CTA Button - Chrome focused */}
-                    <div className="flex items-center gap-4 mb-6">
+                    {/* CTA Button - Chrome focused, NO FREE BADGE */}
+                    <div className="mb-5">
                       <a
                         href="https://chrome.google.com/webstore"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group inline-flex items-center gap-3 px-8 py-4 bg-white text-orange-600 rounded-xl font-black text-lg hover:bg-yellow-300 hover:text-orange-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform duration-300"
+                        className="group inline-flex items-center gap-3 px-8 py-3.5 bg-white text-orange-600 rounded-xl font-black text-lg hover:bg-yellow-300 hover:text-orange-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform duration-300"
                       >
                         <Chrome className="h-7 w-7 group-hover:rotate-12 transition-transform" />
                         <span>Install Chrome Extension</span>
@@ -197,28 +181,23 @@ export default function JobsPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                       </a>
-                      
-                      <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-                        <Sparkles className="h-5 w-5 text-yellow-300 animate-pulse" />
-                        <span className="text-sm font-bold text-white">100% Free Forever</span>
-                      </div>
                     </div>
                     
-                    {/* Features grid - Chrome focused */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                    {/* Features - NO BOXES, JUST CHECKMARKS */}
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-2">
                         <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
                         <span className="text-sm font-semibold text-white">All Job Sites</span>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                      <div className="flex items-center gap-2">
                         <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
                         <span className="text-sm font-semibold text-white">One-Click Save</span>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                      <div className="flex items-center gap-2">
                         <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
