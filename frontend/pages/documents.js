@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ListSkeleton } from "../components/SkeletonLoader";
 import DocumentsToolbar from "../features/documents/components/DocumentsToolbar.jsx";
 import DocumentCard from "../features/documents/components/DocumentCard";
 import UploadModal from "../features/documents/components/UploadModal";
@@ -112,11 +113,14 @@ export default function DocumentsView() {
       <DocxPreviewNotice />
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-        {visibleDocs.map((d) => (
-          <DocumentCard
-            key={d.id}
-            document={d}
+      {querying ? (
+        <ListSkeleton count={6} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {visibleDocs.map((d) => (
+            <DocumentCard
+              key={d.id}
+              document={d}
             documentTypes={DOCUMENT_TYPES}
             statusOptions={DOCUMENT_STATUS}
             analyzing={analyzing && d.type === "resume"}
@@ -144,7 +148,8 @@ export default function DocumentsView() {
             onChangeStatus={(id, value) => changeStatus(id, value)}
           />
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {!querying && visibleDocs.length === 0 && (

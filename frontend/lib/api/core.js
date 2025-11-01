@@ -5,6 +5,45 @@
 
 const API_BASE = '/api';
 
+// Simple cache for GET requests (5 minute TTL)
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get cached response if available and not expired
+ * @param {string} key - Cache key
+ * @returns {any|null} Cached data or null
+ */
+function getCached(key) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+/**
+ * Store response in cache
+ * @param {string} key - Cache key
+ * @param {any} data - Data to cache
+ */
+function setCache(key, data) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * Clear cache for specific key or all cache
+ * @param {string} [key] - Optional specific key to clear
+ */
+export function clearCache(key) {
+  if (key) {
+    cache.delete(key);
+  } else {
+    cache.clear();
+  }
+}
+
 /**
  * Refresh the access token using refresh token cookie
  * @returns {Promise<boolean>} Success status
@@ -62,13 +101,29 @@ export async function logout() {
 }
 
 /**
- * Core fetch wrapper with automatic token refresh on 401
+ * Core fetch wrapper with automatic token refresh on 401 and caching for GET requests
  * @param {string} endpoint - API endpoint (relative to /api)
  * @param {RequestInit} options - Fetch options
+ * @param {boolean} useCache - Whether to use cache for GET requests (default: true)
  * @returns {Promise<Response>} Fetch response
  */
-export async function apiFetch(endpoint, options = {}) {
+export async function apiFetch(endpoint, options = {}, useCache = true) {
   try {
+    const method = options?.method?.toUpperCase() || 'GET';
+    const cacheKey = `${method}:${endpoint}`;
+
+    // Check cache for GET requests
+    if (method === 'GET' && useCache) {
+      const cached = getCached(cacheKey);
+      if (cached) {
+        // Return a Response-like object from cache
+        return new Response(JSON.stringify(cached), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     const interceptorActive = typeof window !== 'undefined' && window.__APPLYTIDE_FETCH_INTERCEPTOR__;
     const isFormData = options?.body instanceof FormData;
     const headers = {
@@ -83,6 +138,28 @@ export async function apiFetch(endpoint, options = {}) {
     };
 
     const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+
+    // Cache successful GET responses
+    if (method === 'GET' && useCache && response.ok) {
+      const clonedResponse = response.clone();
+      try {
+        const data = await clonedResponse.json();
+        setCache(cacheKey, data);
+      } catch {
+        // Not JSON, skip caching
+      }
+    }
+
+    // Clear cache on mutations (POST, PUT, PATCH, DELETE)
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      // Clear related cache entries
+      const basePath = endpoint.split('?')[0].split('/').slice(0, -1).join('/');
+      cache.forEach((_, key) => {
+        if (key.includes(basePath)) {
+          cache.delete(key);
+        }
+      });
+    }
 
     if (!interceptorActive && response.status === 401 &&
       !endpoint.includes('/auth/refresh') &&

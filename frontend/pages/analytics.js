@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { Button } from "../components/ui";
 import { useMemo, useState } from "react";
+import { StatsSkeleton, TableSkeleton } from "../components/SkeletonLoader";
 import PageContainer from "../components/layout/PageContainer";
 import PageHeader from "../components/layout/PageHeader";
 import { useAuth } from "../contexts/AuthContext";
@@ -92,12 +93,16 @@ export default function AnalyticsPage() {
   // ---------------------------------- Loading ---------------------------------
   if (loading && !analytics) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mx-auto mb-4"></div>
-          <p className="text-slate-400">Loading analytics...</p>
+      <PageContainer>
+        <PageHeader
+          title="Analytics"
+          subtitle="Track your job search progress and insights"
+        />
+        <div className="space-y-6">
+          <StatsSkeleton />
+          <TableSkeleton rows={8} />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import PageContainer from "../components/layout/PageContainer";
 import PageHeader from "../components/layout/PageHeader";
+import { PipelineSkeleton, StatsSkeleton } from "../components/SkeletonLoader";
 
 import { Input, Select, Button, Card } from "../components/ui";
 import Column from "../features/pipeline/components/Column";
@@ -221,7 +222,10 @@ export default function PipelinePage() {
 
         {/* Content */}
         {loading ? (
-          <div className="text-center text-white/70 py-16">Loading pipeline…</div>
+          <div className="space-y-6">
+            <StatsSkeleton />
+            <PipelineSkeleton />
+          </div>
         ) : !hasAnyApplications ? (
           <EmptyState />
         ) : view === "cards" ? (

@@ -19,7 +19,7 @@ export default function useAnalytics(initialRange = "6m") {
   const { isAuthenticated } = useAuth();
   const toast = useToast();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as loading for smoother initial state
   const [timeRange, setTimeRange] = useState(initialRange); // "1m" | "3m" | "6m" | "1y" | "all"
   const [selectedMetric, setSelectedMetric] = useState("overview");
   const [analytics, setAnalytics] = useState(null);

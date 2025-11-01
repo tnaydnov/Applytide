@@ -1,5 +1,6 @@
 import AuthGuard from "../components/guards/AuthGuard";
 import { Button, Card } from "../components/ui";
+import { ListSkeleton } from "../components/SkeletonLoader";
 
 import JobFilters from "../features/jobs/components/JobFilters";
 import JobList from "../features/jobs/components/JobList";

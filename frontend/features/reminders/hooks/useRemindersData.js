@@ -40,26 +40,27 @@ export default function useRemindersData(opts = {}) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      // 1) Google connection
-      const connected = await checkGoogleConnection().catch(() => false);
-      setIsGoogleConnected(!!connected);
-
-      // 2) Applications
-      //    Keep a wide safety net for shapes; normalize into a flat array
-      const appsRaw = await api
-        .getApplicationCards()
-        .catch((e) => {
+      // Run all API calls in parallel for faster loading
+      const [connected, appsRaw, r] = await Promise.all([
+        checkGoogleConnection().catch(() => false),
+        api.getApplicationCards().catch((e) => {
           console.error("getApplicationCards failed:", e);
           return [];
-        });
+        }),
+        fetchRemindersAPI().catch((e) => {
+          console.error("getReminders failed:", e);
+          return [];
+        })
+      ]);
+
+      // 1) Google connection
+      setIsGoogleConnected(!!connected);
+
+      // 2) Applications - normalize into a flat array
       const apps = normalizeApplications(appsRaw);
       setApplications(Array.isArray(apps) ? apps : []);
 
       // 3) Reminders
-      const r = await fetchRemindersAPI().catch((e) => {
-        console.error("getReminders failed:", e);
-        return [];
-      });
       const normalized = normalizeReminders(Array.isArray(r) ? r : []);
       setReminders(normalized);
     } catch (err) {

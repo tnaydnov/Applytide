@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ListSkeleton, StatsSkeleton } from "../components/SkeletonLoader";
 import useRemindersData from "../features/reminders/hooks/useRemindersData";
 import useCalendarView from "../features/reminders/hooks/useCalendarView";
 
@@ -67,8 +68,16 @@ export default function RemindersPage() {
           </Button>
         }
       />
-      <StatsDashboard stats={stats} />
-      <ViewTabs active={activeTab} onChange={setActiveTab} />
+      
+      {loading ? (
+        <div className="space-y-6">
+          <StatsSkeleton />
+          <ListSkeleton count={5} />
+        </div>
+      ) : (
+        <>
+          <StatsDashboard stats={stats} />
+          <ViewTabs active={activeTab} onChange={setActiveTab} />
 
       {/* Content areas */}
       {activeTab === "my" && (
@@ -165,6 +174,8 @@ export default function RemindersPage() {
             ))}
           </ul>
         </div>
+      )}
+        </>
       )}
 
       {/* Modals */}

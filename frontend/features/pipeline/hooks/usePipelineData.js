@@ -60,8 +60,12 @@ export function usePipelineData(showArchived = false) {
         let cancelled = false;
         async function initializeStages() {
             try {
-                const usedStatuses = await api.getUsedStatuses().catch(() => []);
-                const savedPref = await api.getPreference('pipeline_stages').catch(() => null);
+                // Run both API calls in parallel for faster loading
+                const [usedStatuses, savedPref] = await Promise.all([
+                    api.getUsedStatuses().catch(() => []),
+                    api.getPreference('pipeline_stages').catch(() => null)
+                ]);
+                
                 const savedStages = savedPref?.preference_value?.stages;
 
                 let initial;
