@@ -228,11 +228,6 @@ export default function HowItWorks() {
                   title: "Auto-Extract or Paste",
                   description: "Extension automatically extracts job details OR you can paste the job description manually",
                   icon: <FaMagic />
-                },
-                {
-                  title: "Preview & Save",
-                  description: "Review extracted info (title, company, salary, description) and click 'Save Job'",
-                  icon: <FaCheck />
                 }
               ]} />
 

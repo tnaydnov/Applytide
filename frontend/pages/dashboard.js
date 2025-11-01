@@ -23,8 +23,16 @@ export default function Dashboard() {
   const [customGoalInput, setCustomGoalInput] = useState('');
 
   useEffect(() => {
-    if (user && !user.has_seen_welcome_modal) {
-      setShowWelcomeModal(true);
+    if (user) {
+      console.log('Dashboard - User loaded:', {
+        has_seen_welcome_modal: user.has_seen_welcome_modal,
+        has_dismissed_extension_banner: user.has_dismissed_extension_banner
+      });
+      
+      if (!user.has_seen_welcome_modal) {
+        console.log('Dashboard - Showing welcome modal');
+        setShowWelcomeModal(true);
+      }
     }
   }, [user]);
 
@@ -161,7 +169,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {showWelcomeModal && <WelcomeModal onClose={handleCloseWelcome} />}
+      <WelcomeModal isOpen={showWelcomeModal} onClose={handleCloseWelcome} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
