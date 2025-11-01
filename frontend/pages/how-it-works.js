@@ -1111,28 +1111,93 @@ function PageFeature({ icon, title, color, buttons, useCase, important }) {
 }
 
 function DetailedWorkflow({ title, steps }) {
+  const stepColors = {
+    'Morning': { bg: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/40', icon: 'bg-amber-500/30', text: 'text-amber-300', emoji: '🌅' },
+    'Email Check': { bg: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/40', icon: 'bg-blue-500/30', text: 'text-blue-300', emoji: '📧' },
+    'Set Reminder': { bg: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/40', icon: 'bg-purple-500/30', text: 'text-purple-300', emoji: '⏰' },
+    'Got Rejection?': { bg: 'from-red-500/20 to-rose-500/20', border: 'border-red-500/40', icon: 'bg-red-500/30', text: 'text-red-300', emoji: '❌' },
+    'Follow-up Time': { bg: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/40', icon: 'bg-green-500/30', text: 'text-green-300', emoji: '📝' },
+    'Offer Received!': { bg: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/40', icon: 'bg-yellow-500/30', text: 'text-yellow-300', emoji: '🎉' }
+  };
+
   return (
-    <div className="glass-card glass-violet border-2 border-purple-500/30 p-8 rounded-xl">
-      <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-        <FaKeyboard className="text-purple-400" />
-        {title}
-      </h3>
+    <div className="glass-card glass-violet border-2 border-purple-500/30 p-8 rounded-xl overflow-hidden relative">
+      {/* Decorative gradient background */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-3xl -z-10"></div>
       
-      <div className="space-y-3">
-        {steps.map((item, idx) => (
-          <div key={idx} className="flex items-start gap-4 p-4 bg-slate-800/30 rounded-lg border border-white/5 hover:border-purple-500/30 transition-all">
-            <div className="flex-shrink-0 w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 font-bold text-sm">
-              {item.step}
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-white mb-1">{item.action}</p>
-              <p className="text-slate-400 text-sm flex items-center gap-2">
-                <FaArrowRight className="text-purple-400" />
-                {item.result}
-              </p>
-            </div>
+      <div className="relative">
+        <h3 className="text-3xl font-black text-white mb-3 flex items-center gap-3">
+          <div className="p-2 bg-purple-500/20 rounded-lg">
+            <FaKeyboard className="text-purple-400 text-xl" />
           </div>
-        ))}
+          {title}
+        </h3>
+        <p className="text-slate-400 mb-8 text-lg">
+          Follow this daily routine to stay organized and on top of your applications
+        </p>
+        
+        <div className="space-y-4">
+          {steps.map((item, idx) => {
+            const colorScheme = stepColors[item.step] || { 
+              bg: 'from-slate-500/20 to-slate-600/20', 
+              border: 'border-slate-500/40', 
+              icon: 'bg-slate-500/30', 
+              text: 'text-slate-300',
+              emoji: '📌'
+            };
+            
+            return (
+              <div 
+                key={idx} 
+                className={`group relative flex items-start gap-5 p-5 bg-gradient-to-br ${colorScheme.bg} rounded-xl border-2 ${colorScheme.border} hover:scale-[1.02] transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10`}
+              >
+                {/* Connecting line for flow */}
+                {idx < steps.length - 1 && (
+                  <div className="absolute left-8 top-full w-0.5 h-4 bg-gradient-to-b from-purple-500/50 to-transparent"></div>
+                )}
+                
+                {/* Step badge */}
+                <div className={`flex-shrink-0 w-14 h-14 ${colorScheme.icon} rounded-xl flex flex-col items-center justify-center border-2 ${colorScheme.border} shadow-lg group-hover:scale-110 transition-transform`}>
+                  <div className="text-2xl mb-0.5">{colorScheme.emoji}</div>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  {/* Step label */}
+                  <div className={`inline-block px-3 py-1 ${colorScheme.icon} rounded-full text-xs font-bold ${colorScheme.text} mb-2 border ${colorScheme.border}`}>
+                    {item.step}
+                  </div>
+                  
+                  {/* Action */}
+                  <p className="font-bold text-white text-lg mb-2 leading-tight">
+                    {item.action}
+                  </p>
+                  
+                  {/* Result */}
+                  <div className="flex items-start gap-2 text-slate-300">
+                    <FaArrowRight className={`${colorScheme.text} mt-1 flex-shrink-0 group-hover:translate-x-1 transition-transform`} />
+                    <span className="text-sm leading-relaxed">{item.result}</span>
+                  </div>
+                </div>
+
+                {/* Hover effect indicator */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className={`w-2 h-2 ${colorScheme.icon} rounded-full animate-pulse`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom tip */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg flex items-start gap-3">
+          <div className="text-2xl">💡</div>
+          <div>
+            <p className="text-sm text-purple-300 font-semibold mb-1">Pro Tip</p>
+            <p className="text-sm text-slate-300">
+              Make this part of your morning routine! Check your pipeline with your coffee ☕ and you'll never miss an important follow-up.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
