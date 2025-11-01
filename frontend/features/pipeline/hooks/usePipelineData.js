@@ -17,6 +17,7 @@ import { DEFAULT_STAGES } from '../utils/status';
 export function usePipelineData(showArchived = false) {
     const toast = useToast();
     const wsRef = useRef(null);
+    const mountedRef = useRef(false);
 
     /* ------------------------------- UI state ------------------------------- */
     const [currentStages, setCurrentStages] = useState(DEFAULT_STAGES);
@@ -105,7 +106,10 @@ export function usePipelineData(showArchived = false) {
 
     /* ---------------------------------- Load ---------------------------------- */
     const load = useCallback(async () => {
-        setLoading(true);
+        // Only show loading state after initial mount to prevent flickering
+        if (mountedRef.current) {
+            setLoading(true);
+        }
         try {
             const result = {};
             await Promise.all(
@@ -182,6 +186,8 @@ export function usePipelineData(showArchived = false) {
             });
         } finally {
             setLoading(false);
+            // Mark as mounted after first successful load
+            mountedRef.current = true;
         }
     }, [currentStages, showArchived]); // Added showArchived dependency
 

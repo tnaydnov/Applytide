@@ -34,6 +34,9 @@ export function useJobs(options = {}) {
     has_prev: false,
   });
 
+  // Track initial mount to prevent loading flicker
+  const mountedRef = useRef(false);
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('created_at'); // 'created_at' | 'title'
@@ -52,7 +55,10 @@ export function useJobs(options = {}) {
   const abortRef = useRef();
 
   const loadJobs = useCallback(async (page = 1) => {
-    setLoading(true);
+    // Only show loading state after initial mount to prevent flickering
+    if (mountedRef.current) {
+      setLoading(true);
+    }
     setError(null);
 
     if (abortRef.current) abortRef.current.abort();
@@ -89,6 +95,8 @@ export function useJobs(options = {}) {
       setJobs([]);
     } finally {
       setLoading(false);
+      // Mark as mounted after first successful load
+      mountedRef.current = true;
     }
   }, [params]); // Removed pagination.page_size dependency to prevent loops
 

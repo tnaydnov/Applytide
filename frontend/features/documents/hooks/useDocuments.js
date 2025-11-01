@@ -15,13 +15,18 @@ export default function useDocuments() {
     const [openUpload, setOpenUpload] = useState(false);
     const [uploading, setUploading] = useState(false);
 
+    // Track initial mount to prevent loading flicker
+    const mountedRef = useRef(false);
     const abortRef = useRef();
 
     const refresh = useCallback(async () => {
         abortRef.current?.abort();
         const ctl = new AbortController();
         abortRef.current = ctl;
-        setQuerying(true);
+        // Only show loading state after initial mount to prevent flickering
+        if (mountedRef.current) {
+            setQuerying(true);
+        }
         try {
             const json = await api.getDocuments();
             // accept several possible shapes
@@ -37,6 +42,8 @@ export default function useDocuments() {
             if (e.name !== "AbortError") console.error(e);
         } finally {
             setQuerying(false);
+            // Mark as mounted after first successful load
+            mountedRef.current = true;
         }
     }, []);
 

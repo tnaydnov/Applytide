@@ -63,10 +63,9 @@ export default function Dashboard() {
     }
   };
 
-  const handleCloseWelcome = async () => {
+  const handleCloseWelcome = () => {
     setShowWelcomeModal(false);
-    // Refresh user data in case the modal marked it as seen
-    await refreshUser();
+    // Note: Don't refresh user here - WelcomeModal handles backend updates when needed
   };
 
   const updateWeeklyGoal = async (newGoal) => {

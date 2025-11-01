@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from './ui';
 import { api } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function WelcomeModal({ isOpen, onClose }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const { refreshUser } = useAuth();
 
   const handleClose = async () => {
     if (dontShowAgain) {
@@ -13,6 +15,8 @@ export default function WelcomeModal({ isOpen, onClose }) {
         await api.post('/profile/welcome-modal-seen');
         // Clear localStorage to ensure backend is source of truth
         localStorage.removeItem('welcomeModalDismissed');
+        // Refresh user context to update has_seen_welcome_modal
+        await refreshUser();
       } catch (error) {
         console.error('Failed to update welcome modal status:', error);
       }
@@ -26,6 +30,8 @@ export default function WelcomeModal({ isOpen, onClose }) {
       await api.post('/profile/welcome-modal-seen');
       // Clear localStorage to ensure backend is source of truth
       localStorage.removeItem('welcomeModalDismissed');
+      // Refresh user context to update has_seen_welcome_modal
+      await refreshUser();
     } catch (error) {
       console.error('Failed to update welcome modal status:', error);
     }
