@@ -533,7 +533,7 @@ class ApplicationOperationsService:
             )
             
             try:
-                self.apps.delete_with_user_check(app_id, user_id)
+                self.apps.delete_cascade(app_id, user_id)
                 logger.info(
                     f"Deleted application {app_id}",
                     extra={"app_id": str(app_id), "user_id": str(user_id)}
