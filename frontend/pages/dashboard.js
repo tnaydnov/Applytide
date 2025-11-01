@@ -510,7 +510,6 @@ export default function Dashboard() {
                   label="Analytics"
                   description="Track your performance"
                   onClick={() => router.push('/analytics')}
-                  badge="PRO"
                 />
               </div>
             </div>

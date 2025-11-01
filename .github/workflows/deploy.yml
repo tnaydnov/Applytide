@@ -95,6 +95,26 @@ jobs:
             GITHUB_OWNER="$GITHUB_OWNER" IMAGE_TAG="$IMAGE_TAG" \
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            # 4) Housekeeping
+            # 4) Wait for services to be healthy
+            echo "Waiting for services to stabilize..."
+            sleep 5
+
+            # 5) Restart Nginx to pick up new container IPs
+            echo "Restarting Nginx to refresh upstream connections..."
+            docker compose -f docker-compose.prod.yml restart nginx
+            
+            # 6) Verify Nginx is healthy
+            echo "Verifying Nginx status..."
+            docker compose -f docker-compose.prod.yml ps nginx
+            
+            # 7) Test Nginx configuration
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -t || echo "Warning: Nginx config test failed"
+
+            # 8) Run deployment verification
+            echo "Running deployment verification..."
+            chmod +x scripts/verify-deployment.sh
+            ./scripts/verify-deployment.sh || echo "Warning: Some verification checks failed"
+
+            # 9) Housekeeping
             docker image prune -a -f --filter "until=168h" || true
             docker builder prune -af --filter "until=168h" || true
