@@ -6,7 +6,7 @@ import { useToast } from "../../../lib/toast";
 export default function useDocuments() {
     const toast = useToast();
     const [all, setAll] = useState([]);
-    const [querying, setQuerying] = useState(false);
+    const [querying, setQuerying] = useState(true); // Start as loading to prevent empty state flash
     const [query, setQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -23,10 +23,7 @@ export default function useDocuments() {
         abortRef.current?.abort();
         const ctl = new AbortController();
         abortRef.current = ctl;
-        // Only show loading state after initial mount to prevent flickering
-        if (mountedRef.current) {
-            setQuerying(true);
-        }
+        setQuerying(true);
         try {
             const json = await api.getDocuments();
             // accept several possible shapes
@@ -42,7 +39,6 @@ export default function useDocuments() {
             if (e.name !== "AbortError") console.error(e);
         } finally {
             setQuerying(false);
-            // Mark as mounted after first successful load
             mountedRef.current = true;
         }
     }, []);

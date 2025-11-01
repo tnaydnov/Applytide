@@ -23,7 +23,7 @@ export function useJobs(options = {}) {
   const pageSize = options.pageSize ?? 12;
 
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start as loading to prevent empty state flash
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -55,10 +55,7 @@ export function useJobs(options = {}) {
   const abortRef = useRef();
 
   const loadJobs = useCallback(async (page = 1) => {
-    // Only show loading state after initial mount to prevent flickering
-    if (mountedRef.current) {
-      setLoading(true);
-    }
+    setLoading(true);
     setError(null);
 
     if (abortRef.current) abortRef.current.abort();
@@ -95,14 +92,15 @@ export function useJobs(options = {}) {
       setJobs([]);
     } finally {
       setLoading(false);
-      // Mark as mounted after first successful load
       mountedRef.current = true;
     }
   }, [params]); // Removed pagination.page_size dependency to prevent loops
 
   // Debounced reload whenever params change (also runs on mount)
   useEffect(() => {
-    const t = setTimeout(() => { loadJobs(1); }, options.debounce ?? 300);
+    const t = setTimeout(() => { 
+      loadJobs(1); 
+    }, mountedRef.current ? (options.debounce ?? 300) : 0); // No debounce on first load
     return () => clearTimeout(t);
   }, [params]); // Removed loadJobs and options.debounce dependencies
 

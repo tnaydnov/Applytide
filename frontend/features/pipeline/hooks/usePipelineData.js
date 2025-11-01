@@ -72,9 +72,16 @@ export function usePipelineData(showArchived = false) {
                 } else {
                     initial = [...new Set([...(DEFAULT_STAGES || []), ...(usedStatuses || [])])];
                 }
-                if (!cancelled) setCurrentStages(initial);
+                if (!cancelled) {
+                    setCurrentStages(initial);
+                    // Mark as mounted BEFORE the load() useEffect runs
+                    mountedRef.current = true;
+                }
             } catch {
-                if (!cancelled) setCurrentStages(DEFAULT_STAGES);
+                if (!cancelled) {
+                    setCurrentStages(DEFAULT_STAGES);
+                    mountedRef.current = true;
+                }
             }
         }
         initializeStages();
@@ -106,10 +113,7 @@ export function usePipelineData(showArchived = false) {
 
     /* ---------------------------------- Load ---------------------------------- */
     const load = useCallback(async () => {
-        // Only show loading state after initial mount to prevent flickering
-        if (mountedRef.current) {
-            setLoading(true);
-        }
+        setLoading(true);
         try {
             const result = {};
             await Promise.all(
@@ -186,13 +190,13 @@ export function usePipelineData(showArchived = false) {
             });
         } finally {
             setLoading(false);
-            // Mark as mounted after first successful load
-            mountedRef.current = true;
         }
     }, [currentStages, showArchived]); // Added showArchived dependency
 
     // Load on mount and when currentStages or showArchived changes
     useEffect(() => {
+        // Only load if stages have been initialized
+        if (!mountedRef.current) return;
         load();
     }, [currentStages, showArchived]); // Added showArchived dependency
 
