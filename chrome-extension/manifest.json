@@ -9,7 +9,7 @@
     "128": "logomark.png"
   },
   "optional_host_permissions": ["https://*/*", "http://*/*"],
-  "permissions": ["activeTab", "scripting", "storage", "tabs", "windows"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "windows"],
   "host_permissions": [
     "https://applytide.com/*",
     "http://localhost/*"
