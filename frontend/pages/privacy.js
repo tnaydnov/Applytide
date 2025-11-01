@@ -104,7 +104,25 @@ export default function Privacy() {
               <li><strong>Background tracking</strong>: The extension only operates when you actively use it</li>
             </ul>
 
-            <p className="mb-4">All extracted job data is sent to your Applytide account and stored securely according to this privacy policy.</p>
+            <h3 className="text-xl font-semibold text-white mt-6 mb-3">Extension Permissions Explained</h3>
+            <ul className="list-disc pl-6 space-y-2 mb-4">
+              <li><strong>activeTab</strong>: Required to read job content from the current tab when you click the extension</li>
+              <li><strong>scripting</strong>: Allows the extension to extract job details from supported job boards</li>
+              <li><strong>storage</strong>: Stores your authentication token locally so you stay logged in</li>
+              <li><strong>tabs</strong>: Detects the current URL to determine if automatic extraction is supported</li>
+              <li><strong>Host permissions</strong>: Grants access to job board websites only when you activate the extension</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold text-white mt-6 mb-3">Data Handling</h3>
+            <ul className="list-disc pl-6 space-y-2 mb-4">
+              <li>All extracted job data is sent directly to your Applytide account via secure HTTPS connection</li>
+              <li>No job data is stored locally in the extension beyond the current session</li>
+              <li>Your authentication token is encrypted and stored securely in browser storage</li>
+              <li>The extension does not communicate with any third-party services</li>
+              <li>No analytics or tracking is performed by the extension itself</li>
+            </ul>
+
+            <p className="mb-4">All extracted job data is stored securely according to this privacy policy and can be deleted at any time from your account settings.</p>
           </div>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">How We Use Your Information</h2>

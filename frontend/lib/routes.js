@@ -8,6 +8,8 @@ export const PUBLIC_ROUTES = new Set([
   '/privacy',
   '/terms',
   '/about',
+  '/contact',
+  '/accessibility',
   '/cookie-policy',
   '/copyright-policy',
   '/pricing'

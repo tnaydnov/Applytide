@@ -42,11 +42,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="text-slate-300 hover:text-white transition-colors text-sm">
-                  How It Works
-                </Link>
-              </li>
-              <li>
                 <Link href="/contact" className="text-slate-300 hover:text-white transition-colors text-sm">
                   Contact Us
                 </Link>
