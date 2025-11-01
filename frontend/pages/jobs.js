@@ -114,64 +114,116 @@ export default function JobsPage() {
           actions={<span className="text-sm text-slate-400">{pagination.total} job{pagination.total !== 1 ? "s" : ""}</span>}
         />
 
-        {/* Extension Banner */}
+        {/* Extension Banner - WOW Version */}
         {showExtensionBanner && (
-          <div className="mb-6 relative">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 border border-blue-400/30 shadow-lg">
+          <div className="mb-8 relative group animate-fade-in">
+            {/* Animated gradient border glow */}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 via-pink-500 to-yellow-500 rounded-2xl opacity-75 blur-lg group-hover:opacity-100 transition duration-500 animate-pulse"></div>
+            
+            {/* Main banner container */}
+            <div className="relative bg-gradient-to-br from-orange-600 via-red-600 to-pink-600 rounded-2xl overflow-hidden border border-orange-300/30 shadow-2xl">
+              {/* Animated background pattern */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent animate-shimmer bg-[length:200%_100%]"></div>
+              </div>
+              
+              {/* Floating particles effect */}
+              <div className="absolute top-0 left-1/4 w-2 h-2 bg-yellow-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
+              <div className="absolute top-1/4 right-1/4 w-1.5 h-1.5 bg-orange-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '1s', animationDuration: '4s' }}></div>
+              <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-pink-300 rounded-full animate-bounce opacity-50" style={{ animationDelay: '2s', animationDuration: '5s' }}></div>
+              
+              {/* Close button */}
               <button
                 onClick={dismissExtensionBanner}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="absolute top-4 right-4 z-10 p-2 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all hover:scale-110 hover:rotate-90 duration-300"
                 aria-label="Dismiss"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
               
-              <div className="flex items-start gap-4 pr-8">
-                <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-                  <Chrome className="h-8 w-8 text-white" />
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-5 w-5 text-yellow-300" />
-                    <h3 className="text-xl font-bold text-white">Save Jobs Instantly with Our Chrome Extension!</h3>
+              {/* Content */}
+              <div className="relative p-8">
+                <div className="flex items-start gap-6">
+                  {/* MASSIVE Chrome icon with glow - THE STAR */}
+                  <div className="relative flex-shrink-0">
+                    <div className="absolute inset-0 bg-yellow-400/40 rounded-3xl blur-2xl animate-pulse"></div>
+                    <div className="relative p-6 rounded-3xl bg-white/20 backdrop-blur-md border-2 border-yellow-400/50 shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                      <Chrome className="h-20 w-20 text-white drop-shadow-2xl" />
+                      {/* Chrome badge */}
+                      <div className="absolute -bottom-2 -right-2 px-2 py-1 bg-yellow-400 text-orange-900 text-xs font-black rounded-full border-2 border-white shadow-lg">
+                        FREE
+                      </div>
+                    </div>
                   </div>
                   
-                  <p className="text-blue-50 mb-4 text-sm leading-relaxed max-w-3xl">
-                    Browse jobs on LinkedIn, Indeed, or any job board and save them to Applytide with a single click. 
-                    No more copy-pasting! The extension automatically extracts job details and adds them to your tracker.
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-3">
-                    <a
-                      href="https://chrome.google.com/webstore"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      <Chrome className="h-5 w-5" />
-                      Add to Chrome - It's Free!
-                    </a>
-                  </div>
-                  
-                  <div className="mt-4 flex items-center gap-4 text-xs text-blue-100">
-                    <div className="flex items-center gap-1">
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span>Works on all job sites</span>
+                  <div className="flex-1 pr-8">
+                    {/* Chrome Extension Badge */}
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-yellow-400/30 backdrop-blur-sm rounded-full border border-yellow-400/50 mb-3">
+                      <Chrome className="h-4 w-4 text-yellow-300 animate-pulse" />
+                      <span className="text-sm font-black text-yellow-100 uppercase tracking-wider">Chrome Extension</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span>Auto-extracts details</span>
+                    
+                    {/* Headline - Chrome focused */}
+                    <h3 className="text-3xl font-black text-white mb-3 leading-tight tracking-tight">
+                      Install Our{' '}
+                      <span className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 bg-clip-text text-transparent animate-shimmer bg-[length:200%_100%]">
+                        Chrome Extension
+                      </span>
+                      {' '}& Save Jobs in One Click!
+                    </h3>
+                    
+                    {/* Description - Chrome focused */}
+                    <p className="text-orange-100 mb-6 text-base leading-relaxed max-w-2xl">
+                      Browse any job site and click the{' '}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded font-bold text-white">
+                        <Chrome className="h-3 w-3" />
+                        extension icon
+                      </span>
+                      {' '}to instantly save jobs. It automatically extracts all details—
+                      <span className="font-bold text-white">no more copy-pasting</span>!
+                    </p>
+                    
+                    {/* CTA Button - Chrome focused */}
+                    <div className="flex items-center gap-4 mb-6">
+                      <a
+                        href="https://chrome.google.com/webstore"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-3 px-8 py-4 bg-white text-orange-600 rounded-xl font-black text-lg hover:bg-yellow-300 hover:text-orange-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform duration-300"
+                      >
+                        <Chrome className="h-7 w-7 group-hover:rotate-12 transition-transform" />
+                        <span>Install Chrome Extension</span>
+                        <svg className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </a>
+                      
+                      <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                        <Sparkles className="h-5 w-5 text-yellow-300 animate-pulse" />
+                        <span className="text-sm font-bold text-white">100% Free Forever</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span>100% secure</span>
+                    
+                    {/* Features grid - Chrome focused */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                        <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-white">All Job Sites</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                        <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-white">One-Click Save</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                        <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-white">Auto-Extract</span>
+                      </div>
                     </div>
                   </div>
                 </div>
