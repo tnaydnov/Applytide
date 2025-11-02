@@ -1,0 +1,112 @@
+╔════════════════════════════════════════════════════════════════╗
+║             APPLYTIDE BACKUP SYSTEM - QUICK REFERENCE          ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 SETUP (One-time)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  cd /opt/applytide
+  sudo bash scripts/setup-backup-cron.sh
+
+
+🔧 MANUAL BACKUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  sudo applytide-backup
+  OR
+  sudo bash scripts/backup.sh
+
+
+📂 VIEW BACKUPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ls -lh /var/backups/applytide/
+  du -sh /var/backups/applytide/*
+
+
+🔄 RESTORE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Interactive (choose from list)
+  sudo bash scripts/restore.sh
+
+  # Specific date
+  sudo bash scripts/restore.sh 2025-11-02
+
+  # Latest backup
+  sudo bash scripts/restore.sh latest
+
+
+📊 MONITOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Backup logs
+  tail -f /var/backups/applytide/backup.log
+
+  # Cron logs
+  tail -f /var/backups/applytide/logs/cron.log
+
+  # Disk usage
+  df -h /var/backups
+
+  # Verify cron job
+  crontab -l | grep applytide
+
+
+📅 SCHEDULE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Frequency: Daily at 2:00 AM
+  Retention: 30 days (automatic cleanup)
+
+
+💾 WHAT'S BACKED UP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ PostgreSQL database      (postgres_*.sql.gz)
+  ✓ User documents            (documents_*.tar.gz)
+  ✓ Application attachments   (attachments_*.tar.gz)
+  ✓ Redis cache/sessions      (redis_*.rdb)
+  ✓ Configuration files       (config_*.tar.gz)
+
+
+🚨 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Backup failed?
+  tail -n 50 /var/backups/applytide/backup.log
+
+  # Check containers
+  docker ps
+
+  # Test backup manually
+  sudo bash -x scripts/backup.sh
+
+  # Check disk space
+  df -h /var/backups
+
+
+📍 FILE LOCATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Backups:     /var/backups/applytide/
+  Script:      /usr/local/bin/applytide-backup
+  Logs:        /var/backups/applytide/backup.log
+  Cron logs:   /var/backups/applytide/logs/cron.log
+  Docs:        /opt/applytide/scripts/BACKUP_README.md
+
+
+⚙️  CUSTOMIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Change schedule
+  crontab -e
+
+  # Change retention (default 30 days)
+  sudo nano /usr/local/bin/applytide-backup
+  # Edit: RETENTION_DAYS=30
+
+
+🔐 SECURITY NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Backups owned by root (chmod 750)
+  • Database passwords from .env.production
+  • Backups NOT encrypted (consider GPG)
+  • Restore overwrites existing data!
+
+
+📖 FULL DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  See: scripts/BACKUP_README.md
+
+╚════════════════════════════════════════════════════════════════╝

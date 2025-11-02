@@ -24,8 +24,10 @@ services:
     image: redis:7-alpine
     container_name: applytide_redis
     env_file: .env
-    command: sh -c "redis-server --requirepass $$REDIS_PASSWORD"
+    command: sh -c "redis-server --requirepass $$REDIS_PASSWORD --save 60 1000"
     ports: ["6379:6379"]
+    volumes:
+      - redis_data:/data
     restart: always
     networks: [applytide_network]
     logging: *default-logging
@@ -52,6 +54,8 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic.ini:/app/alembic.ini
+      - documents:/app/uploads/documents
+      - attachments:/app/uploads/app_attachments
 
   frontend:
     build: ./frontend
@@ -78,6 +82,8 @@ services:
     networks: [applytide_network]
     volumes:
       - ./backend/alembic.ini:/app/alembic.ini
+      - documents:/app/uploads/documents
+      - attachments:/app/uploads/app_attachments
     logging: *default-logging
     environment:
       SKIP_MIGRATIONS: "1"
@@ -101,3 +107,6 @@ networks:
 
 volumes:
   pgdata: {}
+  redis_data: {}
+  documents: {}
+  attachments: {}
