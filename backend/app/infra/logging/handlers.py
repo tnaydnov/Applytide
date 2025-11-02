@@ -161,6 +161,7 @@ class DatabaseHandler(logging.Handler):
             # Import here to avoid circular imports
             from app.db.session import SessionLocal
             from app.db import models
+            from sqlalchemy.exc import IntegrityError
             
             db = SessionLocal()
             try:
@@ -194,6 +195,39 @@ class DatabaseHandler(logging.Handler):
                 db.bulk_save_objects(logs)
                 db.commit()
                 
+            except IntegrityError as e:
+                # Handle foreign key violations (e.g., deleted users)
+                db.rollback()
+                # Try to insert logs one by one, skipping those with FK violations
+                for record in batch:
+                    try:
+                        log = models.ApplicationLog(
+                            timestamp=record['timestamp'],
+                            level=record['level'],
+                            logger=record['logger'],
+                            message=record['message'][:1000],
+                            request_id=record.get('request_id'),
+                            user_id=record.get('user_id'),
+                            session_id=record.get('session_id'),
+                            endpoint=record.get('endpoint'),
+                            method=record.get('method'),
+                            status_code=record.get('status_code'),
+                            ip_address=record.get('ip_address'),
+                            user_agent=record.get('user_agent')[:500] if record.get('user_agent') else None,
+                            module=record.get('module'),
+                            function=record.get('function'),
+                            line_number=record.get('line_number'),
+                            exception_type=record.get('exception_type'),
+                            exception_message=record.get('exception_message')[:1000] if record.get('exception_message') else None,
+                            stack_trace=record.get('stack_trace'),
+                            extra=record.get('extra')
+                        )
+                        db.add(log)
+                        db.commit()
+                    except IntegrityError:
+                        # Skip logs for deleted users or other FK violations
+                        db.rollback()
+                        continue
             finally:
                 db.close()
                 
