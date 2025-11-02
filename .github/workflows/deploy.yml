@@ -73,7 +73,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd ~/Applytide
+            cd /opt/applytide
 
             # 1) Update repo so bind-mounted files (nginx, alembic.ini) are fresh
             git fetch --all
