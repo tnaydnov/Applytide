@@ -98,28 +98,30 @@ log "Configuring cron job for daily backups..."
 
 CRON_SCHEDULE="0 2 * * *"  # Daily at 2:00 AM
 CRON_COMMAND="${SCRIPT_TARGET} >> ${BACKUP_ROOT}/logs/cron.log 2>&1"
-CRON_JOB="${CRON_SCHEDULE} ${CRON_COMMAND}"
+CRON_JOB="${CRON_SCHEDULE} root ${CRON_COMMAND}"
+CRON_FILE="/etc/cron.d/applytide-backup"
 
-# Check if cron job already exists
-if crontab -l 2>/dev/null | grep -q "applytide-backup"; then
-    warn "  Cron job already exists, updating..."
-    # Remove old cron job
-    crontab -l 2>/dev/null | grep -v "applytide-backup" | crontab -
-fi
+# Create cron file in /etc/cron.d/
+cat > "${CRON_FILE}" <<EOF
+# Applytide Backup - Daily at 2:00 AM
+${CRON_JOB}
+EOF
 
-# Add new cron job
-(crontab -l 2>/dev/null; echo "${CRON_JOB}") | crontab -
+chmod 644 "${CRON_FILE}"
 
 info "  Schedule: Daily at 2:00 AM (server time)"
 info "  Command: ${SCRIPT_TARGET}"
 info "  Logs: ${BACKUP_ROOT}/logs/cron.log"
+info "  Cron file: ${CRON_FILE}"
 
-# Verify cron job was added
-if crontab -l | grep -q "applytide-backup"; then
+# Verify cron file was created
+if [ -f "${CRON_FILE}" ]; then
     log "✓ Cron job configured successfully"
 else
     error "✗ Failed to configure cron job"
-    exit 1
+    warn "You may need to add it manually:"
+    warn "  sudo crontab -e"
+    warn "  Add line: ${CRON_SCHEDULE} ${CRON_COMMAND}"
 fi
 
 # ============================================================================
