@@ -24,7 +24,9 @@ export default function PricingPage() {
     {
       name: 'Starter',
       tagline: 'Perfect for getting started',
+      icon: '🎯',
       price: { monthly: 0, yearly: 0 },
+      popular: false,
       features: [
         'Track up to 25 job applications',
         'Visual pipeline/kanban board',
@@ -39,39 +41,58 @@ export default function PricingPage() {
         '7 AI resume analyses per month',
         'Basic analytics dashboard'
       ],
-      cta: 'Current Plan',
+      cta: 'Get Started Free',
+      ctaAction: null
+    },
+    {
+      name: 'Pro',
+      tagline: 'For serious job seekers',
+      icon: '🚀',
+      badge: '🚧 Coming Soon',
+      price: { monthly: 'TBA', yearly: 'TBA' },
+      popular: true,
+      comingSoon: true,
+      features: [
+        'Everything in Starter',
+        'Unlimited job applications',
+        'Unlimited AI cover letters',
+        'Unlimited AI resume analysis',
+        'Advanced analytics dashboard',
+        'Priority email support',
+        'Chrome extension auto-fill',
+        'Export capabilities (CSV, PDF)',
+        'Email thread tracking'
+      ],
+      highlight: 'Unlimited AI Power',
+      cta: 'Get Notified',
       ctaAction: null
     },
     {
       name: 'Premium',
-      tagline: 'Land your dream job faster',
+      tagline: 'Maximum career acceleration',
+      icon: '⚡',
       badge: '🚧 Coming Soon',
       price: { monthly: 'TBA', yearly: 'TBA' },
+      popular: false,
       comingSoon: true,
-      trialDays: 7,
       features: [
-        'Everything in Starter',
-        'Unlimited AI cover letters tailored to each job',
-        'Unlimited AI resume analysis & optimization',
-        'Generate professional resumes from scratch',
-        'Auto-optimize resume for specific job postings',
-        'Smart email tracking & auto-categorization',
-        'AI interview preparation & tips',
-        'AI job discovery agent (finds jobs while you sleep)',
-        'Skills gap analysis with learning recommendations',
-        'Company insights & research tools',
-        'Chrome extension auto-fill for applications',
-        'Unlimited job applications (no 25 limit)',
-        'Advanced analytics with actionable insights',
-        'Priority support'
+        'Everything in Pro',
+        'AI resume generation from scratch',
+        'Auto-optimize resume for job postings',
+        'AI job discovery agent (auto-search)',
+        'Skills gap analysis & learning paths',
+        'AI interview preparation tips',
+        'Company insights & research',
+        'Smart email auto-categorization',
+        'Priority support (24h response)'
       ],
-      highlights: [
+      highlight: 'AI Career Assistant',
+      stats: [
         { icon: '🚀', value: '10x', label: 'Faster' },
-        { icon: '📅', value: '3x', label: 'More Interviews' },
-        { icon: '⏰', value: '85%', label: 'Time Saved' }
+        { icon: '📅', value: '3x', label: 'More Interviews' }
       ],
       cta: 'Get Notified',
-      ctaAction: handleUpgrade
+      ctaAction: null
     }
   ];
 
@@ -133,176 +154,155 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Plans - Flowing Timeline Design */}
-        <div className="relative mb-32 max-w-6xl mx-auto">
-          {/* Background decoration */}
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
-          </div>
+        {/* Plans - 3 Column Grid */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto mb-32">
+          {plans.map((plan, idx) => (
+            <div 
+              key={plan.name} 
+              className={`relative ${plan.popular ? 'md:-mt-4 md:mb-4' : ''}`}
+            >
+              {/* Glow effect for popular plan */}
+              {plan.popular && (
+                <div className="absolute -inset-2 bg-gradient-to-b from-indigo-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-xl"></div>
+              )}
 
-          {/* Connecting Line */}
-          <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-700 via-purple-500 to-gray-700 opacity-30 -z-10"></div>
-
-          {/* STARTER PLAN - Left Side */}
-          <div className="relative mb-20">
-            <div className="md:w-2/3 md:pr-12">
-              <Card className="glass-card border border-white/10 p-8 relative">
-                {/* Plan Badge */}
-                <div className="inline-flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center text-2xl">
-                    🎯
-                  </div>
-                  <div>
-                    <h3 className="text-3xl font-bold text-white">Starter</h3>
-                    <p className="text-gray-400 text-sm">Perfect for getting started</p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <div className="text-4xl font-bold text-white">Free</div>
-                    <p className="text-xs text-gray-500">Forever</p>
-                  </div>
-                </div>
-
-                {/* Key Highlights */}
-                <div className="flex gap-4 mb-6">
-                  <div className="flex-1 p-4 rounded-xl bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50">
-                    <div className="text-3xl font-bold text-white mb-1">25</div>
-                    <div className="text-xs text-gray-400">Job Applications</div>
-                  </div>
-                  <div className="flex-1 p-4 rounded-xl bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50">
-                    <div className="text-3xl font-bold text-white mb-1">10</div>
-                    <div className="text-xs text-gray-400">AI Cover Letters/mo</div>
-                  </div>
-                  <div className="flex-1 p-4 rounded-xl bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50">
-                    <div className="text-3xl font-bold text-white mb-1">7</div>
-                    <div className="text-xs text-gray-400">AI Analyses/mo</div>
-                  </div>
-                </div>
-
-                {/* Features in columns */}
-                <div className="grid md:grid-cols-2 gap-x-6 gap-y-2 mb-6">
-                  {plans[0].features.map((feature, i) => (
-                    <div key={i} className="flex items-start text-sm">
-                      <span className="text-green-400 mr-2 flex-shrink-0">✓</span>
-                      <span className="text-gray-300">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  disabled={user && !user.is_premium}
-                  onClick={() => !user && router.push('/login')}
-                  className="w-full bg-gray-700 hover:bg-gray-600"
-                >
-                  {user && !user.is_premium ? '✓ Current Plan' : 'Get Started Free'}
-                </Button>
-                <p className="text-xs text-center text-gray-500 mt-3">No credit card required • Start in 30 seconds</p>
-              </Card>
-            </div>
-
-            {/* Timeline Node */}
-            <div className="hidden md:block absolute right-1/2 top-1/2 -translate-y-1/2 translate-x-1/2">
-              <div className="w-4 h-4 rounded-full bg-gray-700 border-4 border-gray-900"></div>
-            </div>
-          </div>
-
-          {/* Transition Element */}
-          <div className="relative flex items-center justify-center mb-20">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-dashed border-gray-700"></div>
-            </div>
-            <div className="relative bg-gray-900 px-6 py-3 rounded-full border border-purple-500/30">
-              <span className="text-gray-400 text-sm font-medium">Want More Power?</span>
-            </div>
-          </div>
-
-          {/* PREMIUM PLAN - Right Side */}
-          <div className="relative">
-            <div className="md:w-2/3 md:ml-auto md:pl-12">
-              
-              {/* Glow effect */}
-              <div className="absolute -inset-6 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-2xl"></div>
-              
-              <Card className="relative glass-card border-2 border-purple-500/50 p-8">
-                {/* Plan Badge */}
-                <div className="inline-flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-2xl">
-                    ⚡
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        Premium
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
-                        Coming Soon
-                      </span>
-                    </div>
-                    <p className="text-gray-300 text-sm">Land your dream job faster</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                      TBA
-                    </div>
-                    <p className="text-xs text-purple-300">🎁 7-day trial</p>
-                  </div>
-                </div>
-
-                {/* Power Stats - Single Row */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  {plans[1].highlights.map((stat, i) => (
-                    <div 
-                      key={i} 
-                      className="text-center p-4 rounded-xl bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-indigo-500/30"
-                    >
-                      <div className="text-2xl mb-1">{stat.icon}</div>
-                      <div className="text-2xl font-bold text-white">{stat.value}</div>
-                      <div className="text-xs text-gray-400">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Features Badge */}
-                <div className="inline-flex items-center px-4 py-2 bg-purple-900/30 rounded-full border border-purple-500/30 mb-4">
-                  <span className="text-sm text-purple-300">✨ Everything in Starter, plus unlimited AI power:</span>
-                </div>
-
-                {/* Features in 2 columns */}
-                <div className="grid md:grid-cols-2 gap-x-6 gap-y-2 mb-6">
-                  {plans[1].features.slice(1, 13).map((feature, i) => (
-                    <div key={i} className="flex items-start text-sm">
-                      <span className="text-indigo-400 mr-2 flex-shrink-0">●</span>
-                      <span className="text-gray-200">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Show more link for remaining features */}
-                {plans[1].features.length > 13 && (
-                  <div className="text-center mb-6">
-                    <button className="text-sm text-purple-400 hover:text-purple-300">
-                      + {plans[1].features.length - 13} more features
-                    </button>
+              <Card className={`relative h-full flex flex-col ${
+                plan.popular 
+                  ? 'glass-card border-2 border-indigo-500/50 shadow-2xl shadow-indigo-500/20' 
+                  : 'glass-card border border-white/10'
+              } p-8`}>
+                
+                {/* Popular Badge */}
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full text-white text-sm font-bold shadow-lg">
+                    ⭐ Most Popular
                   </div>
                 )}
 
+                {/* Coming Soon Badge */}
+                {plan.comingSoon && (
+                  <div className="absolute top-6 right-6">
+                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                      Coming Soon
+                    </span>
+                  </div>
+                )}
+
+                {/* Icon & Header */}
+                <div className="text-center mb-6">
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
+                    plan.popular 
+                      ? 'bg-gradient-to-br from-indigo-600 to-purple-600' 
+                      : 'bg-gray-800/50'
+                  }`}>
+                    <span className="text-3xl">{plan.icon}</span>
+                  </div>
+                  <h3 className={`text-2xl font-bold mb-2 ${
+                    plan.popular 
+                      ? 'bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent' 
+                      : 'text-white'
+                  }`}>
+                    {plan.name}
+                  </h3>
+                  <p className="text-gray-400 text-sm">{plan.tagline}</p>
+                </div>
+
+                {/* Price */}
+                <div className="text-center mb-6">
+                  <div className={`text-5xl font-bold mb-2 ${
+                    plan.popular 
+                      ? 'bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent' 
+                      : 'text-white'
+                  }`}>
+                    {formatPrice(plan)}
+                  </div>
+                  {plan.price.monthly === 0 ? (
+                    <p className="text-xs text-gray-500">Forever free</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Pricing announced soon</p>
+                  )}
+                </div>
+
+                {/* Highlight Badge */}
+                {plan.highlight && (
+                  <div className={`text-center mb-6 py-2 px-4 rounded-lg ${
+                    plan.popular 
+                      ? 'bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30' 
+                      : 'bg-purple-900/20 border border-purple-500/20'
+                  }`}>
+                    <span className={`text-sm font-semibold ${
+                      plan.popular ? 'text-indigo-300' : 'text-purple-300'
+                    }`}>
+                      ✨ {plan.highlight}
+                    </span>
+                  </div>
+                )}
+
+                {/* Stats for Premium */}
+                {plan.stats && (
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {plan.stats.map((stat, i) => (
+                      <div key={i} className="text-center p-3 rounded-lg bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20">
+                        <div className="text-2xl mb-1">{stat.icon}</div>
+                        <div className="text-2xl font-bold text-white">{stat.value}</div>
+                        <div className="text-xs text-gray-400">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Features */}
+                <div className="flex-1 mb-6">
+                  <div className="space-y-3">
+                    {plan.features.map((feature, i) => (
+                      <div key={i} className="flex items-start text-sm">
+                        <svg className={`w-5 h-5 mr-2 mt-0.5 flex-shrink-0 ${
+                          plan.popular ? 'text-indigo-400' : 'text-green-400'
+                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-300">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CTA */}
                 <Button
-                  onClick={handleUpgrade}
-                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/50 text-lg py-4 font-semibold"
+                  disabled={plan.comingSoon || (plan.name === 'Starter' && user && !user.is_premium)}
+                  onClick={() => {
+                    if (plan.comingSoon) {
+                      handleUpgrade();
+                    } else if (plan.name === 'Starter' && !user) {
+                      router.push('/login');
+                    }
+                  }}
+                  className={`w-full ${
+                    plan.comingSoon
+                      ? 'bg-gray-700 hover:bg-gray-600'
+                      : plan.popular
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/50'
+                        : plan.name === 'Starter'
+                          ? 'bg-gray-700 hover:bg-gray-600'
+                          : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/50'
+                  }`}
                 >
-                  🔔 Get Notified When We Launch
+                  {plan.comingSoon 
+                    ? '🔔 ' + plan.cta
+                    : (plan.name === 'Starter' && user && !user.is_premium)
+                      ? '✓ Current Plan'
+                      : plan.cta
+                  }
                 </Button>
-                <p className="text-xs text-center text-gray-400 mt-3">
-                  Be first in line • Exclusive early access • Special launch pricing
-                </p>
+                
+                {plan.name === 'Starter' && (
+                  <p className="text-xs text-center text-gray-500 mt-3">
+                    No credit card required
+                  </p>
+                )}
               </Card>
             </div>
-
-            {/* Timeline Node */}
-            <div className="hidden md:block absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2">
-              <div className="w-4 h-4 rounded-full bg-purple-500 border-4 border-gray-900 shadow-lg shadow-purple-500/50"></div>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Premium Features Showcase */}
