@@ -929,26 +929,49 @@ docker system prune -f
 ### Clean Docker System (Aggressive)
 
 ```bash
-# ⚠️ DANGER: Remove EVERYTHING unused including volumes
+# 🚨 EXTREME DANGER: This DELETES ALL USER DATA! 🚨
 docker system prune -a --volumes -f
 ```
-**What it does:** Removes ALL unused Docker resources including volumes.  
-**What it removes:**
+
+**🔴 THIS COMMAND WILL DELETE:**
+- **ALL user uploaded documents** (applytide_documents volume)
+- **ALL user uploaded attachments** (applytide_attachments volume)  
+- **ENTIRE PostgreSQL database** (applytide_pgdata volume)
+  - All user accounts
+  - All job applications
+  - All saved jobs
+  - ALL USER DATA
+- **Redis cache** (applytide_redis_data volume)
 - All stopped containers
-- All unused volumes (⚠️ DATA LOSS!)
 - All unused networks
-- All unused images (not just dangling)
+- All unused images
 - All build cache
 
-**When to use:** Only if you're SURE volumes are backed up, major cleanup, starting fresh.  
-**⚠️ EXTREME DANGER:** Can delete data if volumes aren't attached to running containers!
+**✅ WHAT SURVIVES:**
+- Your backups in `/var/backups/applytide/` (can restore from here!)
+- Your application code in `/opt/applytide/`
 
-**Safer alternative:**
+**When to use:** 
+- ❌ **NEVER use this for routine cleanup!**
+- ✅ Only when intentionally wiping everything to start fresh
+- ✅ Testing disaster recovery procedures
+- ✅ Decommissioning the server
+
+**⚠️ If you accidentally run this:**
 ```bash
-# Remove everything EXCEPT volumes
+# Your data is gone, but backups are safe!
+cd /opt/applytide
+docker compose up -d
+sudo bash scripts/restore.sh --latest
+# You're back online with restored data
+```
+
+**✅ SAFE ALTERNATIVE (Use this instead!):**
+```bash
+# Remove everything EXCEPT volumes - THIS IS SAFE
 docker system prune -a -f
 
-# Then manually inspect and remove specific volumes
+# Then manually inspect and remove specific volumes if needed
 docker volume ls
 docker volume rm volume_name_here
 ```
