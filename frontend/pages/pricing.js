@@ -53,19 +53,18 @@ export default function PricingPage() {
       popular: true,
       comingSoon: true,
       features: [
-        { text: 'Everything in Starter' },
-        { text: 'Unlimited job applications', highlight: true },
-        { text: 'Unlimited AI cover letters', highlight: true },
-        { text: 'Unlimited AI resume analysis', highlight: true },
+        { text: 'Everything in Starter', divider: true },
+        { text: 'Unlimited job applications', star: true },
+        { text: 'Unlimited AI cover letters', star: true },
+        { text: 'Unlimited AI resume analysis', star: true },
         { text: 'Advanced analytics dashboard' },
-        { text: 'Chrome extension auto-fill' },
         { text: 'AI interview preparation tips', new: true },
         { text: 'Company insights & research' },
         { text: 'Skills gap analysis with learning paths' },
         { text: 'Priority email support' }
       ],
       highlight: '✨ Unlimited AI Power',
-      cta: 'Get Notified',
+      cta: 'Join Waitlist',
       ctaAction: null
     },
     {
@@ -77,10 +76,11 @@ export default function PricingPage() {
       popular: false,
       comingSoon: true,
       features: [
-        { text: 'Everything in Pro' },
-        { text: 'AI Smart Agent finds jobs for you', highlight: true, new: true },
-        { text: 'AI resume generation from scratch', highlight: true },
+        { text: 'Everything in Pro', divider: true },
+        { text: 'AI Smart Agent finds jobs for you', star: true, new: true },
+        { text: 'AI resume generation from scratch', star: true },
         { text: 'Auto-optimize resume for each job posting' },
+        { text: 'One-click application auto-fill for job forms' },
         { text: 'Smart email tracking & categorization' }
       ],
       highlight: '🤖 AI Career Assistant',
@@ -88,7 +88,7 @@ export default function PricingPage() {
         { icon: '🚀', value: '10x', label: 'Faster' },
         { icon: '📅', value: '3x', label: 'Interviews' }
       ],
-      cta: 'Get Notified',
+      cta: 'Join Waitlist',
       ctaAction: null
     }
   ];
@@ -151,7 +151,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Plans - Modern 3 Column Design */}
+        {/* Plans - Clean Modern Design */}
         <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto mb-32">
           {plans.map((plan, idx) => (
             <div 
@@ -169,24 +169,24 @@ export default function PricingPage() {
                   : 'bg-gray-900/50 backdrop-blur-xl border border-white/10'
               }`}>
                 
-                {/* Popular Badge - Redesigned */}
+                {/* Popular Badge - Fixed positioning */}
                 {plan.popular && (
-                  <div className="absolute -top-px left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-b-2xl text-white text-sm font-bold shadow-xl">
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-b-2xl text-white text-sm font-bold shadow-xl z-30">
                     ⭐ Most Popular
-                  </div>
-                )}
-
-                {/* Coming Soon Badge - Top Right */}
-                {plan.comingSoon && (
-                  <div className="absolute top-4 right-4 z-20">
-                    <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-medium">
-                      {plan.badge}
-                    </span>
                   </div>
                 )}
 
                 {/* Card Content */}
                 <div className="p-8 flex flex-col flex-1">
+                  
+                  {/* Coming Soon Badge - Better placement */}
+                  {plan.comingSoon && (
+                    <div className="flex justify-end mb-2">
+                      <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-medium">
+                        {plan.badge}
+                      </span>
+                    </div>
+                  )}
                   
                   {/* Icon & Header */}
                   <div className="text-center mb-8">
@@ -256,29 +256,54 @@ export default function PricingPage() {
                     </div>
                   )}
 
-                  {/* Features */}
+                  {/* Features - Clear separation */}
                   <div className="flex-1 mb-8">
-                    <div className="space-y-4">
+                    {/* Features Header */}
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-800">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        What's Included
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
                       {plan.features.map((feature, i) => (
-                        <div key={i} className={`flex items-start group ${
-                          feature.highlight ? 'p-3 -mx-3 rounded-xl bg-gradient-to-r from-indigo-600/10 to-purple-600/10 border border-indigo-500/20' : ''
-                        }`}>
-                          <div className="flex items-center gap-2 flex-1">
-                            <svg className={`w-5 h-5 flex-shrink-0 ${
-                              plan.popular ? 'text-indigo-400' : 'text-green-400'
-                            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className={`text-sm ${
-                              feature.highlight ? 'text-white font-medium' : 'text-gray-300'
-                            }`}>
-                              {feature.text}
-                            </span>
-                          </div>
-                          {feature.new && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium whitespace-nowrap">
-                              NEW
-                            </span>
+                        <div key={i}>
+                          {feature.divider ? (
+                            /* Divider style for "Everything in X" */
+                            <div className="flex items-center gap-2 py-2 text-sm">
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span className="text-gray-500 italic">{feature.text}</span>
+                            </div>
+                          ) : (
+                            /* Regular feature */
+                            <div className="flex items-start gap-2 group">
+                              <div className="flex items-center gap-2 flex-1">
+                                {feature.star ? (
+                                  <span className="text-yellow-400 text-base flex-shrink-0">★</span>
+                                ) : (
+                                  <svg className={`w-5 h-5 flex-shrink-0 ${
+                                    plan.popular ? 'text-indigo-400' : 'text-green-400'
+                                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                                <span className={`text-sm ${
+                                  feature.star ? 'text-white font-medium' : 'text-gray-300'
+                                }`}>
+                                  {feature.text}
+                                </span>
+                              </div>
+                              {feature.new && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium whitespace-nowrap">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -308,7 +333,7 @@ export default function PricingPage() {
                     }`}
                   >
                     {plan.comingSoon 
-                      ? '🔔 ' + plan.cta
+                      ? plan.cta
                       : (plan.name === 'Starter' && user && !user.is_premium)
                         ? '✓ Current Plan'
                         : plan.cta
@@ -322,7 +347,7 @@ export default function PricingPage() {
                   )}
                   {plan.comingSoon && (
                     <p className="text-xs text-center text-gray-500 mt-3">
-                      Early access • Special launch pricing
+                      Be the first to get early access
                     </p>
                   )}
                 </div>
