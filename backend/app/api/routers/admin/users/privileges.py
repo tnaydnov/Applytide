@@ -26,15 +26,16 @@ logger = get_logger(__name__)
 @router.patch("/{user_id}/premium")
 def toggle_user_premium(
     user_id: uuid.UUID,
-    is_premium: bool,
-    expires_at: Optional[datetime] = None,
+    subscription_plan: str,
+    subscription_status: str,
+    subscription_ends_at: Optional[datetime] = None,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
     Grant or revoke premium status for a user.
     
-    Modifies user's premium account status and optionally sets
+    Modifies user's subscription plan, status, and optionally sets
     expiration date. Critical for subscription management, promotions,
     and support operations.
     
@@ -42,8 +43,9 @@ def toggle_user_premium(
         user_id (UUID): ID of the user to modify
         
     Request Body:
-        is_premium (bool): True to grant premium, False to revoke
-        expires_at (datetime): Optional expiration timestamp (only for premium grants)
+        subscription_plan (str): Plan name (e.g., 'starter', 'pro', 'premium')
+        subscription_status (str): Status (e.g., 'active', 'canceled', 'expired')
+        subscription_ends_at (datetime): Optional expiration timestamp
         
     Args:
         admin_user: Authenticated admin user (from dependency)
@@ -54,8 +56,9 @@ def toggle_user_premium(
             - success (bool): True if operation succeeded
             - message (str): Human-readable confirmation
             - user_id (UUID): ID of modified user
-            - is_premium (bool): New premium status
-            - expires_at (datetime): Expiration timestamp (if set)
+            - subscription_plan (str): New subscription plan
+            - subscription_status (str): New subscription status
+            - subscription_ends_at (datetime): Expiration timestamp (if set)
             
     Raises:
         HTTPException: 404 if user not found
@@ -66,15 +69,15 @@ def toggle_user_premium(
         Logs info-level event with admin and target user IDs
         
     Notes:
-        - Revoking premium automatically clears expires_at
-        - expires_at is only used when is_premium=True
+        - Revoking premium (setting to 'starter') automatically clears subscription_ends_at
+        - subscription_ends_at is only used for paid plans
         - Premium features are immediately available/revoked
         - Use for: trial extensions, support escalations, promotions
         - All changes are logged with admin responsible
         
     Example:
         PATCH /api/admin/users/123e4567-e89b-12d3-a456-426614174000/premium
-        Body: {"is_premium": true, "expires_at": "2024-12-31T23:59:59Z"}
+        Body: {"subscription_plan": "premium", "subscription_status": "active", "subscription_ends_at": "2024-12-31T23:59:59Z"}
         Grants premium until end of 2024
     """
     user = db.get(models.User, user_id)
@@ -84,27 +87,41 @@ def toggle_user_premium(
             detail="User not found"
         )
     
-    user.is_premium = is_premium
-    user.premium_expires_at = expires_at if is_premium else None
+    user.subscription_plan = subscription_plan
+    user.subscription_status = subscription_status
+    user.subscription_ends_at = subscription_ends_at if subscription_plan != 'starter' else None
+    
+    # If granting paid plan, set started_at if not already set
+    if subscription_plan != 'starter' and not user.subscription_started_at:
+        user.subscription_started_at = datetime.now()
+    
+    # If moving back to starter, clear subscription dates
+    if subscription_plan == 'starter':
+        user.subscription_started_at = None
+        user.subscription_renews_at = None
+        user.subscription_canceled_at = None
+    
     db.commit()
     
     logger.info(
-        f"Admin {admin_user.email} {'granted' if is_premium else 'revoked'} premium for user {user.email}",
+        f"Admin {admin_user.email} changed subscription for user {user.email} to {subscription_plan} ({subscription_status})",
         extra={
             "admin_id": admin_user.id,
             "target_user_id": user_id,
-            "action": "premium_toggle",
-            "is_premium": is_premium,
-            "expires_at": expires_at.isoformat() if expires_at else None
+            "action": "subscription_change",
+            "subscription_plan": subscription_plan,
+            "subscription_status": subscription_status,
+            "subscription_ends_at": subscription_ends_at.isoformat() if subscription_ends_at else None
         }
     )
     
     return {
         "success": True,
-        "message": f"Premium {'granted' if is_premium else 'revoked'} for user {user.email}",
+        "message": f"Subscription changed to {subscription_plan} ({subscription_status}) for user {user.email}",
         "user_id": user_id,
-        "is_premium": is_premium,
-        "premium_expires_at": expires_at
+        "subscription_plan": subscription_plan,
+        "subscription_status": subscription_status,
+        "subscription_ends_at": subscription_ends_at
     }
 
 

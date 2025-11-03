@@ -40,7 +40,7 @@ export default function UsersListPage() {
         page_size: pagination.page_size,
         ...(search && { search }),
         ...(roleFilter && { role: roleFilter }),
-        ...(premiumFilter !== '' && { is_premium: premiumFilter === 'true' }),
+        ...(premiumFilter !== '' && { subscription_plan: premiumFilter === 'true' ? 'premium' : 'starter' }),
         ...(verifiedFilter !== '' && { email_verified: verifiedFilter === 'true' })
       };
 
@@ -252,13 +252,13 @@ export default function UsersListPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {user.is_premium ? (
+                        {user.subscription_plan !== 'starter' && user.subscription_status === 'active' ? (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-700">
-                            ⭐ Premium
+                            ⭐ {user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)}
                           </span>
                         ) : (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-700 text-slate-300 border border-slate-600">
-                            Free
+                            Starter
                           </span>
                         )}
                       </td>

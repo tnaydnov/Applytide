@@ -1,7 +1,8 @@
 """
 Reminder service dependencies.
 
-Provides dependency injection for reminder management with Google Calendar integration.
+Provides dependency injection for reminder management with Google Calendar integration
+and AI-powered preparation tips (Pro/Premium feature).
 """
 from __future__ import annotations
 from fastapi import Depends
@@ -10,20 +11,28 @@ from ...db.session import get_db
 from ...domain.reminders.service import ReminderService
 from ...infra.repositories.reminders_sqlalchemy import ReminderSQLARepository, ReminderNoteSQLARepository
 from ...infra.external.google_calendar_gateway import GoogleCalendarGateway
+from ...infra.external.ai_preparation_service import AIPreparationService
+from ...infra.notifications.email_service import EmailService
 from ...infra.logging import get_logger
+from .applications import get_application_service
+from ...domain.applications.service import ApplicationService
 
 logger = get_logger(__name__)
 
 
-def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
+def get_reminder_service(
+    db: Session = Depends(get_db),
+    app_service: ApplicationService = Depends(get_application_service)
+) -> ReminderService:
     """
-    Provide ReminderService with reminder management and Google Calendar integration.
+    Provide ReminderService with reminder management, Google Calendar, and AI features.
     
-    Constructs ReminderService with repositories and a wrapped Google Calendar gateway
-    that automatically injects the database session into all calendar operations.
+    Constructs ReminderService with repositories, Google Calendar gateway, and
+    optional AI preparation service for Pro/Premium features.
     
     Args:
         db: Database session from FastAPI dependency injection
+        app_service: Application service for fetching job/resume data
     
     Returns:
         ReminderService: Configured service for reminder operations
@@ -32,7 +41,9 @@ def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
         - ReminderSQLARepository: Reminder persistence
         - ReminderNoteSQLARepository: Reminder notes management
         - GoogleCalendarGateway: Google Calendar API integration (wrapped)
-        - _GatewayWithDB: Shim that injects db into gateway calls
+        - AIPreparationService: AI-powered interview prep tips (Pro/Premium)
+        - EmailService: Email notifications with AI tips
+        - ApplicationService: Job and resume data for AI analysis
     
     Features:
         - Reminder CRUD operations
@@ -40,7 +51,16 @@ def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
         - Reminder notes and history
         - Due date management
         - Application-linked reminders
-        - Calendar event creation/updates
+        - AI-powered preparation tips (Pro/Premium)
+        - Immediate email delivery with tips
+    
+    AI Preparation Tips (Pro/Premium):
+        - Personalized interview preparation advice
+        - Company research and role analysis
+        - Resume-based candidate assessment
+        - Event-specific recommendations
+        - Immediate email delivery on reminder creation
+        - Powered by GPT-4o-mini
     
     Calendar Integration:
         - OAuth2 authentication with Google
@@ -58,18 +78,6 @@ def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
     Raises:
         Exception: If repository or gateway construction fails
     
-    Performance:
-        - Calendar operations cached when possible
-        - Batch operations for multiple reminders
-        - Async operations for API calls
-        - Token refresh handled transparently
-    
-    Security:
-        - OAuth tokens stored encrypted
-        - User isolation enforced
-        - Calendar access scoped appropriately
-        - Refresh tokens rotated
-    
     Example:
         @router.post("/api/reminders")
         async def create_reminder(
@@ -77,16 +85,36 @@ def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
             service: ReminderService = Depends(get_reminder_service),
             user: User = Depends(get_current_user)
         ):
-            return await service.create_reminder(user.id, data)
+            return await service.create_reminder(
+                user_id=user.id,
+                title=data.title,
+                ai_prep_tips_enabled=data.ai_prep_tips_enabled
+            )
     """
     try:
-        logger.debug("Initializing ReminderService")
+        logger.debug("Initializing ReminderService with AI features")
         
         reminders = ReminderSQLARepository(db)
         notes = ReminderNoteSQLARepository(db)
         
         # Wrap gateway so it always receives db when called (currying)
         gateway = GoogleCalendarGateway()
+        
+        # Initialize AI preparation service (graceful degradation if unavailable)
+        try:
+            ai_prep_service = AIPreparationService()
+            logger.debug("AI preparation service initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize AI service, Pro features disabled: {e}")
+            ai_prep_service = None
+        
+        # Initialize email service (graceful degradation if unavailable)
+        try:
+            email_service = EmailService()
+            logger.debug("Email service initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize email service: {e}")
+            email_service = None
         
         logger.debug("Creating Google Calendar gateway wrapper")
         
@@ -126,10 +154,20 @@ def get_reminder_service(db: Session = Depends(get_db)) -> ReminderService:
         service = ReminderService(
             reminders=reminders, 
             notes=notes, 
-            calendar=_GatewayWithDB()
+            calendar=_GatewayWithDB(),
+            ai_prep_service=ai_prep_service,
+            email_service=email_service,
+            app_service=app_service
         )
         
-        logger.debug("ReminderService initialized successfully")
+        logger.debug(
+            "ReminderService initialized successfully",
+            extra={
+                "has_ai": ai_prep_service is not None,
+                "has_email": email_service is not None,
+                "has_app_service": app_service is not None
+            }
+        )
         return service
         
     except Exception as e:

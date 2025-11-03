@@ -27,6 +27,7 @@ class ReminderCreate(ReminderBase):
     event_type: str = Field(default="general")
     timezone_str: str = Field(default="UTC")
     user_timezone: str = Field(default="UTC")
+    ai_prep_tips_enabled: bool = Field(default=False)  # Pro/Premium feature
 
 
 class ReminderUpdate(BaseModel):
@@ -43,6 +44,11 @@ class ReminderResponse(ReminderBase):
     user_id: uuid.UUID
     google_event_id: Optional[str] = None
     meet_url: Optional[str] = None
+    email_notifications_enabled: bool = False
+    event_type: Optional[str] = "general"
+    ai_prep_tips_enabled: bool = False
+    ai_prep_tips_generated: Optional[str] = None
+    ai_prep_tips_generated_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     

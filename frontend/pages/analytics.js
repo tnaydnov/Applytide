@@ -72,7 +72,9 @@ function ExportMenu({ onExport }) {
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const { checkPremium, PremiumModal } = usePremiumFeature({ isPremium: user?.is_premium });
+  const { checkPremium, PremiumModal } = usePremiumFeature({ 
+    isPremium: user?.subscription_plan !== 'starter' && user?.subscription_status === 'active' 
+  });
   
   const {
     analytics,
@@ -121,7 +123,7 @@ export default function AnalyticsPage() {
       case "overview": return <OverviewSection analytics={data} />;
       case "applications": return <ApplicationsSection analytics={data} />;
       case "interviews": return <InterviewsSection analytics={data} />;
-      case "companies": return <CompaniesSection analytics={data} isPremium={user?.is_premium} onPremiumRequired={checkPremium} />;
+      case "companies": return <CompaniesSection analytics={data} isPremium={user?.subscription_plan !== 'starter' && user?.subscription_status === 'active'} onPremiumRequired={checkPremium} />;
       case "sources": return <SourcesSection analytics={data} />;
       case "habits": return <BestTimeSection analytics={data} />;
       case "experiments": return <ExperimentsSection analytics={data} />;
@@ -167,7 +169,7 @@ export default function AnalyticsPage() {
         <CategoryTabs 
           selected={currentTab} 
           onSelect={setSelectedMetric} 
-          isPremium={user?.is_premium}
+          isPremium={user?.subscription_plan !== 'starter' && user?.subscription_status === 'active'}
           onPremiumRequired={checkPremium}
         />
         {renderSection()}

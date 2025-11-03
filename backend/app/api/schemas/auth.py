@@ -160,8 +160,17 @@ class UserInfo(BaseModel):
     theme_preference: str = "dark"
     notification_email: bool = True
     notification_push: bool = True
-    is_premium: bool = False
-    premium_expires_at: Optional[str] = None
+    
+    # Subscription fields
+    subscription_plan: str = "starter"  # 'starter', 'pro', 'premium', etc.
+    subscription_status: str = "active"  # 'active', 'canceled', 'expired', 'past_due'
+    subscription_period: Optional[str] = None  # 'monthly', 'yearly', null for free
+    subscription_started_at: Optional[str] = None
+    subscription_renews_at: Optional[str] = None  # When it will auto-renew (null if canceled)
+    subscription_ends_at: Optional[str] = None  # When access ends
+    subscription_canceled_at: Optional[str] = None  # When user canceled
+    is_premium: bool = False  # Computed: subscription_plan != 'starter' and subscription_status == 'active'
+    
     created_at: str
     updated_at: Optional[str] = None
     last_login_at: Optional[str] = None

@@ -8,18 +8,24 @@ Handles reminder lifecycle management including:
 - Reminder deletion with cascade cleanup
 - Note management for reminders
 - Google Calendar connection status and event listing
+- AI-powered interview preparation tips (Pro/Premium feature)
 
 All operations include comprehensive error handling, validation, and logging.
 """
 from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, TYPE_CHECKING
 from uuid import UUID
 import logging
 
 from .dto import ReminderDTO, ReminderNoteDTO
 from .ports import IReminderRepo, IReminderNoteRepo, ICalendarGateway
+
+if TYPE_CHECKING:
+    from app.infra.external.ai_preparation_service import AIPreparationService
+    from app.infra.notifications.email_service import EmailService
+    from app.domain.applications.service import ApplicationService
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +75,24 @@ class CalendarException(CalendarSyncError): ...
 
 class ReminderService:
     """
-    Reminder service with Google Calendar integration.
+    Reminder service with Google Calendar integration and AI preparation tips.
     
     Manages reminder lifecycle including creation, updates, deletion,
     and bidirectional Google Calendar synchronization. Also handles
-    notes attached to reminders.
+    notes attached to reminders and AI-powered interview preparation
+    tips for Pro/Premium users.
     """
     
-    def __init__(self, *, reminders: IReminderRepo, notes: IReminderNoteRepo, calendar: ICalendarGateway):
+    def __init__(
+        self, 
+        *, 
+        reminders: IReminderRepo, 
+        notes: IReminderNoteRepo, 
+        calendar: ICalendarGateway,
+        ai_prep_service: Optional["AIPreparationService"] = None,
+        email_service: Optional["EmailService"] = None,
+        app_service: Optional["ApplicationService"] = None
+    ):
         """
         Initialize reminder service.
         
@@ -84,19 +100,32 @@ class ReminderService:
             reminders: Reminder repository for persistence
             notes: Note repository for reminder notes
             calendar: Google Calendar gateway for event sync
+            ai_prep_service: AI service for preparation tips (optional, for Pro features)
+            email_service: Email service for sending tips (optional, for Pro features)
+            app_service: Application service for fetching job data (optional, for Pro features)
         
         Raises:
-            ValueError: If any dependency is None
+            ValueError: If required dependencies are None
         """
         if not all([reminders, notes, calendar]):
             logger.error("ReminderService initialized with None dependencies")
-            raise ValueError("All dependencies (reminders, notes, calendar) must be provided")
+            raise ValueError("Required dependencies (reminders, notes, calendar) must be provided")
         
         self.reminders = reminders
         self.notes = notes
         self.calendar = calendar
+        self.ai_prep_service = ai_prep_service
+        self.email_service = email_service
+        self.app_service = app_service
         
-        logger.debug("ReminderService initialized successfully")
+        logger.debug(
+            "ReminderService initialized successfully",
+            extra={
+                "has_ai_prep": ai_prep_service is not None,
+                "has_email": email_service is not None,
+                "has_app_service": app_service is not None
+            }
+        )
 
     # -------- Reminders --------
     
@@ -116,12 +145,14 @@ class ReminderService:
         notification_schedule: Optional[dict] = None,
         event_type: Optional[str] = "general",
         user_timezone: Optional[str] = "UTC",
+        ai_prep_tips_enabled: bool = False,
     ) -> ReminderDTO:
         """
-        Create a new reminder with optional Google Calendar integration.
+        Create a new reminder with optional Google Calendar integration and AI prep tips.
         
         Checks for duplicates before creation. If create_google_event is True,
         creates a corresponding Google Calendar event with optional Meet link.
+        If ai_prep_tips_enabled is True (Pro/Premium), will generate personalized prep tips.
         
         Args:
             user_id: User UUID
@@ -137,6 +168,7 @@ class ReminderService:
             notification_schedule: Optional notification schedule dict
             event_type: Event type (e.g., "interview", "followup", "general")
             user_timezone: User's timezone for display
+            ai_prep_tips_enabled: Enable AI prep tips (Pro/Premium feature)
         
         Returns:
             Created ReminderDTO (with google_event_id and meet_url if synced)
@@ -152,7 +184,8 @@ class ReminderService:
                 description="Send thank you email",
                 due_date=datetime.now(timezone.utc) + timedelta(days=1),
                 create_google_event=True,
-                add_meet_link=False
+                add_meet_link=False,
+                ai_prep_tips_enabled=True
             )
         """
         try:
@@ -222,11 +255,16 @@ class ReminderService:
                     notification_schedule=notification_schedule,
                     event_type=event_type,
                     user_timezone=user_timezone,
+                    ai_prep_tips_enabled=ai_prep_tips_enabled,
                 )
                 
                 logger.debug(
                     f"Reminder created in database",
-                    extra={"reminder_id": str(r.id), "user_id": str(user_id)}
+                    extra={
+                        "reminder_id": str(r.id),
+                        "user_id": str(user_id),
+                        "ai_prep_enabled": ai_prep_tips_enabled
+                    }
                 )
             except Exception as e:
                 logger.error(
@@ -235,6 +273,14 @@ class ReminderService:
                     exc_info=True
                 )
                 raise ReminderServiceError(f"Failed to create reminder: {e}")
+            
+            # Generate and send AI preparation tips if enabled (Pro/Premium feature)
+            if ai_prep_tips_enabled and application_id:
+                await self._generate_and_send_ai_tips(
+                    reminder=r,
+                    user_id=user_id,
+                    application_id=application_id
+                )
             
             # Sync to Google Calendar if requested
             if create_google_event:
@@ -1131,3 +1177,230 @@ class ReminderService:
         except Exception as e:
             logger.error(f"Unexpected error listing Google events: {e}", exc_info=True)
             raise ReminderServiceError(f"Failed to list Google events: {e}")
+
+    # ==============================================================================
+    # AI Preparation Tips (Pro/Premium Feature)
+    # ==============================================================================
+
+    async def _generate_and_send_ai_tips(
+        self, *, reminder: ReminderDTO, user_id: UUID, application_id: UUID
+    ) -> None:
+        """
+        Generate AI-powered interview preparation tips and send email immediately.
+        
+        This is a Pro/Premium feature that:
+        1. Fetches comprehensive application data (job, company, resume, attachments)
+        2. Calls AI service to generate personalized preparation tips
+        3. Caches the AI response in the database
+        4. Sends an immediate email with the tips
+        
+        Args:
+            reminder: The created reminder DTO
+            user_id: User UUID
+            application_id: Application UUID to fetch data for
+        
+        Note:
+            This method is fire-and-forget. Failures are logged but don't block
+            reminder creation. The user still gets their reminder even if AI tips fail.
+        """
+        try:
+            # Validate services are available
+            if not all([self.ai_prep_service, self.email_service, self.app_service]):
+                logger.warning(
+                    "AI prep tips requested but required services not available",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "has_ai_service": self.ai_prep_service is not None,
+                        "has_email": self.email_service is not None,
+                        "has_app_service": self.app_service is not None
+                    }
+                )
+                return
+            
+            logger.info(
+                f"Generating AI preparation tips for reminder",
+                extra={
+                    "reminder_id": str(reminder.id),
+                    "user_id": str(user_id),
+                    "application_id": str(application_id),
+                    "event_type": reminder.event_type
+                }
+            )
+            
+            # Fetch comprehensive application data
+            try:
+                app_detail = self.app_service.get_detail(
+                    user_id=user_id, 
+                    app_id=application_id
+                )
+                
+                if not app_detail or not app_detail.get("job"):
+                    logger.warning(
+                        f"Application data incomplete, skipping AI tips",
+                        extra={
+                            "reminder_id": str(reminder.id),
+                            "application_id": str(application_id)
+                        }
+                    )
+                    return
+                
+                job = app_detail["job"]
+                company_name = job.get("company_name", "")
+                job_title = job.get("title", "")
+                job_description = job.get("description", "")
+                job_url = job.get("url", "")
+                
+                # Get resume text if available
+                resume_text = None
+                resume = app_detail.get("resume")
+                if resume and resume.get("extracted_text"):
+                    resume_text = resume["extracted_text"]
+                
+                # Get cover letter text if available
+                cover_letter_text = None
+                attachments = app_detail.get("attachments", [])
+                for att in attachments:
+                    if att.get("document_type") == "cover_letter" and att.get("extracted_text"):
+                        cover_letter_text = att["extracted_text"]
+                        break
+                
+                logger.debug(
+                    f"Fetched application data for AI generation",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "has_job": bool(job),
+                        "has_resume": bool(resume_text),
+                        "has_cover_letter": bool(cover_letter_text),
+                        "company": company_name,
+                        "role": job_title
+                    }
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Failed to fetch application data: {e}",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "application_id": str(application_id)
+                    },
+                    exc_info=True
+                )
+                return
+            
+            # Generate AI tips
+            try:
+                result = await self.ai_prep_service.generate_preparation_tips(
+                    company_name=company_name,
+                    job_title=job_title,
+                    job_description=job_description,
+                    job_url=job_url,
+                    event_type=reminder.event_type or "general",
+                    resume_text=resume_text,
+                    cover_letter_text=cover_letter_text
+                )
+                
+                if not result.get("success"):
+                    logger.warning(
+                        f"AI service returned failure: {result.get('error', 'Unknown error')}",
+                        extra={
+                            "reminder_id": str(reminder.id),
+                            "error": result.get("error")
+                        }
+                    )
+                    return
+                
+                ai_response = result.get("data", {})
+                logger.info(
+                    f"AI tips generated successfully",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "has_tips": bool(ai_response)
+                    }
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Failed to generate AI tips: {e}",
+                    extra={"reminder_id": str(reminder.id)},
+                    exc_info=True
+                )
+                return
+            
+            # Cache AI response in database
+            try:
+                import json
+                self.reminders.update(
+                    user_id=user_id,
+                    reminder_id=reminder.id,
+                    data={
+                        "ai_prep_tips_generated": json.dumps(ai_response),
+                        "ai_prep_tips_generated_at": datetime.now(timezone.utc)
+                    }
+                )
+                logger.debug(
+                    f"AI tips cached in database",
+                    extra={"reminder_id": str(reminder.id)}
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to cache AI tips in database: {e}",
+                    extra={"reminder_id": str(reminder.id)},
+                    exc_info=True
+                )
+                # Continue with email even if caching fails
+            
+            # Format tips for email
+            try:
+                ai_tips_html = self.ai_prep_service.format_tips_for_email(ai_response)
+            except Exception as e:
+                logger.error(
+                    f"Failed to format AI tips for email: {e}",
+                    extra={"reminder_id": str(reminder.id)},
+                    exc_info=True
+                )
+                return
+            
+            # Send immediate email with AI tips
+            try:
+                await self.email_service.send_reminder_email(
+                    user_id=user_id,
+                    reminder_id=reminder.id,
+                    title=reminder.title,
+                    description=reminder.description,
+                    due_date=reminder.due_date,
+                    event_type=reminder.event_type,
+                    ai_prep_tips_html=ai_tips_html
+                )
+                
+                logger.info(
+                    f"AI preparation tips email sent successfully",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "user_id": str(user_id),
+                        "company": company_name,
+                        "role": job_title,
+                        "event_type": reminder.event_type
+                    }
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Failed to send AI tips email: {e}",
+                    extra={
+                        "reminder_id": str(reminder.id),
+                        "user_id": str(user_id)
+                    },
+                    exc_info=True
+                )
+                # Email failure is logged but doesn't fail the reminder creation
+                
+        except Exception as e:
+            # Catch-all to ensure AI feature never crashes reminder creation
+            logger.error(
+                f"Unexpected error in AI tips generation: {e}",
+                extra={
+                    "reminder_id": str(reminder.id),
+                    "user_id": str(user_id)
+                },
+                exc_info=True
+            )

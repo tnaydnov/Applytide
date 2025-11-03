@@ -48,11 +48,16 @@ class DashboardService:
                 logger.error(f"Failed to count total users: {e}", exc_info=True)
                 total_users = 0
             
-            # Premium users
+            # Premium users (paid plans that are active)
             try:
                 premium_users = self.db.scalar(
                     select(func.count(models.User.id))
-                    .where(models.User.is_premium == True)
+                    .where(
+                        and_(
+                            models.User.subscription_plan != 'starter',
+                            models.User.subscription_status == 'active'
+                        )
+                    )
                 ) or 0
                 logger.debug(f"Premium users: {premium_users}")
             except SQLAlchemyError as e:

@@ -95,18 +95,21 @@ export default function UserDetailPage() {
   };
 
   const handleTogglePremium = async () => {
-    if (!confirm(`${user.is_premium ? 'Revoke' : 'Grant'} premium for ${user.email}?`)) {
+    const hasPaidPlan = user.subscription_plan !== 'starter' && user.subscription_status === 'active';
+    if (!confirm(`${hasPaidPlan ? 'Revoke' : 'Grant'} premium for ${user.email}?`)) {
       return;
     }
 
     try {
       setActionLoading(true);
-      const expiresAt = !user.is_premium 
+      const newPlan = hasPaidPlan ? 'starter' : 'premium';
+      const newStatus = hasPaidPlan ? 'active' : 'active';
+      const expiresAt = !hasPaidPlan 
         ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
         : null;
       
-      await adminApi.toggleUserPremium(id, !user.is_premium, expiresAt);
-      toast.success(`Premium ${user.is_premium ? 'revoked' : 'granted'} successfully`);
+      await adminApi.toggleUserPremium(id, newPlan, newStatus, expiresAt);
+      toast.success(`Premium ${hasPaidPlan ? 'revoked' : 'granted'} successfully`);
       await loadUser();
     } catch (error) {
       console.error('Error toggling premium:', error);
@@ -222,9 +225,9 @@ export default function UserDetailPage() {
             }`}>
               {user.role}
             </span>
-            {user.is_premium && (
+            {user.subscription_plan !== 'starter' && user.subscription_status === 'active' && (
               <span className="px-3 py-1 text-sm font-medium rounded-full bg-yellow-900/30 text-yellow-300 border border-yellow-600">
-                ⭐ Premium
+                ⭐ {user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)}
               </span>
             )}
             {user.email_verified_at && (
@@ -278,12 +281,19 @@ export default function UserDetailPage() {
                   </div>
                 </div>
 
-                {user.is_premium && user.premium_expires_at && (
+                {user.subscription_plan !== 'starter' && user.subscription_ends_at && (
                   <div className="pt-4 border-t border-slate-700">
-                    <p className="text-sm text-slate-400">Premium Expires</p>
-                    <p className="mt-1 text-sm font-medium text-white">
-                      {format(new Date(user.premium_expires_at), 'MMM d, yyyy')}
+                    <p className="text-sm text-slate-400">
+                      Subscription {user.subscription_status === 'canceled' ? 'Ends' : 'Renews'}
                     </p>
+                    <p className="mt-1 text-sm font-medium text-white">
+                      {format(new Date(user.subscription_ends_at), 'MMM d, yyyy')}
+                    </p>
+                    {user.subscription_period && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        {user.subscription_period.charAt(0).toUpperCase() + user.subscription_period.slice(1)} plan
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -386,7 +396,7 @@ export default function UserDetailPage() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
                 >
                   <FiCreditCard />
-                  {user.is_premium ? 'Revoke Premium' : 'Grant Premium'}
+                  {user.subscription_plan !== 'starter' && user.subscription_status === 'active' ? 'Revoke Premium' : 'Grant Premium'}
                 </button>
 
                 {user.role !== 'admin' && (

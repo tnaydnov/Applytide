@@ -462,12 +462,14 @@ def reminder_email(
     time_until: str,
     urgency: str,
     event_type: str,
-    action_url: str
+    action_url: str,
+    ai_prep_tips_html: str = None
 ) -> str:
     """
-    Beautiful, professional reminder email with dynamic urgency styling
+    Beautiful, professional reminder email with dynamic urgency styling and optional AI prep tips
     urgency: 'now', 'today', 'tomorrow', 'week', 'future'
     event_type: 'interview', 'deadline', 'follow-up', 'general'
+    ai_prep_tips_html: Optional HTML content with AI-generated prep tips (Pro/Premium feature)
     """
     
     # Urgency-based styling - professional color scheme
@@ -599,6 +601,33 @@ def reminder_email(
                 </td>
             </tr>
         </table>
+        
+        {f'''
+        <!-- AI Preparation Tips Section (Pro/Premium Feature) -->
+        <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #0ea5e9; border-radius: 16px; padding: 35px 30px; margin: 35px 0;">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <span style="font-size: 36px; margin-bottom: 10px; display: inline-block;">🤖</span>
+                <h3 style="color: #0369a1; font-size: 24px; font-weight: 700; margin: 0 0 10px 0;">
+                    AI-Powered Preparation Tips
+                </h3>
+                <p style="color: #0284c7; font-size: 14px; margin: 0; font-weight: 600;">
+                    ✨ Personalized insights powered by AI
+                </p>
+            </div>
+            
+            <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+                {ai_prep_tips_html}
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p style="color: #0369a1; font-size: 13px; margin: 0;">
+                    <span style="background: #e0f2fe; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
+                        💎 Pro Feature
+                    </span>
+                </p>
+            </div>
+        </div>
+        ''' if ai_prep_tips_html else ''}
         
         <!-- Divider -->
         <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); margin: 35px 0;"></div>

@@ -100,10 +100,11 @@ export const adminApi = {
   /**
    * Toggle user premium status
    */
-  toggleUserPremium: async (userId, isPremium, expiresAt = null) => {
+  toggleUserPremium: async (userId, subscriptionPlan, subscriptionStatus, expiresAt = null) => {
     const response = await api.patch(`/admin/users/${userId}/premium`, {
-      is_premium: isPremium,
-      expires_at: expiresAt
+      subscription_plan: subscriptionPlan,
+      subscription_status: subscriptionStatus,
+      subscription_ends_at: expiresAt
     });
     return response.data;
   },

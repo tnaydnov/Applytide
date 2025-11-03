@@ -71,12 +71,14 @@ export default function ProfileSidebar({ user, avatar, onLogout }) {
           <span className="text-gray-400">Account Type</span>
           <span
             className={`px-2 py-1 rounded text-xs font-semibold ${
-              user?.is_premium
+              user?.subscription_plan !== 'starter' && user?.subscription_status === 'active'
                 ? "bg-yellow-900/30 text-yellow-300 border border-yellow-500/30"
                 : "bg-gray-900/30 text-gray-300 border border-gray-500/30"
             }`}
           >
-            {user?.is_premium ? "Premium" : "Free"}
+            {user?.subscription_plan !== 'starter' && user?.subscription_status === 'active' 
+              ? user?.subscription_plan.charAt(0).toUpperCase() + user?.subscription_plan.slice(1)
+              : "Starter"}
           </span>
         </div>
 

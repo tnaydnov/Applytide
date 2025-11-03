@@ -63,9 +63,16 @@ class User(Base):
     linkedin_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
     github_url: Mapped[str | None] = mapped_column(String(200), nullable=True)
     
+    # Subscription Management
+    subscription_plan: Mapped[str] = mapped_column(String(20), default="starter", nullable=False, index=True)  # 'starter', 'pro', 'premium', etc.
+    subscription_status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)  # 'active', 'canceled', 'expired', 'past_due'
+    subscription_period: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 'monthly', 'yearly', null for free plan
+    subscription_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # When current subscription period started
+    subscription_renews_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # When subscription auto-renews (null if canceled)
+    subscription_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # When access ends (after cancellation period)
+    subscription_canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # When user canceled (still has access until ends_at)
+    
     # Account Status
-    is_premium: Mapped[bool] = mapped_column(default=False, nullable=False)
-    premium_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
@@ -103,6 +110,135 @@ class User(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
+    
+    # ============= Subscription Helper Methods =============
+    
+    @property
+    def is_premium(self) -> bool:
+        """Backward compatibility: returns True if user has any paid plan"""
+        return self.subscription_plan != "starter" and self.subscription_status == "active"
+    
+    @property
+    def is_starter(self) -> bool:
+        """Check if user is on Starter (free) plan"""
+        return self.subscription_plan == "starter"
+    
+    @property
+    def is_pro(self) -> bool:
+        """Check if user is on Pro plan"""
+        return self.subscription_plan == "pro" and self.subscription_status == "active"
+    
+    @property
+    def is_premium_plan(self) -> bool:
+        """Check if user is on Premium plan"""
+        return self.subscription_plan == "premium" and self.subscription_status == "active"
+    
+    @property
+    def has_paid_plan(self) -> bool:
+        """Check if user has any active paid plan (Pro or Premium)"""
+        return self.subscription_plan != "starter" and self.subscription_status == "active"
+    
+    @property
+    def is_subscription_active(self) -> bool:
+        """Check if subscription is currently active (has access)"""
+        if self.subscription_plan == "starter":
+            return True  # Free plan is always active
+        return self.subscription_status == "active" and (
+            self.subscription_ends_at is None or 
+            self.subscription_ends_at > now_utc()
+        )
+    
+    @property
+    def is_subscription_canceled(self) -> bool:
+        """Check if subscription is canceled but still has access until period ends"""
+        return self.subscription_canceled_at is not None and self.subscription_ends_at > now_utc()
+    
+    @property
+    def will_renew(self) -> bool:
+        """Check if subscription will auto-renew"""
+        return (
+            self.subscription_plan != "starter" and 
+            self.subscription_status == "active" and
+            self.subscription_renews_at is not None and
+            self.subscription_canceled_at is None
+        )
+    
+    @property
+    def days_until_renewal(self) -> int | None:
+        """Days until subscription renews (None if not renewing)"""
+        if not self.will_renew or not self.subscription_renews_at:
+            return None
+        delta = self.subscription_renews_at - now_utc()
+        return max(0, delta.days)
+    
+    @property
+    def days_until_expiration(self) -> int | None:
+        """Days until subscription access ends (None if not expiring)"""
+        if not self.subscription_ends_at:
+            return None
+        delta = self.subscription_ends_at - now_utc()
+        return max(0, delta.days)
+    
+    def has_feature_access(self, feature: str) -> bool:
+        """
+        Check if user has access to a specific feature based on their active plan.
+        
+        Features:
+        - unlimited_applications: Pro, Premium
+        - unlimited_ai: Pro, Premium
+        - advanced_analytics: Pro, Premium
+        - ai_agent: Premium only
+        - auto_fill: Premium only
+        - resume_generation: Premium only
+        """
+        if not self.is_subscription_active:
+            return False
+            
+        feature_access = {
+            # Pro & Premium features
+            "unlimited_applications": ["pro", "premium"],
+            "unlimited_ai": ["pro", "premium"],
+            "unlimited_cover_letters": ["pro", "premium"],
+            "unlimited_resume_analysis": ["pro", "premium"],
+            "advanced_analytics": ["pro", "premium"],
+            "interview_prep": ["pro", "premium"],
+            "company_insights": ["pro", "premium"],
+            "skills_gap_analysis": ["pro", "premium"],
+            "priority_support": ["pro", "premium"],
+            # Premium-only features
+            "ai_agent": ["premium"],
+            "auto_fill": ["premium"],
+            "resume_generation": ["premium"],
+            "auto_optimize_resume": ["premium"],
+            "email_tracking": ["premium"],
+        }
+        
+        allowed_plans = feature_access.get(feature, [])
+        return self.subscription_plan in allowed_plans
+    
+    def cancel_subscription(self) -> None:
+        """
+        Cancel subscription (user keeps access until current period ends).
+        Sets canceled_at timestamp and clears renews_at to prevent auto-renewal.
+        """
+        self.subscription_canceled_at = now_utc()
+        self.subscription_renews_at = None  # Stop auto-renewal
+        self.subscription_status = "canceled"
+        # subscription_ends_at remains unchanged - user keeps access until then
+    
+    def reactivate_subscription(self) -> None:
+        """
+        Reactivate a canceled subscription (re-enable auto-renewal).
+        Only works if subscription hasn't expired yet.
+        """
+        if self.subscription_ends_at and self.subscription_ends_at > now_utc():
+            self.subscription_canceled_at = None
+            self.subscription_status = "active"
+            # Restore auto-renewal
+            if self.subscription_period == "monthly":
+                self.subscription_renews_at = self.subscription_ends_at
+            elif self.subscription_period == "yearly":
+                self.subscription_renews_at = self.subscription_ends_at
 
 
 class OAuthToken(Base):
@@ -282,6 +418,11 @@ class Reminder(Base):
     event_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="general")
     last_notification_sent: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_timezone: Mapped[str | None] = mapped_column(String(50), nullable=True, default="UTC")
+    
+    # AI Preparation Tips (Pro/Premium feature)
+    ai_prep_tips_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_prep_tips_generated: Mapped[str | None] = mapped_column(Text, nullable=True)  # Cached AI response
+    ai_prep_tips_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)

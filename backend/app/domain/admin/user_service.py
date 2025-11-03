@@ -95,7 +95,21 @@ class UserService:
                 logger.debug(f"Applied role filter: {role}")
             
             if is_premium is not None:
-                filters.append(models.User.is_premium == is_premium)
+                # Filter by subscription status - paid plans (pro/premium) are considered premium
+                if is_premium:
+                    filters.append(
+                        and_(
+                            models.User.subscription_plan != 'starter',
+                            models.User.subscription_status == 'active'
+                        )
+                    )
+                else:
+                    filters.append(
+                        or_(
+                            models.User.subscription_plan == 'starter',
+                            models.User.subscription_status != 'active'
+                        )
+                    )
                 logger.debug(f"Applied is_premium filter: {is_premium}")
             
             if email_verified is not None:

@@ -661,10 +661,11 @@ class EmailService:
         time_until: str,
         urgency: str,
         event_type: str,
-        action_url: str
+        action_url: str,
+        ai_prep_tips_html: str = None
     ) -> bool:
         """
-        Send reminder email with dynamic urgency and action link.
+        Send reminder email with dynamic urgency, action link, and optional AI prep tips.
         
         Args:
             to_email: Recipient email address
@@ -676,6 +677,7 @@ class EmailService:
             urgency: Urgency level ('now', 'today', 'tomorrow', 'week', 'future')
             event_type: Event type ('interview', 'deadline', 'follow_up', etc.)
             action_url: Link to application/reminder in app
+            ai_prep_tips_html: Optional HTML content with AI-generated prep tips (Pro/Premium)
             
         Returns:
             bool: True if email sent successfully
@@ -687,6 +689,7 @@ class EmailService:
             - Subject prefix varies by urgency (🚨 URGENT, ⏰ TODAY, 📅 TOMORROW, etc.)
             - Contains action button linking to pipeline/reminders page
             - Uses branded email template
+            - AI prep tips are included if provided (Pro/Premium feature)
         """
         try:
             _validate_email(to_email)
@@ -715,7 +718,8 @@ class EmailService:
             time_until=time_until,
             urgency=urgency,
             event_type=event_type,
-            action_url=action_url
+            action_url=action_url,
+            ai_prep_tips_html=ai_prep_tips_html
         )
         
         subject_prefix = {
@@ -733,7 +737,8 @@ class EmailService:
                 "name": name,
                 "title": title,
                 "urgency": urgency,
-                "event_type": event_type
+                "event_type": event_type,
+                "has_ai_tips": bool(ai_prep_tips_html)
             }
         )
         

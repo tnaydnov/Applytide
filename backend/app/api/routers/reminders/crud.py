@@ -111,6 +111,8 @@ async def create_reminder(
             notification_schedule=reminder.notification_schedule,
             event_type=reminder.event_type,
             user_timezone=reminder.user_timezone,
+            # AI prep tips (Pro/Premium feature)
+            ai_prep_tips_enabled=reminder.ai_prep_tips_enabled if user.has_feature_access('interview_prep') else False,
         )
     except Exception as e:
         logger.error(

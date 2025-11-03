@@ -27,6 +27,7 @@ export default function PricingPage() {
       icon: '🎯',
       price: { monthly: 0, yearly: 0 },
       popular: false,
+      temporaryNote: '⚡ All limits temporarily removed during development',
       features: [
         { text: 'Track up to 25 job applications' },
         { text: 'Visual pipeline/kanban board' },
@@ -50,7 +51,7 @@ export default function PricingPage() {
       icon: '🚀',
       badge: 'Coming Soon',
       price: { monthly: 'TBA', yearly: 'TBA' },
-      popular: true,
+      popular: false,
       comingSoon: true,
       features: [
         { text: 'Everything in Starter', divider: true },
@@ -156,12 +157,8 @@ export default function PricingPage() {
           {plans.map((plan, idx) => (
             <div 
               key={plan.name} 
-              className={`relative ${plan.popular ? 'lg:scale-105 lg:z-10' : ''}`}
+              className="relative"
             >
-              {/* Glow effect for popular plan */}
-              {plan.popular && (
-                <div className="absolute -inset-1 bg-gradient-to-b from-indigo-600/50 via-purple-600/50 to-pink-600/50 rounded-3xl blur-2xl opacity-75"></div>
-              )}
 
               <div className={`relative h-full flex flex-col rounded-3xl overflow-hidden ${
                 plan.popular 
@@ -169,13 +166,6 @@ export default function PricingPage() {
                   : 'bg-gray-900/50 backdrop-blur-xl border border-white/10'
               }`}>
                 
-                {/* Popular Badge - Fixed positioning */}
-                {plan.popular && (
-                  <div className="absolute -top-px left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-b-2xl text-white text-sm font-bold shadow-xl z-30">
-                    ⭐ Most Popular
-                  </div>
-                )}
-
                 {/* Card Content */}
                 <div className="p-8 flex flex-col flex-1">
                   
@@ -185,6 +175,15 @@ export default function PricingPage() {
                       <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-medium">
                         {plan.badge}
                       </span>
+                    </div>
+                  )}
+                  
+                  {/* Temporary Note for Starter */}
+                  {plan.temporaryNote && (
+                    <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
+                      <p className="text-xs text-green-400 text-center font-medium">
+                        {plan.temporaryNote}
+                      </p>
                     </div>
                   )}
                   
@@ -312,7 +311,7 @@ export default function PricingPage() {
 
                   {/* CTA */}
                   <Button
-                    disabled={plan.comingSoon || (plan.name === 'Starter' && user && !user.is_premium)}
+                    disabled={plan.comingSoon || (plan.name === 'Starter' && user && user.subscription_plan === 'starter')}
                     onClick={() => {
                       if (plan.comingSoon) {
                         handleUpgrade();
@@ -334,7 +333,7 @@ export default function PricingPage() {
                   >
                     {plan.comingSoon 
                       ? plan.cta
-                      : (plan.name === 'Starter' && user && !user.is_premium)
+                      : (plan.name === 'Starter' && user && user.subscription_plan === 'starter')
                         ? '✓ Current Plan'
                         : plan.cta
                     }
