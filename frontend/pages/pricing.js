@@ -23,88 +23,55 @@ export default function PricingPage() {
   const plans = [
     {
       name: 'Starter',
-      description: 'Perfect for getting started',
+      tagline: 'Perfect for getting started',
       price: { monthly: 0, yearly: 0 },
-      popular: false,
       features: [
-        { 
-          category: 'Get Organized', 
-          items: [
-            'Track up to 25 job applications',
-            'Visual pipeline/kanban board',
-            'Chrome extension for one-click saving',
-            'Smart reminders & scheduling',
-            'Google Calendar integration',
-            'Interview scheduling',
-            'Email notifications',
-            'Document storage & file attachments',
-            'Export to CSV & PDF'
-          ]
-        },
-        {
-          category: 'AI Features (Limited)',
-          items: [
-            '10 AI cover letters per month',
-            '7 AI resume analyses per month',
-            'Basic analytics dashboard'
-          ]
-        }
+        'Track up to 25 job applications',
+        'Visual pipeline/kanban board',
+        'Chrome extension for one-click saving',
+        'Smart reminders & scheduling',
+        'Google Calendar integration',
+        'Interview scheduling',
+        'Email notifications',
+        'Document storage & file attachments',
+        'Export to CSV & PDF',
+        '10 AI cover letters per month',
+        '7 AI resume analyses per month',
+        'Basic analytics dashboard'
       ],
       cta: 'Current Plan',
-      ctaAction: null,
-      ctaNote: '💡 Want unlimited AI power? Check out Premium below!'
+      ctaAction: null
     },
     {
       name: 'Premium',
-      description: 'Land your dream job faster',
+      tagline: 'Land your dream job faster',
+      badge: '🚧 Coming Soon',
       price: { monthly: 'TBA', yearly: 'TBA' },
-      popular: true,
       comingSoon: true,
       trialDays: 7,
       features: [
-        {
-          category: '🚀 Everything in Starter, plus:',
-          highlight: true
-        },
-        {
-          category: 'Unlimited AI Automation',
-          icon: '🤖',
-          items: [
-            'Unlimited AI cover letters tailored to each job',
-            'Unlimited AI resume analysis & optimization',
-            'Generate professional resumes from scratch',
-            'Auto-optimize resume for specific job postings',
-            'Smart email tracking & auto-categorization',
-            'AI interview preparation & tips'
-          ]
-        },
-        {
-          category: 'Advanced Job Search Intelligence',
-          icon: '🎯',
-          items: [
-            'AI job discovery agent (finds jobs while you sleep)',
-            'Skills gap analysis with learning recommendations',
-            'Company insights & research tools',
-            'Chrome extension auto-fill for applications'
-          ]
-        },
-        {
-          category: 'Professional Features',
-          icon: '⚡',
-          items: [
-            'Unlimited job applications (no 25 limit)',
-            'Advanced analytics with actionable insights',
-            'Priority support'
-          ]
-        }
+        'Everything in Starter',
+        'Unlimited AI cover letters tailored to each job',
+        'Unlimited AI resume analysis & optimization',
+        'Generate professional resumes from scratch',
+        'Auto-optimize resume for specific job postings',
+        'Smart email tracking & auto-categorization',
+        'AI interview preparation & tips',
+        'AI job discovery agent (finds jobs while you sleep)',
+        'Skills gap analysis with learning recommendations',
+        'Company insights & research tools',
+        'Chrome extension auto-fill for applications',
+        'Unlimited job applications (no 25 limit)',
+        'Advanced analytics with actionable insights',
+        'Priority support'
       ],
-      cta: 'Start 7-Day Free Trial',
-      ctaAction: handleUpgrade,
       highlights: [
-        '10x faster applications',
-        '3x more interviews',
-        '85% time saved'
-      ]
+        { icon: '🚀', value: '10x', label: 'Faster' },
+        { icon: '📅', value: '3x', label: 'More Interviews' },
+        { icon: '⏰', value: '85%', label: 'Time Saved' }
+      ],
+      cta: 'Get Notified',
+      ctaAction: handleUpgrade
     }
   ];
 
@@ -166,131 +133,187 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Plans */}
-        <div
-          className="
-    md:grid md:grid-cols-2 md:gap-6
-    flex gap-4 overflow-x-auto snap-x snap-mandatory px-1
-    pb-2 -mx-4 sm:mx-0 md:overflow-visible
-  "
-        >
-          {plans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={`
-        relative glass-card p-6 md:p-8
-        border ${plan.popular ? 'border-2 border-indigo-500' : 'border-white/10'}
-        shadow-lg ${plan.popular ? 'shadow-indigo-500/20' : 'shadow-black/10'}
-        rounded-2xl
-        /* Mobile: show as wide slides with snap */
-        min-w-[86%] sm:min-w-[75%] md:min-w-0 snap-center
-      `}
-            >
-              {/* Fixed height badge container to keep cards aligned */}
-              <div className="flex items-center justify-center gap-3 mb-3 h-8">
-                {plan.popular && (
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/50 animate-pulse">
-                    ⭐ MOST POPULAR
-                  </span>
-                )}
-                {plan.comingSoon && !plan.popular && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
-                    🚧 Coming soon
-                  </span>
-                )}
-              </div>
+        {/* Plans - Revolutionary Bento Box Design */}
+        <div className="relative mb-32">
+          {/* Background decoration */}
+          <div className="absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          </div>
 
-              {/* Plan Header */}
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-white mb-1">{plan.name}</h3>
-                <p className="text-gray-300 mb-4">{plan.description}</p>
-                <div>
-                  <span className="text-4xl font-bold text-white">{formatPrice(plan)}</span>
-                  {plan.price !== 'Custom' && plan.price.monthly > 0 && plan.price.monthly !== 'TBA' && billingCycle === 'yearly' && (
-                    <div className="text-sm text-green-400 mt-1">
-                      {getYearlySavings(plan)} • Billed ${plan.price.yearly}/year
+          {/* Bento Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            
+            {/* LEFT SIDE - Starter Plan (Takes 5 columns on desktop) */}
+            <div className="lg:col-span-5 space-y-6">
+              
+              {/* Main Starter Card */}
+              <Card className="glass-card border border-white/10 p-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-500/10 to-gray-700/10 rounded-full blur-2xl"></div>
+                
+                <div className="relative">
+                  <div className="flex items-start justify-between mb-6">
+                    <div>
+                      <h3 className="text-3xl font-bold text-white mb-2">Starter</h3>
+                      <p className="text-gray-400">Perfect for getting started</p>
                     </div>
-                  )}
-                  {plan.trialDays && (
-                    <div className="text-sm text-purple-400 mt-2 font-semibold">
-                      🎁 {plan.trialDays}-day free trial
+                    <div className="text-right">
+                      <div className="text-4xl font-bold text-white">Free</div>
+                      <p className="text-xs text-gray-500">Forever</p>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Key Features Highlight */}
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+                      <div className="text-2xl mb-1">📊</div>
+                      <div className="text-sm text-gray-300">Track 25 Jobs</div>
+                    </div>
+                    <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+                      <div className="text-2xl mb-1">🤖</div>
+                      <div className="text-sm text-gray-300">10 AI Letters</div>
+                    </div>
+                  </div>
+
+                  <Button
+                    disabled={user && !user.is_premium}
+                    onClick={() => !user && router.push('/login')}
+                    className="w-full bg-gray-700 hover:bg-gray-600 mb-4"
+                  >
+                    {user && !user.is_premium ? '✓ Current Plan' : 'Get Started Free'}
+                  </Button>
+
+                  <p className="text-xs text-center text-gray-500">No credit card required</p>
                 </div>
-              </div>
+              </Card>
 
-              {/* Highlights for Premium */}
-              {plan.highlights && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 rounded-lg border border-indigo-500/30">
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    {plan.highlights.map((highlight, i) => (
-                      <div key={i}>
-                        <div className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                          {highlight.split(' ')[0]}
+              {/* Expandable Features Card */}
+              <Card className="glass-card border border-white/10 p-6">
+                <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-wide">What's Included</h4>
+                <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+                  {plans[0].features.map((feature, i) => (
+                    <div key={i} className="flex items-start text-sm">
+                      <svg className="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-gray-300">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* RIGHT SIDE - Premium Plan (Takes 7 columns on desktop) */}
+            <div className="lg:col-span-7 relative">
+              
+              {/* Glowing effect */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-2xl opacity-20"></div>
+              
+              <Card className="relative glass-card border-2 border-indigo-500/50 p-8 lg:p-10 h-full">
+                {/* Animated background orbs */}
+                <div className="absolute top-10 right-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-10 left-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"></div>
+
+                <div className="relative z-10">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-8">
+                    <div>
+                      <div className="inline-flex items-center gap-2 mb-3">
+                        <h3 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                          Premium
+                        </h3>
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+                          🚧 Coming Soon
+                        </span>
+                      </div>
+                      <p className="text-gray-300 text-lg">Land your dream job faster</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-5xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        TBA
+                      </div>
+                      <p className="text-xs text-purple-300 mt-1">🎁 7-day trial</p>
+                    </div>
+                  </div>
+
+                  {/* Power Stats - Diagonal Layout */}
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    {plans[1].highlights.map((stat, i) => (
+                      <div 
+                        key={i} 
+                        className="relative p-4 bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-2xl border border-indigo-500/30 hover:scale-105 transition-transform"
+                        style={{ transform: `rotate(${i === 1 ? 0 : i === 0 ? -2 : 2}deg)` }}
+                      >
+                        <div className="text-center">
+                          <div className="text-3xl mb-2">{stat.icon}</div>
+                          <div className="text-3xl font-bold text-white">{stat.value}</div>
+                          <div className="text-xs text-gray-400">{stat.label}</div>
                         </div>
-                        <div className="text-xs text-gray-300">{highlight.split(' ').slice(1).join(' ')}</div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
 
-              {/* Features */}
-              <div className="space-y-6 mb-6">
-                {plan.features.map((section, idx) => (
-                  <div key={idx}>
-                    {section.highlight ? (
-                      <div className="text-center py-2 px-4 bg-gradient-to-r from-indigo-600/30 to-purple-600/30 rounded-lg border border-indigo-500/30">
-                        <span className="text-sm font-bold text-white">{section.category}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center mb-3">
-                          {section.icon && <span className="text-xl mr-2">{section.icon}</span>}
-                          <h4 className="text-sm font-bold text-white uppercase tracking-wide">{section.category}</h4>
+                  {/* Features in a flowing 2-column layout */}
+                  <div className="mb-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-indigo-900/30 rounded-full border border-indigo-500/30 mb-4">
+                      <span className="text-sm font-bold text-indigo-300">✨ Everything in Starter, plus:</span>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-x-6 gap-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                      {plans[1].features.slice(1).map((feature, i) => (
+                        <div key={i} className="flex items-start text-sm">
+                          <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+                          <span className="text-gray-200">{feature}</span>
                         </div>
-                        <ul className="space-y-2.5">
-                          {section.items.map((item, i) => (
-                            <li key={i} className="flex items-start">
-                              <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="ml-3 text-sm text-gray-200">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Note for Free plan */}
-              {plan.ctaNote && (
-                <div className="mb-4 p-3 bg-purple-900/20 rounded-lg border border-purple-500/30 text-center">
-                  <p className="text-xs text-purple-300">{plan.ctaNote}</p>
+                  {/* CTA */}
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleUpgrade}
+                      className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 shadow-lg shadow-indigo-500/50 text-lg py-4 font-bold"
+                    >
+                      🔔 Get Notified When We Launch
+                    </Button>
+                    <p className="text-xs text-center text-gray-400">
+                      Be the first to know • Exclusive early access • Special launch pricing
+                    </p>
+                  </div>
                 </div>
-              )}
+              </Card>
+            </div>
+          </div>
 
-              {/* CTA */}
-              <Button
-                onClick={plan.comingSoon ? undefined : plan.ctaAction}
-                disabled={plan.comingSoon || (plan.name === 'Starter' && user && !user.is_premium)}
-                className={`w-full ${plan.comingSoon
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
-                  : plan.popular
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/50 transform hover:scale-105 transition-all'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-              >
-                {plan.comingSoon ? '🚧 Coming Soon'
-                  : (plan.name === 'Starter' && user && !user.is_premium)
-                    ? 'Current Plan'
-                    : plan.cta}
-              </Button>
-            </Card>
-          ))}
+          {/* Floating comparison badge */}
+          <div className="hidden lg:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 blur-xl opacity-50 animate-pulse"></div>
+              <div className="relative bg-gray-900 border-2 border-indigo-500/50 rounded-full px-8 py-4 shadow-2xl">
+                <span className="text-white font-bold text-lg">Upgrade →</span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Custom scrollbar styles */}
+        <style jsx>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.7);
+          }
+        `}</style>
 
         {/* Premium Features Showcase */}
         <div className="mt-32 mb-16">
