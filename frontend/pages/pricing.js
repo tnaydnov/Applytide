@@ -28,18 +28,18 @@ export default function PricingPage() {
       price: { monthly: 0, yearly: 0 },
       popular: false,
       features: [
-        'Track up to 25 job applications',
-        'Visual pipeline/kanban board',
-        'Chrome extension for one-click saving',
-        'Smart reminders & scheduling',
-        'Google Calendar integration',
-        'Interview scheduling',
-        'Email notifications',
-        'Document storage & file attachments',
-        'Export to CSV & PDF',
-        '10 AI cover letters per month',
-        '7 AI resume analyses per month',
-        'Basic analytics dashboard'
+        { text: 'Track up to 25 job applications' },
+        { text: 'Visual pipeline/kanban board' },
+        { text: 'Chrome extension for one-click saving' },
+        { text: 'Smart reminders & scheduling' },
+        { text: 'Google Calendar integration' },
+        { text: 'Interview scheduling' },
+        { text: 'Email notifications' },
+        { text: 'Document storage & file attachments' },
+        { text: 'Export to CSV & PDF' },
+        { text: '10 AI cover letters per month' },
+        { text: '7 AI resume analyses per month' },
+        { text: 'Basic analytics dashboard' }
       ],
       cta: 'Get Started Free',
       ctaAction: null
@@ -48,22 +48,23 @@ export default function PricingPage() {
       name: 'Pro',
       tagline: 'For serious job seekers',
       icon: '🚀',
-      badge: '🚧 Coming Soon',
+      badge: 'Coming Soon',
       price: { monthly: 'TBA', yearly: 'TBA' },
       popular: true,
       comingSoon: true,
       features: [
-        'Everything in Starter',
-        'Unlimited job applications',
-        'Unlimited AI cover letters',
-        'Unlimited AI resume analysis',
-        'Advanced analytics dashboard',
-        'Priority email support',
-        'Chrome extension auto-fill',
-        'Export capabilities (CSV, PDF)',
-        'Email thread tracking'
+        { text: 'Everything in Starter' },
+        { text: 'Unlimited job applications', highlight: true },
+        { text: 'Unlimited AI cover letters', highlight: true },
+        { text: 'Unlimited AI resume analysis', highlight: true },
+        { text: 'Advanced analytics dashboard' },
+        { text: 'Chrome extension auto-fill' },
+        { text: 'AI interview preparation tips', new: true },
+        { text: 'Company insights & research' },
+        { text: 'Skills gap analysis with learning paths' },
+        { text: 'Priority email support' }
       ],
-      highlight: 'Unlimited AI Power',
+      highlight: '✨ Unlimited AI Power',
       cta: 'Get Notified',
       ctaAction: null
     },
@@ -71,25 +72,21 @@ export default function PricingPage() {
       name: 'Premium',
       tagline: 'Maximum career acceleration',
       icon: '⚡',
-      badge: '🚧 Coming Soon',
+      badge: 'Coming Soon',
       price: { monthly: 'TBA', yearly: 'TBA' },
       popular: false,
       comingSoon: true,
       features: [
-        'Everything in Pro',
-        'AI resume generation from scratch',
-        'Auto-optimize resume for job postings',
-        'AI job discovery agent (auto-search)',
-        'Skills gap analysis & learning paths',
-        'AI interview preparation tips',
-        'Company insights & research',
-        'Smart email auto-categorization',
-        'Priority support (24h response)'
+        { text: 'Everything in Pro' },
+        { text: 'AI Smart Agent finds jobs for you', highlight: true, new: true },
+        { text: 'AI resume generation from scratch', highlight: true },
+        { text: 'Auto-optimize resume for each job posting' },
+        { text: 'Smart email tracking & categorization' }
       ],
-      highlight: 'AI Career Assistant',
+      highlight: '🤖 AI Career Assistant',
       stats: [
         { icon: '🚀', value: '10x', label: 'Faster' },
-        { icon: '📅', value: '3x', label: 'More Interviews' }
+        { icon: '📅', value: '3x', label: 'Interviews' }
       ],
       cta: 'Get Notified',
       ctaAction: null
@@ -154,153 +151,182 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Plans - 3 Column Grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto mb-32">
+        {/* Plans - Modern 3 Column Design */}
+        <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto mb-32">
           {plans.map((plan, idx) => (
             <div 
               key={plan.name} 
-              className={`relative ${plan.popular ? 'md:-mt-4 md:mb-4' : ''}`}
+              className={`relative ${plan.popular ? 'lg:scale-105 lg:z-10' : ''}`}
             >
               {/* Glow effect for popular plan */}
               {plan.popular && (
-                <div className="absolute -inset-2 bg-gradient-to-b from-indigo-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-xl"></div>
+                <div className="absolute -inset-1 bg-gradient-to-b from-indigo-600/50 via-purple-600/50 to-pink-600/50 rounded-3xl blur-2xl opacity-75"></div>
               )}
 
-              <Card className={`relative h-full flex flex-col ${
+              <div className={`relative h-full flex flex-col rounded-3xl overflow-hidden ${
                 plan.popular 
-                  ? 'glass-card border-2 border-indigo-500/50 shadow-2xl shadow-indigo-500/20' 
-                  : 'glass-card border border-white/10'
-              } p-8`}>
+                  ? 'bg-gradient-to-b from-gray-900 via-gray-900 to-indigo-950 border-2 border-indigo-500/50' 
+                  : 'bg-gray-900/50 backdrop-blur-xl border border-white/10'
+              }`}>
                 
-                {/* Popular Badge */}
+                {/* Popular Badge - Redesigned */}
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full text-white text-sm font-bold shadow-lg">
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-b-2xl text-white text-sm font-bold shadow-xl">
                     ⭐ Most Popular
                   </div>
                 )}
 
-                {/* Coming Soon Badge */}
+                {/* Coming Soon Badge - Top Right */}
                 {plan.comingSoon && (
-                  <div className="absolute top-6 right-6">
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                      Coming Soon
+                  <div className="absolute top-4 right-4 z-20">
+                    <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-medium">
+                      {plan.badge}
                     </span>
                   </div>
                 )}
 
-                {/* Icon & Header */}
-                <div className="text-center mb-6">
-                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
-                    plan.popular 
-                      ? 'bg-gradient-to-br from-indigo-600 to-purple-600' 
-                      : 'bg-gray-800/50'
-                  }`}>
-                    <span className="text-3xl">{plan.icon}</span>
-                  </div>
-                  <h3 className={`text-2xl font-bold mb-2 ${
-                    plan.popular 
-                      ? 'bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent' 
-                      : 'text-white'
-                  }`}>
-                    {plan.name}
-                  </h3>
-                  <p className="text-gray-400 text-sm">{plan.tagline}</p>
-                </div>
+                {/* Card Content */}
+                <div className="p-8 flex flex-col flex-1">
+                  
+                  {/* Icon & Header */}
+                  <div className="text-center mb-8">
+                    <div className={`inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 ${
+                      plan.popular 
+                        ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 shadow-lg shadow-indigo-500/50' 
+                        : idx === 2
+                          ? 'bg-gradient-to-br from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30'
+                          : 'bg-gray-800/80'
+                    }`}>
+                      <span className="text-4xl">{plan.icon}</span>
+                    </div>
+                    
+                    <h3 className={`text-3xl font-bold mb-2 ${
+                      plan.popular 
+                        ? 'bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent' 
+                        : 'text-white'
+                    }`}>
+                      {plan.name}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-6">{plan.tagline}</p>
 
-                {/* Price */}
-                <div className="text-center mb-6">
-                  <div className={`text-5xl font-bold mb-2 ${
-                    plan.popular 
-                      ? 'bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent' 
-                      : 'text-white'
-                  }`}>
-                    {formatPrice(plan)}
+                    {/* Price */}
+                    <div className="mb-2">
+                      {plan.price.monthly === 0 ? (
+                        <div className="text-5xl font-bold text-white">Free</div>
+                      ) : (
+                        <div className={`text-4xl font-bold ${
+                          plan.popular 
+                            ? 'bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent' 
+                            : 'text-white'
+                        }`}>
+                          Pricing TBA
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {plan.price.monthly === 0 ? 'Forever free' : 'Announced at launch'}
+                    </p>
                   </div>
-                  {plan.price.monthly === 0 ? (
-                    <p className="text-xs text-gray-500">Forever free</p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Pricing announced soon</p>
+
+                  {/* Highlight Badge */}
+                  {plan.highlight && (
+                    <div className={`text-center mb-6 py-3 px-4 rounded-2xl ${
+                      plan.popular 
+                        ? 'bg-gradient-to-r from-indigo-600/30 via-purple-600/30 to-pink-600/30 border border-indigo-500/50' 
+                        : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30'
+                    }`}>
+                      <span className={`text-sm font-bold ${
+                        plan.popular ? 'text-indigo-200' : 'text-purple-200'
+                      }`}>
+                        {plan.highlight}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Stats for Premium */}
+                  {plan.stats && (
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      {plan.stats.map((stat, i) => (
+                        <div key={i} className="text-center p-4 rounded-2xl bg-gradient-to-br from-purple-900/40 to-pink-900/40 border border-purple-500/30">
+                          <div className="text-3xl mb-2">{stat.icon}</div>
+                          <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+                          <div className="text-xs text-gray-400">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Features */}
+                  <div className="flex-1 mb-8">
+                    <div className="space-y-4">
+                      {plan.features.map((feature, i) => (
+                        <div key={i} className={`flex items-start group ${
+                          feature.highlight ? 'p-3 -mx-3 rounded-xl bg-gradient-to-r from-indigo-600/10 to-purple-600/10 border border-indigo-500/20' : ''
+                        }`}>
+                          <div className="flex items-center gap-2 flex-1">
+                            <svg className={`w-5 h-5 flex-shrink-0 ${
+                              plan.popular ? 'text-indigo-400' : 'text-green-400'
+                            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className={`text-sm ${
+                              feature.highlight ? 'text-white font-medium' : 'text-gray-300'
+                            }`}>
+                              {feature.text}
+                            </span>
+                          </div>
+                          {feature.new && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium whitespace-nowrap">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <Button
+                    disabled={plan.comingSoon || (plan.name === 'Starter' && user && !user.is_premium)}
+                    onClick={() => {
+                      if (plan.comingSoon) {
+                        handleUpgrade();
+                      } else if (plan.name === 'Starter' && !user) {
+                        router.push('/login');
+                      }
+                    }}
+                    className={`w-full py-4 text-base font-semibold ${
+                      plan.comingSoon
+                        ? plan.popular
+                          ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 shadow-xl shadow-indigo-500/50'
+                          : idx === 2
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-xl shadow-purple-500/30'
+                            : 'bg-gray-700 hover:bg-gray-600'
+                        : plan.name === 'Starter'
+                          ? 'bg-indigo-600 hover:bg-indigo-700'
+                          : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    {plan.comingSoon 
+                      ? '🔔 ' + plan.cta
+                      : (plan.name === 'Starter' && user && !user.is_premium)
+                        ? '✓ Current Plan'
+                        : plan.cta
+                    }
+                  </Button>
+                  
+                  {plan.name === 'Starter' && !plan.comingSoon && (
+                    <p className="text-xs text-center text-gray-500 mt-3">
+                      No credit card • Start in 30 seconds
+                    </p>
+                  )}
+                  {plan.comingSoon && (
+                    <p className="text-xs text-center text-gray-500 mt-3">
+                      Early access • Special launch pricing
+                    </p>
                   )}
                 </div>
-
-                {/* Highlight Badge */}
-                {plan.highlight && (
-                  <div className={`text-center mb-6 py-2 px-4 rounded-lg ${
-                    plan.popular 
-                      ? 'bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/30' 
-                      : 'bg-purple-900/20 border border-purple-500/20'
-                  }`}>
-                    <span className={`text-sm font-semibold ${
-                      plan.popular ? 'text-indigo-300' : 'text-purple-300'
-                    }`}>
-                      ✨ {plan.highlight}
-                    </span>
-                  </div>
-                )}
-
-                {/* Stats for Premium */}
-                {plan.stats && (
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    {plan.stats.map((stat, i) => (
-                      <div key={i} className="text-center p-3 rounded-lg bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20">
-                        <div className="text-2xl mb-1">{stat.icon}</div>
-                        <div className="text-2xl font-bold text-white">{stat.value}</div>
-                        <div className="text-xs text-gray-400">{stat.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Features */}
-                <div className="flex-1 mb-6">
-                  <div className="space-y-3">
-                    {plan.features.map((feature, i) => (
-                      <div key={i} className="flex items-start text-sm">
-                        <svg className={`w-5 h-5 mr-2 mt-0.5 flex-shrink-0 ${
-                          plan.popular ? 'text-indigo-400' : 'text-green-400'
-                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-gray-300">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* CTA */}
-                <Button
-                  disabled={plan.comingSoon || (plan.name === 'Starter' && user && !user.is_premium)}
-                  onClick={() => {
-                    if (plan.comingSoon) {
-                      handleUpgrade();
-                    } else if (plan.name === 'Starter' && !user) {
-                      router.push('/login');
-                    }
-                  }}
-                  className={`w-full ${
-                    plan.comingSoon
-                      ? 'bg-gray-700 hover:bg-gray-600'
-                      : plan.popular
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/50'
-                        : plan.name === 'Starter'
-                          ? 'bg-gray-700 hover:bg-gray-600'
-                          : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/50'
-                  }`}
-                >
-                  {plan.comingSoon 
-                    ? '🔔 ' + plan.cta
-                    : (plan.name === 'Starter' && user && !user.is_premium)
-                      ? '✓ Current Plan'
-                      : plan.cta
-                  }
-                </Button>
-                
-                {plan.name === 'Starter' && (
-                  <p className="text-xs text-center text-gray-500 mt-3">
-                    No credit card required
-                  </p>
-                )}
-              </Card>
+              </div>
             </div>
           ))}
         </div>
