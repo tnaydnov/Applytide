@@ -21,7 +21,6 @@ import logging
 
 from .dto import ReminderDTO, ReminderNoteDTO
 from .ports import IReminderRepo, IReminderNoteRepo, ICalendarGateway
-from app.db.models import Reminder
 
 if TYPE_CHECKING:
     from app.infra.external.ai_preparation_service import AIPreparationService
@@ -290,7 +289,8 @@ class ReminderService:
                 await self._generate_and_send_ai_tips(
                     reminder=r,
                     user_id=user_id,
-                    application_id=application_id
+                    application_id=application_id,
+                    event_type=event_type
                 )
             
             # Sync to Google Calendar if requested
@@ -1194,7 +1194,7 @@ class ReminderService:
     # ==============================================================================
 
     async def _generate_and_send_ai_tips(
-        self, *, reminder: Reminder, user_id: UUID, application_id: UUID
+        self, *, reminder: ReminderDTO, user_id: UUID, application_id: UUID, event_type: Optional[str] = None
     ) -> None:
         """
         Generate AI-powered interview preparation tips and send email immediately.
@@ -1209,6 +1209,7 @@ class ReminderService:
             reminder: The created reminder DTO
             user_id: User UUID
             application_id: Application UUID to fetch data for
+            event_type: Optional event type for the reminder (e.g., "technical_interview")
         
         Note:
             This method is fire-and-forget. Failures are logged but don't block
@@ -1234,7 +1235,7 @@ class ReminderService:
                     "reminder_id": str(reminder.id),
                     "user_id": str(user_id),
                     "application_id": str(application_id),
-                    "event_type": reminder.event_type
+                    "event_type": event_type
                 }
             )
             
@@ -1305,7 +1306,7 @@ class ReminderService:
                     job_title=job_title,
                     job_description=job_description,
                     job_url=job_url,
-                    event_type=reminder.event_type or "general",
+                    event_type=event_type or "general",
                     resume_text=resume_text,
                     cover_letter_text=cover_letter_text
                 )
@@ -1379,7 +1380,7 @@ class ReminderService:
                     title=reminder.title,
                     description=reminder.description,
                     due_date=reminder.due_date,
-                    event_type=reminder.event_type,
+                    event_type=event_type,
                     ai_prep_tips_html=ai_tips_html
                 )
                 
@@ -1390,7 +1391,7 @@ class ReminderService:
                         "user_id": str(user_id),
                         "company": company_name,
                         "role": job_title,
-                        "event_type": reminder.event_type
+                        "event_type": event_type
                     }
                 )
                 
