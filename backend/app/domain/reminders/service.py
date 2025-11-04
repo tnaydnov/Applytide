@@ -275,6 +275,7 @@ class ReminderService:
                 raise ReminderServiceError(f"Failed to create reminder: {e}")
             
             # Generate and send AI preparation tips if enabled (Pro/Premium feature)
+            # Run in background so reminder creation returns immediately
             logger.debug(
                 f"Checking AI prep tips eligibility",
                 extra={
@@ -286,11 +287,16 @@ class ReminderService:
             )
             
             if ai_prep_tips_enabled and application_id:
-                await self._generate_and_send_ai_tips(
-                    reminder=r,
-                    user_id=user_id,
-                    application_id=application_id,
-                    event_type=event_type
+                # Fire-and-forget: AI generation runs in background
+                # This allows the API to return immediately and close the modal
+                import asyncio
+                asyncio.create_task(
+                    self._generate_and_send_ai_tips(
+                        reminder=r,
+                        user_id=user_id,
+                        application_id=application_id,
+                        event_type=event_type
+                    )
                 )
             
             # Sync to Google Calendar if requested
@@ -1329,6 +1335,7 @@ class ReminderService:
                     event_type=event_type or "general",
                     event_title=getattr(reminder, "title", "") or "",
                     event_description=getattr(reminder, "notes", None),
+                    event_date=reminder.due_date,
                     resume_text=resume_text,
                     cover_letter_text=cover_letter_text,
                     additional_documents=None
@@ -1398,26 +1405,101 @@ class ReminderService:
             
             # Send immediate email with AI tips
             try:
-                await self.email_service.send_reminder_email(
-                    user_id=user_id,
-                    reminder_id=reminder.id,
+                # Get user info for email
+                from app.db.models import User
+                from app.db.session import SessionLocal
+                db = SessionLocal()
+                try:
+                    user = db.get(User, user_id)
+                    if not user:
+                        logger.warning(
+                            f"User not found for AI tips email",
+                            extra={"user_id": str(user_id), "reminder_id": str(reminder.id)}
+                        )
+                        return
+                    
+                    user_email = user.email
+                    user_name = user.full_name or user.email.split('@')[0]
+                finally:
+                    db.close()
+                
+                # Format due date for email
+                from datetime import timezone as tz
+                due_date_utc = reminder.due_date
+                user_timezone_str = getattr(reminder, 'user_timezone', 'UTC') or 'UTC'
+                
+                try:
+                    from zoneinfo import ZoneInfo
+                    user_tz = ZoneInfo(user_timezone_str)
+                    due_date_local = due_date_utc.replace(tzinfo=tz.utc).astimezone(user_tz)
+                    due_date_str = due_date_local.strftime('%B %d, %Y at %I:%M %p')
+                except Exception as e:
+                    logger.warning(f"Failed to convert timezone: {e}")
+                    due_date_str = due_date_utc.strftime('%B %d, %Y at %I:%M %p UTC')
+                
+                # Calculate time until and urgency
+                from datetime import datetime
+                now = datetime.now(tz.utc)
+                time_diff = (due_date_utc - now).total_seconds()
+                hours_until = time_diff / 3600
+                
+                if hours_until < 0:
+                    time_until_str = "overdue"
+                    urgency = "now"
+                elif hours_until < 1:
+                    time_until_str = f"{int(time_diff / 60)} minutes"
+                    urgency = "now"
+                elif hours_until < 24:
+                    time_until_str = f"{int(hours_until)} hours"
+                    urgency = "today"
+                elif hours_until < 48:
+                    time_until_str = "tomorrow"
+                    urgency = "tomorrow"
+                elif hours_until < 168:  # 7 days
+                    time_until_str = f"{int(hours_until / 24)} days"
+                    urgency = "week"
+                else:
+                    time_until_str = f"{int(hours_until / 24)} days"
+                    urgency = "future"
+                
+                # Build action URL
+                from app.config import settings
+                if reminder.application_id:
+                    action_url = f"{settings.FRONTEND_URL}/pipeline?highlight={reminder.application_id}"
+                else:
+                    action_url = f"{settings.FRONTEND_URL}/reminders"
+                
+                # Send email (note: send_reminder_email is sync, not async)
+                success = self.email_service.send_reminder_email(
+                    to_email=user_email,
+                    name=user_name,
                     title=reminder.title,
-                    description=reminder.description,
-                    due_date=reminder.due_date,
-                    event_type=event_type,
+                    description=reminder.description or "",
+                    due_date=due_date_str,
+                    time_until=time_until_str,
+                    urgency=urgency,
+                    event_type=event_type or "general",
+                    action_url=action_url,
                     ai_prep_tips_html=ai_tips_html
                 )
                 
-                logger.info(
-                    f"AI preparation tips email sent successfully",
-                    extra={
-                        "reminder_id": str(reminder.id),
-                        "user_id": str(user_id),
-                        "company": company_name,
-                        "role": job_title,
-                        "event_type": event_type
-                    }
-                )
+                if success:
+                    logger.info(
+                        f"AI preparation tips email sent successfully",
+                        extra={
+                            "reminder_id": str(reminder.id),
+                            "user_id": str(user_id),
+                            "company": company_name,
+                            "role": job_title,
+                            "event_type": event_type,
+                            "to_email": user_email
+                        }
+                    )
+                else:
+                    logger.warning(
+                        f"AI tips email failed to send",
+                        extra={"reminder_id": str(reminder.id), "user_id": str(user_id)}
+                    )
                 
             except Exception as e:
                 logger.error(

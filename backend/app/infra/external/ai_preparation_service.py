@@ -27,7 +27,7 @@ Premium Feature:
     This service is only available for Pro and Premium subscription plans.
 """
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from openai import AsyncOpenAI
 from openai import APIError, APITimeoutError, RateLimitError, APIConnectionError
@@ -68,6 +68,7 @@ class AIPreparationService:
         event_type: str,
         event_title: str,
         event_description: Optional[str],
+        event_date: Optional[datetime] = None,
         resume_text: Optional[str] = None,
         cover_letter_text: Optional[str] = None,
         additional_documents: Optional[list[str]] = None
@@ -84,6 +85,7 @@ class AIPreparationService:
             event_type: Type of event (technical_interview, behavioral_interview, etc.)
             event_title: Title of the reminder/event
             event_description: Description of the reminder/event
+            event_date: Date/time of the event (for time-appropriate tips)
             resume_text: User's resume content
             cover_letter_text: User's cover letter content
             additional_documents: Other document texts
@@ -124,6 +126,7 @@ class AIPreparationService:
                 event_type=event_type,
                 event_title=event_title,
                 event_description=event_description,
+                event_date=event_date,
                 resume_text=resume_text,
                 cover_letter_text=cover_letter_text,
                 additional_documents=additional_documents
@@ -273,10 +276,17 @@ RESPONSE REQUIREMENTS:
 • Be specific and detailed - provide exact steps, not vague suggestions
 • Include concrete examples and frameworks (e.g., "Use the STAR method: Situation...")
 • Prioritize recommendations by impact
-• Estimate realistic preparation time
-• Focus on what the candidate can control and prepare
-• Be encouraging but realistic about challenges
-• Provide both short-term (day before) and long-term (week before) prep tasks
+• **TIME-AWARENESS**: If time until event is provided, ALL recommendations must be realistic for that timeframe:
+  - **<3 hours**: Last-minute essentials only (quick review, logistics, mental prep, breathing exercises)
+  - **<24 hours**: Same-day prep (final review, 2-3 STAR stories, logistics, mental preparation - no new learning)
+  - **1-2 days**: Focused essentials (deep dive on 3-4 key areas, polish existing knowledge, mock practice)
+  - **3-7 days**: Structured daily plan (research days 1-2, skill building days 3-5, final review day 6-7)
+  - **1-2 weeks**: Comprehensive two-phase plan (week 1: foundations/research, week 2: intensive practice/refinement)
+  - **>2 weeks**: Full preparation program with weekly milestones and rest days
+• Estimate realistic preparation time that matches the actual time available
+• Focus on what the candidate can control and prepare within the given timeframe
+• Be encouraging but realistic about challenges and time constraints
+• Provide time-appropriate tasks (don't suggest "2-week study plan" if event is tomorrow!)
 
 OUTPUT FORMAT (JSON):
 {
@@ -316,6 +326,7 @@ IMPORTANT:
         event_type: str,
         event_title: str,
         event_description: Optional[str],
+        event_date: Optional[datetime],
         resume_text: Optional[str],
         cover_letter_text: Optional[str],
         additional_documents: Optional[list[str]]
@@ -337,6 +348,40 @@ IMPORTANT:
         
         event_description_text = event_type_descriptions.get(event_type, event_type)
         
+        # Calculate time until event
+        time_until_text = ""
+        urgency_context = ""
+        if event_date:
+            now = datetime.now(timezone.utc)
+            if event_date.tzinfo is None:
+                event_date = event_date.replace(tzinfo=timezone.utc)
+            
+            time_diff = (event_date - now).total_seconds()
+            hours_until = time_diff / 3600
+            days_until = time_diff / 86400
+            
+            if hours_until < 0:
+                time_until_text = "⚠️ **URGENT**: This event has already passed or is happening now!"
+                urgency_context = "Since the event is imminent or has passed, provide last-minute tips and what to do right now."
+            elif hours_until < 3:
+                time_until_text = f"⏰ **URGENT**: Event is in {int(hours_until)} hour(s) - {int(time_diff / 60)} minutes!"
+                urgency_context = "Very limited time! Focus on immediate, high-impact actions: quick review of key points, mental preparation, logistics check (location, materials, tech setup), breathing exercises. Skip long-term prep."
+            elif hours_until < 24:
+                time_until_text = f"⏰ Event is TODAY in {int(hours_until)} hours"
+                urgency_context = "Same-day preparation! Prioritize: final review of critical topics, prep 2-3 STAR stories, review company/role one more time, logistics (outfit, location, materials), mental preparation. Focus on high-confidence topics rather than learning new material."
+            elif days_until < 2:
+                time_until_text = f"📅 Event is TOMORROW ({int(hours_until)} hours away)"
+                urgency_context = "One day to prepare! Balance final review with rest. Today: deep dive on 3-4 key areas, polish STAR stories, mock interview if possible, prepare questions. Tomorrow: light review, logistics, relaxation."
+            elif days_until < 7:
+                time_until_text = f"📌 Event is in {int(days_until)} days"
+                urgency_context = f"Moderate timeframe ({int(days_until)} days). Create a structured daily plan: research (day 1-2), skill building/practice (day 2-{int(days_until)-1}), final review (day {int(days_until)}). Balance depth with breadth."
+            elif days_until < 14:
+                time_until_text = f"📅 Event is in {int(days_until)} days (about {int(days_until/7)} week(s))"
+                urgency_context = f"Good preparation window ({int(days_until)} days). Week 1: deep research, fundamentals, initial practice. Week 2: intensive practice, mock interviews, refinement, final prep. Include rest days."
+            else:
+                time_until_text = f"🔔 Event is in {int(days_until)} days (about {int(days_until/7)} weeks)"
+                urgency_context = f"Excellent preparation time ({int(days_until)} days)! Create a comprehensive study plan with weekly milestones. Early weeks: foundations, research, broad learning. Later weeks: intensive practice, specialization, mock interviews, final polish."
+        
         prompt_parts = [
             f"I need preparation tips for an upcoming {event_description_text}.",
             f"\n**Event Details:**",
@@ -344,8 +389,16 @@ IMPORTANT:
             f"- Event Type: {event_description_text}",
         ]
         
+        if time_until_text:
+            prompt_parts.append(f"- ⏰ **Time Until Event**: {time_until_text}")
+            prompt_parts.append(f"\n**IMPORTANT - Time-Appropriate Guidance:**")
+            prompt_parts.append(f"{urgency_context}")
+            prompt_parts.append(f"\n**YOUR TASK**: Provide tips that are REALISTIC and ACHIEVABLE given the time available. Don't suggest week-long preparation if they have hours. Don't suggest quick cramming if they have weeks. Tailor every recommendation to the actual timeframe.")
+        
         if event_description:
-            prompt_parts.append(f"- Additional Context: {event_description}")
+            prompt_parts.append(f"\n**Additional Context from User:**")
+            prompt_parts.append(f"{event_description}")
+            prompt_parts.append(f"(Consider this user-provided context carefully - they may have included important details about the interview format, interviewers, specific topics to cover, or personal concerns.)")
         
         prompt_parts.append(f"\n**Job Information:**")
         prompt_parts.append(f"- Position: {job_title}")
