@@ -21,6 +21,7 @@ import logging
 
 from .dto import ReminderDTO, ReminderNoteDTO
 from .ports import IReminderRepo, IReminderNoteRepo, ICalendarGateway
+from app.db.models import Reminder
 
 if TYPE_CHECKING:
     from app.infra.external.ai_preparation_service import AIPreparationService
@@ -1193,7 +1194,7 @@ class ReminderService:
     # ==============================================================================
 
     async def _generate_and_send_ai_tips(
-        self, *, reminder: ReminderDTO, user_id: UUID, application_id: UUID
+        self, *, reminder: Reminder, user_id: UUID, application_id: UUID
     ) -> None:
         """
         Generate AI-powered interview preparation tips and send email immediately.
