@@ -448,15 +448,15 @@ IMPORTANT:
     
     def format_tips_for_email(self, tips_data: Dict[str, Any]) -> str:
         """
-        Format the AI-generated tips into a stunning, futuristic HTML design for email.
+        Format the AI-generated tips into an immersive, full-width visual experience.
         
         Features:
-        - Card-based layout with depth and shadows
-        - Gradient accents and modern color palette
-        - Icon system for visual hierarchy
-        - No bullet lists - everything is beautifully designed cards
-        - Full canvas utilization
-        - Mobile-responsive
+        - Full-width layout that uses 100% of available space
+        - Scattered bubble/shape design - NOT a vertical list
+        - Proper color contrast for readability
+        - Perfectly aligned emojis
+        - Organic, non-linear layout
+        - Mobile-responsive with fluid grid
         
         Args:
             tips_data: Dictionary containing tips, insights, focus areas, etc.
@@ -469,131 +469,189 @@ IMPORTANT:
         
         html_parts = []
         
-        # Header with time estimate badge
+        # Full-width container with dark background
+        html_parts.append("""
+        <div style="width: 100%; background: #0a0e1a; padding: 0; margin: 0;">
+        """)
+        
+        # Header with floating time badge
         estimated_time = tips_data.get("estimated_prep_time", "")
         if estimated_time:
             html_parts.append(f"""
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 12px 28px; border-radius: 50px; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);">
-                    <span style="color: white; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">
+            <div style="text-align: center; padding: 40px 20px 30px; background: linear-gradient(180deg, #1a1f35 0%, #0a0e1a 100%);">
+                <div style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); padding: 16px 36px; border-radius: 60px; box-shadow: 0 12px 40px rgba(168, 85, 247, 0.5); transform: rotate(-2deg);">
+                    <span style="color: #ffffff; font-size: 16px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">
                         ⏱️ {estimated_time}
                     </span>
                 </div>
             </div>
             """)
         
-        # Company Insights - Full width hero card
+        # Company Insights - Full-width hero with offset design
         if tips_data.get("company_insights"):
             html_parts.append(f"""
-            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 20px; padding: 35px 30px; margin-bottom: 25px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); border: 1px solid rgba(148, 163, 184, 0.1);">
-                <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);">
-                        <span style="font-size: 26px; line-height: 1;">🏢</span>
+            <div style="width: 100%; padding: 30px 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%); position: relative; overflow: hidden;">
+                <!-- Decorative circles -->
+                <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+                
+                <div style="max-width: 1200px; margin: 0 auto; position: relative; z-index: 1;">
+                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 30px; padding: 40px 35px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                        <div style="margin-bottom: 20px;">
+                            <span style="font-size: 56px; display: inline-block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">🏢</span>
+                        </div>
+                        <h3 style="color: #ffffff; margin: 0 0 20px 0; font-size: 28px; font-weight: 800; text-shadow: 0 2px 12px rgba(0,0,0,0.3); letter-spacing: -0.5px;">Company Intelligence</h3>
+                        <p style="color: #ffffff; line-height: 1.9; font-size: 16px; margin: 0; text-shadow: 0 1px 4px rgba(0,0,0,0.2);">{tips_data['company_insights']}</p>
                     </div>
-                    <h3 style="color: #f1f5f9; margin: 0; font-size: 22px; font-weight: 700;">Company Intelligence</h3>
                 </div>
-                <p style="color: #cbd5e1; line-height: 1.8; font-size: 15px; margin: 0;">{tips_data['company_insights']}</p>
             </div>
             """)
         
-        # Key Focus Areas - Grid of cards
+        # Key Focus Areas - Scattered bubble layout (NOT a list!)
         if tips_data.get("key_focus_areas"):
-            focus_icons = ["🎯", "💎", "⚡", "🚀", "🔥", "💪", "🌟"]
+            focus_areas = tips_data["key_focus_areas"]
+            
+            # Define bubble styles - scattered positions, varied sizes
+            bubble_configs = [
+                {"color": "#fbbf24", "emoji": "🎯", "size": "large", "x": "5%", "y": "0"},
+                {"color": "#60a5fa", "emoji": "💎", "size": "medium", "x": "35%", "y": "50px"},
+                {"color": "#a78bfa", "emoji": "⚡", "size": "large", "x": "68%", "y": "20px"},
+                {"color": "#34d399", "emoji": "🚀", "size": "small", "x": "15%", "y": "180px"},
+                {"color": "#f472b6", "emoji": "🔥", "size": "medium", "x": "50%", "y": "200px"},
+                {"color": "#fb923c", "emoji": "💪", "size": "large", "x": "80%", "y": "160px"},
+                {"color": "#818cf8", "emoji": "🌟", "size": "medium", "x": "25%", "y": "320px"},
+            ]
+            
             html_parts.append("""
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
-                    <span style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            <div style="width: 100%; background: #0a0e1a; padding: 50px 20px 400px; position: relative; min-height: 500px;">
+                <div style="max-width: 1200px; margin: 0 auto; position: relative;">
+                    <h3 style="color: #ffffff; margin: 0 0 60px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #fbbf24 0%, #f87171 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
                         Critical Focus Areas
-                    </span>
-                </h3>
-                <div style="display: grid; gap: 15px;">
+                    </h3>
             """)
             
-            for idx, area in enumerate(tips_data["key_focus_areas"]):
-                icon = focus_icons[idx % len(focus_icons)]
-                # Alternate gradient colors for visual variety
-                gradients = [
-                    "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-                    "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
-                    "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)",
-                    "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)",
-                ]
-                gradient = gradients[idx % len(gradients)]
+            # Create scattered bubbles
+            for idx, area in enumerate(focus_areas[:7]):  # Limit to 7 for layout
+                config = bubble_configs[idx]
+                
+                # Size variations
+                if config["size"] == "large":
+                    width, padding, font_size, emoji_size = "340px", "35px", "15px", "42px"
+                elif config["size"] == "medium":
+                    width, padding, font_size, emoji_size = "300px", "30px", "14px", "38px"
+                else:
+                    width, padding, font_size, emoji_size = "280px", "28px", "13px", "34px"
                 
                 html_parts.append(f"""
-                <div style="background: {gradient}; border-radius: 16px; padding: 20px 24px; border-left: 5px solid #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); transition: transform 0.2s;">
-                    <div style="display: flex; align-items: flex-start;">
-                        <span style="font-size: 32px; margin-right: 15px; flex-shrink: 0;">{icon}</span>
-                        <p style="color: #0f172a; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.6;">{area}</p>
+                <div style="position: absolute; left: {config['x']}; top: {config['y']}; width: {width}; transform: translate(-50%, 0) rotate({(idx % 3 - 1) * 3}deg);">
+                    <div style="background: {config['color']}; border-radius: 25px; padding: {padding}; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border: 3px solid rgba(255,255,255,0.2); transition: transform 0.3s;">
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-size: {emoji_size}; display: inline-block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">{config['emoji']}</span>
+                        </div>
+                        <p style="color: #1f2937; margin: 0; font-size: {font_size}; font-weight: 700; line-height: 1.6; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">{area}</p>
                     </div>
                 </div>
                 """)
             
             html_parts.append("</div></div>")
         
-        # Preparation Tips - Numbered step cards with visual hierarchy
+        # Preparation Tips - Diagonal cards layout (break the grid!)
         if tips_data.get("tips"):
             html_parts.append("""
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
-                    <span style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            <div style="width: 100%; background: linear-gradient(180deg, #0a0e1a 0%, #1e1b4b 100%); padding: 60px 20px;">
+                <div style="max-width: 1200px; margin: 0 auto;">
+                    <h3 style="color: #ffffff; margin: 0 0 50px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
                         Your Preparation Roadmap
-                    </span>
-                </h3>
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
             """)
             
-            for idx, tip in enumerate(tips_data["tips"], 1):
-                # Gradient circle numbers
-                html_parts.append(f"""
-                <div style="position: relative; background: white; border-radius: 18px; padding: 25px 25px 25px 80px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 2px solid #f1f5f9;">
-                    <div style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 45px; height: 45px; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                        <span style="color: white; font-size: 20px; font-weight: 800;">{idx}</span>
-                    </div>
-                    <p style="color: #334155; margin: 0; font-size: 15px; line-height: 1.7; font-weight: 500;">{tip}</p>
-                </div>
-                """)
+            # Gradient colors for cards
+            gradients = [
+                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+                "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
+                "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+                "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
+            ]
             
-            html_parts.append("</div>")
-        
-        # Recommended Preparation - Timeline/checklist style
-        if tips_data.get("recommended_prep"):
-            html_parts.append("""
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
-                    <span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                        Study Timeline & Tasks
-                    </span>
-                </h3>
-            """)
-            
-            for idx, prep in enumerate(tips_data["recommended_prep"]):
-                # Alternate between left and right icons for timeline feel
-                is_even = idx % 2 == 0
-                bg_color = "#f0fdf4" if is_even else "#eff6ff"
-                accent_color = "#10b981" if is_even else "#3b82f6"
+            for idx, tip in enumerate(tips_data["tips"][:8]):  # Limit to 8 for grid
+                gradient = gradients[idx % len(gradients)]
+                rotation = (idx % 3 - 1) * 2  # Slight rotation for organic feel
                 
                 html_parts.append(f"""
-                <div style="background: {bg_color}; border-radius: 16px; padding: 22px 24px; margin-bottom: 14px; border-left: 4px solid {accent_color}; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);">
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 28px; height: 28px; background: {accent_color}; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
-                            <span style="color: white; font-size: 16px; font-weight: 700;">✓</span>
+                <div style="transform: rotate({rotation}deg); transition: transform 0.3s;">
+                    <div style="background: {gradient}; border-radius: 28px; padding: 35px 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 3px solid rgba(255,255,255,0.3); min-height: 180px; display: flex; flex-direction: column;">
+                        <div style="margin-bottom: 20px;">
+                            <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+                                <span style="color: #ffffff; font-size: 24px; font-weight: 900; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">{idx + 1}</span>
+                            </div>
                         </div>
-                        <p style="color: #0f172a; margin: 0; font-size: 14px; line-height: 1.7; font-weight: 500;">{prep}</p>
+                        <p style="color: #ffffff; margin: 0; font-size: 15px; line-height: 1.7; font-weight: 600; text-shadow: 0 2px 8px rgba(0,0,0,0.3); flex-grow: 1;">{tip}</p>
                     </div>
                 </div>
                 """)
             
-            html_parts.append("</div>")
+            html_parts.append("</div></div></div>")
         
-        # Success footer
+        # Recommended Preparation - Hexagonal timeline
+        if tips_data.get("recommended_prep"):
+            html_parts.append("""
+            <div style="width: 100%; background: #0f172a; padding: 60px 20px;">
+                <div style="max-width: 1200px; margin: 0 auto;">
+                    <h3 style="color: #ffffff; margin: 0 0 50px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                        Study Timeline & Tasks
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+            """)
+            
+            # Alternating colors
+            colors = [
+                {"bg": "#10b981", "text": "#ffffff"},
+                {"bg": "#3b82f6", "text": "#ffffff"},
+                {"bg": "#8b5cf6", "text": "#ffffff"},
+                {"bg": "#ec4899", "text": "#ffffff"},
+                {"bg": "#f59e0b", "text": "#ffffff"},
+            ]
+            
+            for idx, prep in enumerate(tips_data["recommended_prep"][:10]):
+                color = colors[idx % len(colors)]
+                
+                html_parts.append(f"""
+                <div style="background: {color['bg']}; border-radius: 20px; padding: 30px 25px; box-shadow: 0 12px 35px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.2); min-height: 140px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 15px; right: 15px; width: 35px; height: 35px; background: rgba(255,255,255,0.25); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                        <span style="color: {color['text']}; font-size: 18px; font-weight: 900;">✓</span>
+                    </div>
+                    <p style="color: {color['text']}; margin: 0; font-size: 14px; line-height: 1.7; font-weight: 600; text-shadow: 0 2px 6px rgba(0,0,0,0.2); padding-right: 50px;">{prep}</p>
+                </div>
+                """)
+            
+            html_parts.append("</div></div></div>")
+        
+        # Success footer - Full width with confetti effect
         html_parts.append("""
-        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 18px; padding: 25px; text-align: center; margin-top: 30px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
-            <span style="font-size: 36px; margin-bottom: 10px; display: inline-block;">🎯</span>
-            <p style="color: #92400e; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.6;">
-                You've got this! Follow this plan and nail your interview. 💪
-            </p>
+        <div style="width: 100%; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 50px 20px; text-align: center; position: relative; overflow: hidden;">
+            <!-- Confetti decorations -->
+            <div style="position: absolute; top: 20px; left: 10%; width: 20px; height: 20px; background: #ffffff; opacity: 0.3; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 60px; right: 15%; width: 15px; height: 15px; background: #ffffff; opacity: 0.25; border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: 30px; left: 20%; width: 18px; height: 18px; background: #ffffff; opacity: 0.2; border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: 50px; right: 25%; width: 22px; height: 22px; background: #ffffff; opacity: 0.3; border-radius: 50%;"></div>
+            
+            <div style="max-width: 800px; margin: 0 auto; position: relative; z-index: 1;">
+                <span style="font-size: 64px; display: inline-block; margin-bottom: 20px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">🎯</span>
+                <h3 style="color: #78350f; margin: 0 0 15px 0; font-size: 28px; font-weight: 900; text-shadow: 0 2px 8px rgba(255,255,255,0.5);">You've Got This!</h3>
+                <p style="color: #92400e; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.6; text-shadow: 0 1px 4px rgba(255,255,255,0.4);">
+                    Follow this plan and nail your interview. 💪
+                </p>
+            </div>
         </div>
         """)
+        
+        # Close container
+        html_parts.append("</div>")
         
         return "".join(html_parts)
 

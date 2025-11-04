@@ -603,38 +603,38 @@ def reminder_email(
         </table>
         
         {f'''
-        <!-- AI Preparation Tips Section (Pro/Premium Feature) -->
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 24px; padding: 40px 35px; margin: 40px 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); position: relative; overflow: hidden;">
-            
-            <!-- Decorative gradient overlay -->
-            <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
-            
-            <!-- Header -->
-            <div style="text-align: center; margin-bottom: 30px; position: relative; z-index: 1;">
-                <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 15px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);">
-                    <span style="font-size: 42px; line-height: 1;">🤖</span>
+        <!-- AI Preparation Tips Section (Pro/Premium Feature) - FULL WIDTH -->
+        </div></td></tr></table>
+        <!-- Break out of container for full-width section -->
+        
+        <div style="width: 100%; background: #0a0e1a; padding: 0; margin: 50px 0;">
+            <div style="padding: 50px 20px; text-align: center; background: linear-gradient(135deg, #6366f1 20%, #8b5cf6 50%, #ec4899 80%); border-top: 4px solid rgba(255,255,255,0.2); border-bottom: 4px solid rgba(255,255,255,0.2);">
+                <div style="max-width: 1200px; margin: 0 auto;">
+                    <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 25px; margin-bottom: 20px; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);">
+                        <span style="font-size: 56px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));">🤖</span>
+                    </div>
+                    <h3 style="color: #ffffff; font-size: 36px; font-weight: 900; margin: 0 0 15px 0; letter-spacing: -1px; text-shadow: 0 4px 16px rgba(0,0,0,0.3);">
+                        AI-Powered Interview Prep
+                    </h3>
+                    <p style="color: #ffffff; font-size: 17px; margin: 0; font-weight: 600; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                        ✨ Personalized just for you • Generated with GPT-4
+                    </p>
                 </div>
-                <h3 style="color: #f1f5f9; font-size: 28px; font-weight: 800; margin: 0 0 10px 0; letter-spacing: -0.5px;">
-                    AI-Powered Interview Prep
-                </h3>
-                <p style="color: #94a3b8; font-size: 15px; margin: 0; font-weight: 600;">
-                    ✨ Personalized just for you • Generated with GPT-4
-                </p>
             </div>
             
-            <!-- Content Container -->
-            <div style="position: relative; z-index: 1;">
-                {ai_prep_tips_html}
-            </div>
+            {ai_prep_tips_html}
             
-            <!-- Pro Badge Footer -->
-            <div style="text-align: center; margin-top: 30px; position: relative; z-index: 1;">
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(139, 92, 246, 0.2); border: 2px solid rgba(139, 92, 246, 0.4); padding: 10px 20px; border-radius: 50px; backdrop-filter: blur(10px);">
-                    <span style="color: #c4b5fd; font-size: 16px;">💎</span>
-                    <span style="color: #e9d5ff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Pro Feature</span>
+            <div style="padding: 40px 20px; text-align: center; background: #0a0e1a;">
+                <div style="display: inline-flex; align-items: center; gap: 10px; background: rgba(168, 85, 247, 0.15); border: 2px solid rgba(168, 85, 247, 0.4); padding: 14px 30px; border-radius: 60px; backdrop-filter: blur(10px);">
+                    <span style="font-size: 24px;">💎</span>
+                    <span style="color: #e9d5ff; font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Pro Feature</span>
                 </div>
             </div>
         </div>
+        
+        <!-- Resume container -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0;">
+            <tr><td><div class="email-body">
         ''' if ai_prep_tips_html else ''}
         
         <!-- Divider -->
