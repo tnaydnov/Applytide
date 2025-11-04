@@ -98,31 +98,6 @@ export default function UserDetailPage() {
     }
   };
 
-  const handleTogglePremium = async () => {
-    const hasPaidPlan = user.subscription_plan !== 'starter' && user.subscription_status === 'active';
-    if (!confirm(`${hasPaidPlan ? 'Revoke' : 'Grant'} premium for ${user.email}?`)) {
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-      const newPlan = hasPaidPlan ? 'starter' : 'premium';
-      const newStatus = hasPaidPlan ? 'active' : 'active';
-      const expiresAt = !hasPaidPlan 
-        ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year from now
-        : null;
-      
-      await adminApi.toggleUserPremium(id, newPlan, newStatus, expiresAt);
-      toast.success(`Premium ${hasPaidPlan ? 'revoked' : 'granted'} successfully`);
-      await loadUser();
-    } catch (error) {
-      console.error('Error toggling premium:', error);
-      toast.error('Failed to update premium status');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleChangeRole = async (newRole) => {
     if (!confirm(`Change role for ${user.email} to ${newRole}?`)) {
       return;
@@ -394,17 +369,8 @@ export default function UserDetailPage() {
                 <h2 className="text-lg font-semibold text-white">Actions</h2>
               </div>
               <div className="p-6 space-y-3">
-                <button
-                  onClick={handleTogglePremium}
-                  disabled={actionLoading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
-                >
-                  <FiCreditCard />
-                  {user.subscription_plan !== 'starter' && user.subscription_status === 'active' ? 'Revoke Premium' : 'Grant Premium'}
-                </button>
-
                 {/* Inline subscription editor */}
-                <div className="mt-3">
+                <div>
                   {!editingSubscription ? (
                     <button
                       onClick={() => {
@@ -415,9 +381,10 @@ export default function UserDetailPage() {
                         setEditingSubscription(true);
                       }}
                       disabled={actionLoading}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
                     >
-                      ✏️ Set Plan
+                      <FiCreditCard />
+                      Set Plan
                     </button>
                   ) : (
                     <div className="space-y-2">

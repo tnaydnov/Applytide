@@ -10,9 +10,10 @@ Critical security operations - all changes are logged.
 """
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.api.deps import get_db
 from app.api.deps import get_admin_user
@@ -23,12 +24,17 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+class UpdateSubscriptionRequest(BaseModel):
+    """Request body for updating user subscription."""
+    subscription_plan: str
+    subscription_status: str
+    subscription_ends_at: Optional[datetime] = None
+
+
 @router.patch("/{user_id}/premium")
 def toggle_user_premium(
     user_id: uuid.UUID,
-    subscription_plan: str,
-    subscription_status: str,
-    subscription_ends_at: Optional[datetime] = None,
+    request: UpdateSubscriptionRequest,
     admin_user: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -87,16 +93,16 @@ def toggle_user_premium(
             detail="User not found"
         )
     
-    user.subscription_plan = subscription_plan
-    user.subscription_status = subscription_status
-    user.subscription_ends_at = subscription_ends_at if subscription_plan != 'starter' else None
+    user.subscription_plan = request.subscription_plan
+    user.subscription_status = request.subscription_status
+    user.subscription_ends_at = request.subscription_ends_at if request.subscription_plan != 'starter' else None
     
     # If granting paid plan, set started_at if not already set
-    if subscription_plan != 'starter' and not user.subscription_started_at:
+    if request.subscription_plan != 'starter' and not user.subscription_started_at:
         user.subscription_started_at = datetime.now()
     
     # If moving back to starter, clear subscription dates
-    if subscription_plan == 'starter':
+    if request.subscription_plan == 'starter':
         user.subscription_started_at = None
         user.subscription_renews_at = None
         user.subscription_canceled_at = None
@@ -104,24 +110,24 @@ def toggle_user_premium(
     db.commit()
     
     logger.info(
-        f"Admin {admin_user.email} changed subscription for user {user.email} to {subscription_plan} ({subscription_status})",
+        f"Admin {admin_user.email} changed subscription for user {user.email} to {request.subscription_plan} ({request.subscription_status})",
         extra={
             "admin_id": admin_user.id,
             "target_user_id": user_id,
             "action": "subscription_change",
-            "subscription_plan": subscription_plan,
-            "subscription_status": subscription_status,
-            "subscription_ends_at": subscription_ends_at.isoformat() if subscription_ends_at else None
+            "subscription_plan": request.subscription_plan,
+            "subscription_status": request.subscription_status,
+            "subscription_ends_at": request.subscription_ends_at.isoformat() if request.subscription_ends_at else None
         }
     )
     
     return {
         "success": True,
-        "message": f"Subscription changed to {subscription_plan} ({subscription_status}) for user {user.email}",
+        "message": f"Subscription changed to {request.subscription_plan} ({request.subscription_status}) for user {user.email}",
         "user_id": user_id,
-        "subscription_plan": subscription_plan,
-        "subscription_status": subscription_status,
-        "subscription_ends_at": subscription_ends_at
+        "subscription_plan": request.subscription_plan,
+        "subscription_status": request.subscription_status,
+        "subscription_ends_at": request.subscription_ends_at
     }
 
 
