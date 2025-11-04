@@ -26,6 +26,10 @@ export default function UserDetailPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState(false);
+  const [subscriptionPlan, setSubscriptionPlan] = useState('starter');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('active');
+  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('');
   
   // Optional data
   const [applications, setApplications] = useState([]);
@@ -398,6 +402,89 @@ export default function UserDetailPage() {
                   <FiCreditCard />
                   {user.subscription_plan !== 'starter' && user.subscription_status === 'active' ? 'Revoke Premium' : 'Grant Premium'}
                 </button>
+
+                {/* Inline subscription editor */}
+                <div className="mt-3">
+                  {!editingSubscription ? (
+                    <button
+                      onClick={() => {
+                        // initialize form values from user
+                        setSubscriptionPlan(user.subscription_plan || 'starter');
+                        setSubscriptionStatus(user.subscription_status || 'active');
+                        setSubscriptionEndsAt(user.subscription_ends_at ? user.subscription_ends_at.split('T')[0] : '');
+                        setEditingSubscription(true);
+                      }}
+                      disabled={actionLoading}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors disabled:opacity-50"
+                    >
+                      ✏️ Set Plan
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2">
+                        <select
+                          value={subscriptionPlan}
+                          onChange={(e) => setSubscriptionPlan(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2"
+                        >
+                          <option value="starter">Starter</option>
+                          <option value="pro">Pro</option>
+                          <option value="premium">Premium</option>
+                        </select>
+
+                        <select
+                          value={subscriptionStatus}
+                          onChange={(e) => setSubscriptionStatus(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2"
+                        >
+                          <option value="active">Active</option>
+                          <option value="canceled">Canceled</option>
+                          <option value="expired">Expired</option>
+                        </select>
+
+                        <input
+                          type="date"
+                          value={subscriptionEndsAt}
+                          onChange={(e) => setSubscriptionEndsAt(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-600 text-white rounded px-3 py-2"
+                          placeholder="Expiry date (optional)"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Update subscription for ${user.email} to ${subscriptionPlan} (${subscriptionStatus})?`)) return;
+                            try {
+                              setActionLoading(true);
+                              const expiresAt = subscriptionEndsAt ? new Date(subscriptionEndsAt).toISOString() : null;
+                              await adminApi.toggleUserPremium(id, subscriptionPlan, subscriptionStatus, expiresAt);
+                              toast.success('Subscription updated');
+                              setEditingSubscription(false);
+                              await loadUser();
+                            } catch (err) {
+                              console.error('Error updating subscription:', err);
+                              toast.error('Failed to update subscription');
+                            } finally {
+                              setActionLoading(false);
+                            }
+                          }}
+                          disabled={actionLoading}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingSubscription(false)}
+                          disabled={actionLoading}
+                          className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {user.role !== 'admin' && (
                   <button
