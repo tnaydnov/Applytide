@@ -144,6 +144,9 @@ export default function CreateReminderModal({
       fullPayload: payload
     });
 
+    // TEMPORARY DEBUG: Show alert with values
+    alert(`DEBUG INFO:\n\nhasProAccess: ${hasProAccess}\nform.ai_prep_tips_enabled: ${form.ai_prep_tips_enabled}\npayload.ai_prep_tips_enabled: ${payload.ai_prep_tips_enabled}\n\nCheck Network tab for the request body!`);
+
     const ok = await onCreate?.(payload);
     if (ok) onClose?.();
   };
