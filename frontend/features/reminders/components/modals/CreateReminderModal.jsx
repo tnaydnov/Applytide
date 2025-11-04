@@ -44,6 +44,13 @@ export default function CreateReminderModal({
     user.subscription_plan !== 'starter' && 
     user.subscription_status === 'active';
 
+  // Debug: Log user subscription info
+  console.log('CreateReminderModal - User subscription:', {
+    user: user ? { id: user.id, email: user.email, plan: user.subscription_plan, status: user.subscription_status } : null,
+    hasProAccess,
+    ai_prep_tips_enabled: form.ai_prep_tips_enabled
+  });
+
   if (!open) return null;
 
   const presetOptions = [
@@ -128,6 +135,14 @@ export default function CreateReminderModal({
       event_type: getEventType(form.type),
       ai_prep_tips_enabled: hasProAccess && form.ai_prep_tips_enabled,
     };
+
+    // Debug: Log payload before sending
+    console.log('CreateReminderModal - Submitting payload:', {
+      hasProAccess,
+      'form.ai_prep_tips_enabled': form.ai_prep_tips_enabled,
+      'payload.ai_prep_tips_enabled': payload.ai_prep_tips_enabled,
+      fullPayload: payload
+    });
 
     const ok = await onCreate?.(payload);
     if (ok) onClose?.();

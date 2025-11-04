@@ -18,10 +18,12 @@ import AdminGuard from '../../../components/guards/AdminGuard';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { adminApi } from '../../../features/admin/api';
 import { useToast } from '../../../lib/toast';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function UserDetailPage() {
   const router = useRouter();
   const toast = useToast();
+  const { user: currentUser, refreshUser } = useAuth();
   const { id } = router.query;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -426,7 +428,18 @@ export default function UserDetailPage() {
                               setActionLoading(true);
                               const expiresAt = subscriptionEndsAt ? new Date(subscriptionEndsAt).toISOString() : null;
                               await adminApi.toggleUserPremium(id, subscriptionPlan, subscriptionStatus, expiresAt);
-                              toast.success('Subscription updated');
+                              
+                              // Check if admin edited their own account
+                              const isOwnAccount = currentUser && user && currentUser.id === user.id;
+                              
+                              if (isOwnAccount) {
+                                // Refresh the current user context
+                                await refreshUser();
+                                toast.success('Subscription updated! Your session has been refreshed.');
+                              } else {
+                                toast.success('Subscription updated');
+                              }
+                              
                               setEditingSubscription(false);
                               await loadUser();
                             } catch (err) {
