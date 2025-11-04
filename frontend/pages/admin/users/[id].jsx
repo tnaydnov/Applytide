@@ -629,7 +629,10 @@ export default function UserDetailPage() {
                           {job.location || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                          {format(new Date(job.created_at), 'MMM d, yyyy')}
+                          {job.created_at 
+                            ? format(new Date(job.created_at), 'MMM d, yyyy')
+                            : '-'
+                          }
                         </td>
                       </tr>
                     ))
@@ -663,7 +666,10 @@ export default function UserDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white">{event.message}</p>
                         <p className="text-xs text-slate-400 mt-1">
-                          {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
+                          {event.timestamp 
+                            ? formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })
+                            : 'Unknown time'
+                          }
                         </p>
                       </div>
                     </div>

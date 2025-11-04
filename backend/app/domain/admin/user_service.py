@@ -5,7 +5,8 @@ Provides user management operations for the admin panel including user listing,
 user details, and user resource access (applications, jobs, activity).
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
+from uuid import UUID
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -227,12 +228,12 @@ class UserService:
                 total_pages=0
             )
     
-    def get_user_detail(self, user_id: int) -> Optional[dto.UserDetailDTO]:
+    def get_user_detail(self, user_id: Union[int, UUID, str]) -> Optional[dto.UserDetailDTO]:
         """
         Get detailed user information.
         
         Args:
-            user_id: ID of the user to retrieve
+            user_id: ID of the user to retrieve (int or UUID)
         
         Returns:
             UserDetailDTO with full user information and resource counts, or None if user not found
@@ -242,10 +243,18 @@ class UserService:
             SQLAlchemyError: If database query fails
         """
         try:
-            # Input validation
-            if not isinstance(user_id, int) or user_id < 1:
+            # Input validation - accept int or UUID
+            if user_id is None:
                 logger.warning(f"Invalid user_id parameter: {user_id}")
                 return None
+            
+            # Convert string to UUID if needed
+            if isinstance(user_id, str):
+                try:
+                    user_id = UUID(user_id)
+                except ValueError:
+                    logger.warning(f"Invalid UUID string for user_id: {user_id}")
+                    return None
             
             logger.debug(f"Fetching user detail for user_id={user_id}")
             
@@ -349,12 +358,12 @@ class UserService:
             )
             return None
     
-    def get_user_applications(self, user_id: int, limit: int = 50) -> List[dto.UserApplicationDTO]:
+    def get_user_applications(self, user_id: Union[int, UUID, str], limit: int = 50) -> List[dto.UserApplicationDTO]:
         """
         Get user's applications.
         
         Args:
-            user_id: ID of the user
+            user_id: ID of the user (int or UUID)
             limit: Maximum number of applications to return (default 50, max 200)
         
         Returns:
@@ -365,10 +374,18 @@ class UserService:
             SQLAlchemyError: If database query fails
         """
         try:
-            # Input validation
-            if not isinstance(user_id, int) or user_id < 1:
+            # Input validation - accept int or UUID
+            if user_id is None:
                 logger.warning(f"Invalid user_id parameter: {user_id}")
                 return []
+            
+            # Convert string to UUID if needed
+            if isinstance(user_id, str):
+                try:
+                    user_id = UUID(user_id)
+                except ValueError:
+                    logger.warning(f"Invalid UUID string for user_id: {user_id}")
+                    return []
             
             if not isinstance(limit, int) or limit < 1:
                 logger.warning(f"Invalid limit parameter: {limit}, using default 50")
@@ -425,12 +442,12 @@ class UserService:
             )
             return []
     
-    def get_user_jobs(self, user_id: int, limit: int = 50) -> List[dto.UserJobDTO]:
+    def get_user_jobs(self, user_id: Union[int, UUID, str], limit: int = 50) -> List[dto.UserJobDTO]:
         """
         Get user's saved jobs.
         
         Args:
-            user_id: ID of the user
+            user_id: ID of the user (int or UUID)
             limit: Maximum number of jobs to return (default 50, max 200)
         
         Returns:
@@ -441,10 +458,18 @@ class UserService:
             SQLAlchemyError: If database query fails
         """
         try:
-            # Input validation
-            if not isinstance(user_id, int) or user_id < 1:
+            # Input validation - accept int or UUID
+            if user_id is None:
                 logger.warning(f"Invalid user_id parameter: {user_id}")
                 return []
+            
+            # Convert string to UUID if needed
+            if isinstance(user_id, str):
+                try:
+                    user_id = UUID(user_id)
+                except ValueError:
+                    logger.warning(f"Invalid UUID string for user_id: {user_id}")
+                    return []
             
             if not isinstance(limit, int) or limit < 1:
                 logger.warning(f"Invalid limit parameter: {limit}, using default 50")
@@ -500,12 +525,12 @@ class UserService:
             )
             return []
     
-    def get_user_activity(self, user_id: int, limit: int = 50) -> List[dto.ActivityEventDTO]:
+    def get_user_activity(self, user_id: Union[int, UUID, str], limit: int = 50) -> List[dto.ActivityEventDTO]:
         """
         Get user's recent business events (not HTTP request logs).
         
         Args:
-            user_id: ID of the user
+            user_id: ID of the user (int or UUID)
             limit: Maximum number of events to return (default 50, max 200)
         
         Returns:
@@ -516,8 +541,18 @@ class UserService:
             SQLAlchemyError: If database query fails
         """
         try:
-            # Input validation
-            if not isinstance(user_id, int) or user_id < 1:
+            # Input validation - accept int or UUID
+            if user_id is None:
+                logger.warning(f"Invalid user_id parameter: {user_id}")
+                return []
+            
+            # Convert string to UUID if needed
+            if isinstance(user_id, str):
+                try:
+                    user_id = UUID(user_id)
+                except ValueError:
+                    logger.warning(f"Invalid UUID string for user_id: {user_id}")
+                    return []
                 logger.warning(f"Invalid user_id parameter: {user_id}")
                 return []
             
