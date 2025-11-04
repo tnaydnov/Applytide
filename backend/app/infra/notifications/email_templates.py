@@ -19,7 +19,7 @@ BRAND_COLORS = {
 }
 
 def base_template(content: str, preview_text: str = "") -> str:
-    """Cyberpunk-styled base email template with neon effects"""
+    """Modern, clean email template with strategic color accents"""
     return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -29,7 +29,8 @@ def base_template(content: str, preview_text: str = "") -> str:
     <meta name="x-apple-disable-message-reformatting">
     <title>Applytide</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
         * {{
             margin: 0;
@@ -43,478 +44,426 @@ def base_template(content: str, preview_text: str = "") -> str:
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background: #0a0e1a;
+            background: #f5f5f7;
         }}
         
         /* Full-width wrapper */
         .email-wrapper {{
             width: 100%;
-            background: linear-gradient(180deg, #0a0e1a 0%, #1a1f35 50%, #0a0e1a 100%);
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        /* Animated background grid */
-        .cyber-grid {{
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.3;
-            pointer-events: none;
-        }}
-        
-        /* Neon glow effects */
-        .glow-top {{
-            position: absolute;
-            top: -200px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-            filter: blur(80px);
-            pointer-events: none;
-        }}
-        
-        .glow-bottom {{
-            position: absolute;
-            bottom: -200px;
-            right: 0;
-            width: 600px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%);
-            filter: blur(80px);
-            pointer-events: none;
+            background: #f5f5f7;
+            padding: 40px 20px;
         }}
         
         /* Container */
         .email-container {{
-            max-width: 1200px;
+            max-width: 680px;
             margin: 0 auto;
-            position: relative;
-            z-index: 1;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
         }}
         
-        /* Header - Full Width */
+        /* Header - Gradient */
         .email-header {{
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-            padding: 60px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px 40px;
             text-align: center;
             position: relative;
-            overflow: hidden;
-            border-bottom: 3px solid rgba(255, 255, 255, 0.2);
-        }}
-        
-        .header-glow {{
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
-            filter: blur(60px);
         }}
         
         .logo-container {{
-            position: relative;
-            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 12px;
         }}
         
         .logo-img {{
-            height: 70px;
+            height: 60px;
             width: auto;
-            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
         }}
         
         .brand-name {{
             color: white;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 48px;
-            font-weight: 900;
+            font-size: 36px;
+            font-weight: 800;
             margin: 0;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            text-shadow: 
-                0 0 10px rgba(255, 255, 255, 0.8),
-                0 0 20px rgba(99, 102, 241, 0.6),
-                0 0 30px rgba(168, 85, 247, 0.4);
+            letter-spacing: -0.5px;
         }}
         
         .tagline {{
-            position: relative;
-            z-index: 2;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: 4px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             margin: 0;
         }}
         
-        /* Content Area - Full Width */
+        /* Content Area */
         .email-body {{
-            padding: 60px 40px;
-            position: relative;
-        }}
-        
-        /* Glassmorphism Card */
-        .glass-card {{
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 50px;
-            margin: 40px 0;
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }}
-        
-        /* Neon Card */
-        .neon-card {{
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
-            border: 2px solid;
-            border-image: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899) 1;
-            padding: 50px;
-            margin: 40px 0;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .neon-card::before {{
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
-            border-radius: inherit;
-            z-index: -1;
-            opacity: 0.3;
-            filter: blur(10px);
+            padding: 50px 40px;
+            background: #ffffff;
         }}
         
         /* Typography */
-        h1, h2, h3 {{
-            font-family: 'Orbitron', sans-serif;
-            color: #ffffff;
-            font-weight: 900;
-            letter-spacing: 1px;
-        }}
-        
         h1 {{
-            font-size: 42px;
-            margin: 0 0 20px 0;
-            text-transform: uppercase;
-            background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #1a1a1a;
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 16px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
         }}
         
         h2 {{
-            font-size: 32px;
-            margin: 0 0 15px 0;
-            color: #a5b4fc;
+            color: #1a1a1a;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0 0 14px 0;
+            line-height: 1.3;
         }}
         
         h3 {{
-            font-size: 24px;
-            margin: 0 0 12px 0;
-            color: #c4b5fd;
+            color: #1a1a1a;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            line-height: 1.4;
         }}
         
         p {{
-            color: #cbd5e1;
+            color: #4a4a4a;
             font-size: 16px;
-            line-height: 1.8;
-            margin: 0 0 20px 0;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
         }}
         
-        /* Neon Button */
-        .btn-neon {{
-            display: inline-block;
-            padding: 20px 50px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-            color: white !important;
-            text-decoration: none;
-            border-radius: 50px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
-            font-size: 18px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            box-shadow: 
-                0 0 20px rgba(99, 102, 241, 0.5),
-                0 0 40px rgba(168, 85, 247, 0.3),
-                0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
+        /* Modern Card */
+        .modern-card {{
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+            border: 1px solid #e0e7ff;
+            border-radius: 16px;
+            padding: 32px;
+            margin: 32px 0;
         }}
         
-        /* Stats Grid */
+        /* Accent Card - Colorful */
+        .accent-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 36px;
+            margin: 32px 0;
+            color: white;
+        }}
+        
+        .accent-card h2,
+        .accent-card h3,
+        .accent-card p {{
+            color: white;
+        }}
+        
+        /* Light Card with Border */
+        .light-card {{
+            background: #ffffff;
+            border: 2px solid #f0f0f0;
+            border-radius: 14px;
+            padding: 28px;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }}
+        
+        .light-card:hover {{
+            border-color: #667eea;
+        }}
+        
+        /* Stats Grid - Clean & Minimal */
         .stats-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin: 40px 0;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 32px 0;
         }}
         
         .stat-card {{
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            border-radius: 20px;
-            padding: 35px;
+            background: #ffffff;
+            border: 2px solid #f0f0f0;
+            border-radius: 14px;
+            padding: 28px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .stat-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
         }}
         
         .stat-icon {{
-            font-size: 48px;
-            margin-bottom: 15px;
-            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
-        }}
-        
-        .stat-value {{
-            font-family: 'Orbitron', sans-serif;
-            font-size: 36px;
-            font-weight: 900;
-            color: #ffffff;
-            margin: 0 0 10px 0;
-            text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+            font-size: 40px;
+            margin-bottom: 12px;
         }}
         
         .stat-label {{
-            font-size: 14px;
-            color: #94a3b8;
+            font-size: 12px;
+            color: #8a8a8a;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }}
+        
+        .stat-value {{
+            font-size: 28px;
+            font-weight: 800;
+            color: #1a1a1a;
             margin: 0;
         }}
         
-        /* Alert Boxes */
-        .alert-success {{
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
-            border-left: 4px solid #10b981;
-            border-radius: 16px;
-            padding: 30px;
-            margin: 30px 0;
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        /* Button - Modern & Clean */
+        .btn {{
+            display: inline-block;
+            padding: 16px 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
         }}
         
-        .alert-warning {{
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%);
-            border-left: 4px solid #f59e0b;
-            border-radius: 16px;
-            padding: 30px;
-            margin: 30px 0;
-            box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
-        }}
-        
-        .alert-danger {{
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%);
-            border-left: 4px solid #ef4444;
-            border-radius: 16px;
-            padding: 30px;
-            margin: 30px 0;
-            box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
-        }}
-        
-        /* Timeline */
-        .timeline-item {{
-            display: flex;
-            gap: 30px;
-            margin: 30px 0;
-            position: relative;
-        }}
-        
-        .timeline-icon {{
-            flex-shrink: 0;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: 
-                0 0 20px rgba(99, 102, 241, 0.5),
-                0 4px 16px rgba(0, 0, 0, 0.3);
-            position: relative;
-            z-index: 2;
-        }}
-        
-        .timeline-content {{
-            flex: 1;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 25px;
-        }}
-        
-        .timeline-item:not(:last-child)::after {{
-            content: '';
-            position: absolute;
-            left: 30px;
-            top: 60px;
-            width: 2px;
-            height: calc(100% + 30px);
-            background: linear-gradient(180deg, #6366f1, #8b5cf6);
-            opacity: 0.3;
-        }}
-        
-        /* Divider */
-        .cyber-divider {{
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #6366f1, #8b5cf6, #ec4899, transparent);
-            margin: 50px 0;
-            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        .btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
         }}
         
         /* Badge */
         .badge {{
             display: inline-block;
-            padding: 8px 20px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            letter-spacing: 0.5px;
         }}
         
         .badge-success {{
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }}
         
         .badge-warning {{
-            background: linear-gradient(135deg, #f59e0b, #d97706);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }}
         
         .badge-danger {{
-            background: linear-gradient(135deg, #ef4444, #dc2626);
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         }}
         
-        /* Footer - Full Width */
-        .email-footer {{
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            padding: 60px 40px;
-            text-align: center;
-            border-top: 2px solid rgba(99, 102, 241, 0.3);
+        /* Alert Boxes - Clean & Colorful */
+        .alert {{
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid;
+        }}
+        
+        .alert-success {{
+            background: #f0fdf4;
+            border-color: #10b981;
+        }}
+        
+        .alert-success h3 {{
+            color: #059669;
+        }}
+        
+        .alert-success p {{
+            color: #047857;
+        }}
+        
+        .alert-warning {{
+            background: #fffbeb;
+            border-color: #f59e0b;
+        }}
+        
+        .alert-warning h3 {{
+            color: #d97706;
+        }}
+        
+        .alert-warning p {{
+            color: #b45309;
+        }}
+        
+        .alert-danger {{
+            background: #fef2f2;
+            border-color: #ef4444;
+        }}
+        
+        .alert-danger h3 {{
+            color: #dc2626;
+        }}
+        
+        .alert-danger p {{
+            color: #b91c1c;
+        }}
+        
+        .alert-info {{
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }}
+        
+        .alert-info h3 {{
+            color: #2563eb;
+        }}
+        
+        .alert-info p {{
+            color: #1d4ed8;
+        }}
+        
+        /* Timeline - Clean */
+        .timeline-item {{
+            display: flex;
+            gap: 20px;
+            margin: 24px 0;
             position: relative;
         }}
         
+        .timeline-number {{
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 16px;
+        }}
+        
+        .timeline-content {{
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }}
+        
+        .timeline-content h4 {{
+            color: #1a1a1a;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }}
+        
+        .timeline-content p {{
+            color: #4a4a4a;
+            font-size: 14px;
+            margin: 0;
+        }}
+        
+        .timeline-item:not(:last-child)::after {{
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 40px;
+            width: 2px;
+            height: calc(100% - 16px);
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            opacity: 0.3;
+        }}
+        
+        /* Divider */
+        .divider {{
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+            margin: 40px 0;
+        }}
+        
+        /* Footer */
+        .email-footer {{
+            background: #f8f9fa;
+            padding: 40px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }}
+        
         .footer-logo {{
-            font-family: 'Orbitron', sans-serif;
-            font-size: 28px;
-            font-weight: 900;
-            color: #a5b4fc;
-            margin: 0 0 15px 0;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            font-size: 24px;
+            font-weight: 800;
+            color: #1a1a1a;
+            margin: 0 0 8px 0;
         }}
         
         .footer-tagline {{
-            color: #64748b;
-            font-size: 14px;
-            margin: 0 0 30px 0;
+            color: #8a8a8a;
+            font-size: 13px;
+            margin: 0 0 24px 0;
         }}
         
         .footer-links {{
-            margin: 30px 0;
+            margin: 24px 0;
         }}
         
         .footer-links a {{
-            color: #94a3b8;
+            color: #4a4a4a;
             text-decoration: none;
-            margin: 0 15px;
+            margin: 0 12px;
             font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
+            font-size: 13px;
+            transition: color 0.3s;
         }}
         
         .footer-links a:hover {{
-            color: #a5b4fc;
-            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+            color: #667eea;
         }}
         
         .footer-copyright {{
-            color: #475569;
+            color: #8a8a8a;
             font-size: 12px;
-            margin: 30px 0 0 0;
+            margin: 24px 0 0 0;
             line-height: 1.6;
         }}
         
         /* Responsive */
-        @media only screen and (max-width: 768px) {{
+        @media only screen and (max-width: 600px) {{
             .email-header,
             .email-body,
             .email-footer {{
-                padding: 40px 20px;
+                padding: 32px 24px;
             }}
             
             .brand-name {{
-                font-size: 32px;
-            }}
-            
-            h1 {{
                 font-size: 28px;
             }}
             
-            h2 {{
-                font-size: 24px;
+            h1 {{
+                font-size: 26px;
             }}
             
-            .glass-card,
-            .neon-card {{
-                padding: 30px 20px;
+            h2 {{
+                font-size: 22px;
             }}
             
             .stats-grid {{
                 grid-template-columns: 1fr;
-                gap: 20px;
+                gap: 16px;
             }}
             
-            .btn-neon {{
+            .modern-card,
+            .accent-card,
+            .light-card {{
+                padding: 24px 20px;
+            }}
+            
+            .btn {{
                 width: 100%;
-                padding: 18px 30px;
-                font-size: 16px;
+                padding: 14px 28px;
             }}
             
             .timeline-item {{
                 flex-direction: column;
-                gap: 15px;
+                gap: 12px;
             }}
             
             .timeline-item:not(:last-child)::after {{
@@ -525,23 +474,18 @@ def base_template(content: str, preview_text: str = "") -> str:
 </head>
 <body>
     <!-- Preview Text -->
-    <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    <div style="display:none;font-size:1px;color:#1a1a1a;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
         {preview_text}
     </div>
     
     <!-- Email Wrapper -->
     <div class="email-wrapper">
-        <!-- Background Effects -->
-        <div class="cyber-grid"></div>
-        <div class="glow-top"></div>
-        <div class="glow-bottom"></div>
         
         <!-- Container -->
         <div class="email-container">
             
-            <!-- ========== HEADER ========== -->
+            <!-- Header -->
             <div class="email-header">
-                <div class="header-glow"></div>
                 <div class="logo-container">
                     <img src="https://applytide.com/images/logomark.png" alt="Applytide" class="logo-img" />
                     <h1 class="brand-name">Applytide</h1>
@@ -549,17 +493,15 @@ def base_template(content: str, preview_text: str = "") -> str:
                 <p class="tagline">AI-Powered Job Tracking</p>
             </div>
             
-            <!-- ========== BODY ========== -->
+            <!-- Body -->
             <div class="email-body">
                 {content}
             </div>
             
-            <!-- ========== FOOTER ========== -->
+            <!-- Footer -->
             <div class="email-footer">
                 <p class="footer-logo">Applytide</p>
                 <p class="footer-tagline">Your AI-Powered Job Application Tracker</p>
-                
-                <div class="cyber-divider" style="margin: 40px auto; max-width: 600px;"></div>
                 
                 <div class="footer-links">
                     <a href="https://applytide.com">Home</a>
@@ -843,52 +785,42 @@ def reminder_email(
     ai_prep_tips_html: str = None
 ) -> str:
     """
-    Cyberpunk-styled reminder email with neon effects and optional AI prep tips
+    Clean, modern reminder email with optional AI prep tips
     urgency: 'now', 'today', 'tomorrow', 'week', 'future'
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     ai_prep_tips_html: Optional HTML content with AI-generated prep tips (Pro/Premium feature)
     """
     
-    # Urgency-based styling - cyberpunk neon theme
+    # Urgency-based styling - clean & minimal
     urgency_config = {
         'now': {
             'emoji': '🚨',
             'title': 'HAPPENING NOW',
             'badge_class': 'badge-danger',
-            'alert_class': 'alert-danger',
-            'border_color': '#ef4444',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
             'title': 'DUE TODAY',
             'badge_class': 'badge-warning',
-            'alert_class': 'alert-warning',
-            'border_color': '#f59e0b',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
             'title': 'TOMORROW',
             'badge_class': 'badge',
-            'alert_class': 'alert-success',
-            'border_color': '#6366f1',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
             'title': 'THIS WEEK',
             'badge_class': 'badge',
-            'alert_class': 'alert-success',
-            'border_color': '#8b5cf6',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
             'title': 'UPCOMING',
             'badge_class': 'badge-success',
-            'alert_class': 'alert-success',
-            'border_color': '#10b981',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -906,78 +838,76 @@ def reminder_email(
     
     content = f"""
         <!-- Hero Badge Section -->
-        <div style="text-align: center; margin: 0 0 50px 0;">
+        <div style="text-align: center; margin: 0 0 40px 0;">
             <span class="{config['badge_class']}">{config['emoji']} {config['title']}</span>
-            <h1 style="margin-top: 30px; font-family: 'Orbitron', sans-serif; font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                {title}
-            </h1>
-            <p style="font-size: 18px; color: #94a3b8; margin-top: 20px;">
+            <h1 style="margin-top: 24px;">{title}</h1>
+            <p style="font-size: 16px; color: #8a8a8a; margin-top: 12px;">
                 Hey {name}, {config['message']}
             </p>
         </div>
         
-        <!-- Main Event Card - Glassmorphism -->
-        <div class="glass-card">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="font-size: 64px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));">{event_icon}</div>
+        <!-- Main Event Card -->
+        <div class="modern-card">
+            <div style="text-align: center; margin-bottom: 28px;">
+                <div style="font-size: 56px; margin-bottom: 16px;">{event_icon}</div>
             </div>
             
-            {f'<p style="color: #cbd5e1; font-size: 17px; line-height: 1.8; text-align: center; margin-bottom: 40px;">{description}</p>' if description else ''}
+            {f'<p style="color: #4a4a4a; font-size: 16px; line-height: 1.7; text-align: center; margin-bottom: 32px;">{description}</p>' if description else ''}
             
             <!-- Date & Time Stats Grid -->
-            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">📅</div>
                     <p class="stat-label">Due Date</p>
-                    <p style="color: #ffffff; margin: 15px 0 0 0; font-size: 18px; font-weight: 700;">{due_date}</p>
+                    <p class="stat-value" style="font-size: 18px; margin-top: 8px;">{due_date}</p>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">⏱️</div>
                     <p class="stat-label">Time Left</p>
-                    <p style="color: #ec4899; margin: 15px 0 0 0; font-size: 22px; font-weight: 900; text-shadow: 0 0 20px rgba(236, 72, 153, 0.5);">{time_until}</p>
+                    <p class="stat-value" style="font-size: 20px; margin-top: 8px; color: #667eea;">{time_until}</p>
                 </div>
             </div>
         </div>
         
         <!-- CTA Button -->
-        <div style="text-align: center; margin: 50px 0;">
-            <a href="{action_url}" class="btn-neon">View Application →</a>
+        <div style="text-align: center; margin: 40px 0;">
+            <a href="{action_url}" class="btn">View Application →</a>
         </div>
         
         {f'''
         <!-- AI Preparation Tips Section (Pro/Premium Feature) -->
-        <div class="cyber-divider"></div>
+        <div class="divider"></div>
         
-        <div class="neon-card" style="margin: 60px 0;">
-            <div style="text-align: center; margin-bottom: 40px;">
-                <div style="font-size: 72px; margin-bottom: 25px; filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.6));">🤖</div>
-                <h2 style="color: #ffffff; font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; margin-bottom: 15px;">AI-Powered Interview Prep</h2>
-                <p style="color: #94a3b8; font-size: 16px; margin: 0;">
+        <div class="accent-card" style="margin: 40px 0;">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <div style="font-size: 56px; margin-bottom: 16px;">🤖</div>
+                <h2 style="color: white; margin-bottom: 8px;">AI-Powered Interview Prep</h2>
+                <p style="color: rgba(255, 255, 255, 0.9); font-size: 14px; margin: 0;">
                     ✨ Personalized just for you • Generated with GPT-4
                 </p>
             </div>
-            
-            {ai_prep_tips_html}
-            
-            <div style="text-align: center; margin-top: 50px;">
-                <span class="badge" style="padding: 12px 30px; font-size: 14px;">
-                    💎 Pro Feature
-                </span>
-            </div>
+        </div>
+        
+        {ai_prep_tips_html}
+        
+        <div style="text-align: center; margin: 32px 0;">
+            <span class="badge" style="padding: 10px 20px; font-size: 13px;">
+                💎 Pro Feature
+            </span>
         </div>
         ''' if ai_prep_tips_html else ''}
         
         <!-- Divider -->
-        <div class="cyber-divider"></div>
+        <div class="divider"></div>
         
         <!-- Footer Tip -->
-        <div style="text-align: center; margin-top: 40px;">
-            <p style="color: #94a3b8; font-size: 15px; margin: 0 0 15px 0;">
-                💡 <strong style="color: #a5b4fc;">Pro Tip:</strong> Set multiple reminders to never miss important deadlines!
+        <div style="text-align: center; margin-top: 32px;">
+            <p style="color: #8a8a8a; font-size: 15px; margin: 0 0 12px 0;">
+                💡 <strong style="color: #4a4a4a;">Pro Tip:</strong> Set multiple reminders to never miss important deadlines!
             </p>
-            <p style="color: #64748b; font-size: 14px; margin: 0;">
+            <p style="color: #8a8a8a; font-size: 14px; margin: 0;">
                 Manage all reminders in your 
-                <a href="https://applytide.com/reminders" style="color: #6366f1; text-decoration: none; font-weight: 700; text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);">
+                <a href="https://applytide.com/reminders" style="color: #667eea; text-decoration: none; font-weight: 600;">
                     Dashboard →
                 </a>
             </p>

@@ -448,116 +448,107 @@ IMPORTANT:
     
     def format_tips_for_email(self, tips_data: Dict[str, Any]) -> str:
         """
-        Format the AI-generated tips into cyberpunk-styled HTML matching the new template.
-        
-        Args:
-            tips_data: Dictionary containing tips, insights, focus areas, etc.
-            
-        Returns:
-            HTML-formatted string ready for email inclusion
+        Format AI tips into clean, modern HTML that's readable and professional.
         """
         if not tips_data.get("success"):
             return ""
         
         html_parts = []
         
-        # Company Insights - Neon Card
+        # Company Insights - Accent Card
         if tips_data.get("company_insights"):
             html_parts.append(f"""
-            <div class="neon-card" style="margin: 40px 0;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <div style="font-size: 64px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));">🏢</div>
-                    <h2 style="color: #a5b4fc; margin-bottom: 20px;">Company Intelligence</h2>
+            <div class="accent-card">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🏢</div>
+                    <h2 style="color: white; margin-bottom: 12px;">Company Intelligence</h2>
+                    <p style="color: rgba(255, 255, 255, 0.9); font-size: 14px; margin: 0;">What you need to know</p>
                 </div>
-                <p style="color: #cbd5e1; font-size: 16px; line-height: 1.8; text-align: center;">{tips_data['company_insights']}</p>
+                <p style="color: rgba(255, 255, 255, 0.95); font-size: 15px; line-height: 1.7; margin: 0;">{tips_data['company_insights']}</p>
             </div>
             """)
-        
-        # Key Focus Areas - Stats Grid Style
-        if tips_data.get("key_focus_areas"):
-            focus_areas = tips_data["key_focus_areas"]
-            focus_icons = ["🎯", "💎", "⚡", "🚀", "🔥", "💪", "🌟", "🎨"]
-            
-            html_parts.append("""
-            <div class="cyber-divider"></div>
-            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Critical Focus Areas</h2>
-            <div class="stats-grid">
-            """)
-            
-            for idx, area in enumerate(focus_areas):
-                icon = focus_icons[idx % len(focus_icons)]
-                html_parts.append(f"""
-                <div class="stat-card">
-                    <div class="stat-icon" style="font-size: 48px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));">{icon}</div>
-                    <p style="color: #cbd5e1; margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600;">{area}</p>
-                </div>
-                """)
-            
-            html_parts.append("</div>")
         
         # Estimated Prep Time Badge
         estimated_time = tips_data.get("estimated_prep_time", "")
         if estimated_time:
             html_parts.append(f"""
-            <div style="text-align: center; margin: 50px 0 30px 0;">
-                <span class="badge" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 25px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);">
+            <div style="text-align: center; margin: 32px 0;">
+                <span class="badge" style="padding: 12px 24px; font-size: 13px;">
                     ⏱️ Suggested Prep Time: {estimated_time}
                 </span>
             </div>
             """)
         
-        # Preparation Tips - Timeline Style
-        if tips_data.get("tips"):
+        # Key Focus Areas - Clean Grid
+        if tips_data.get("key_focus_areas"):
+            focus_areas = tips_data["key_focus_areas"]
+            focus_icons = ["🎯", "💎", "⚡", "🚀", "🔥", "💪", "🌟"]
+            
             html_parts.append("""
-            <div class="cyber-divider"></div>
-            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Your Preparation Roadmap</h2>
+            <div style="margin: 48px 0 32px 0;">
+                <h2 style="text-align: center; margin-bottom: 32px;">Critical Focus Areas</h2>
+            </div>
             """)
             
-            for idx, tip in enumerate(tips_data["tips"], 1):
-                # Emoji for each step
-                step_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
-                emoji = step_emojis[idx - 1] if idx <= 10 else f"{idx}️⃣"
-                
+            for idx, area in enumerate(focus_areas):
+                icon = focus_icons[idx % len(focus_icons)]
                 html_parts.append(f"""
-                <div class="timeline-item">
-                    <div class="timeline-icon">{emoji}</div>
-                    <div class="timeline-content">
-                        <p style="color: #cbd5e1; margin: 0; font-size: 15px; line-height: 1.7;">{tip}</p>
+                <div class="light-card">
+                    <div style="display: flex; align-items: start; gap: 16px;">
+                        <div style="flex-shrink: 0; font-size: 32px;">{icon}</div>
+                        <p style="color: #1a1a1a; margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600;">{area}</p>
                     </div>
                 </div>
                 """)
         
-        # Recommended Preparation - Glass Cards Grid
-        if tips_data.get("recommended_prep"):
+        # Preparation Tips - Clean Timeline
+        if tips_data.get("tips"):
             html_parts.append("""
-            <div class="cyber-divider"></div>
-            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Study Timeline & Tasks</h2>
+            <div class="divider"></div>
+            <div style="margin: 48px 0 32px 0;">
+                <h2 style="text-align: center; margin-bottom: 8px;">Your Preparation Roadmap</h2>
+                <p style="text-align: center; color: #8a8a8a; font-size: 14px;">Follow these steps to ace your interview</p>
+            </div>
             """)
             
-            for idx, prep in enumerate(tips_data["recommended_prep"]):
-                # Alternate alert styles for variety
-                alert_types = [
-                    ("alert-success", "#10b981", "#a7f3d0", "✓"),
-                    ("alert-warning", "#f59e0b", "#fde68a", "⚡"),
-                    ("alert-success", "#10b981", "#a7f3d0", "✓"),
-                ]
-                alert_class, title_color, text_color, icon = alert_types[idx % len(alert_types)]
-                
+            for idx, tip in enumerate(tips_data["tips"], 1):
                 html_parts.append(f"""
-                <div class="{alert_class}">
-                    <h3 style="color: {title_color}; margin-bottom: 10px; font-size: 18px; font-weight: 700;">{icon} Task {idx + 1}</h3>
-                    <p style="color: {text_color}; margin: 0; font-size: 14px; line-height: 1.7;">{prep}</p>
+                <div class="timeline-item">
+                    <div class="timeline-number">{idx}</div>
+                    <div class="timeline-content">
+                        <p style="color: #4a4a4a; margin: 0; font-size: 14px; line-height: 1.6;">{tip}</p>
+                    </div>
                 </div>
                 """)
         
-        # Success Footer - Neon CTA
-        html_parts.append("""
-        <div class="neon-card" style="margin: 60px 0 40px 0;">
-            <div style="text-align: center;">
-                <div style="font-size: 72px; margin-bottom: 25px; filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.6));">🎯</div>
-                <h2 style="color: #ffffff; margin-bottom: 20px; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 32px;">You've Got This!</h2>
-                <p style="font-size: 18px; color: #cbd5e1; margin: 0;">Follow this plan and nail your interview. Your preparation starts now! 💪</p>
+        # Recommended Preparation - Alert Boxes
+        if tips_data.get("recommended_prep"):
+            html_parts.append("""
+            <div class="divider"></div>
+            <div style="margin: 48px 0 32px 0;">
+                <h2 style="text-align: center; margin-bottom: 8px;">Study Timeline & Tasks</h2>
+                <p style="text-align: center; color: #8a8a8a; font-size: 14px;">Organize your preparation with these daily tasks</p>
             </div>
+            """)
+            
+            alert_types = ["alert-info", "alert-success", "alert-warning"]
+            
+            for idx, prep in enumerate(tips_data["recommended_prep"]):
+                alert_class = alert_types[idx % len(alert_types)]
+                
+                html_parts.append(f"""
+                <div class="{alert_class}">
+                    <h3 style="margin-bottom: 8px; font-size: 16px;">Task {idx + 1}</h3>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6;">{prep}</p>
+                </div>
+                """)
+        
+        # Success Footer
+        html_parts.append("""
+        <div class="modern-card" style="text-align: center; margin-top: 48px;">
+            <div style="font-size: 56px; margin-bottom: 20px;">🎯</div>
+            <h2 style="color: #1a1a1a; margin-bottom: 12px;">You've Got This!</h2>
+            <p style="font-size: 15px; color: #4a4a4a; margin: 0;">Follow this plan and nail your interview. Your preparation starts now! 💪</p>
         </div>
         """)
         
