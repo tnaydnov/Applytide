@@ -94,6 +94,11 @@ async def create_reminder(
                 "email_enabled": reminder.email_notifications_enabled,
                 "event_type": reminder.event_type,
                 "has_schedule": reminder.notification_schedule is not None,
+                "application_id": str(reminder.application_id) if reminder.application_id else None,
+                "ai_prep_requested": reminder.ai_prep_tips_enabled,
+                "user_plan": user.subscription_plan,
+                "user_status": user.subscription_status,
+                "has_interview_prep_access": user.has_feature_access('interview_prep'),
             },
         )
         return await svc.create_reminder(

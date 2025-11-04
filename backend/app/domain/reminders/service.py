@@ -275,6 +275,16 @@ class ReminderService:
                 raise ReminderServiceError(f"Failed to create reminder: {e}")
             
             # Generate and send AI preparation tips if enabled (Pro/Premium feature)
+            logger.debug(
+                f"Checking AI prep tips eligibility",
+                extra={
+                    "reminder_id": str(r.id),
+                    "ai_prep_tips_enabled": ai_prep_tips_enabled,
+                    "application_id": str(application_id) if application_id else None,
+                    "will_generate": ai_prep_tips_enabled and application_id is not None
+                }
+            )
+            
             if ai_prep_tips_enabled and application_id:
                 await self._generate_and_send_ai_tips(
                     reminder=r,
