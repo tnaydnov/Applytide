@@ -108,8 +108,9 @@ export default function Privacy() {
             <ul className="list-disc pl-6 space-y-2 mb-4">
               <li><strong>activeTab</strong>: Required to read job content from the current tab when you click the extension</li>
               <li><strong>scripting</strong>: Allows the extension to extract job details from supported job boards</li>
-              <li><strong>storage</strong>: Stores your authentication token locally so you stay logged in</li>
               <li><strong>tabs</strong>: Detects the current URL to determine if automatic extraction is supported</li>
+              <li><strong>alarms</strong>: Maintains your login session by periodically refreshing authentication tokens</li>
+              <li><strong>windows</strong>: Opens authentication popup windows for Google sign-in</li>
               <li><strong>Host permissions</strong>: Grants access to job board websites only when you activate the extension</li>
             </ul>
 

@@ -1,15 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Applytide",
-  "version": "1.2.0",
-  "description": "Save jobs to Applytide.",
+  "version": "1.3.0",
+  "description": "Extract and save job listings to your Applytide account. Automatically parse job details from any website.",
   "icons": {
     "16": "logomark.png",
     "48": "logomark.png",
     "128": "logomark.png"
   },
   "optional_host_permissions": ["https://*/*", "http://*/*"],
-  "permissions": ["activeTab", "scripting", "storage", "tabs", "alarms", "windows"],
+  "permissions": ["activeTab", "scripting", "tabs", "alarms", "windows"],
   "host_permissions": [
     "https://applytide.com/*",
     "http://localhost/*"
@@ -18,6 +18,12 @@
   "action": { "default_title": "Applytide", "default_popup": "popup.html", "default_icon": "logomark.png" },
 
   "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["Readability.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
     {
       "matches": ["https://applytide.com/*", "http://localhost/*"],
       "js": ["site-bridge.js"],

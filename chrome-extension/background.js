@@ -499,34 +499,19 @@ async function getRenderedCapture(tabId, {
       return metas;
     }
 
-    // 6) Readability.js — load ad-hoc (lightweight loader)
+    // 6) Readability.js — bundled as content script
     async function getReadable() {
-      // If Readability already present (bundled), use it:
+      // Readability.js is now bundled and injected via content_scripts in manifest
       if (window.Readability) {
         try {
           const article = new Readability(document.cloneNode(true)).parse();
           return article || null;
-        } catch { }
-      }
-      // Otherwise try to inject from CDN (best effort; ignore if blocked)
-      try {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.min.js';
-        s.crossOrigin = 'anonymous';
-        document.documentElement.appendChild(s);
-
-        // Add timeout to prevent hanging
-        await Promise.race([
-          new Promise(r => s.onload = r),
-          new Promise(r => setTimeout(r, 3000)) // 3 second timeout
-        ]);
-
-        // Check if Readability loaded
-        if (window.Readability) {
-          const article = new Readability(document.cloneNode(true)).parse();
-          return article || null;
+        } catch (e) {
+          console.error('Readability parse error:', e);
+          return null;
         }
-      } catch { return null; }
+      }
+      console.warn('Readability library not available');
       return null;
     }
 
