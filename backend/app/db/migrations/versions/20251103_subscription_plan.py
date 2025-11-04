@@ -22,7 +22,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '20251103_subscription_plan'
-down_revision = '20251031_add_extension_banner_field'
+down_revision = '20251031_add_extension_banner'
 branch_labels = None
 depends_on = None
 
