@@ -1313,27 +1313,39 @@ class ReminderService:
             
             # Generate AI tips
             try:
+                # AIPreparationService.generate_preparation_tips expects
+                # job_requirements, job_skills, event_title and event_description
+                # (and does NOT accept job_url). Provide sensible defaults from
+                # JobTinyDTO and reminder data.
+                job_requirements = getattr(job_dto, "requirements", []) or []
+                job_skills = getattr(job_dto, "skills", []) or []
+
                 result = await self.ai_prep_service.generate_preparation_tips(
-                    company_name=company_name,
                     job_title=job_title,
+                    company_name=company_name,
                     job_description=job_description,
-                    job_url=job_url,
+                    job_requirements=job_requirements,
+                    job_skills=job_skills,
                     event_type=event_type or "general",
+                    event_title=getattr(reminder, "title", "") or "",
+                    event_description=getattr(reminder, "notes", None),
                     resume_text=resume_text,
-                    cover_letter_text=cover_letter_text
+                    cover_letter_text=cover_letter_text,
+                    additional_documents=None
                 )
-                
-                if not result.get("success"):
+
+                if not result or not result.get("success"):
                     logger.warning(
-                        f"AI service returned failure: {result.get('error', 'Unknown error')}",
+                        f"AI service returned failure: {result.get('error', 'Unknown error') if result else 'No result'}",
                         extra={
                             "reminder_id": str(reminder.id),
-                            "error": result.get("error")
+                            "error": (result.get("error") if result else None)
                         }
                     )
                     return
-                
-                ai_response = result.get("data", {})
+
+                # The AI service returns a dict containing tips/insights etc.
+                ai_response = result
                 logger.info(
                     f"AI tips generated successfully",
                     extra={
