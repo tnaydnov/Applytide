@@ -352,7 +352,8 @@ IMPORTANT:
         time_until_text = ""
         urgency_context = ""
         if event_date:
-            now = datetime.now(timezone.utc)
+            from datetime import datetime as dt
+            now = dt.now(timezone.utc)
             if event_date.tzinfo is None:
                 event_date = event_date.replace(tzinfo=timezone.utc)
             

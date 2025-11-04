@@ -1372,12 +1372,13 @@ class ReminderService:
             # Cache AI response in database
             try:
                 import json
+                from datetime import datetime as dt
                 self.reminders.update(
                     user_id=user_id,
                     reminder_id=reminder.id,
                     data={
                         "ai_prep_tips_generated": json.dumps(ai_response),
-                        "ai_prep_tips_generated_at": datetime.now(timezone.utc)
+                        "ai_prep_tips_generated_at": dt.now(timezone.utc)
                     }
                 )
                 logger.debug(

@@ -734,7 +734,7 @@ class EmailService:
             "Sending reminder email",
             extra={
                 "to_email": to_email,
-                "name": name,
+                "recipient_name": name,
                 "title": title,
                 "urgency": urgency,
                 "event_type": event_type,
