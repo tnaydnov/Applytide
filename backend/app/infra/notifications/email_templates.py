@@ -19,7 +19,7 @@ BRAND_COLORS = {
 }
 
 def base_template(content: str, preview_text: str = "") -> str:
-    """Base email template with consistent branding"""
+    """Cyberpunk-styled base email template with neon effects"""
     return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -28,13 +28,14 @@ def base_template(content: str, preview_text: str = "") -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="x-apple-disable-message-reformatting">
     <title>Applytide</title>
-    <!--[if mso]>
-    <style type="text/css">
-        body, table, td {{font-family: Arial, sans-serif !important;}}
-    </style>
-    <![endif]-->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
         
         body {{
             margin: 0;
@@ -42,148 +43,523 @@ def base_template(content: str, preview_text: str = "") -> str:
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            background: #0a0e1a;
         }}
         
+        /* Full-width wrapper */
         .email-wrapper {{
             width: 100%;
-            background: #f8fafc;
-            padding: 40px 20px;
-        }}
-        
-        .email-container {{
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
+            background: linear-gradient(180deg, #0a0e1a 0%, #1a1f35 50%, #0a0e1a 100%);
+            position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }}
         
+        /* Animated background grid */
+        .cyber-grid {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.3;
+            pointer-events: none;
+        }}
+        
+        /* Neon glow effects */
+        .glow-top {{
+            position: absolute;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+        }}
+        
+        .glow-bottom {{
+            position: absolute;
+            bottom: -200px;
+            right: 0;
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+        }}
+        
+        /* Container */
+        .email-container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        /* Header - Full Width */
         .email-header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 40px 30px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            padding: 60px 40px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+        }}
+        
+        .header-glow {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+            filter: blur(60px);
         }}
         
         .logo-container {{
-            margin: 0 auto;
+            position: relative;
+            z-index: 2;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
+            gap: 20px;
+            margin-bottom: 15px;
         }}
         
         .logo-img {{
-            height: 55px;
+            height: 70px;
             width: auto;
-            display: block;
+            filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
         }}
         
         .brand-name {{
             color: white;
-            font-size: 32px;
-            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
             margin: 0;
-            letter-spacing: -0.5px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.8),
+                0 0 20px rgba(99, 102, 241, 0.6),
+                0 0 30px rgba(168, 85, 247, 0.4);
         }}
         
+        .tagline {{
+            position: relative;
+            z-index: 2;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin: 0;
+        }}
+        
+        /* Content Area - Full Width */
         .email-body {{
-            padding: 40px 35px;
-            background: white;
+            padding: 60px 40px;
+            position: relative;
         }}
         
-        .email-footer {{
-            background: #1e293b;
-            padding: 30px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 13px;
+        /* Glassmorphism Card */
+        .glass-card {{
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 50px;
+            margin: 40px 0;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }}
         
-        .btn {{
+        /* Neon Card */
+        .neon-card {{
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+            border: 2px solid;
+            border-image: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899) 1;
+            padding: 50px;
+            margin: 40px 0;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .neon-card::before {{
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0.3;
+            filter: blur(10px);
+        }}
+        
+        /* Typography */
+        h1, h2, h3 {{
+            font-family: 'Orbitron', sans-serif;
+            color: #ffffff;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }}
+        
+        h1 {{
+            font-size: 42px;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+        
+        h2 {{
+            font-size: 32px;
+            margin: 0 0 15px 0;
+            color: #a5b4fc;
+        }}
+        
+        h3 {{
+            font-size: 24px;
+            margin: 0 0 12px 0;
+            color: #c4b5fd;
+        }}
+        
+        p {{
+            color: #cbd5e1;
+            font-size: 16px;
+            line-height: 1.8;
+            margin: 0 0 20px 0;
+        }}
+        
+        /* Neon Button */
+        .btn-neon {{
             display: inline-block;
-            padding: 16px 32px;
-            background: {BRAND_COLORS['gradient']};
+            padding: 20px 50px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
             color: white !important;
             text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
+            border-radius: 50px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 
+                0 0 20px rgba(99, 102, 241, 0.5),
+                0 0 40px rgba(168, 85, 247, 0.3),
+                0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
             transition: all 0.3s ease;
         }}
         
-        .btn:hover {{
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
-            transform: translateY(-2px);
+        /* Stats Grid */
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
         }}
         
-        .btn-secondary {{
-            background: white;
-            color: {BRAND_COLORS['primary']} !important;
-            border: 2px solid {BRAND_COLORS['primary']};
+        .stat-card {{
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 20px;
+            padding: 35px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
         }}
         
-        .divider {{
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+        .stat-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+        }}
+        
+        .stat-icon {{
+            font-size: 48px;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+        }}
+        
+        .stat-value {{
+            font-family: 'Orbitron', sans-serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }}
+        
+        .stat-label {{
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }}
+        
+        /* Alert Boxes */
+        .alert-success {{
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border-left: 4px solid #10b981;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }}
+        
+        .alert-warning {{
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%);
+            border-left: 4px solid #f59e0b;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
+        }}
+        
+        .alert-danger {{
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%);
+            border-left: 4px solid #ef4444;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+        }}
+        
+        /* Timeline */
+        .timeline-item {{
+            display: flex;
+            gap: 30px;
+            margin: 30px 0;
+            position: relative;
+        }}
+        
+        .timeline-icon {{
+            flex-shrink: 0;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 
+                0 0 20px rgba(99, 102, 241, 0.5),
+                0 4px 16px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 2;
+        }}
+        
+        .timeline-content {{
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+        }}
+        
+        .timeline-item:not(:last-child)::after {{
+            content: '';
+            position: absolute;
+            left: 30px;
+            top: 60px;
+            width: 2px;
+            height: calc(100% + 30px);
+            background: linear-gradient(180deg, #6366f1, #8b5cf6);
+            opacity: 0.3;
+        }}
+        
+        /* Divider */
+        .cyber-divider {{
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6366f1, #8b5cf6, #ec4899, transparent);
+            margin: 50px 0;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }}
+        
+        /* Badge */
+        .badge {{
+            display: inline-block;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }}
+        
+        .badge-success {{
+            background: linear-gradient(135deg, #10b981, #059669);
+        }}
+        
+        .badge-warning {{
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }}
+        
+        .badge-danger {{
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }}
+        
+        /* Footer - Full Width */
+        .email-footer {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            padding: 60px 40px;
+            text-align: center;
+            border-top: 2px solid rgba(99, 102, 241, 0.3);
+            position: relative;
+        }}
+        
+        .footer-logo {{
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: #a5b4fc;
+            margin: 0 0 15px 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }}
+        
+        .footer-tagline {{
+            color: #64748b;
+            font-size: 14px;
+            margin: 0 0 30px 0;
+        }}
+        
+        .footer-links {{
             margin: 30px 0;
         }}
         
         .footer-links a {{
-            color: #cbd5e1;
+            color: #94a3b8;
             text-decoration: none;
-            margin: 0 10px;
+            margin: 0 15px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
         }}
         
         .footer-links a:hover {{
-            color: white;
+            color: #a5b4fc;
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
         }}
         
-        @media only screen and (max-width: 600px) {{
-            .email-wrapper {{
-                padding: 20px 10px;
+        .footer-copyright {{
+            color: #475569;
+            font-size: 12px;
+            margin: 30px 0 0 0;
+            line-height: 1.6;
+        }}
+        
+        /* Responsive */
+        @media only screen and (max-width: 768px) {{
+            .email-header,
+            .email-body,
+            .email-footer {{
+                padding: 40px 20px;
             }}
             
-            .email-header {{
+            .brand-name {{
+                font-size: 32px;
+            }}
+            
+            h1 {{
+                font-size: 28px;
+            }}
+            
+            h2 {{
+                font-size: 24px;
+            }}
+            
+            .glass-card,
+            .neon-card {{
                 padding: 30px 20px;
             }}
             
-            .email-body {{
-                padding: 30px 20px;
+            .stats-grid {{
+                grid-template-columns: 1fr;
+                gap: 20px;
             }}
             
-            .btn {{
+            .btn-neon {{
                 width: 100%;
-                box-sizing: border-box;
+                padding: 18px 30px;
+                font-size: 16px;
+            }}
+            
+            .timeline-item {{
+                flex-direction: column;
+                gap: 15px;
+            }}
+            
+            .timeline-item:not(:last-child)::after {{
+                display: none;
             }}
         }}
     </style>
 </head>
 <body>
-    <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    <!-- Preview Text -->
+    <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
         {preview_text}
     </div>
     
+    <!-- Email Wrapper -->
     <div class="email-wrapper">
+        <!-- Background Effects -->
+        <div class="cyber-grid"></div>
+        <div class="glow-top"></div>
+        <div class="glow-bottom"></div>
+        
+        <!-- Container -->
         <div class="email-container">
+            
+            <!-- ========== HEADER ========== -->
             <div class="email-header">
+                <div class="header-glow"></div>
                 <div class="logo-container">
                     <img src="https://applytide.com/images/logomark.png" alt="Applytide" class="logo-img" />
                     <h1 class="brand-name">Applytide</h1>
                 </div>
+                <p class="tagline">AI-Powered Job Tracking</p>
             </div>
             
+            <!-- ========== BODY ========== -->
             <div class="email-body">
                 {content}
             </div>
             
+            <!-- ========== FOOTER ========== -->
             <div class="email-footer">
-                <p style="margin: 15px 0 5px; font-weight: 600; color: #cbd5e1;">Applytide</p>
-                <p style="margin: 5px 0;">Your AI-powered job application tracker</p>
+                <p class="footer-logo">Applytide</p>
+                <p class="footer-tagline">Your AI-Powered Job Application Tracker</p>
                 
-                <div class="divider"></div>
+                <div class="cyber-divider" style="margin: 40px auto; max-width: 600px;"></div>
                 
                 <div class="footer-links">
                     <a href="https://applytide.com">Home</a>
@@ -192,11 +568,12 @@ def base_template(content: str, preview_text: str = "") -> str:
                     <a href="https://applytide.com/contact">Contact</a>
                 </div>
                 
-                <p style="margin-top: 20px; font-size: 12px;">
+                <p class="footer-copyright">
                     © 2025 Applytide. All rights reserved.<br>
                     You're receiving this because you have an account with us.
                 </p>
             </div>
+            
         </div>
     </div>
 </body>
@@ -466,57 +843,52 @@ def reminder_email(
     ai_prep_tips_html: str = None
 ) -> str:
     """
-    Beautiful, professional reminder email with dynamic urgency styling and optional AI prep tips
+    Cyberpunk-styled reminder email with neon effects and optional AI prep tips
     urgency: 'now', 'today', 'tomorrow', 'week', 'future'
     event_type: 'interview', 'deadline', 'follow-up', 'general'
     ai_prep_tips_html: Optional HTML content with AI-generated prep tips (Pro/Premium feature)
     """
     
-    # Urgency-based styling - professional color scheme
+    # Urgency-based styling - cyberpunk neon theme
     urgency_config = {
         'now': {
             'emoji': '🚨',
             'title': 'HAPPENING NOW',
-            'color': '#dc2626',
-            'bg': '#fef2f2',
-            'card_bg': '#fee2e2',
-            'border': '#dc2626',
+            'badge_class': 'badge-danger',
+            'alert_class': 'alert-danger',
+            'border_color': '#ef4444',
             'message': 'This is happening right now!'
         },
         'today': {
             'emoji': '⏰',
             'title': 'DUE TODAY',
-            'color': '#ea580c',
-            'bg': '#fff7ed',
-            'card_bg': '#ffedd5',
-            'border': '#ea580c',
+            'badge_class': 'badge-warning',
+            'alert_class': 'alert-warning',
+            'border_color': '#f59e0b',
             'message': 'This is coming up today!'
         },
         'tomorrow': {
             'emoji': '📅',
             'title': 'TOMORROW',
-            'color': '#2563eb',
-            'bg': '#eff6ff',
-            'card_bg': '#dbeafe',
-            'border': '#2563eb',
+            'badge_class': 'badge',
+            'alert_class': 'alert-success',
+            'border_color': '#6366f1',
             'message': 'This is coming up tomorrow!'
         },
         'week': {
             'emoji': '📌',
             'title': 'THIS WEEK',
-            'color': '#7c3aed',
-            'bg': '#f5f3ff',
-            'card_bg': '#ede9fe',
-            'border': '#7c3aed',
+            'badge_class': 'badge',
+            'alert_class': 'alert-success',
+            'border_color': '#8b5cf6',
             'message': f'Coming up in {time_until}'
         },
         'future': {
             'emoji': '🔔',
             'title': 'UPCOMING',
-            'color': '#059669',
-            'bg': '#f0fdf4',
-            'card_bg': '#d1fae5',
-            'border': '#059669',
+            'badge_class': 'badge-success',
+            'alert_class': 'alert-success',
+            'border_color': '#10b981',
             'message': f'Coming up in {time_until}'
         }
     }
@@ -533,132 +905,86 @@ def reminder_email(
     event_icon = event_icons.get(event_type, '📋')
     
     content = f"""
-        <!-- Urgency Badge -->
-        <div style="text-align: center; margin-bottom: 35px;">
-            <div style="display: inline-block; background: {config['bg']}; padding: 15px 20px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
-                <span style="font-size: 48px; line-height: 1;">{config['emoji']}</span>
+        <!-- Hero Badge Section -->
+        <div style="text-align: center; margin: 0 0 50px 0;">
+            <span class="{config['badge_class']}">{config['emoji']} {config['title']}</span>
+            <h1 style="margin-top: 30px; font-family: 'Orbitron', sans-serif; font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                {title}
+            </h1>
+            <p style="font-size: 18px; color: #94a3b8; margin-top: 20px;">
+                Hey {name}, {config['message']}
+            </p>
+        </div>
+        
+        <!-- Main Event Card - Glassmorphism -->
+        <div class="glass-card">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 64px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));">{event_icon}</div>
             </div>
-            <div style="display: block; margin-top: 15px;">
-                <span style="display: inline-block; background: {config['color']}; color: white; padding: 10px 24px; border-radius: 25px; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                    {config['title']}
-                </span>
+            
+            {f'<p style="color: #cbd5e1; font-size: 17px; line-height: 1.8; text-align: center; margin-bottom: 40px;">{description}</p>' if description else ''}
+            
+            <!-- Date & Time Stats Grid -->
+            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <p class="stat-label">Due Date</p>
+                    <p style="color: #ffffff; margin: 15px 0 0 0; font-size: 18px; font-weight: 700;">{due_date}</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <p class="stat-label">Time Left</p>
+                    <p style="color: #ec4899; margin: 15px 0 0 0; font-size: 22px; font-weight: 900; text-shadow: 0 0 20px rgba(236, 72, 153, 0.5);">{time_until}</p>
+                </div>
             </div>
         </div>
         
-        <!-- Main Title -->
-        <h2 style="color: #0f172a; font-size: 32px; font-weight: 700; margin: 0 0 15px 0; text-align: center; line-height: 1.2;">
-            {title}
-        </h2>
-        
-        <!-- Greeting Message -->
-        <p style="color: #64748b; font-size: 17px; margin: 0 0 40px 0; text-align: center; line-height: 1.6;">
-            Hey {name}, {config['message']}
-        </p>
-        
-        <!-- Event Card -->
-        <div style="background: white; border: 2px solid {config['border']}; border-radius: 16px; padding: 35px 30px; margin: 35px 0; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);">
-            
-            {f'<p style="color: #334155; margin: 0 0 30px 0; line-height: 1.8; font-size: 17px; text-align: center; font-weight: 500;">{description}</p>' if description else ''}
-            
-            <!-- Date & Time Card -->
-            <div style="background: {config['card_bg']}; padding: 30px 25px; border-radius: 12px; border: 1px solid {config['border']};">
-                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-                    <tr>
-                        <td style="width: 50%; padding: 15px; text-align: center; border-right: 2px solid {config['border']};">
-                            <div style="margin-bottom: 10px;">
-                                <span style="font-size: 28px;">📅</span>
-                            </div>
-                            <p style="color: #64748b; margin: 0 0 8px 0; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                Due Date
-                            </p>
-                            <p style="color: #0f172a; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.5;">
-                                {due_date}
-                            </p>
-                        </td>
-                        <td style="width: 50%; padding: 15px; text-align: center;">
-                            <div style="margin-bottom: 10px;">
-                                <span style="font-size: 28px;">⏱️</span>
-                            </div>
-                            <p style="color: #64748b; margin: 0 0 8px 0; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                                Time Left
-                            </p>
-                            <p style="color: {config['color']}; margin: 0; font-size: 19px; font-weight: 800; line-height: 1.5;">
-                                {time_until}
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+        <!-- CTA Button -->
+        <div style="text-align: center; margin: 50px 0;">
+            <a href="{action_url}" class="btn-neon">View Application →</a>
         </div>
-        
-        <!-- Call-to-Action Button -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 40px 0 35px;">
-            <tr>
-                <td align="center">
-                    <a href="{action_url}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 18px 45px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 17px; box-shadow: 0 8px 20px rgba(102, 126, 234, 0.35); transition: all 0.3s;">
-                        View Application →
-                    </a>
-                </td>
-            </tr>
-        </table>
         
         {f'''
-        <!-- AI Preparation Tips Section (Pro/Premium Feature) - FULL WIDTH -->
-        </div></td></tr></table>
-        <!-- Break out of container for full-width section -->
+        <!-- AI Preparation Tips Section (Pro/Premium Feature) -->
+        <div class="cyber-divider"></div>
         
-        <div style="width: 100%; background: #0a0e1a; padding: 0; margin: 50px 0;">
-            <div style="padding: 50px 20px; text-align: center; background: linear-gradient(135deg, #6366f1 20%, #8b5cf6 50%, #ec4899 80%); border-top: 4px solid rgba(255,255,255,0.2); border-bottom: 4px solid rgba(255,255,255,0.2);">
-                <div style="max-width: 1200px; margin: 0 auto;">
-                    <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 25px; margin-bottom: 20px; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);">
-                        <span style="font-size: 56px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));">🤖</span>
-                    </div>
-                    <h3 style="color: #ffffff; font-size: 36px; font-weight: 900; margin: 0 0 15px 0; letter-spacing: -1px; text-shadow: 0 4px 16px rgba(0,0,0,0.3);">
-                        AI-Powered Interview Prep
-                    </h3>
-                    <p style="color: #ffffff; font-size: 17px; margin: 0; font-weight: 600; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-                        ✨ Personalized just for you • Generated with GPT-4
-                    </p>
-                </div>
+        <div class="neon-card" style="margin: 60px 0;">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="font-size: 72px; margin-bottom: 25px; filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.6));">🤖</div>
+                <h2 style="color: #ffffff; font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; margin-bottom: 15px;">AI-Powered Interview Prep</h2>
+                <p style="color: #94a3b8; font-size: 16px; margin: 0;">
+                    ✨ Personalized just for you • Generated with GPT-4
+                </p>
             </div>
             
             {ai_prep_tips_html}
             
-            <div style="padding: 40px 20px; text-align: center; background: #0a0e1a;">
-                <div style="display: inline-flex; align-items: center; gap: 10px; background: rgba(168, 85, 247, 0.15); border: 2px solid rgba(168, 85, 247, 0.4); padding: 14px 30px; border-radius: 60px; backdrop-filter: blur(10px);">
-                    <span style="font-size: 24px;">💎</span>
-                    <span style="color: #e9d5ff; font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Pro Feature</span>
-                </div>
+            <div style="text-align: center; margin-top: 50px;">
+                <span class="badge" style="padding: 12px 30px; font-size: 14px;">
+                    💎 Pro Feature
+                </span>
             </div>
         </div>
-        
-        <!-- Resume container -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0;">
-            <tr><td><div class="email-body">
         ''' if ai_prep_tips_html else ''}
         
         <!-- Divider -->
-        <div style="height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent); margin: 35px 0;"></div>
+        <div class="cyber-divider"></div>
         
         <!-- Footer Tip -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px;">
-            <tr>
-                <td align="center">
-                    <p style="color: #94a3b8; font-size: 15px; margin: 0 0 15px 0; line-height: 1.6;">
-                        💡 <strong style="color: #64748b;">Pro Tip:</strong> Set multiple reminders to never miss important deadlines!
-                    </p>
-                    <p style="color: #64748b; font-size: 14px; margin: 0;">
-                        Manage all reminders in your 
-                        <a href="https://applytide.com/reminders" style="color: #667eea; text-decoration: none; font-weight: 600;">
-                            Dashboard →
-                        </a>
-                    </p>
-                </td>
-            </tr>
-        </table>
+        <div style="text-align: center; margin-top: 40px;">
+            <p style="color: #94a3b8; font-size: 15px; margin: 0 0 15px 0;">
+                💡 <strong style="color: #a5b4fc;">Pro Tip:</strong> Set multiple reminders to never miss important deadlines!
+            </p>
+            <p style="color: #64748b; font-size: 14px; margin: 0;">
+                Manage all reminders in your 
+                <a href="https://applytide.com/reminders" style="color: #6366f1; text-decoration: none; font-weight: 700; text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);">
+                    Dashboard →
+                </a>
+            </p>
+        </div>
     """
     
-    return base_template(content, preview_text=f"⏰ {title} - {config['title']}")
+    return base_template(content, preview_text=f"{config['emoji']} {title} - {config['title']}")
 
 
 def deletion_confirmation_email(name: str, deletion_date: str, recovery_token: str, recovery_url: str) -> str:
@@ -896,4 +1222,3 @@ def recovery_success_email(name: str) -> str:
     return base_template(content, preview_text=f"Your Applytide account has been recovered - Welcome back!")
 
 
-    return base_template(content, preview_text=f"⏰ {title} - {config['title']}")

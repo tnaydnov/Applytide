@@ -448,15 +448,7 @@ IMPORTANT:
     
     def format_tips_for_email(self, tips_data: Dict[str, Any]) -> str:
         """
-        Format the AI-generated tips into an immersive, full-width visual experience.
-        
-        Features:
-        - Full-width layout that uses 100% of available space
-        - Scattered bubble/shape design - NOT a vertical list
-        - Proper color contrast for readability
-        - Perfectly aligned emojis
-        - Organic, non-linear layout
-        - Mobile-responsive with fluid grid
+        Format the AI-generated tips into cyberpunk-styled HTML matching the new template.
         
         Args:
             tips_data: Dictionary containing tips, insights, focus areas, etc.
@@ -469,189 +461,105 @@ IMPORTANT:
         
         html_parts = []
         
-        # Full-width container with dark background
-        html_parts.append("""
-        <div style="width: 100%; background: #0a0e1a; padding: 0; margin: 0;">
-        """)
+        # Company Insights - Neon Card
+        if tips_data.get("company_insights"):
+            html_parts.append(f"""
+            <div class="neon-card" style="margin: 40px 0;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 64px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));">🏢</div>
+                    <h2 style="color: #a5b4fc; margin-bottom: 20px;">Company Intelligence</h2>
+                </div>
+                <p style="color: #cbd5e1; font-size: 16px; line-height: 1.8; text-align: center;">{tips_data['company_insights']}</p>
+            </div>
+            """)
         
-        # Header with floating time badge
+        # Key Focus Areas - Stats Grid Style
+        if tips_data.get("key_focus_areas"):
+            focus_areas = tips_data["key_focus_areas"]
+            focus_icons = ["🎯", "💎", "⚡", "🚀", "🔥", "💪", "🌟", "🎨"]
+            
+            html_parts.append("""
+            <div class="cyber-divider"></div>
+            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Critical Focus Areas</h2>
+            <div class="stats-grid">
+            """)
+            
+            for idx, area in enumerate(focus_areas):
+                icon = focus_icons[idx % len(focus_icons)]
+                html_parts.append(f"""
+                <div class="stat-card">
+                    <div class="stat-icon" style="font-size: 48px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));">{icon}</div>
+                    <p style="color: #cbd5e1; margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600;">{area}</p>
+                </div>
+                """)
+            
+            html_parts.append("</div>")
+        
+        # Estimated Prep Time Badge
         estimated_time = tips_data.get("estimated_prep_time", "")
         if estimated_time:
             html_parts.append(f"""
-            <div style="text-align: center; padding: 40px 20px 30px; background: linear-gradient(180deg, #1a1f35 0%, #0a0e1a 100%);">
-                <div style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); padding: 16px 36px; border-radius: 60px; box-shadow: 0 12px 40px rgba(168, 85, 247, 0.5); transform: rotate(-2deg);">
-                    <span style="color: #ffffff; font-size: 16px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-                        ⏱️ {estimated_time}
-                    </span>
-                </div>
+            <div style="text-align: center; margin: 50px 0 30px 0;">
+                <span class="badge" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 25px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);">
+                    ⏱️ Suggested Prep Time: {estimated_time}
+                </span>
             </div>
             """)
         
-        # Company Insights - Full-width hero with offset design
-        if tips_data.get("company_insights"):
-            html_parts.append(f"""
-            <div style="width: 100%; padding: 30px 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%); position: relative; overflow: hidden;">
-                <!-- Decorative circles -->
-                <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-                <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
-                
-                <div style="max-width: 1200px; margin: 0 auto; position: relative; z-index: 1;">
-                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 30px; padding: 40px 35px; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                        <div style="margin-bottom: 20px;">
-                            <span style="font-size: 56px; display: inline-block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">🏢</span>
-                        </div>
-                        <h3 style="color: #ffffff; margin: 0 0 20px 0; font-size: 28px; font-weight: 800; text-shadow: 0 2px 12px rgba(0,0,0,0.3); letter-spacing: -0.5px;">Company Intelligence</h3>
-                        <p style="color: #ffffff; line-height: 1.9; font-size: 16px; margin: 0; text-shadow: 0 1px 4px rgba(0,0,0,0.2);">{tips_data['company_insights']}</p>
-                    </div>
-                </div>
-            </div>
-            """)
-        
-        # Key Focus Areas - Scattered bubble layout (NOT a list!)
-        if tips_data.get("key_focus_areas"):
-            focus_areas = tips_data["key_focus_areas"]
-            
-            # Define bubble styles - scattered positions, varied sizes
-            bubble_configs = [
-                {"color": "#fbbf24", "emoji": "🎯", "size": "large", "x": "5%", "y": "0"},
-                {"color": "#60a5fa", "emoji": "💎", "size": "medium", "x": "35%", "y": "50px"},
-                {"color": "#a78bfa", "emoji": "⚡", "size": "large", "x": "68%", "y": "20px"},
-                {"color": "#34d399", "emoji": "🚀", "size": "small", "x": "15%", "y": "180px"},
-                {"color": "#f472b6", "emoji": "🔥", "size": "medium", "x": "50%", "y": "200px"},
-                {"color": "#fb923c", "emoji": "💪", "size": "large", "x": "80%", "y": "160px"},
-                {"color": "#818cf8", "emoji": "🌟", "size": "medium", "x": "25%", "y": "320px"},
-            ]
-            
-            html_parts.append("""
-            <div style="width: 100%; background: #0a0e1a; padding: 50px 20px 400px; position: relative; min-height: 500px;">
-                <div style="max-width: 1200px; margin: 0 auto; position: relative;">
-                    <h3 style="color: #ffffff; margin: 0 0 60px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #fbbf24 0%, #f87171 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                        Critical Focus Areas
-                    </h3>
-            """)
-            
-            # Create scattered bubbles
-            for idx, area in enumerate(focus_areas[:7]):  # Limit to 7 for layout
-                config = bubble_configs[idx]
-                
-                # Size variations
-                if config["size"] == "large":
-                    width, padding, font_size, emoji_size = "340px", "35px", "15px", "42px"
-                elif config["size"] == "medium":
-                    width, padding, font_size, emoji_size = "300px", "30px", "14px", "38px"
-                else:
-                    width, padding, font_size, emoji_size = "280px", "28px", "13px", "34px"
-                
-                html_parts.append(f"""
-                <div style="position: absolute; left: {config['x']}; top: {config['y']}; width: {width}; transform: translate(-50%, 0) rotate({(idx % 3 - 1) * 3}deg);">
-                    <div style="background: {config['color']}; border-radius: 25px; padding: {padding}; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border: 3px solid rgba(255,255,255,0.2); transition: transform 0.3s;">
-                        <div style="margin-bottom: 15px;">
-                            <span style="font-size: {emoji_size}; display: inline-block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">{config['emoji']}</span>
-                        </div>
-                        <p style="color: #1f2937; margin: 0; font-size: {font_size}; font-weight: 700; line-height: 1.6; text-shadow: 0 1px 2px rgba(255,255,255,0.5);">{area}</p>
-                    </div>
-                </div>
-                """)
-            
-            html_parts.append("</div></div>")
-        
-        # Preparation Tips - Diagonal cards layout (break the grid!)
+        # Preparation Tips - Timeline Style
         if tips_data.get("tips"):
             html_parts.append("""
-            <div style="width: 100%; background: linear-gradient(180deg, #0a0e1a 0%, #1e1b4b 100%); padding: 60px 20px;">
-                <div style="max-width: 1200px; margin: 0 auto;">
-                    <h3 style="color: #ffffff; margin: 0 0 50px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                        Your Preparation Roadmap
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
+            <div class="cyber-divider"></div>
+            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Your Preparation Roadmap</h2>
             """)
             
-            # Gradient colors for cards
-            gradients = [
-                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-                "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-                "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-                "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
-                "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-                "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)",
-            ]
-            
-            for idx, tip in enumerate(tips_data["tips"][:8]):  # Limit to 8 for grid
-                gradient = gradients[idx % len(gradients)]
-                rotation = (idx % 3 - 1) * 2  # Slight rotation for organic feel
+            for idx, tip in enumerate(tips_data["tips"], 1):
+                # Emoji for each step
+                step_emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+                emoji = step_emojis[idx - 1] if idx <= 10 else f"{idx}️⃣"
                 
                 html_parts.append(f"""
-                <div style="transform: rotate({rotation}deg); transition: transform 0.3s;">
-                    <div style="background: {gradient}; border-radius: 28px; padding: 35px 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); border: 3px solid rgba(255,255,255,0.3); min-height: 180px; display: flex; flex-direction: column;">
-                        <div style="margin-bottom: 20px;">
-                            <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                                <span style="color: #ffffff; font-size: 24px; font-weight: 900; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">{idx + 1}</span>
-                            </div>
-                        </div>
-                        <p style="color: #ffffff; margin: 0; font-size: 15px; line-height: 1.7; font-weight: 600; text-shadow: 0 2px 8px rgba(0,0,0,0.3); flex-grow: 1;">{tip}</p>
+                <div class="timeline-item">
+                    <div class="timeline-icon">{emoji}</div>
+                    <div class="timeline-content">
+                        <p style="color: #cbd5e1; margin: 0; font-size: 15px; line-height: 1.7;">{tip}</p>
                     </div>
                 </div>
                 """)
-            
-            html_parts.append("</div></div></div>")
         
-        # Recommended Preparation - Hexagonal timeline
+        # Recommended Preparation - Glass Cards Grid
         if tips_data.get("recommended_prep"):
             html_parts.append("""
-            <div style="width: 100%; background: #0f172a; padding: 60px 20px;">
-                <div style="max-width: 1200px; margin: 0 auto;">
-                    <h3 style="color: #ffffff; margin: 0 0 50px 0; font-size: 32px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                        Study Timeline & Tasks
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
+            <div class="cyber-divider"></div>
+            <h2 style="text-align: center; color: #a5b4fc; margin: 60px 0 40px 0; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 1px;">Study Timeline & Tasks</h2>
             """)
             
-            # Alternating colors
-            colors = [
-                {"bg": "#10b981", "text": "#ffffff"},
-                {"bg": "#3b82f6", "text": "#ffffff"},
-                {"bg": "#8b5cf6", "text": "#ffffff"},
-                {"bg": "#ec4899", "text": "#ffffff"},
-                {"bg": "#f59e0b", "text": "#ffffff"},
-            ]
-            
-            for idx, prep in enumerate(tips_data["recommended_prep"][:10]):
-                color = colors[idx % len(colors)]
+            for idx, prep in enumerate(tips_data["recommended_prep"]):
+                # Alternate alert styles for variety
+                alert_types = [
+                    ("alert-success", "#10b981", "#a7f3d0", "✓"),
+                    ("alert-warning", "#f59e0b", "#fde68a", "⚡"),
+                    ("alert-success", "#10b981", "#a7f3d0", "✓"),
+                ]
+                alert_class, title_color, text_color, icon = alert_types[idx % len(alert_types)]
                 
                 html_parts.append(f"""
-                <div style="background: {color['bg']}; border-radius: 20px; padding: 30px 25px; box-shadow: 0 12px 35px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.2); min-height: 140px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: 15px; right: 15px; width: 35px; height: 35px; background: rgba(255,255,255,0.25); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                        <span style="color: {color['text']}; font-size: 18px; font-weight: 900;">✓</span>
-                    </div>
-                    <p style="color: {color['text']}; margin: 0; font-size: 14px; line-height: 1.7; font-weight: 600; text-shadow: 0 2px 6px rgba(0,0,0,0.2); padding-right: 50px;">{prep}</p>
+                <div class="{alert_class}">
+                    <h3 style="color: {title_color}; margin-bottom: 10px; font-size: 18px; font-weight: 700;">{icon} Task {idx + 1}</h3>
+                    <p style="color: {text_color}; margin: 0; font-size: 14px; line-height: 1.7;">{prep}</p>
                 </div>
                 """)
-            
-            html_parts.append("</div></div></div>")
         
-        # Success footer - Full width with confetti effect
+        # Success Footer - Neon CTA
         html_parts.append("""
-        <div style="width: 100%; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 50px 20px; text-align: center; position: relative; overflow: hidden;">
-            <!-- Confetti decorations -->
-            <div style="position: absolute; top: 20px; left: 10%; width: 20px; height: 20px; background: #ffffff; opacity: 0.3; border-radius: 50%;"></div>
-            <div style="position: absolute; top: 60px; right: 15%; width: 15px; height: 15px; background: #ffffff; opacity: 0.25; border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: 30px; left: 20%; width: 18px; height: 18px; background: #ffffff; opacity: 0.2; border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: 50px; right: 25%; width: 22px; height: 22px; background: #ffffff; opacity: 0.3; border-radius: 50%;"></div>
-            
-            <div style="max-width: 800px; margin: 0 auto; position: relative; z-index: 1;">
-                <span style="font-size: 64px; display: inline-block; margin-bottom: 20px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">🎯</span>
-                <h3 style="color: #78350f; margin: 0 0 15px 0; font-size: 28px; font-weight: 900; text-shadow: 0 2px 8px rgba(255,255,255,0.5);">You've Got This!</h3>
-                <p style="color: #92400e; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.6; text-shadow: 0 1px 4px rgba(255,255,255,0.4);">
-                    Follow this plan and nail your interview. 💪
-                </p>
+        <div class="neon-card" style="margin: 60px 0 40px 0;">
+            <div style="text-align: center;">
+                <div style="font-size: 72px; margin-bottom: 25px; filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.6));">🎯</div>
+                <h2 style="color: #ffffff; margin-bottom: 20px; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 32px;">You've Got This!</h2>
+                <p style="font-size: 18px; color: #cbd5e1; margin: 0;">Follow this plan and nail your interview. Your preparation starts now! 💪</p>
             </div>
         </div>
         """)
-        
-        # Close container
-        html_parts.append("</div>")
         
         return "".join(html_parts)
 
