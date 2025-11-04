@@ -448,7 +448,15 @@ IMPORTANT:
     
     def format_tips_for_email(self, tips_data: Dict[str, Any]) -> str:
         """
-        Format the AI-generated tips into HTML for email display.
+        Format the AI-generated tips into a stunning, futuristic HTML design for email.
+        
+        Features:
+        - Card-based layout with depth and shadows
+        - Gradient accents and modern color palette
+        - Icon system for visual hierarchy
+        - No bullet lists - everything is beautifully designed cards
+        - Full canvas utilization
+        - Mobile-responsive
         
         Args:
             tips_data: Dictionary containing tips, insights, focus areas, etc.
@@ -461,55 +469,131 @@ IMPORTANT:
         
         html_parts = []
         
-        # Company Insights
+        # Header with time estimate badge
+        estimated_time = tips_data.get("estimated_prep_time", "")
+        if estimated_time:
+            html_parts.append(f"""
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 12px 28px; border-radius: 50px; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);">
+                    <span style="color: white; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">
+                        ⏱️ {estimated_time}
+                    </span>
+                </div>
+            </div>
+            """)
+        
+        # Company Insights - Full width hero card
         if tips_data.get("company_insights"):
             html_parts.append(f"""
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #2563eb; margin-bottom: 10px;">🏢 Company Insights</h3>
-                <p style="color: #64748b; line-height: 1.6;">{tips_data['company_insights']}</p>
+            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 20px; padding: 35px 30px; margin-bottom: 25px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); border: 1px solid rgba(148, 163, 184, 0.1);">
+                <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);">
+                        <span style="font-size: 26px; line-height: 1;">🏢</span>
+                    </div>
+                    <h3 style="color: #f1f5f9; margin: 0; font-size: 22px; font-weight: 700;">Company Intelligence</h3>
+                </div>
+                <p style="color: #cbd5e1; line-height: 1.8; font-size: 15px; margin: 0;">{tips_data['company_insights']}</p>
             </div>
             """)
         
-        # Key Focus Areas
+        # Key Focus Areas - Grid of cards
         if tips_data.get("key_focus_areas"):
-            html_parts.append(f"""
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #2563eb; margin-bottom: 10px;">🎯 Key Focus Areas</h3>
-                <ul style="color: #64748b; line-height: 1.8;">
+            focus_icons = ["🎯", "💎", "⚡", "🚀", "🔥", "💪", "🌟"]
+            html_parts.append("""
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
+                    <span style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                        Critical Focus Areas
+                    </span>
+                </h3>
+                <div style="display: grid; gap: 15px;">
             """)
-            for area in tips_data["key_focus_areas"]:
-                html_parts.append(f"<li>{area}</li>")
-            html_parts.append("</ul></div>")
+            
+            for idx, area in enumerate(tips_data["key_focus_areas"]):
+                icon = focus_icons[idx % len(focus_icons)]
+                # Alternate gradient colors for visual variety
+                gradients = [
+                    "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                    "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                    "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)",
+                    "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)",
+                ]
+                gradient = gradients[idx % len(gradients)]
+                
+                html_parts.append(f"""
+                <div style="background: {gradient}; border-radius: 16px; padding: 20px 24px; border-left: 5px solid #0f172a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); transition: transform 0.2s;">
+                    <div style="display: flex; align-items: flex-start;">
+                        <span style="font-size: 32px; margin-right: 15px; flex-shrink: 0;">{icon}</span>
+                        <p style="color: #0f172a; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.6;">{area}</p>
+                    </div>
+                </div>
+                """)
+            
+            html_parts.append("</div></div>")
         
-        # Preparation Tips
+        # Preparation Tips - Numbered step cards with visual hierarchy
         if tips_data.get("tips"):
-            html_parts.append(f"""
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #2563eb; margin-bottom: 10px;">💡 Preparation Tips</h3>
-                <ul style="color: #64748b; line-height: 1.8;">
+            html_parts.append("""
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
+                    <span style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                        Your Preparation Roadmap
+                    </span>
+                </h3>
             """)
-            for tip in tips_data["tips"]:
-                html_parts.append(f"<li>{tip}</li>")
-            html_parts.append("</ul></div>")
+            
+            for idx, tip in enumerate(tips_data["tips"], 1):
+                # Gradient circle numbers
+                html_parts.append(f"""
+                <div style="position: relative; background: white; border-radius: 18px; padding: 25px 25px 25px 80px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 2px solid #f1f5f9;">
+                    <div style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); width: 45px; height: 45px; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                        <span style="color: white; font-size: 20px; font-weight: 800;">{idx}</span>
+                    </div>
+                    <p style="color: #334155; margin: 0; font-size: 15px; line-height: 1.7; font-weight: 500;">{tip}</p>
+                </div>
+                """)
+            
+            html_parts.append("</div>")
         
-        # Recommended Preparation
+        # Recommended Preparation - Timeline/checklist style
         if tips_data.get("recommended_prep"):
-            html_parts.append(f"""
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #2563eb; margin-bottom: 10px;">📚 Recommended Preparation</h3>
-                <ul style="color: #64748b; line-height: 1.8;">
+            html_parts.append("""
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #0f172a; margin: 0 0 20px 0; font-size: 20px; font-weight: 700; text-align: center;">
+                    <span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                        Study Timeline & Tasks
+                    </span>
+                </h3>
             """)
-            for prep in tips_data["recommended_prep"]:
-                html_parts.append(f"<li>{prep}</li>")
-            html_parts.append("</ul></div>")
+            
+            for idx, prep in enumerate(tips_data["recommended_prep"]):
+                # Alternate between left and right icons for timeline feel
+                is_even = idx % 2 == 0
+                bg_color = "#f0fdf4" if is_even else "#eff6ff"
+                accent_color = "#10b981" if is_even else "#3b82f6"
+                
+                html_parts.append(f"""
+                <div style="background: {bg_color}; border-radius: 16px; padding: 22px 24px; margin-bottom: 14px; border-left: 4px solid {accent_color}; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 28px; height: 28px; background: {accent_color}; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
+                            <span style="color: white; font-size: 16px; font-weight: 700;">✓</span>
+                        </div>
+                        <p style="color: #0f172a; margin: 0; font-size: 14px; line-height: 1.7; font-weight: 500;">{prep}</p>
+                    </div>
+                </div>
+                """)
+            
+            html_parts.append("</div>")
         
-        # Estimated Prep Time
-        if tips_data.get("estimated_prep_time"):
-            html_parts.append(f"""
-            <div style="margin-bottom: 20px;">
-                <p style="color: #64748b;"><strong>⏱️ Suggested Prep Time:</strong> {tips_data['estimated_prep_time']}</p>
-            </div>
-            """)
+        # Success footer
+        html_parts.append("""
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 18px; padding: 25px; text-align: center; margin-top: 30px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
+            <span style="font-size: 36px; margin-bottom: 10px; display: inline-block;">🎯</span>
+            <p style="color: #92400e; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.6;">
+                You've got this! Follow this plan and nail your interview. 💪
+            </p>
+        </div>
+        """)
         
         return "".join(html_parts)
 

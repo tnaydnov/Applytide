@@ -604,27 +604,35 @@ def reminder_email(
         
         {f'''
         <!-- AI Preparation Tips Section (Pro/Premium Feature) -->
-        <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #0ea5e9; border-radius: 16px; padding: 35px 30px; margin: 35px 0;">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <span style="font-size: 36px; margin-bottom: 10px; display: inline-block;">🤖</span>
-                <h3 style="color: #0369a1; font-size: 24px; font-weight: 700; margin: 0 0 10px 0;">
-                    AI-Powered Preparation Tips
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 24px; padding: 40px 35px; margin: 40px 0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); border: 1px solid rgba(139, 92, 246, 0.3); position: relative; overflow: hidden;">
+            
+            <!-- Decorative gradient overlay -->
+            <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+            
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 30px; position: relative; z-index: 1;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 15px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);">
+                    <span style="font-size: 42px; line-height: 1;">🤖</span>
+                </div>
+                <h3 style="color: #f1f5f9; font-size: 28px; font-weight: 800; margin: 0 0 10px 0; letter-spacing: -0.5px;">
+                    AI-Powered Interview Prep
                 </h3>
-                <p style="color: #0284c7; font-size: 14px; margin: 0; font-weight: 600;">
-                    ✨ Personalized insights powered by AI
+                <p style="color: #94a3b8; font-size: 15px; margin: 0; font-weight: 600;">
+                    ✨ Personalized just for you • Generated with GPT-4
                 </p>
             </div>
             
-            <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+            <!-- Content Container -->
+            <div style="position: relative; z-index: 1;">
                 {ai_prep_tips_html}
             </div>
             
-            <div style="text-align: center; margin-top: 20px;">
-                <p style="color: #0369a1; font-size: 13px; margin: 0;">
-                    <span style="background: #e0f2fe; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
-                        💎 Pro Feature
-                    </span>
-                </p>
+            <!-- Pro Badge Footer -->
+            <div style="text-align: center; margin-top: 30px; position: relative; z-index: 1;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(139, 92, 246, 0.2); border: 2px solid rgba(139, 92, 246, 0.4); padding: 10px 20px; border-radius: 50px; backdrop-filter: blur(10px);">
+                    <span style="color: #c4b5fd; font-size: 16px;">💎</span>
+                    <span style="color: #e9d5ff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Pro Feature</span>
+                </div>
             </div>
         </div>
         ''' if ai_prep_tips_html else ''}
