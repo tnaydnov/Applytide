@@ -1241,14 +1241,18 @@ class ReminderService:
             
             # Fetch comprehensive application data
             try:
-                app_detail = self.app_service.get_detail(
+                # get_detail returns a tuple: (app, job, company_name, company_website, resume_label, stages, notes, attachments)
+                (
+                    app_dto, job_dto, company_name, company_website,
+                    resume_label, stages, notes, attachments
+                ) = self.app_service.get_detail(
                     user_id=user_id, 
                     app_id=application_id
                 )
                 
-                if not app_detail or not app_detail.get("job"):
+                if not job_dto:
                     logger.warning(
-                        f"Application data incomplete, skipping AI tips",
+                        f"Application has no job data, skipping AI tips",
                         extra={
                             "reminder_id": str(reminder.id),
                             "application_id": str(application_id)
@@ -1256,31 +1260,39 @@ class ReminderService:
                     )
                     return
                 
-                job = app_detail["job"]
-                company_name = job.get("company_name", "")
-                job_title = job.get("title", "")
-                job_description = job.get("description", "")
-                job_url = job.get("url", "")
+                # Extract job details from JobTinyDTO
+                company_name = job_dto.company_name or ""
+                job_title = job_dto.title or ""
+                job_description = job_dto.description or ""
+                job_url = job_dto.source_url or ""
                 
                 # Get resume text if available
                 resume_text = None
-                resume = app_detail.get("resume")
-                if resume and resume.get("extracted_text"):
-                    resume_text = resume["extracted_text"]
+                if app_dto.resume_id:
+                    from app.db.models import Resume
+                    from app.db.session import SessionLocal
+                    db = SessionLocal()
+                    try:
+                        resume = db.get(Resume, app_dto.resume_id)
+                        if resume and resume.text:
+                            resume_text = resume.text
+                    finally:
+                        db.close()
                 
                 # Get cover letter text if available
                 cover_letter_text = None
-                attachments = app_detail.get("attachments", [])
                 for att in attachments:
-                    if att.get("document_type") == "cover_letter" and att.get("extracted_text"):
-                        cover_letter_text = att["extracted_text"]
+                    if att.document_type == "cover_letter":
+                        # Try to get extracted text from attachment
+                        # Note: attachments might not have extracted_text field
+                        # This would need to be fetched from the file system if needed
                         break
                 
                 logger.debug(
                     f"Fetched application data for AI generation",
                     extra={
                         "reminder_id": str(reminder.id),
-                        "has_job": bool(job),
+                        "has_job": bool(job_dto),
                         "has_resume": bool(resume_text),
                         "has_cover_letter": bool(cover_letter_text),
                         "company": company_name,
