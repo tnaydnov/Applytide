@@ -152,6 +152,8 @@ export default function useRemindersData(opts = {}) {
             (typeof Intl !== "undefined" &&
               Intl.DateTimeFormat().resolvedOptions().timeZone) ||
             "UTC",
+          // AI prep tips (Pro/Premium feature)
+          ai_prep_tips_enabled: form?.ai_prep_tips_enabled ?? false,
         };
 
         await createReminderAPI(payload);
