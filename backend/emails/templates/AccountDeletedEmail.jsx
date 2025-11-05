@@ -42,7 +42,7 @@ function AccountDeletedEmail({ name = 'there' }) {
       style: {
         backgroundColor: colors.bgDarkSecondary,
         borderRadius: '16px',
-        padding: '32px',
+        padding: '32px 32px 32px 40px',
         marginBottom: '32px',
       }
     },
@@ -230,7 +230,7 @@ function AccountDeletedEmail({ name = 'there' }) {
     },
       React.createElement('div', {
         style: {
-          fontSize: '64px',
+          fontSize: '50px',
           lineHeight: '1',
           marginBottom: '24px',
         }

@@ -76,6 +76,39 @@ def reminder_email(
         raise
 
 
+def verify_email(verify_url: str) -> str:
+    """Email verification template using React Email service"""
+    try:
+        html = email_renderer.render_template('VerifyEmailTemplate', {
+            'verifyUrl': verify_url
+        })
+        if html:
+            logger.info(f" Rendered verification email via React Email service")
+            return html
+        else:
+            raise Exception("Empty HTML returned from React Email service")
+    except Exception as e:
+        logger.error(f" Failed to render verification email: {e}")
+        raise
+
+
+def password_reset_email(reset_url: str) -> str:
+    """Password reset email template using React Email service"""
+    try:
+        html = email_renderer.render_template('PasswordResetEmail', {
+            'resetUrl': reset_url
+        })
+        if html:
+            logger.info(f" Rendered password reset email via React Email service")
+            return html
+        else:
+            raise Exception("Empty HTML returned from React Email service")
+    except Exception as e:
+        logger.error(f" Failed to render password reset email: {e}")
+        raise
+
+
 # Legacy alias for compatibility
 reminder_email_react = reminder_email
+
 

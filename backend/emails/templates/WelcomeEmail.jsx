@@ -402,7 +402,7 @@ function WelcomeEmail({ name = 'there' }) {
     },
       React.createElement('div', {
         style: {
-          fontSize: '64px',
+          fontSize: '50px',
           lineHeight: '1',
           marginBottom: '24px',
         }

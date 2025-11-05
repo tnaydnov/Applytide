@@ -18,8 +18,9 @@ from sqlalchemy.orm import Session
 
 from ....db.session import get_db
 from ....db import models
-from ....infra.security.passwords import hash_password
+from ....infra.security.passwords import hash_password, verify_password
 from ....api.schemas import auth as schemas
+from ....api.deps import get_current_user
 from ....infra.security.tokens import (
     create_email_token,
     verify_email_token,
@@ -275,4 +276,113 @@ def password_reset(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Password reset failed"
+        )
+
+
+@router.post("/change-password", response_model=schemas.MessageResponse)
+def change_password(
+    payload: schemas.PasswordChangeIn,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change password for authenticated user.
+    
+    Allows logged-in users to change their password by providing their current
+    password and a new password. Validates current password before updating.
+    
+    Request Body:
+        current_password (str): User's current password (for verification)
+        new_password (str): New password (min 8 chars, validated)
+        
+    Args:
+        payload: Password change data (from request body)
+        current_user: Authenticated user (from dependency)
+        db: Database session (from dependency)
+        
+    Returns:
+        MessageResponse: Success confirmation with:
+            - message: "Password changed successfully"
+            
+    Raises:
+        HTTPException: 400 if current password is incorrect
+        HTTPException: 422 if new password validation fails
+        HTTPException: 500 if database operation fails
+        
+    Security:
+        - Requires authentication via get_current_user dependency
+        - Verifies current password before allowing change
+        - All sessions remain valid (user not logged out)
+        - Sends confirmation email
+        - Audit logging of password changes
+        
+    Notes:
+        - User must provide correct current password
+        - New password validated by schema (strength, length)
+        - Does NOT revoke existing sessions (unlike password reset)
+        - User receives confirmation email
+        - Use for: user-initiated password changes from profile
+        
+    Example:
+        POST /api/auth/change-password
+        Headers: Authorization: Bearer <token>
+        Body: {
+            "current_password": "oldPass123!",
+            "new_password": "newSecurePass456!"
+        }
+        Returns: {"message": "Password changed successfully"}
+    """
+    logger.info("Password change attempt", extra={"user_id": str(current_user.id)})
+    
+    try:
+        # Verify current password
+        if not verify_password(payload.current_password, current_user.password_hash):
+            logger.warning(
+                "Password change failed - incorrect current password",
+                extra={"user_id": str(current_user.id)}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Update password
+        current_user.password_hash = hash_password(payload.new_password)
+        db.commit()
+        
+        # Send password changed confirmation email
+        try:
+            email_service.send_password_changed_email(
+                current_user.email, 
+                current_user.full_name or "User"
+            )
+            logger.info(
+                "Password changed email sent",
+                extra={"user_id": str(current_user.id)}
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to send password changed email: {e}",
+                extra={"user_id": str(current_user.id)}
+            )
+        
+        logger.info(
+            "Password changed successfully",
+            extra={"user_id": str(current_user.id), "email": current_user.email}
+        )
+        
+        return schemas.MessageResponse(message="Password changed successfully")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Error during password change",
+            extra={"user_id": str(current_user.id), "error": str(e)},
+            exc_info=True
+        )
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password change failed"
         )
