@@ -15,13 +15,12 @@ function ReminderEmail({
   aiPrepTips
 }) {
 
-  // Urgency badge config
   const urgencyConfig = {
-    'now': { label: 'URGENT', symbol: '●' },
-    'today': { label: 'TODAY', symbol: '◆' },
-    'tomorrow': { label: 'Tomorrow', symbol: '◆' },
-    'week': { label: 'THIS WEEK', symbol: '◇' },
-    'future': { label: 'UPCOMING', symbol: '○' }
+    'now': { label: 'URGENT', bgColor: '#dc2626' },
+    'today': { label: 'TODAY', bgColor: '#ea580c' },
+    'tomorrow': { label: 'TOMORROW', bgColor: '#f59e0b' },
+    'week': { label: 'THIS WEEK', bgColor: '#10b981' },
+    'future': { label: 'UPCOMING', bgColor: '#6366f1' }
   };
 
   const config = urgencyConfig[urgency] || urgencyConfig['future'];
@@ -34,163 +33,206 @@ function ReminderEmail({
     future: `Hey ${name}, here's a heads-up for your upcoming event.`
   };
 
-  // Small reusable “section title” (no emoji)
-  const SectionTitle = ({ title, subtitle }) =>
-    React.createElement(Section, { style: { textAlign: 'center', marginBottom: '18px' } },
-      React.createElement(Text, {
-        style: {
-          fontSize: '26px', fontWeight: 800, color: colors.textWhite, margin: '0 0 6px 0', letterSpacing: '-0.4px'
-        }
-      }, title),
-      subtitle && React.createElement(Text, { style: { fontSize: '14px', color: colors.textLight, margin: 0 } }, subtitle)
-    );
-
-  // Reusable card
   const cardStyle = {
     backgroundColor: colors.bgDarkSecondary,
-    borderRadius: '16px',
-    padding: '18px',
-    border: '1px solid rgba(255,255,255,0.06)',
-    textAlign: 'left'
+    borderRadius: '12px',
+    padding: '20px',
   };
 
-  return React.createElement(BaseEmail, { previewText: `${title} - ${config.label.toUpperCase()}` },
+  const headingStyle = {
+    fontSize: '24px',
+    fontWeight: '700',
+    color: colors.textWhite,
+    margin: '0 0 8px 0',
+    textAlign: 'center',
+  };
+
+  const subheadingStyle = {
+    fontSize: '14px',
+    color: colors.textLight,
+    margin: '0 0 20px 0',
+    textAlign: 'center',
+  };
+
+  return React.createElement(BaseEmail, { previewText: `${title} - ${config.label}` },
 
     // Hero Section
-    React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
-      // Badge
-      React.createElement('div', {
-        style: {
-          display: 'inline-block',
-          background: colors.coralLight,
-          color: colors.bgDark,
-          padding: '10px 24px',
-          borderRadius: '24px',
-          fontWeight: '600',
-          fontSize: '12px',
-          letterSpacing: '0.5px',
-          marginBottom: '20px',
-        }
-      }, `${config.symbol} ${config.label}`),
+    React.createElement('table', {
+      role: 'presentation',
+      width: '100%',
+      cellPadding: '0',
+      cellSpacing: '0',
+      border: '0',
+      style: { marginBottom: '24px' }
+    },
+      React.createElement('tr', null,
+        React.createElement('td', { align: 'center' },
+          React.createElement('table', {
+            role: 'presentation',
+            cellPadding: '0',
+            cellSpacing: '0',
+            border: '0',
+            style: { marginBottom: '16px' }
+          },
+            React.createElement('tr', null,
+              React.createElement('td', {
+                style: {
+                  backgroundColor: config.bgColor,
+                  color: '#ffffff',
+                  padding: '8px 20px',
+                  borderRadius: '20px',
+                  fontWeight: '700',
+                  fontSize: '12px',
+                  letterSpacing: '0.5px',
+                }
+              }, config.label)
+            )
+          ),
+          
+          React.createElement(Text, {
+            style: {
+              fontSize: '28px',
+              fontWeight: '700',
+              color: colors.textWhite,
+              margin: '0 0 12px 0',
+              textAlign: 'center',
+            }
+          }, title),
 
-      React.createElement(Text, {
-        style: {
-          fontSize: '32px',
-          fontWeight: '700',
-          color: colors.textWhite,
-          margin: '0 0 16px 0',
-          lineHeight: '1.3',
-          letterSpacing: '-0.5px',
-        }
-      }, title),
-
-      React.createElement(Text, { style: { fontSize: '17px', color: colors.textLight, margin: 0, fontWeight: '400' } }, subCopy[urgency] || subCopy.future)
-
+          React.createElement(Text, {
+            style: {
+              fontSize: '15px',
+              color: colors.textLight,
+              margin: '0',
+              textAlign: 'center',
+            }
+          }, subCopy[urgency] || subCopy.future)
+        )
+      )
     ),
 
     // Main Event Card
-    React.createElement(Section, {
-      style: {
-        background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-        borderRadius: '24px',
-        padding: '40px 32px',
-        marginBottom: '48px',
-        border: `2px solid rgba(245, 143, 124, 0.2)`,
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-      }
+    React.createElement('table', {
+      role: 'presentation',
+      width: '100%',
+      cellPadding: '0',
+      cellSpacing: '0',
+      border: '0',
+      style: { marginBottom: '24px' }
     },
+      React.createElement('tr', null,
+        React.createElement('td', {
+          style: {
+            backgroundColor: colors.bgDarkSecondary,
+            borderRadius: '12px',
+            padding: '24px',
+            border: `2px solid ${colors.coral}`,
+          }
+        },
+          description && React.createElement(Text, {
+            style: {
+              color: colors.textLight,
+              textAlign: 'center',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              margin: '0 0 24px 0',
+            }
+          }, description),
 
-      // Description (shorter version for email)
-      React.createElement(Text, {
-        style: {
-          color: colors.textLight,
-          textAlign: 'center',
-          lineHeight: '1.6',
-          fontSize: '15px',
-          marginBottom: '36px',
-          maxWidth: '500px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }
-      }, description),
-
-      // Stats Grid (Due Date & Time Left)
-      React.createElement('table', {
-        role: 'presentation',
-        className: 'stack',
-        style: {
-          width: '100%',
-          borderSpacing: 0,
-          margin: 0,
-          tableLayout: 'fixed'
-        }
-      },
-        React.createElement('tbody', null,
-          React.createElement('tr', null,
-            // DUE DATE
-            React.createElement('td', { style: { width: '50%', padding: '0 8px 0 0', verticalAlign: 'top' } },
-              React.createElement('div', {
-                style: {
-                  backgroundColor: colors.bgDark,
-                  borderRadius: '16px',
-                  padding: '32px 24px',
-                  border: `1px solid rgba(255,255,255,0.08)`,
-                  textAlign: 'center',
-                  borderTop: `4px solid ${colors.coral}`
-                }
+          React.createElement('table', {
+            role: 'presentation',
+            width: '100%',
+            cellPadding: '0',
+            cellSpacing: '0',
+            border: '0',
+          },
+            React.createElement('tr', null,
+              React.createElement('td', {
+                width: '50%',
+                style: { paddingRight: '8px', verticalAlign: 'top' }
               },
-                React.createElement(Text, {
-                  style: {
-                    color: colors.coral,
-                    fontSize: '13px',
-                    textTransform: 'uppercase',
-                    fontWeight: 800,
-                    letterSpacing: '1.2px',
-                    margin: '0 0 12px 0',
-                  }
-                }, '📅 DUE DATE'),
-                React.createElement(Text, {
-                  style: {
-                    color: colors.textWhite,
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    margin: 0,
-                    lineHeight: 1.3
-                  }
-                }, dueDate)
-              )
-            ),
-            // TIME LEFT
-            React.createElement('td', { style: { width: '50%', padding: '0 0 0 8px', verticalAlign: 'top' } },
-              React.createElement('div', {
-                style: {
-                  backgroundColor: colors.bgDark,
-                  borderRadius: '16px',
-                  padding: '32px 24px',
-                  border: `1px solid rgba(255,255,255,0.08)`,
-                  textAlign: 'center',
-                  borderTop: `4px solid ${colors.coralLight}`
-                }
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0',
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', {
+                      style: {
+                        backgroundColor: colors.bgDark,
+                        borderRadius: '8px',
+                        padding: '20px 16px',
+                        textAlign: 'center',
+                        borderTop: `3px solid ${colors.coral}`,
+                      }
+                    },
+                      React.createElement(Text, {
+                        style: {
+                          color: colors.coral,
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          fontWeight: '700',
+                          letterSpacing: '1px',
+                          margin: '0 0 8px 0',
+                        }
+                      }, '📅 DUE DATE'),
+                      React.createElement(Text, {
+                        style: {
+                          color: colors.textWhite,
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          margin: '0',
+                        }
+                      }, dueDate)
+                    )
+                  )
+                )
+              ),
+              
+              React.createElement('td', {
+                width: '50%',
+                style: { paddingLeft: '8px', verticalAlign: 'top' }
               },
-                React.createElement(Text, {
-                  style: {
-                    color: colors.coralLight,
-                    fontSize: '13px',
-                    textTransform: 'uppercase',
-                    fontWeight: 800,
-                    letterSpacing: '1.2px',
-                    margin: '0 0 12px 0',
-                  }
-                }, '⏰ TIME LEFT'),
-                React.createElement(Text, {
-                  style: {
-                    color: colors.textWhite,
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    margin: 0,
-                    lineHeight: 1.3
-                  }
-                }, timeUntil)
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0',
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', {
+                      style: {
+                        backgroundColor: colors.bgDark,
+                        borderRadius: '8px',
+                        padding: '20px 16px',
+                        textAlign: 'center',
+                        borderTop: `3px solid ${colors.coralLight}`,
+                      }
+                    },
+                      React.createElement(Text, {
+                        style: {
+                          color: colors.coralLight,
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          fontWeight: '700',
+                          letterSpacing: '1px',
+                          margin: '0 0 8px 0',
+                        }
+                      }, '⏰ TIME LEFT'),
+                      React.createElement(Text, {
+                        style: {
+                          color: colors.textWhite,
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          margin: '0',
+                        }
+                      }, timeUntil)
+                    )
+                  )
+                )
               )
             )
           )
@@ -199,588 +241,583 @@ function ReminderEmail({
     ),
 
     // CTA Button
-    React.createElement(Section, {
-      style: {
-        textAlign: 'center',
-        marginBottom: '56px'
-      }
+    React.createElement('table', {
+      role: 'presentation',
+      width: '100%',
+      cellPadding: '0',
+      cellSpacing: '0',
+      border: '0',
+      style: { marginBottom: '32px' }
     },
-      React.createElement(Link, {
-        href: actionUrl,
-        style: {
-          display: 'inline-block',
-          backgroundColor: colors.coral,
-          color: colors.textWhite,
-          padding: '16px 48px',
-          borderRadius: '28px',
-          fontWeight: '600',
-          fontSize: '15px',
-          textDecoration: 'none',
-          letterSpacing: '0.2px',
-        }
-      }, 'View Application →')
+      React.createElement('tr', null,
+        React.createElement('td', { align: 'center' },
+          React.createElement(Link, {
+            href: actionUrl,
+            style: {
+              display: 'inline-block',
+              backgroundColor: colors.coral,
+              color: '#ffffff',
+              padding: '14px 40px',
+              borderRadius: '24px',
+              fontWeight: '600',
+              fontSize: '14px',
+              textDecoration: 'none',
+            }
+          }, 'View Application →')
+        )
+      )
     ),
 
-    // AI Prep Section (if provided)
+    // AI Prep Section
     aiPrepTips && React.createElement(React.Fragment, null,
       // AI Prep Header
-      React.createElement(Section, {
-        style: {
-          background: `linear-gradient(135deg, ${colors.coral} 0%, ${colors.coralLight} 50%, #ffd6e8 100%)`,
-          borderRadius: '24px',
-          padding: '48px 32px',
-          textAlign: 'center',
-          marginBottom: '48px',
-          boxShadow: '0 8px 24px rgba(245, 143, 124, 0.35)',
-        }
+      React.createElement('table', {
+        role: 'presentation',
+        width: '100%',
+        cellPadding: '0',
+        cellSpacing: '0',
+        border: '0',
+        style: { marginBottom: '24px' }
       },
-        React.createElement(Text, {
-          style: {
-            fontSize: '34px',
-            fontWeight: '800',
-            color: colors.bgDark,
-            margin: '0 0 10px 0',
-            letterSpacing: '-0.6px',
-            textShadow: '0 2px 4px rgba(255,255,255,0.3)',
-          }
-        }, 'AI-Powered Interview Prep'),
-        React.createElement(Text, {
-          style: {
-            fontSize: '16px',
-            color: colors.bgDark,
-            margin: 0,
-            fontWeight: '600',
-            opacity: 0.8,
-          }
-        }, 'Personalized insights generated just for you')
+        React.createElement('tr', null,
+          React.createElement('td', {
+            style: {
+              backgroundColor: colors.coral,
+              borderRadius: '12px',
+              padding: '32px 24px',
+              textAlign: 'center',
+            }
+          },
+            React.createElement(Text, {
+              style: {
+                fontSize: '28px',
+                fontWeight: '800',
+                color: '#ffffff',
+                margin: '0 0 8px 0',
+              }
+            }, '✨ AI-Powered Interview Prep'),
+            React.createElement(Text, {
+              style: {
+                fontSize: '14px',
+                color: '#ffffff',
+                margin: '0',
+                opacity: '0.95',
+              }
+            }, 'Personalized insights generated just for you')
+          )
+        )
       ),
 
       // Company Intelligence
-      aiPrepTips.company && React.createElement(Section, {
-        style: {
-          background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-          borderRadius: '20px',
-          padding: '32px',
-          marginBottom: '48px',
-          border: `1px solid rgba(255,255,255,0.08)`,
-          borderLeft: `5px solid ${colors.coral}`,
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-        }
+      aiPrepTips.company && aiPrepTips.companyInfo && React.createElement('table', {
+        role: 'presentation',
+        width: '100%',
+        cellPadding: '0',
+        cellSpacing: '0',
+        border: '0',
+        style: { marginBottom: '24px' }
       },
-        React.createElement(Text, {
-          style: {
-            fontSize: '20px',
-            fontWeight: '700',
-            color: colors.textWhite,
-            margin: '0 0 6px 0',
-            letterSpacing: '-0.2px',
-          }
-        }, 'Company Intelligence'),
-        React.createElement(Text, {
-          style: {
-            fontSize: '14px',
-            color: colors.textLight,
-            margin: '0 0 16px 0',
-            opacity: 0.8,
-          }
-        }, `What you need to know about ${aiPrepTips.company}`),
-        aiPrepTips.companyInfo && React.createElement(Text, {
-          style: {
-            color: colors.textLight,
-            fontSize: '14px',
-            lineHeight: '1.7',
-            margin: 0,
-          }
-        }, aiPrepTips.companyInfo)
+        React.createElement('tr', null,
+          React.createElement('td', {
+            style: {
+              ...cardStyle,
+              borderLeft: `4px solid ${colors.coral}`,
+            }
+          },
+            React.createElement(Text, {
+              style: {
+                fontSize: '20px',
+                fontWeight: '700',
+                color: colors.textWhite,
+                margin: '0 0 6px 0',
+              }
+            }, '🏢 Company Intelligence'),
+            React.createElement(Text, {
+              style: {
+                fontSize: '13px',
+                color: colors.textLight,
+                margin: '0 0 12px 0',
+                opacity: '0.8',
+              }
+            }, `What you need to know about ${aiPrepTips.company}`),
+            React.createElement(Text, {
+              style: {
+                color: colors.textLight,
+                fontSize: '14px',
+                lineHeight: '1.7',
+                margin: '0',
+              }
+            }, aiPrepTips.companyInfo)
+          )
+        )
       ),
 
       // Prep Time Badge
-      aiPrepTips.prepTime && React.createElement(Section, {
-        style: {
-          textAlign: 'center',
-          marginBottom: '48px',
-        }
+      aiPrepTips.prepTime && React.createElement('table', {
+        role: 'presentation',
+        width: '100%',
+        cellPadding: '0',
+        cellSpacing: '0',
+        border: '0',
+        style: { marginBottom: '24px' }
       },
-        React.createElement('div', {
-          style: {
-            display: 'inline-block',
-            background: `linear-gradient(135deg, ${colors.coralLight}, #ffd6e8)`,
-            padding: '16px 32px',
-            borderRadius: '28px',
-            boxShadow: '0 4px 12px rgba(242, 196, 206, 0.4)',
-          }
-        },
-          React.createElement('table', {
-            style: {
-              margin: 0,
-              padding: 0,
-            }
-          },
-            React.createElement('tbody', null,
+        React.createElement('tr', null,
+          React.createElement('td', { align: 'center' },
+            React.createElement('table', {
+              role: 'presentation',
+              cellPadding: '0',
+              cellSpacing: '0',
+              border: '0'
+            },
               React.createElement('tr', null,
                 React.createElement('td', {
                   style: {
-                    verticalAlign: 'middle',
-                    paddingRight: '10px',
+                    backgroundColor: colors.coralLight,
+                    color: colors.bgDark,
+                    padding: '12px 24px',
+                    borderRadius: '20px',
+                    fontWeight: '700',
+                    fontSize: '14px',
                   }
-                },
-                  React.createElement('span', {
-                    style: {
-                      fontSize: '18px',
-                      lineHeight: 1,
-                      color: colors.bgDark,
-                      fontWeight: 'bold',
-                    }
-                  }, '◷')
-                ),
-                React.createElement('td', {
-                  style: {
-                    verticalAlign: 'middle',
-                  }
-                },
-                  React.createElement(Text, {
-                    style: {
-                      color: colors.bgDark,
-                      fontWeight: '700',
-                      margin: 0,
-                      fontSize: '15px',
-                    }
-                  }, `Suggested Prep: ${aiPrepTips.prepTime}`)
-                )
+                }, `⏱️ Suggested Prep: ${aiPrepTips.prepTime}`)
               )
             )
           )
         )
       ),
 
-      // Focus Areas Section
+      // Focus Areas Section with 2-column layout
       aiPrepTips.focusAreas && aiPrepTips.focusAreas.length > 0 && React.createElement(React.Fragment, null,
-        React.createElement(Section, {
-          style: {
-            textAlign: 'center',
-            marginBottom: '36px'
-          }
+        React.createElement('table', {
+          role: 'presentation',
+          width: '100%',
+          cellPadding: '0',
+          cellSpacing: '0',
+          border: '0',
+          style: { marginBottom: '20px' }
         },
-          React.createElement(Text, {
-            style: {
-              fontSize: '28px',
-              fontWeight: '700',
-              color: colors.textWhite,
-              margin: '0 0 12px 0',
-              letterSpacing: '-0.5px',
-            }
-          }, 'Critical Focus Areas'),
-          React.createElement(Text, {
-            style: {
-              fontSize: '15px',
-              color: colors.textLight,
-              margin: 0,
-            }
-          }, 'Master these topics to ace your interview')
+          React.createElement('tr', null,
+            React.createElement('td', null,
+              React.createElement(Text, { style: headingStyle }, '🎯 Critical Focus Areas'),
+              React.createElement(Text, { style: subheadingStyle }, 'Master these topics to ace your interview')
+            )
+          )
         ),
 
-        // Focus Areas Grid (2 columns)
-        React.createElement(Section, { style: { marginBottom: '52px' } },
-          React.createElement('table', { style: { width: '100%', borderSpacing: '16px' }, className: 'stack' },
-            React.createElement('tbody', null,
-              ...aiPrepTips.focusAreas.reduce((rows, area, index) => {
-                if (index % 2 === 0) {
-                  const nextArea = aiPrepTips.focusAreas[index + 1];
-                  rows.push(
-                    React.createElement('tr', { key: `row-${index}` },
-                      React.createElement('td', {
-                        style: {
-                          width: '50%',
-                          verticalAlign: 'top',
-                          padding: '4px',
-                        }
+        // Focus Areas Grid - 2 columns
+        ...Array.from({ length: Math.ceil(aiPrepTips.focusAreas.length / 2) }, (_, rowIndex) => {
+          const leftArea = aiPrepTips.focusAreas[rowIndex * 2];
+          const rightArea = aiPrepTips.focusAreas[rowIndex * 2 + 1];
+          
+          return React.createElement('table', {
+            key: `focus-row-${rowIndex}`,
+            role: 'presentation',
+            width: '100%',
+            cellPadding: '0',
+            cellSpacing: '0',
+            border: '0',
+            style: { marginBottom: '12px' }
+          },
+            React.createElement('tr', null,
+              // Left column
+              React.createElement('td', {
+                width: '50%',
+                style: { paddingRight: '8px', verticalAlign: 'top' }
+              },
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', { style: cardStyle },
+                      React.createElement('table', {
+                        role: 'presentation',
+                        width: '100%',
+                        cellPadding: '0',
+                        cellSpacing: '0',
+                        border: '0',
+                        style: { marginBottom: '8px' }
                       },
-                        React.createElement('div', {
-                          style: {
-                            background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-                            borderRadius: '16px',
-                            padding: '20px 18px',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            textAlign: 'left',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                          }
-                        },
-                          React.createElement('table', { style: { width: '100%', marginBottom: '8px' } },
-                            React.createElement('tbody', null,
+                        React.createElement('tr', null,
+                          React.createElement('td', {
+                            width: '48',
+                            style: { verticalAlign: 'middle', paddingRight: '12px' }
+                          },
+                            React.createElement('table', {
+                              role: 'presentation',
+                              cellPadding: '0',
+                              cellSpacing: '0',
+                              border: '0'
+                            },
                               React.createElement('tr', null,
                                 React.createElement('td', {
                                   style: {
-                                    verticalAlign: 'middle',
-                                    width: '48px',
-                                    paddingRight: '12px',
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    backgroundColor: rowIndex % 2 === 0 ? colors.coral : colors.coralLight,
+                                    textAlign: 'center',
+                                    lineHeight: '44px',
+                                    fontSize: '20px',
+                                    fontWeight: 'bold',
+                                    color: colors.bgDark,
                                   }
-                                },
-                                  React.createElement('div', {
-                                    style: {
-                                      width: '44px',
-                                      height: '44px',
-                                      borderRadius: '12px',
-                                      background: index % 2 === 0 ? colors.coral : colors.coralLight,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontSize: '20px',
-                                      fontWeight: 'bold',
-                                      color: colors.bgDark,
-                                    }
-                                  }, area.icon || '●')
-                                ),
-                                React.createElement('td', { style: { verticalAlign: 'middle' } },
-                                  React.createElement(Text, {
-                                    style: {
-                                      fontSize: '16px',
-                                      fontWeight: 700,
-                                      color: colors.textWhite,
-                                      margin: 0,
-                                      letterSpacing: '-0.2px'
-                                    }
-                                  }, area.title)
-                                )
+                                }, leftArea.icon || '●')
                               )
                             )
                           ),
-                          React.createElement(Text, {
-                            style: {
-                              fontSize: '13px',
-                              color: colors.textLight,
-                              margin: 0,
-                              lineHeight: 1.6,
-                              opacity: 0.95
-                            }
-                          }, area.description)
-                        )
-
-                      ),
-                      nextArea
-                        ? React.createElement(
-                          'td',
-                          {
-                            style: {
-                              width: '50%',
-                              verticalAlign: 'top',
-                              padding: '4px',
-                            },
-                          },
-                          React.createElement(
-                            'div',
-                            {
-                              style: {
-                                background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-                                borderRadius: '16px',
-                                padding: '20px 18px',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                textAlign: 'left',
-                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                              },
-                            },
-                            React.createElement('table', { style: { width: '100%', marginBottom: '8px' } },
-                              React.createElement('tbody', null,
-                                React.createElement('tr', null,
-                                  React.createElement('td', {
-                                    style: {
-                                      verticalAlign: 'middle',
-                                      width: '48px',
-                                      paddingRight: '12px',
-                                    }
-                                  },
-                                    React.createElement('div', {
-                                      style: {
-                                        width: '44px',
-                                        height: '44px',
-                                        borderRadius: '12px',
-                                        background: (index + 1) % 2 === 0 ? colors.coral : colors.coralLight,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '20px',
-                                        fontWeight: 'bold',
-                                        color: colors.bgDark,
-                                      }
-                                    }, nextArea.icon || '●')
-                                  ),
-                                  React.createElement('td', { style: { verticalAlign: 'middle' } },
-                                    React.createElement(Text, {
-                                      style: {
-                                        fontSize: '16px',
-                                        fontWeight: 700,
-                                        color: colors.textWhite,
-                                        margin: 0,
-                                        letterSpacing: '-0.2px',
-                                      },
-                                      children: nextArea.title,
-                                    })
-                                  )
-                                )
-                              )
-                            ),
+                          React.createElement('td', { style: { verticalAlign: 'middle' } },
                             React.createElement(Text, {
                               style: {
-                                fontSize: '13px',
-                                color: colors.textLight,
-                                margin: 0,
-                                lineHeight: 1.6,
-                                opacity: 0.95,
-                              },
-                              children: nextArea.description,
-                            })
+                                fontSize: '16px',
+                                fontWeight: '700',
+                                color: colors.textWhite,
+                                margin: '0',
+                              }
+                            }, leftArea.title)
                           )
                         )
-                        : React.createElement('td', { style: { width: '50%' } })
-
+                      ),
+                      React.createElement(Text, {
+                        style: {
+                          fontSize: '13px',
+                          color: colors.textLight,
+                          margin: '0',
+                          lineHeight: '1.6',
+                        }
+                      }, leftArea.description)
                     )
-                  );
-                }
-                return rows;
-              }, [])
+                  )
+                )
+              ),
+              
+              // Right column
+              rightArea ? React.createElement('td', {
+                width: '50%',
+                style: { paddingLeft: '8px', verticalAlign: 'top' }
+              },
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', { style: cardStyle },
+                      React.createElement('table', {
+                        role: 'presentation',
+                        width: '100%',
+                        cellPadding: '0',
+                        cellSpacing: '0',
+                        border: '0',
+                        style: { marginBottom: '8px' }
+                      },
+                        React.createElement('tr', null,
+                          React.createElement('td', {
+                            width: '48',
+                            style: { verticalAlign: 'middle', paddingRight: '12px' }
+                          },
+                            React.createElement('table', {
+                              role: 'presentation',
+                              cellPadding: '0',
+                              cellSpacing: '0',
+                              border: '0'
+                            },
+                              React.createElement('tr', null,
+                                React.createElement('td', {
+                                  style: {
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    backgroundColor: (rowIndex * 2 + 1) % 2 === 0 ? colors.coral : colors.coralLight,
+                                    textAlign: 'center',
+                                    lineHeight: '44px',
+                                    fontSize: '20px',
+                                    fontWeight: 'bold',
+                                    color: colors.bgDark,
+                                  }
+                                }, rightArea.icon || '●')
+                              )
+                            )
+                          ),
+                          React.createElement('td', { style: { verticalAlign: 'middle' } },
+                            React.createElement(Text, {
+                              style: {
+                                fontSize: '16px',
+                                fontWeight: '700',
+                                color: colors.textWhite,
+                                margin: '0',
+                              }
+                            }, rightArea.title)
+                          )
+                        )
+                      ),
+                      React.createElement(Text, {
+                        style: {
+                          fontSize: '13px',
+                          color: colors.textLight,
+                          margin: '0',
+                          lineHeight: '1.6',
+                        }
+                      }, rightArea.description)
+                    )
+                  )
+                )
+              ) : React.createElement('td', { width: '50%', style: { paddingLeft: '8px' } })
             )
-          )
-        )
+          );
+        })
       ),
 
-      // Preparation Tips Section
+      // Preparation Tips with 2-column layout
       aiPrepTips.tips && aiPrepTips.tips.length > 0 && React.createElement(React.Fragment, null,
-        React.createElement(Section, {
-          style: {
-            textAlign: 'center',
-            marginBottom: '36px'
-          }
+        React.createElement('table', {
+          role: 'presentation',
+          width: '100%',
+          cellPadding: '0',
+          cellSpacing: '0',
+          border: '0',
+          style: { marginTop: '32px', marginBottom: '20px' }
         },
-          React.createElement(Text, {
-            style: {
-              fontSize: '28px',
-              fontWeight: '700',
-              color: colors.textWhite,
-              margin: '0 0 12px 0',
-              letterSpacing: '-0.5px',
-            }
-          }, 'Preparation Tips'),
-          React.createElement(Text, {
-            style: {
-              fontSize: '15px',
-              color: colors.textLight,
-              margin: 0,
-            }
-          }, 'Essential tips to maximize your preparation')
-        ),
-
-        React.createElement(Section, { style: { marginBottom: '52px' } },
-          React.createElement('table', { style: { width: '100%', borderSpacing: '16px' }, className: 'stack' },
-            React.createElement('tbody', null,
-              ...aiPrepTips.tips.reduce((rows, tip, index) => {
-                if (index % 2 === 0) {
-                  const nextTip = aiPrepTips.tips[index + 1];
-                  rows.push(
-                    React.createElement('tr', { key: `tip-row-${index}` },
-                      React.createElement('td', {
-                        style: {
-                          width: '50%',
-                          verticalAlign: 'top',
-                          padding: '4px',
-                        }
-                      },
-                        React.createElement('div', {
-                          style: {
-                            background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-                            borderRadius: '16px',
-                            padding: '18px 18px',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            textAlign: 'left',
-                            borderLeft: `4px solid ${colors.coralLight}`,
-                            boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-                          }
-                        },
-                          React.createElement(Text, {
-                            style: {
-                              fontSize: '14px',
-                              color: colors.textLight,
-                              margin: 0,
-                              lineHeight: 1.6,
-                              opacity: 0.95
-                            }
-                          }, tip)
-                        )
-                      ),
-                      nextTip
-                        ? React.createElement('td', {
-                          style: {
-                            width: '50%',
-                            verticalAlign: 'top',
-                            padding: '4px',
-                          }
-                        },
-                          React.createElement('div', {
-                            style: {
-                              background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-                              borderRadius: '16px',
-                              padding: '18px 18px',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              textAlign: 'left',
-                              borderLeft: `4px solid ${colors.coralLight}`,
-                              boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-                            }
-                          },
-                            React.createElement(Text, {
-                              style: {
-                                fontSize: '14px',
-                                color: colors.textLight,
-                                margin: 0,
-                                lineHeight: 1.6,
-                                opacity: 0.95
-                              }
-                            }, nextTip)
-                          )
-                        )
-                        : React.createElement('td', { style: { width: '50%' } })
-                    )
-                  );
-                }
-                return rows;
-              }, [])
+          React.createElement('tr', null,
+            React.createElement('td', null,
+              React.createElement(Text, { style: headingStyle }, '💡 Preparation Tips'),
+              React.createElement(Text, { style: subheadingStyle }, 'Essential tips to maximize your preparation')
             )
           )
-        )
+        ),
+
+        // Tips Grid - 2 columns
+        ...Array.from({ length: Math.ceil(aiPrepTips.tips.length / 2) }, (_, rowIndex) => {
+          const leftTip = aiPrepTips.tips[rowIndex * 2];
+          const rightTip = aiPrepTips.tips[rowIndex * 2 + 1];
+          
+          return React.createElement('table', {
+            key: `tip-row-${rowIndex}`,
+            role: 'presentation',
+            width: '100%',
+            cellPadding: '0',
+            cellSpacing: '0',
+            border: '0',
+            style: { marginBottom: '12px' }
+          },
+            React.createElement('tr', null,
+              React.createElement('td', {
+                width: '50%',
+                style: { paddingRight: '8px', verticalAlign: 'top' }
+              },
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', {
+                      style: {
+                        ...cardStyle,
+                        borderLeft: `3px solid ${colors.coralLight}`,
+                      }
+                    },
+                      React.createElement(Text, {
+                        style: {
+                          fontSize: '14px',
+                          color: colors.textLight,
+                          margin: '0',
+                          lineHeight: '1.6',
+                        }
+                      }, leftTip)
+                    )
+                  )
+                )
+              ),
+              
+              rightTip ? React.createElement('td', {
+                width: '50%',
+                style: { paddingLeft: '8px', verticalAlign: 'top' }
+              },
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', {
+                      style: {
+                        ...cardStyle,
+                        borderLeft: `3px solid ${colors.coralLight}`,
+                      }
+                    },
+                      React.createElement(Text, {
+                        style: {
+                          fontSize: '14px',
+                          color: colors.textLight,
+                          margin: '0',
+                          lineHeight: '1.6',
+                        }
+                      }, rightTip)
+                    )
+                  )
+                )
+              ) : React.createElement('td', { width: '50%', style: { paddingLeft: '8px' } })
+            )
+          );
+        })
       ),
 
       // Preparation Roadmap
       aiPrepTips.roadmap && aiPrepTips.roadmap.length > 0 && React.createElement(React.Fragment, null,
-        React.createElement(Section, {
-          style: {
-            textAlign: 'center',
-            marginBottom: '36px'
-          }
+        React.createElement('table', {
+          role: 'presentation',
+          width: '100%',
+          cellPadding: '0',
+          cellSpacing: '0',
+          border: '0',
+          style: { marginTop: '32px', marginBottom: '20px' }
         },
-          React.createElement(Text, {
-            style: {
-              fontSize: '28px',
-              fontWeight: '700',
-              color: colors.textWhite,
-              margin: '0 0 12px 0',
-              letterSpacing: '-0.5px',
-            }
-          }, 'Your Preparation Roadmap'),
-          React.createElement(Text, {
-            style: {
-              fontSize: '15px',
-              color: colors.textLight,
-              margin: 0,
-            }
-          }, 'Follow these steps to ace your interview')
+          React.createElement('tr', null,
+            React.createElement('td', null,
+              React.createElement(Text, { style: headingStyle }, '🗺️ Your Preparation Roadmap'),
+              React.createElement(Text, { style: subheadingStyle }, 'Follow these steps to ace your interview')
+            )
+          )
         ),
 
-        // Roadmap Steps
-        React.createElement(Section, { style: { marginBottom: '52px' } },
-          ...aiPrepTips.roadmap.map((step, index) =>
-            React.createElement('div', {
-              key: `step-${index}`,
-              style: { marginBottom: index < aiPrepTips.roadmap.length - 1 ? '12px' : '0' }
-            },
-              React.createElement('table', { role: 'presentation', style: { width: '100%' } },
-                React.createElement('tbody', null,
+        ...aiPrepTips.roadmap.map((step, idx) =>
+          React.createElement('table', {
+            key: `step-${idx}`,
+            role: 'presentation',
+            width: '100%',
+            cellPadding: '0',
+            cellSpacing: '0',
+            border: '0',
+            style: { marginBottom: '12px' }
+          },
+            React.createElement('tr', null,
+              React.createElement('td', { width: '32', style: { verticalAlign: 'top', paddingTop: '2px' } },
+                React.createElement('table', {
+                  role: 'presentation',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
                   React.createElement('tr', null,
                     React.createElement('td', {
-                      style: { width: '28px', verticalAlign: 'top', paddingTop: '3px' }
-                    },
-                      React.createElement('div', {
+                      style: {
+                        width: '28px',
+                        height: '28px',
+                        backgroundColor: colors.coral,
+                        color: '#ffffff',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        borderRadius: '6px',
+                        lineHeight: '28px',
+                      }
+                    }, (idx + 1).toString())
+                  )
+                )
+              ),
+              React.createElement('td', { style: { paddingLeft: '12px' } },
+                React.createElement('table', {
+                  role: 'presentation',
+                  width: '100%',
+                  cellPadding: '0',
+                  cellSpacing: '0',
+                  border: '0'
+                },
+                  React.createElement('tr', null,
+                    React.createElement('td', { style: cardStyle },
+                      React.createElement(Text, {
                         style: {
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '6px',
-                          backgroundColor: colors.coral,
-                          color: colors.textWhite,
-                          fontWeight: 800,
+                          color: colors.textLight,
                           fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          textAlign: 'center',
-                          lineHeight: '28px'
+                          lineHeight: '1.6',
+                          margin: '0'
                         }
-                      }, (index + 1).toString())
-                    ),
-                    React.createElement('td', { style: { paddingLeft: '12px' } },
-                      React.createElement('div', {
-                        style: {
-                          background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
-                          borderRadius: '16px',
-                          padding: '16px 18px',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-                        }
-                      },
-                        React.createElement(Text, {
-                          style: {
-                            color: colors.textLight,
-                            fontSize: '14px',
-                            lineHeight: 1.6,
-                            margin: 0
-                          }
-                        }, step)
-                      )
+                      }, step)
                     )
                   )
                 )
               )
             )
-
           )
         )
       ),
 
       // Success Footer
-      React.createElement(Section, {
-        style: {
-          background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
-          borderRadius: '20px',
-          padding: '40px 32px',
-          textAlign: 'center',
-          boxShadow: '0 4px 16px rgba(245, 143, 124, 0.4)',
-        }
+      React.createElement('table', {
+        role: 'presentation',
+        width: '100%',
+        cellPadding: '0',
+        cellSpacing: '0',
+        border: '0',
+        style: { marginTop: '32px' }
       },
-        React.createElement(Text, {
-          style: {
-            fontSize: '32px',
-            fontWeight: '800',
-            color: colors.bgDark,
-            margin: '0 0 10px 0',
-            letterSpacing: '-0.5px',
-          }
-        }, "You've Got This!"),
-        React.createElement(Text, {
-          style: {
-            fontSize: '16px',
-            color: colors.bgDark,
-            margin: 0,
-            fontWeight: '600',
-            opacity: 0.85,
-          }
-        }, 'Follow this plan and nail your interview')
+        React.createElement('tr', null,
+          React.createElement('td', {
+            style: {
+              backgroundColor: colors.coral,
+              borderRadius: '12px',
+              padding: '32px 24px',
+              textAlign: 'center',
+            }
+          },
+            React.createElement(Text, {
+              style: {
+                fontSize: '28px',
+                fontWeight: '800',
+                color: '#ffffff',
+                margin: '0 0 8px 0',
+              }
+            }, "🚀 You've Got This!"),
+            React.createElement(Text, {
+              style: {
+                fontSize: '14px',
+                color: '#ffffff',
+                margin: '0',
+                opacity: '0.95',
+              }
+            }, 'Follow this plan and nail your interview')
+          )
+        )
       )
     ),
 
     // Footer Tip
-    React.createElement(Section, {
+    React.createElement('table', {
+      role: 'presentation',
+      width: '100%',
+      cellPadding: '0',
+      cellSpacing: '0',
+      border: '0',
       style: {
         borderTop: `1px solid ${colors.bgDarkSecondary}`,
-        paddingTop: '32px',
-        marginTop: '48px',
-        textAlign: 'center',
+        paddingTop: '24px',
+        marginTop: '32px',
       }
     },
-      React.createElement(Text, {
-        style: {
-          fontSize: '14px',
-          color: colors.textLight,
-          margin: 0,
-          lineHeight: '1.5',
-        }
-      },
-        React.createElement('span', { style: { fontWeight: '600', color: colors.textWhite } }, 'Pro Tip: '),
-        'Set multiple reminders to never miss important deadlines'
+      React.createElement('tr', null,
+        React.createElement('td', { style: { textAlign: 'center' } },
+          React.createElement(Text, {
+            style: {
+              fontSize: '13px',
+              color: colors.textLight,
+              margin: '0',
+              lineHeight: '1.5',
+            }
+          },
+            React.createElement('span', { style: { fontWeight: '600', color: colors.textWhite } }, '💡 Pro Tip: '),
+            'Set multiple reminders to never miss important deadlines'
+          )
+        )
       )
     )
   );

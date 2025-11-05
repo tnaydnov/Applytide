@@ -1,182 +1,212 @@
 const React = require('react');
-const { Html, Head, Body, Container, Section, Text, Link, Hr, Font } = require('@react-email/components');
+const { Html, Head, Body, Container, Section, Text, Link, Hr } = require('@react-email/components');
 
 const colors = {
-  bgDark: '#2C2B30',
-  bgDarkSecondary: '#4F4F51',
-  textLight: '#D6D6D6',
-  textWhite: '#FFFFFF',
+  bgDark: '#1a1a1a',
+  bgDarkSecondary: '#2d2d2d',
+  textLight: '#cccccc',
+  textWhite: '#ffffff',
   coral: '#F58F7C',
   coralLight: '#F2C4CE',
+  coralBg: '#fff5f3',
 };
 
 const main = {
   backgroundColor: colors.bgDark,
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   padding: '0',
+  margin: '0',
 };
 
 const container = {
-  maxWidth: '1200px',
+  maxWidth: '600px',
   margin: '0 auto',
   backgroundColor: colors.bgDark,
 };
 
 const header = {
-  padding: '48px 20px 24px 20px',
+  padding: '40px 20px 32px',
   textAlign: 'center',
   backgroundColor: colors.bgDark,
 };
 
-const wordmarkWrap = {
+const logoBox = {
   display: 'inline-block',
-  padding: '20px 32px',
-  borderRadius: '20px',
-  background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
-  boxShadow: '0 4px 12px rgba(245, 143, 124, 0.3)',
+  backgroundColor: colors.coral,
+  padding: '16px 32px',
+  borderRadius: '12px',
+  marginBottom: '16px',
 };
 
-const wordmark = {
-  fontSize: '42px',
-  fontWeight: 900,
-  color: colors.bgDark,
-  letterSpacing: '0.5px',
-  margin: 0,
+const logoText = {
+  fontSize: '32px',
+  fontWeight: '900',
+  color: '#ffffff',
+  margin: '0',
+  letterSpacing: '-0.5px',
 };
 
 const subtitle = {
   color: colors.textLight,
-  fontSize: '16px',
-  margin: '12px 0 0 0',
-  fontWeight: '500',
+  fontSize: '14px',
+  margin: '0',
+  fontWeight: '400',
 };
 
 const body = {
-  padding: '40px 16px 64px 16px',
+  padding: '20px',
   backgroundColor: colors.bgDark,
 };
 
 const footer = {
-  padding: '48px 20px',
+  padding: '40px 20px',
   textAlign: 'center',
   backgroundColor: colors.bgDarkSecondary,
+  borderTop: `1px solid ${colors.bgDark}`,
 };
 
-const footerLogoWrap = {
+const footerLogoBox = {
   display: 'inline-block',
-  padding: '20px 36px',
-  borderRadius: '20px',
-  background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
-  marginBottom: '16px',
-  boxShadow: '0 4px 12px rgba(245, 143, 124, 0.3)',
+  backgroundColor: colors.coral,
+  padding: '14px 28px',
+  borderRadius: '10px',
+  marginBottom: '12px',
 };
 
-const footerLogo = {
-  fontSize: '38px',
-  fontWeight: 900,
-  color: colors.bgDark,
-  margin: 0,
+const footerLogoText = {
+  fontSize: '28px',
+  fontWeight: '900',
+  color: '#ffffff',
+  margin: '0',
 };
 
 const footerSubtitle = {
   color: colors.textLight,
-  fontSize: '15px',
-  marginBottom: '24px',
-  fontWeight: '500',
+  fontSize: '13px',
+  margin: '0 0 20px 0',
+  fontWeight: '400',
+};
+
+const footerLinks = {
+  margin: '0 0 16px 0',
 };
 
 const footerLink = {
   color: colors.textLight,
-  fontSize: '14px',
+  fontSize: '13px',
   textDecoration: 'none',
-  padding: '0 12px',
-};
-
-const footerDivider = {
-  borderColor: colors.bgDark,
-  margin: '16px 0',
+  margin: '0 12px',
 };
 
 const footerCopyright = {
   color: colors.textLight,
   fontSize: '12px',
-  opacity: 0.7,
-  lineHeight: '1.6',
+  opacity: '0.7',
+  margin: '8px 0',
+  lineHeight: '1.5',
 };
 
 function BaseEmail({ children, previewText = '' }) {
   return React.createElement(Html, { lang: 'en' },
     React.createElement(Head, null,
-      React.createElement(Font, {
-        fontFamily: 'Inter',
-        fallbackFontFamily: 'Arial',
-        webFont: {
-          url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-          format: 'woff2',
-        },
-        fontWeight: 400,
-        fontStyle: 'normal',
-      }),
-      // lock light color scheme so Gmail iOS won't invert
-      React.createElement('meta', { name: 'color-scheme', content: 'light' }),
-      React.createElement('meta', { name: 'supported-color-schemes', content: 'light' }),
-      // mobile + dark-mode overrides + Gmail clients
-      React.createElement('style', {
-        dangerouslySetInnerHTML: {
-          __html: `
-  :root, [data-ogsc] body { background-color: #2C2B30 !important; color-scheme: only light; }
-  body, table, td, div, p { background-color: #2C2B30 !important; }
-  [data-bg-dark] { background-color: #2C2B30 !important; }
-  [data-bg-dark-2] { background-color: #4F4F51 !important; }
-  [data-text-white] { color: #FFFFFF !important; }
-  [data-text-light] { color: #D6D6D6 !important; }
-  [data-coral] { color: #F58F7C !important; }
-  [data-coral-light] { color: #F2C4CE !important; }
-  .stack td { vertical-align: top; }
-  @media only screen and (max-width: 480px) {
-    .stack td { display: block !important; width: 100% !important; padding: 0 0 12px 0 !important; }
-    .stack td:last-child { padding-bottom: 0 !important; }
-    .xl-center { text-align: center !important; }
-    body, table, td, div, p { background-color: #2C2B30 !important; color: #D6D6D6 !important; }
-  }
-` }
-      })
+      React.createElement('meta', { name: 'color-scheme', content: 'light dark' }),
+      React.createElement('meta', { name: 'supported-color-schemes', content: 'light dark' }),
+      React.createElement('style', null, `
+        body { margin: 0; padding: 0; }
+        table { border-collapse: collapse; }
+        @media only screen and (max-width: 600px) {
+          .mobile-full { width: 100% !important; }
+          .mobile-padding { padding: 16px !important; }
+        }
+      `)
     ),
-    React.createElement(Body, { style: main, 'data-bg-dark': true },
-      previewText && React.createElement(Text, {
-        style: { fontSize: '1px', color: 'transparent', lineHeight: '1px', maxHeight: '0', maxWidth: '0', opacity: 0, overflow: 'hidden' }
+    React.createElement(Body, { style: main },
+      previewText && React.createElement('div', {
+        style: {
+          display: 'none',
+          fontSize: '1px',
+          color: colors.bgDark,
+          lineHeight: '1px',
+          maxHeight: '0',
+          maxWidth: '0',
+          opacity: '0',
+          overflow: 'hidden'
+        }
       }, previewText),
 
-      React.createElement(Container, { style: container, 'data-bg-dark': true },
+      React.createElement('table', {
+        role: 'presentation',
+        width: '100%',
+        cellPadding: '0',
+        cellSpacing: '0',
+        border: '0',
+        style: { backgroundColor: colors.bgDark }
+      },
+        React.createElement('tr', null,
+          React.createElement('td', { align: 'center', style: { padding: '0' } },
+            React.createElement('table', {
+              role: 'presentation',
+              width: '600',
+              cellPadding: '0',
+              cellSpacing: '0',
+              border: '0',
+              className: 'mobile-full',
+              style: container
+            },
+              // HEADER
+              React.createElement('tr', null,
+                React.createElement('td', { style: header },
+                  React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0', align: 'center' },
+                    React.createElement('tr', null,
+                      React.createElement('td', { style: logoBox },
+                        React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0' },
+                          React.createElement('tr', null,
+                            React.createElement('td', null,
+                              React.createElement(Text, { style: logoText }, 'Applytide')
+                            )
+                          )
+                        )
+                      )
+                    )
+                  ),
+                  React.createElement(Text, { style: subtitle }, 'AI-Powered Job Tracking')
+                )
+              ),
 
-        // HEADER with logo
-        React.createElement(Section, { style: header, 'data-bg-dark': true },
-          React.createElement('div', { style: wordmarkWrap },
-            React.createElement(Text, { style: wordmark }, 'Applytide')
-          ),
-          React.createElement(Text, { style: subtitle }, 'AI-Powered Job Tracking')
-        ),
+              // BODY
+              React.createElement('tr', null,
+                React.createElement('td', { style: body, className: 'mobile-padding' },
+                  children
+                )
+              ),
 
-        // BODY
-        React.createElement(Section, { style: body, 'data-bg-dark': true }, children),
-
-        // FOOTER with bigger logo
-        React.createElement(Section, { style: footer, 'data-bg-dark-2': true },
-          React.createElement('div', { style: footerLogoWrap },
-            React.createElement(Text, { style: footerLogo }, 'Applytide')
-          ),
-          React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
-          React.createElement('table', { align: 'center', role: 'presentation', cellSpacing: '0', cellPadding: '0', border: '0', style: { marginBottom: '14px' } },
-            React.createElement('tr', null,
-              React.createElement('td', null, React.createElement(Link, { href: 'https://applytide.com', style: footerLink }, 'Home')),
-              React.createElement('td', null, React.createElement(Link, { href: 'https://applytide.com/dashboard', style: footerLink }, 'Dashboard')),
-              React.createElement('td', null, React.createElement(Link, { href: 'https://applytide.com/privacy', style: footerLink }, 'Privacy')),
-              React.createElement('td', null, React.createElement(Link, { href: 'https://applytide.com/contact', style: footerLink }, 'Contact')),
+              // FOOTER
+              React.createElement('tr', null,
+                React.createElement('td', { style: footer },
+                  React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0', align: 'center' },
+                    React.createElement('tr', null,
+                      React.createElement('td', { style: footerLogoBox },
+                        React.createElement(Text, { style: footerLogoText }, 'Applytide')
+                      )
+                    )
+                  ),
+                  React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
+                  React.createElement('div', { style: footerLinks },
+                    React.createElement(Link, { href: 'https://applytide.com', style: footerLink }, 'Home'),
+                    React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
+                    React.createElement(Link, { href: 'https://applytide.com/dashboard', style: footerLink }, 'Dashboard'),
+                    React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
+                    React.createElement(Link, { href: 'https://applytide.com/privacy', style: footerLink }, 'Privacy'),
+                    React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
+                    React.createElement(Link, { href: 'https://applytide.com/contact', style: footerLink }, 'Contact')
+                  ),
+                  React.createElement(Hr, { style: { borderColor: colors.bgDark, margin: '20px 0 16px 0' } }),
+                  React.createElement(Text, { style: footerCopyright }, '© 2025 Applytide. All rights reserved.'),
+                  React.createElement(Text, { style: footerCopyright }, "You're receiving this because you have an account with us.")
+                )
+              )
             )
-          ),
-          React.createElement(Hr, { style: footerDivider }),
-          React.createElement(Text, { style: footerCopyright }, '© 2025 Applytide. All rights reserved.'),
-          React.createElement(Text, { style: footerCopyright }, "You're receiving this because you have an account with us.")
+          )
         )
       )
     )
