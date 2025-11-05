@@ -1,10 +1,14 @@
 const React = require('react');
-const { BaseEmail, colors } = require('./BaseEmail');
+const { BaseEmail, colors } = require('./BaseEmail.jsx');
 const { Text, Section, Link } = require('@react-email/components');
 
-function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleString() }) {
+function DeletionConfirmationEmail({ 
+  name = 'there', 
+  deletionDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+  recoveryUrl = 'https://applytide.com/recover'
+}) {
   return React.createElement(BaseEmail, {
-    previewText: 'Your Applytide password was changed'
+    previewText: 'Your Applytide account will be deleted in 7 days - Recover now'
   },
     // Hero Section
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
@@ -20,7 +24,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           marginBottom: '24px',
           fontSize: '40px',
         }
-      }, '🛡️'),
+      }, '⚠️'),
       React.createElement('div', {
         style: {
           display: 'inline-block',
@@ -32,7 +36,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           fontSize: '14px',
           marginBottom: '16px',
         }
-      }, '🛡️ Security Update'),
+      }, '⚠️ Deletion Scheduled'),
       React.createElement(Text, {
         style: {
           fontSize: '36px',
@@ -40,130 +44,152 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           color: colors.textWhite,
           margin: '24px 0 12px 0',
         }
-      }, 'Password Changed'),
+      }, 'Your Account Will Be Deleted'),
       React.createElement(Text, {
         style: {
           fontSize: '18px',
           color: colors.textLight,
           margin: 0,
         }
-      }, `Hi ${name}, your password was just updated`)
+      }, `Hi ${name}, we've received your deletion request`)
     ),
 
-    // Success Confirmation
+    // Deletion Date Countdown
     React.createElement(Section, {
       style: {
         backgroundColor: colors.bgDarkSecondary,
         borderRadius: '16px',
-        padding: '32px',
+        padding: '48px 32px',
+        textAlign: 'center',
         marginBottom: '48px',
       }
     },
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
-        React.createElement('tr', null,
-          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'middle' } },
-            React.createElement('div', {
-              style: {
-                width: '56px',
-                height: '56px',
-                backgroundColor: colors.coral,
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-              }
-            }, '✓')
-          ),
-          React.createElement('td', { style: { verticalAlign: 'middle' } },
-            React.createElement(Text, {
-              style: {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: colors.textWhite,
-                margin: 0,
-              }
-            }, 'Password successfully updated')
-          )
-        )
-      ),
+      React.createElement(Text, {
+        style: {
+          fontSize: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '2px',
+          fontWeight: 'bold',
+          color: colors.coral,
+          marginBottom: '16px',
+        }
+      }, 'Deletion Date'),
+      React.createElement(Text, {
+        style: {
+          fontSize: '48px',
+          fontWeight: 'bold',
+          color: colors.textWhite,
+          marginBottom: '24px',
+        }
+      }, deletionDate),
       React.createElement('div', {
         style: {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '12px',
+          backgroundColor: colors.coral,
+          color: colors.textWhite,
+          padding: '12px 24px',
+          borderRadius: '24px',
+        }
+      },
+        React.createElement('span', { style: { fontSize: '24px' } }, '⏱️'),
+        React.createElement('span', { style: { fontWeight: 'bold' } }, '7 days remaining')
+      )
+    ),
+
+    // Recovery Section
+    React.createElement(Section, {
+      style: {
+        background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
+        borderRadius: '16px',
+        padding: '48px 32px',
+        textAlign: 'center',
+        marginBottom: '48px',
+      }
+    },
+      React.createElement('div', {
+        style: {
+          width: '64px',
+          height: '64px',
           backgroundColor: colors.bgDark,
           borderRadius: '12px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '24px',
+          fontSize: '32px',
+        }
+      }, '🔄'),
+      React.createElement(Text, {
+        style: {
+          fontSize: '36px',
+          fontWeight: 'bold',
+          color: colors.bgDark,
+          marginBottom: '16px',
+        }
+      }, 'Changed Your Mind?'),
+      React.createElement(Text, {
+        style: {
+          fontSize: '20px',
+          color: colors.bgDarkSecondary,
+          lineHeight: '1.7',
+          maxWidth: '600px',
+          margin: '0 auto 8px',
+        }
+      }, 
+        'You have ',
+        React.createElement('span', { style: { fontSize: '28px', fontWeight: 'bold' } }, '7 days'),
+        ' to recover your account.'
+      ),
+      React.createElement(Text, {
+        style: {
+          color: colors.bgDarkSecondary,
+          marginBottom: '32px',
+        }
+      }, 'Click below or simply log in to cancel the deletion.'),
+      React.createElement(Link, {
+        href: recoveryUrl,
+        style: {
+          display: 'inline-block',
+          backgroundColor: colors.bgDark,
+          color: colors.textWhite,
+          padding: '18px 36px',
+          borderRadius: '24px',
+          fontWeight: 'bold',
+          textDecoration: 'none',
+          marginBottom: '24px',
+        }
+      }, '🔄 Recover My Account →'),
+      React.createElement('div', {
+        style: {
+          backgroundColor: `${colors.bgDark}99`,
+          borderRadius: '12px',
           padding: '16px',
-          marginTop: '24px',
+          textAlign: 'left',
         }
       },
         React.createElement(Text, {
           style: {
+            fontSize: '12px',
             fontWeight: 'bold',
-            color: colors.textLight,
+            color: colors.bgDark,
+            marginBottom: '8px',
+          }
+        }, 'Or copy this recovery link:'),
+        React.createElement(Text, {
+          style: {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: colors.bgDark,
+            wordBreak: 'break-all',
             margin: 0,
           }
-        }, `Changed on: ${changedAt}`)
+        }, recoveryUrl)
       )
     ),
 
-    // Warning Section
-    React.createElement(Section, {
-      style: {
-        backgroundColor: colors.bgDarkSecondary,
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '48px',
-      }
-    },
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
-        React.createElement('tr', null,
-          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'top' } },
-            React.createElement('div', {
-              style: {
-                width: '56px',
-                height: '56px',
-                backgroundColor: colors.coral,
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-              }
-            }, '⚠️')
-          ),
-          React.createElement('td', { style: { verticalAlign: 'top' } },
-            React.createElement(Text, {
-              style: {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: colors.textWhite,
-                marginBottom: '12px',
-              }
-            }, "Didn't make this change?"),
-            React.createElement(Text, {
-              style: {
-                color: colors.textLight,
-                lineHeight: '1.7',
-                marginBottom: '24px',
-              }
-            }, "If you didn't request this password change, your account may be compromised. Secure it immediately.")
-          )
-        )
-      ),
-      React.createElement(Link, {
-        href: 'https://applytide.com/auth/reset',
-        style: {
-          display: 'inline-block',
-          backgroundColor: colors.coral,
-          color: colors.textWhite,
-          padding: '16px 32px',
-          borderRadius: '24px',
-          fontWeight: 'bold',
-          textDecoration: 'none',
-        }
-      }, 'Reset Password Now')
-    ),
-
-    // Security Best Practices
+    // What Will Be Deleted
     React.createElement(Section, { style: { marginBottom: '48px' } },
       React.createElement(Text, {
         style: {
@@ -173,16 +199,16 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           textAlign: 'center',
           marginBottom: '32px',
         }
-      }, 'Security Best Practices'),
+      }, 'What Will Be Deleted'),
 
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
+      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0', style: { marginBottom: '24px' } },
         React.createElement('tr', null,
           React.createElement('td', { style: { padding: '12px', width: '50%' } },
             React.createElement('div', {
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '20px',
               }
             },
               React.createElement('div', {
@@ -194,24 +220,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '16px',
+                  marginBottom: '12px',
                   fontSize: '24px',
                 }
-              }, '🔑'),
+              }, '📄'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '4px',
                 }
-              }, 'Strong Password'),
+              }, 'All resumes and documents'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'Use numbers, symbols, and mixed case')
+              }, 'Your uploaded files and generated content')
             )
           ),
           React.createElement('td', { style: { padding: '12px', width: '50%' } },
@@ -219,7 +245,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '20px',
               }
             },
               React.createElement('div', {
@@ -231,24 +257,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '16px',
+                  marginBottom: '12px',
                   fontSize: '24px',
                 }
-              }, '🔒'),
+              }, '💼'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '4px',
                 }
-              }, 'Never Share'),
+              }, 'Job applications and analytics'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, "Don't share with anyone, including staff")
+              }, 'All saved jobs and tracking data')
             )
           )
         ),
@@ -258,7 +284,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '20px',
               }
             },
               React.createElement('div', {
@@ -270,24 +296,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '16px',
+                  marginBottom: '12px',
                   fontSize: '24px',
                 }
-              }, '🛡️'),
+              }, '👤'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '4px',
                 }
-              }, 'Two-Factor Auth'),
+              }, 'Profile and preferences'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'Extra security layer (coming soon!)')
+              }, 'Your personal information and settings')
             )
           ),
           React.createElement('td', { style: { padding: '12px' } },
@@ -295,7 +321,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '20px',
               }
             },
               React.createElement('div', {
@@ -307,24 +333,60 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '16px',
+                  marginBottom: '12px',
                   fontSize: '24px',
                 }
-              }, '👁️'),
+              }, '🔔'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '4px',
                 }
-              }, 'Watch for Phishing'),
+              }, 'Reminders and calendar events'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, "We'll never ask for your password")
+              }, 'All scheduled notifications')
+            )
+          )
+        )
+      ),
+
+      React.createElement('div', {
+        style: {
+          backgroundColor: colors.bgDarkSecondary,
+          borderRadius: '16px',
+          padding: '24px',
+        }
+      },
+        React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
+          React.createElement('tr', null,
+            React.createElement('td', { style: { paddingRight: '16px', verticalAlign: 'top' } },
+              React.createElement('div', {
+                style: {
+                  width: '48px',
+                  height: '48px',
+                  backgroundColor: colors.coral,
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                }
+              }, '⚠️')
+            ),
+            React.createElement('td', { style: { verticalAlign: 'top' } },
+              React.createElement(Text, {
+                style: {
+                  fontWeight: 'bold',
+                  color: colors.textWhite,
+                  margin: 0,
+                }
+              }, `This deletion is permanent and cannot be undone after ${deletionDate}.`)
             )
           )
         )
@@ -345,15 +407,15 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
         }
       }, 'Questions? Contact us at '),
       React.createElement(Link, {
-        href: 'mailto:security@applytide.com',
+        href: 'mailto:support@applytide.com',
         style: {
           color: colors.coral,
           fontWeight: 'bold',
         }
-      }, 'security@applytide.com')
+      }, 'support@applytide.com')
     )
   );
 }
 
-module.exports = PasswordChangedEmail;
-module.exports.default = PasswordChangedEmail;
+module.exports = DeletionConfirmationEmail;
+module.exports.default = DeletionConfirmationEmail;

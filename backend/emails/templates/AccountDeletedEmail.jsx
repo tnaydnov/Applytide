@@ -1,5 +1,5 @@
 const React = require('react');
-const { BaseEmail, colors } = require('./BaseEmail');
+const { BaseEmail, colors } = require('./BaseEmail.jsx');
 const { Text, Section, Link } = require('@react-email/components');
 
 function AccountDeletedEmail({ name = 'there' }) {

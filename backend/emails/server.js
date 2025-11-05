@@ -20,7 +20,7 @@ app.post('/render', async (req, res) => {
     }
 
     // Dynamically import the email component
-    const EmailComponent = require(`./emails/${template}`).default;
+    const EmailComponent = require(`./templates/${template}.jsx`).default;
 
     if (!EmailComponent) {
       return res.status(404).json({ error: `Template '${template}' not found` });
@@ -51,7 +51,7 @@ app.get('/templates', (req, res) => {
   const path = require('path');
   
   try {
-    const templatesDir = path.join(__dirname, 'emails');
+    const templatesDir = path.join(__dirname, 'templates');
     const files = fs.readdirSync(templatesDir)
       .filter(f => f.endsWith('.jsx'))
       .map(f => f.replace('.jsx', ''));

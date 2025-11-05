@@ -1,14 +1,10 @@
 const React = require('react');
-const { BaseEmail, colors } = require('./BaseEmail');
+const { BaseEmail, colors } = require('./BaseEmail.jsx');
 const { Text, Section, Link } = require('@react-email/components');
 
-function DeletionConfirmationEmail({ 
-  name = 'there', 
-  deletionDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-  recoveryUrl = 'https://applytide.com/recover'
-}) {
+function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleString() }) {
   return React.createElement(BaseEmail, {
-    previewText: 'Your Applytide account will be deleted in 7 days - Recover now'
+    previewText: 'Your Applytide password was changed'
   },
     // Hero Section
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
@@ -24,7 +20,7 @@ function DeletionConfirmationEmail({
           marginBottom: '24px',
           fontSize: '40px',
         }
-      }, '⚠️'),
+      }, '🛡️'),
       React.createElement('div', {
         style: {
           display: 'inline-block',
@@ -36,7 +32,7 @@ function DeletionConfirmationEmail({
           fontSize: '14px',
           marginBottom: '16px',
         }
-      }, '⚠️ Deletion Scheduled'),
+      }, '🛡️ Security Update'),
       React.createElement(Text, {
         style: {
           fontSize: '36px',
@@ -44,152 +40,130 @@ function DeletionConfirmationEmail({
           color: colors.textWhite,
           margin: '24px 0 12px 0',
         }
-      }, 'Your Account Will Be Deleted'),
+      }, 'Password Changed'),
       React.createElement(Text, {
         style: {
           fontSize: '18px',
           color: colors.textLight,
           margin: 0,
         }
-      }, `Hi ${name}, we've received your deletion request`)
+      }, `Hi ${name}, your password was just updated`)
     ),
 
-    // Deletion Date Countdown
+    // Success Confirmation
     React.createElement(Section, {
       style: {
         backgroundColor: colors.bgDarkSecondary,
         borderRadius: '16px',
-        padding: '48px 32px',
-        textAlign: 'center',
+        padding: '32px',
         marginBottom: '48px',
       }
     },
-      React.createElement(Text, {
-        style: {
-          fontSize: '12px',
-          textTransform: 'uppercase',
-          letterSpacing: '2px',
-          fontWeight: 'bold',
-          color: colors.coral,
-          marginBottom: '16px',
-        }
-      }, 'Deletion Date'),
-      React.createElement(Text, {
-        style: {
-          fontSize: '48px',
-          fontWeight: 'bold',
-          color: colors.textWhite,
-          marginBottom: '24px',
-        }
-      }, deletionDate),
+      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
+        React.createElement('tr', null,
+          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'middle' } },
+            React.createElement('div', {
+              style: {
+                width: '56px',
+                height: '56px',
+                backgroundColor: colors.coral,
+                borderRadius: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+              }
+            }, '✓')
+          ),
+          React.createElement('td', { style: { verticalAlign: 'middle' } },
+            React.createElement(Text, {
+              style: {
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: colors.textWhite,
+                margin: 0,
+              }
+            }, 'Password successfully updated')
+          )
+        )
+      ),
       React.createElement('div', {
         style: {
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '12px',
-          backgroundColor: colors.coral,
-          color: colors.textWhite,
-          padding: '12px 24px',
-          borderRadius: '24px',
+          backgroundColor: colors.bgDark,
+          borderRadius: '12px',
+          padding: '16px',
+          marginTop: '24px',
         }
       },
-        React.createElement('span', { style: { fontSize: '24px' } }, '⏱️'),
-        React.createElement('span', { style: { fontWeight: 'bold' } }, '7 days remaining')
+        React.createElement(Text, {
+          style: {
+            fontWeight: 'bold',
+            color: colors.textLight,
+            margin: 0,
+          }
+        }, `Changed on: ${changedAt}`)
       )
     ),
 
-    // Recovery Section
+    // Warning Section
     React.createElement(Section, {
       style: {
-        background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
+        backgroundColor: colors.bgDarkSecondary,
         borderRadius: '16px',
-        padding: '48px 32px',
-        textAlign: 'center',
+        padding: '32px',
         marginBottom: '48px',
       }
     },
-      React.createElement('div', {
-        style: {
-          width: '64px',
-          height: '64px',
-          backgroundColor: colors.bgDark,
-          borderRadius: '12px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '24px',
-          fontSize: '32px',
-        }
-      }, '🔄'),
-      React.createElement(Text, {
-        style: {
-          fontSize: '36px',
-          fontWeight: 'bold',
-          color: colors.bgDark,
-          marginBottom: '16px',
-        }
-      }, 'Changed Your Mind?'),
-      React.createElement(Text, {
-        style: {
-          fontSize: '20px',
-          color: colors.bgDarkSecondary,
-          lineHeight: '1.7',
-          maxWidth: '600px',
-          margin: '0 auto 8px',
-        }
-      }, 
-        'You have ',
-        React.createElement('span', { style: { fontSize: '28px', fontWeight: 'bold' } }, '7 days'),
-        ' to recover your account.'
+      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
+        React.createElement('tr', null,
+          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'top' } },
+            React.createElement('div', {
+              style: {
+                width: '56px',
+                height: '56px',
+                backgroundColor: colors.coral,
+                borderRadius: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+              }
+            }, '⚠️')
+          ),
+          React.createElement('td', { style: { verticalAlign: 'top' } },
+            React.createElement(Text, {
+              style: {
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: colors.textWhite,
+                marginBottom: '12px',
+              }
+            }, "Didn't make this change?"),
+            React.createElement(Text, {
+              style: {
+                color: colors.textLight,
+                lineHeight: '1.7',
+                marginBottom: '24px',
+              }
+            }, "If you didn't request this password change, your account may be compromised. Secure it immediately.")
+          )
+        )
       ),
-      React.createElement(Text, {
-        style: {
-          color: colors.bgDarkSecondary,
-          marginBottom: '32px',
-        }
-      }, 'Click below or simply log in to cancel the deletion.'),
       React.createElement(Link, {
-        href: recoveryUrl,
+        href: 'https://applytide.com/auth/reset',
         style: {
           display: 'inline-block',
-          backgroundColor: colors.bgDark,
+          backgroundColor: colors.coral,
           color: colors.textWhite,
-          padding: '18px 36px',
+          padding: '16px 32px',
           borderRadius: '24px',
           fontWeight: 'bold',
           textDecoration: 'none',
-          marginBottom: '24px',
         }
-      }, '🔄 Recover My Account →'),
-      React.createElement('div', {
-        style: {
-          backgroundColor: `${colors.bgDark}99`,
-          borderRadius: '12px',
-          padding: '16px',
-          textAlign: 'left',
-        }
-      },
-        React.createElement(Text, {
-          style: {
-            fontSize: '12px',
-            fontWeight: 'bold',
-            color: colors.bgDark,
-            marginBottom: '8px',
-          }
-        }, 'Or copy this recovery link:'),
-        React.createElement(Text, {
-          style: {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: colors.bgDark,
-            wordBreak: 'break-all',
-            margin: 0,
-          }
-        }, recoveryUrl)
-      )
+      }, 'Reset Password Now')
     ),
 
-    // What Will Be Deleted
+    // Security Best Practices
     React.createElement(Section, { style: { marginBottom: '48px' } },
       React.createElement(Text, {
         style: {
@@ -199,16 +173,16 @@ function DeletionConfirmationEmail({
           textAlign: 'center',
           marginBottom: '32px',
         }
-      }, 'What Will Be Deleted'),
+      }, 'Security Best Practices'),
 
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0', style: { marginBottom: '24px' } },
+      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
         React.createElement('tr', null,
           React.createElement('td', { style: { padding: '12px', width: '50%' } },
             React.createElement('div', {
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '20px',
+                padding: '24px',
               }
             },
               React.createElement('div', {
@@ -220,24 +194,24 @@ function DeletionConfirmationEmail({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '12px',
+                  marginBottom: '16px',
                   fontSize: '24px',
                 }
-              }, '📄'),
+              }, '🔑'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '4px',
+                  marginBottom: '8px',
                 }
-              }, 'All resumes and documents'),
+              }, 'Strong Password'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'Your uploaded files and generated content')
+              }, 'Use numbers, symbols, and mixed case')
             )
           ),
           React.createElement('td', { style: { padding: '12px', width: '50%' } },
@@ -245,7 +219,7 @@ function DeletionConfirmationEmail({
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '20px',
+                padding: '24px',
               }
             },
               React.createElement('div', {
@@ -257,24 +231,24 @@ function DeletionConfirmationEmail({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '12px',
+                  marginBottom: '16px',
                   fontSize: '24px',
                 }
-              }, '💼'),
+              }, '🔒'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '4px',
+                  marginBottom: '8px',
                 }
-              }, 'Job applications and analytics'),
+              }, 'Never Share'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'All saved jobs and tracking data')
+              }, "Don't share with anyone, including staff")
             )
           )
         ),
@@ -284,7 +258,7 @@ function DeletionConfirmationEmail({
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '20px',
+                padding: '24px',
               }
             },
               React.createElement('div', {
@@ -296,24 +270,24 @@ function DeletionConfirmationEmail({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '12px',
+                  marginBottom: '16px',
                   fontSize: '24px',
                 }
-              }, '👤'),
+              }, '🛡️'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '4px',
+                  marginBottom: '8px',
                 }
-              }, 'Profile and preferences'),
+              }, 'Two-Factor Auth'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'Your personal information and settings')
+              }, 'Extra security layer (coming soon!)')
             )
           ),
           React.createElement('td', { style: { padding: '12px' } },
@@ -321,7 +295,7 @@ function DeletionConfirmationEmail({
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '20px',
+                padding: '24px',
               }
             },
               React.createElement('div', {
@@ -333,60 +307,24 @@ function DeletionConfirmationEmail({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '12px',
+                  marginBottom: '16px',
                   fontSize: '24px',
                 }
-              }, '🔔'),
+              }, '👁️'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '4px',
+                  marginBottom: '8px',
                 }
-              }, 'Reminders and calendar events'),
+              }, 'Watch for Phishing'),
               React.createElement(Text, {
                 style: {
                   fontSize: '14px',
                   color: colors.textLight,
                   margin: 0,
                 }
-              }, 'All scheduled notifications')
-            )
-          )
-        )
-      ),
-
-      React.createElement('div', {
-        style: {
-          backgroundColor: colors.bgDarkSecondary,
-          borderRadius: '16px',
-          padding: '24px',
-        }
-      },
-        React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
-          React.createElement('tr', null,
-            React.createElement('td', { style: { paddingRight: '16px', verticalAlign: 'top' } },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coral,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                }
-              }, '⚠️')
-            ),
-            React.createElement('td', { style: { verticalAlign: 'top' } },
-              React.createElement(Text, {
-                style: {
-                  fontWeight: 'bold',
-                  color: colors.textWhite,
-                  margin: 0,
-                }
-              }, `This deletion is permanent and cannot be undone after ${deletionDate}.`)
+              }, "We'll never ask for your password")
             )
           )
         )
@@ -407,15 +345,15 @@ function DeletionConfirmationEmail({
         }
       }, 'Questions? Contact us at '),
       React.createElement(Link, {
-        href: 'mailto:support@applytide.com',
+        href: 'mailto:security@applytide.com',
         style: {
           color: colors.coral,
           fontWeight: 'bold',
         }
-      }, 'support@applytide.com')
+      }, 'security@applytide.com')
     )
   );
 }
 
-module.exports = DeletionConfirmationEmail;
-module.exports.default = DeletionConfirmationEmail;
+module.exports = PasswordChangedEmail;
+module.exports.default = PasswordChangedEmail;
