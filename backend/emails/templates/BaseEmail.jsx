@@ -23,20 +23,20 @@ const container = {
 };
 
 const header = {
-  padding: '28px 20px 8px 20px',
+  padding: '32px 20px 16px 20px',
   textAlign: 'center',
   backgroundColor: colors.bgDark,
 };
 
 const wordmarkWrap = {
   display: 'inline-block',
-  padding: '12px 18px',
+  padding: '16px 24px',
   borderRadius: '16px',
   background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
 };
 
 const wordmark = {
-  fontSize: '28px',
+  fontSize: '32px',
   fontWeight: 800,
   color: colors.bgDark,
   letterSpacing: '0.2px',
@@ -62,14 +62,14 @@ const footer = {
 
 const footerLogoWrap = {
   display: 'inline-block',
-  padding: '12px 18px',
+  padding: '16px 28px',
   borderRadius: '16px',
   background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
-  marginBottom: '10px',
+  marginBottom: '12px',
 };
 
 const footerLogo = {
-  fontSize: '22px',
+  fontSize: '32px',
   fontWeight: 800,
   color: colors.bgDark,
   margin: 0,
@@ -121,16 +121,19 @@ function BaseEmail({ children, previewText = '' }) {
         dangerouslySetInnerHTML: {
           __html: `
   :root, [data-ogsc] body { background-color: #2C2B30 !important; color-scheme: only light; }
-  body, table, td, div { background-color: #2C2B30 !important; }
+  body, table, td, div, p { background-color: #2C2B30 !important; }
   [data-bg-dark] { background-color: #2C2B30 !important; }
   [data-bg-dark-2] { background-color: #4F4F51 !important; }
   [data-text-white] { color: #FFFFFF !important; }
   [data-text-light] { color: #D6D6D6 !important; }
+  [data-coral] { color: #F58F7C !important; }
+  [data-coral-light] { color: #F2C4CE !important; }
   .stack td { vertical-align: top; }
   @media only screen and (max-width: 480px) {
     .stack td { display: block !important; width: 100% !important; padding: 0 0 12px 0 !important; }
     .stack td:last-child { padding-bottom: 0 !important; }
     .xl-center { text-align: center !important; }
+    body, table, td, div, p { background-color: #2C2B30 !important; color: #D6D6D6 !important; }
   }
 ` }
       })
@@ -145,7 +148,20 @@ function BaseEmail({ children, previewText = '' }) {
         // HEADER with logo
         React.createElement(Section, { style: header, 'data-bg-dark': true },
           React.createElement('div', { style: wordmarkWrap },
-            React.createElement(Text, { style: wordmark }, 'Applytide')
+            React.createElement('img', {
+              src: 'https://applytide.com/images/logomark.png',
+              alt: 'Applytide',
+              width: '32',
+              height: '32',
+              style: {
+                display: 'inline-block',
+                verticalAlign: 'middle',
+                marginRight: '12px',
+                width: '32px',
+                height: '32px',
+              }
+            }),
+            React.createElement(Text, { style: { ...wordmark, display: 'inline-block', verticalAlign: 'middle' } }, 'Applytide')
           ),
           React.createElement(Text, { style: subtitle }, 'AI-Powered Job Tracking')
         ),
@@ -156,7 +172,20 @@ function BaseEmail({ children, previewText = '' }) {
         // FOOTER with bigger logo
         React.createElement(Section, { style: footer, 'data-bg-dark-2': true },
           React.createElement('div', { style: footerLogoWrap },
-            React.createElement(Text, { style: footerLogo }, 'Applytide')
+            React.createElement('img', {
+              src: 'https://applytide.com/images/logomark.png',
+              alt: 'Applytide',
+              width: '36',
+              height: '36',
+              style: {
+                display: 'inline-block',
+                verticalAlign: 'middle',
+                marginRight: '14px',
+                width: '36px',
+                height: '36px',
+              }
+            }),
+            React.createElement(Text, { style: { ...footerLogo, display: 'inline-block', verticalAlign: 'middle' } }, 'Applytide')
           ),
           React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
           React.createElement('table', { align: 'center', role: 'presentation', cellSpacing: '0', cellPadding: '0', border: '0', style: { marginBottom: '14px' } },
