@@ -93,6 +93,7 @@ function ReminderEmail({
                   borderRadius: '24px',
                   fontWeight: '700',
                   fontSize: '13px',
+                  textAlign: 'center',
                   letterSpacing: '0.5px',
                 }
               }, `📅 ${config.label}`)
@@ -274,6 +275,7 @@ function ReminderEmail({
                           borderRadius: '10px',
                           display: 'inline-flex',
                           alignItems: 'center',
+                          textAlign: 'center',
                           justifyContent: 'center',
                           fontSize: '20px',
                           marginBottom: '12px',
@@ -363,6 +365,7 @@ function ReminderEmail({
                 borderRadius: '14px',
                 display: 'inline-flex',
                 alignItems: 'center',
+                textAlign: 'center',
                 justifyContent: 'center',
                 fontSize: '28px',
                 marginBottom: '16px',
@@ -425,6 +428,7 @@ function ReminderEmail({
                       borderRadius: '12px',
                       display: 'inline-flex',
                       alignItems: 'center',
+                      textAlign: 'center',
                       justifyContent: 'center',
                       fontSize: '24px',
                     }
@@ -550,6 +554,7 @@ function ReminderEmail({
                                 backgroundColor: colors.coral,
                                 display: 'inline-flex',
                                 alignItems: 'center',
+                                textAlign: 'center',
                                 justifyContent: 'center',
                                 fontSize: '24px',
                               }
@@ -615,6 +620,7 @@ function ReminderEmail({
                                 backgroundColor: colors.coral,
                                 display: 'inline-flex',
                                 alignItems: 'center',
+                                textAlign: 'center',
                                 justifyContent: 'center',
                                 fontSize: '24px',
                               }
@@ -831,6 +837,7 @@ function ReminderEmail({
                 borderRadius: '16px',
                 display: 'inline-flex',
                 alignItems: 'center',
+                textAlign: 'center',
                 justifyContent: 'center',
                 fontSize: '32px',
                 marginBottom: '20px',
