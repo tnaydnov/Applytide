@@ -1393,12 +1393,15 @@ class ReminderService:
                 )
                 # Continue with email even if caching fails
             
-            # Format tips for email
+            # Format tips for React Email (structured data, not HTML)
             try:
-                ai_tips_html = self.ai_prep_service.format_tips_for_email(ai_response)
+                ai_tips_data = self.ai_prep_service.format_tips_for_react_email(
+                    ai_response, 
+                    company_name=company_name or ""
+                )
             except Exception as e:
                 logger.error(
-                    f"Failed to format AI tips for email: {e}",
+                    f"Failed to format AI tips for React Email: {e}",
                     extra={"reminder_id": str(reminder.id)},
                     exc_info=True
                 )
@@ -1481,7 +1484,7 @@ class ReminderService:
                     urgency=urgency,
                     event_type=event_type or "general",
                     action_url=action_url,
-                    ai_prep_tips_html=ai_tips_html
+                    ai_prep_tips=ai_tips_data  # Structured data for React Email
                 )
                 
                 if success:

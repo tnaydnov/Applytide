@@ -80,7 +80,7 @@ import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from ...config import settings
 from ...infra.logging import get_logger
 from .email_templates import (
@@ -662,7 +662,7 @@ class EmailService:
         urgency: str,
         event_type: str,
         action_url: str,
-        ai_prep_tips_html: str = None
+        ai_prep_tips: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         Send reminder email with dynamic urgency, action link, and optional AI prep tips.
@@ -677,7 +677,7 @@ class EmailService:
             urgency: Urgency level ('now', 'today', 'tomorrow', 'week', 'future')
             event_type: Event type ('interview', 'deadline', 'follow_up', etc.)
             action_url: Link to application/reminder in app
-            ai_prep_tips_html: Optional HTML content with AI-generated prep tips (Pro/Premium)
+            ai_prep_tips: Optional structured data with AI-generated prep tips (Pro/Premium)
             
         Returns:
             bool: True if email sent successfully
@@ -719,7 +719,7 @@ class EmailService:
             urgency=urgency,
             event_type=event_type,
             action_url=action_url,
-            ai_prep_tips_html=ai_prep_tips_html
+            ai_prep_tips=ai_prep_tips  # Structured data for React Email
         )
         
         subject_prefix = {
@@ -738,7 +738,7 @@ class EmailService:
                 "title": title,
                 "urgency": urgency,
                 "event_type": event_type,
-                "has_ai_tips": bool(ai_prep_tips_html)
+                "has_ai_tips": bool(ai_prep_tips)
             }
         )
         
