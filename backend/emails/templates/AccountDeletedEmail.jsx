@@ -10,19 +10,6 @@ function AccountDeletedEmail({ name = 'there' }) {
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
       React.createElement('div', {
         style: {
-          width: '80px',
-          height: '80px',
-          backgroundColor: colors.bgDarkSecondary,
-          borderRadius: '16px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '24px',
-          fontSize: '40px',
-        }
-      }, '👤'),
-      React.createElement('div', {
-        style: {
           display: 'inline-block',
           backgroundColor: colors.coral,
           color: colors.textWhite,
@@ -32,7 +19,7 @@ function AccountDeletedEmail({ name = 'there' }) {
           fontSize: '14px',
           marginBottom: '16px',
         }
-      }, '👤 Account Deleted'),
+      }, 'Account Deleted'),
       React.createElement(Text, {
         style: {
           fontSize: '36px',
@@ -55,7 +42,7 @@ function AccountDeletedEmail({ name = 'there' }) {
       style: {
         backgroundColor: colors.bgDarkSecondary,
         borderRadius: '16px',
-        padding: '24px',
+        padding: '32px',
         marginBottom: '32px',
       }
     },
@@ -64,6 +51,7 @@ function AccountDeletedEmail({ name = 'there' }) {
           color: colors.textLight,
           lineHeight: '1.7',
           margin: 0,
+          fontSize: '15px',
         }
       }, 'Your Applytide account and all associated data have been permanently deleted. This includes:')
     ),
@@ -80,19 +68,27 @@ function AccountDeletedEmail({ name = 'there' }) {
                 padding: '20px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coral,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px',
-                  fontSize: '24px',
-                }
-              }, '📄'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '12px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: colors.coral,
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontSize: '24px',
+                    }
+                  }, '📄')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
@@ -110,19 +106,27 @@ function AccountDeletedEmail({ name = 'there' }) {
                 padding: '20px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coralLight,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px',
-                  fontSize: '24px',
-                }
-              }, '💼'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '12px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: colors.coralLight,
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontSize: '24px',
+                    }
+                  }, '💼')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
@@ -142,19 +146,27 @@ function AccountDeletedEmail({ name = 'there' }) {
                 padding: '20px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coral,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px',
-                  fontSize: '24px',
-                }
-              }, '🔔'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '12px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: colors.coral,
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontSize: '24px',
+                    }
+                  }, '🔔')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
@@ -172,19 +184,27 @@ function AccountDeletedEmail({ name = 'there' }) {
                 padding: '20px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coralLight,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px',
-                  fontSize: '24px',
-                }
-              }, '👤'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '12px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      backgroundColor: colors.coralLight,
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontSize: '24px',
+                    }
+                  }, '👤')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
@@ -203,22 +223,16 @@ function AccountDeletedEmail({ name = 'there' }) {
       style: {
         background: `linear-gradient(135deg, ${colors.coralLight}, ${colors.coral})`,
         borderRadius: '16px',
-        padding: '48px 32px',
+        padding: '48px 32px 40px',
         textAlign: 'center',
         marginBottom: '48px',
       }
     },
       React.createElement('div', {
         style: {
-          width: '56px',
-          height: '56px',
-          backgroundColor: colors.bgDark,
-          borderRadius: '12px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          fontSize: '64px',
+          lineHeight: '1',
           marginBottom: '24px',
-          fontSize: '28px',
         }
       }, '💡'),
       React.createElement(Text, {
@@ -234,7 +248,7 @@ function AccountDeletedEmail({ name = 'there' }) {
           color: colors.bgDarkSecondary,
           lineHeight: '1.7',
           maxWidth: '600px',
-          margin: '0 auto 32px',
+          margin: '0 auto 28px',
         }
       }, "You can create a new account anytime. Your previous data cannot be recovered, but you can start fresh!"),
       React.createElement(Link, {
@@ -263,18 +277,26 @@ function AccountDeletedEmail({ name = 'there' }) {
       React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
         React.createElement('tr', null,
           React.createElement('td', { style: { paddingRight: '16px', verticalAlign: 'top' } },
-            React.createElement('div', {
-              style: {
-                width: '48px',
-                height: '48px',
-                backgroundColor: colors.coral,
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-              }
-            }, '💬')
+            React.createElement('table', {
+              role: 'presentation',
+              cellPadding: '0',
+              cellSpacing: '0',
+              border: '0'
+            },
+              React.createElement('tr', null,
+                React.createElement('td', {
+                  style: {
+                    width: '48px',
+                    height: '48px',
+                    backgroundColor: colors.coral,
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    lineHeight: '48px',
+                    fontSize: '24px',
+                  }
+                }, '💬')
+              )
+            )
           ),
           React.createElement('td', { style: { verticalAlign: 'top' } },
             React.createElement(Text, {

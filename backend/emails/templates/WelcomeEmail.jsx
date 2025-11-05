@@ -35,7 +35,7 @@ function WelcomeEmail({ name = 'there' }) {
     // Hero Section
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
       React.createElement('div', { style: { marginBottom: '16px' } },
-        React.createElement('span', { style: badge }, '✨ Account Activated')
+        React.createElement('span', { style: badge }, '✨  Account Activated  ✨')
       ),
       React.createElement(Text, {
         style: {
@@ -98,21 +98,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coral,
-                  color: colors.textWhite,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '1'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coral,
+                      color: colors.textWhite,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '1')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -139,21 +147,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coralLight,
-                  color: colors.bgDark,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '2'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coralLight,
+                      color: colors.bgDark,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '2')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -182,21 +198,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coral,
-                  color: colors.textWhite,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '3'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coral,
+                      color: colors.textWhite,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '3')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -223,21 +247,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coralLight,
-                  color: colors.bgDark,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '4'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coralLight,
+                      color: colors.bgDark,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '4')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -266,21 +298,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coral,
-                  color: colors.textWhite,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '5'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coral,
+                      color: colors.textWhite,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '5')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -307,21 +347,29 @@ function WelcomeEmail({ name = 'there' }) {
                 padding: '24px',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.coralLight,
-                  color: colors.bgDark,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  marginBottom: '16px',
-                }
-              }, '6'),
+              React.createElement('table', {
+                role: 'presentation',
+                cellPadding: '0',
+                cellSpacing: '0',
+                border: '0',
+                style: { marginBottom: '16px' }
+              },
+                React.createElement('tr', null,
+                  React.createElement('td', {
+                    style: {
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: colors.coralLight,
+                      color: colors.bgDark,
+                      textAlign: 'center',
+                      lineHeight: '48px',
+                      fontWeight: 'bold',
+                      fontSize: '20px',
+                    }
+                  }, '6')
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   fontSize: '18px',
@@ -348,21 +396,15 @@ function WelcomeEmail({ name = 'there' }) {
       style: {
         background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
         borderRadius: '16px',
-        padding: '40px',
+        padding: '48px 32px 40px',
         textAlign: 'center',
       }
     },
       React.createElement('div', {
         style: {
-          width: '64px',
-          height: '64px',
-          backgroundColor: colors.bgDark,
-          borderRadius: '16px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '16px',
-          fontSize: '32px',
+          fontSize: '64px',
+          lineHeight: '1',
+          marginBottom: '24px',
         }
       }, '🌐'),
       React.createElement(Text, {
@@ -376,7 +418,7 @@ function WelcomeEmail({ name = 'there' }) {
       React.createElement(Text, {
         style: {
           color: colors.bgDarkSecondary,
-          marginBottom: '24px',
+          marginBottom: '28px',
         }
       }, 'Save jobs from any website with one click!'),
       React.createElement(Link, {
