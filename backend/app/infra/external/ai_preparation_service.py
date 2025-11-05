@@ -556,41 +556,43 @@ IMPORTANT:
     
     def format_tips_for_react_email(self, tips_data: Dict[str, Any], company_name: str = "") -> Optional[Dict[str, Any]]:
         """
-        Format AI tips into a data structure for React Email component
-        
-        Returns:
-            Dict with keys: company, companyInfo, prepTime, focusAreas, roadmap
+        Format AI tips into the structure expected by ReminderEmail.jsx.
+        Returns keys: company, companyInfo, prepTime, focusAreas, tips, roadmap
         """
         if not tips_data.get("success"):
             return None
-        
-        # Map icons to focus areas
-        focus_icon_map = {
-            0: "🎯", 1: "💎", 2: "⚡", 3: "🚀", 
-            4: "🔥", 5: "💪", 6: "🌟", 7: "📊"
-        }
-        
+
+        # Map icons to focus areas (kept for future use; the template no longer shows emojis)
         focus_areas = []
         if tips_data.get("key_focus_areas"):
             for idx, area in enumerate(tips_data["key_focus_areas"]):
+                if ":" in area:
+                    title, desc = area.split(":", 1)
+                    title = title.strip()
+                    desc = desc.strip()
+                else:
+                    title = area[:50]
+                    desc = area
                 focus_areas.append({
-                    "icon": focus_icon_map.get(idx, "📌"),
-                    "title": area.split(":")[0] if ":" in area else area[:30],
-                    "description": area.split(":", 1)[1].strip() if ":" in area else area
+                    "title": title,
+                    "description": desc
                 })
-        
-        # Format roadmap steps
-        roadmap = []
-        if tips_data.get("preparation_roadmap"):
-            roadmap = tips_data["preparation_roadmap"]
-        
+
+        # Tips: pass through as-is (list[str])
+        tips_list = tips_data.get("tips", [])
+
+        # Roadmap: use recommended_prep as the step-by-step plan
+        roadmap = tips_data.get("recommended_prep", [])
+
         return {
-            "company": company_name,
+            "company": company_name or "",
             "companyInfo": tips_data.get("company_insights", ""),
-            "prepTime": tips_data.get("estimated_prep_time", "8-12 hours"),
+            "prepTime": tips_data.get("estimated_prep_time", "8–12 hours"),
             "focusAreas": focus_areas,
+            "tips": tips_list,
             "roadmap": roadmap
         }
+
 
 
 # Singleton instance

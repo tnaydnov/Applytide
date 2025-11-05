@@ -13,7 +13,7 @@ const colors = {
 
 // Main styles
 const main = {
-  backgroundColor: '#1a1a1a',
+  backgroundColor: colors.bgDark,
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   padding: '32px 20px',
 };
@@ -38,18 +38,6 @@ const logoContainer = {
   justifyContent: 'center',
   gap: '20px',
   marginBottom: '24px',
-};
-
-const logoBox = {
-  width: '80px',
-  height: '80px',
-  backgroundColor: colors.coral,
-  borderRadius: '16px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  boxShadow: `0 0 30px ${colors.coral}80, 0 0 60px ${colors.coral}40`,
-  fontSize: '40px',
 };
 
 const logoText = {
@@ -131,9 +119,30 @@ function BaseEmail({ children, previewText = '' }) {
         },
         fontWeight: 400,
         fontStyle: 'normal',
+      }),
+      // lock light color scheme so Gmail iOS won't invert
+      React.createElement('meta', { name: 'color-scheme', content: 'light' }),
+      React.createElement('meta', { name: 'supported-color-schemes', content: 'light' }),
+
+      // mobile + dark-mode overrides, and a stack helper
+      React.createElement('style', {
+        dangerouslySetInnerHTML: {
+          __html: `
+  :root, [data-ogsc] body { background-color: #2C2B30 !important; color-scheme: only light; }
+  [data-bg-dark] { background-color: #2C2B30 !important; }
+  [data-bg-dark-2] { background-color: #4F4F51 !important; }
+  [data-text-white] { color: #FFFFFF !important; }
+  [data-text-light] { color: #D6D6D6 !important; }
+
+  @media only screen and (max-width: 480px) {
+    .stack td { display: block !important; width: 100% !important; padding: 0 0 12px 0 !important; }
+    .stack td:last-child { padding-bottom: 0 !important; }
+  }
+`}
       })
+
     ),
-    React.createElement(Body, { style: main },
+    React.createElement(Body, { style: main, 'data-bg-dark': true },
       // Preview text
       previewText && React.createElement(Text, {
         style: {
@@ -148,35 +157,17 @@ function BaseEmail({ children, previewText = '' }) {
       }, previewText),
 
       // Main Container
-      React.createElement(Container, { style: container },
+      React.createElement(Container, { style: container, 'data-bg-dark': true },
         // Header
-        React.createElement(Section, { style: header },
-          // Logo and title
-          React.createElement('table', {
-            align: 'center',
-            role: 'presentation',
-            cellSpacing: '0',
-            cellPadding: '0',
-            border: '0',
-            style: { marginBottom: '24px' }
-          },
-            React.createElement('tr', null,
-              React.createElement('td', null,
-                React.createElement('div', { style: logoBox }, '⚡')
-              ),
-              React.createElement('td', { style: { paddingLeft: '20px' } },
-                React.createElement(Text, { style: logoText }, 'Applytide')
-              )
-            )
-          ),
+        React.createElement(Section, { style: header, 'data-bg-dark': true },
           React.createElement(Text, { style: subtitle }, 'AI-Powered Job Tracking')
         ),
 
         // Body
-        React.createElement(Section, { style: body }, children),
+        React.createElement(Section, { style: body, 'data-bg-dark': true }, children),
 
         // Footer
-        React.createElement(Section, { style: footer },
+        React.createElement(Section, { style: footer, 'data-bg-dark': true },
           React.createElement(Text, { style: footerTitle }, 'Applytide'),
           React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
 
