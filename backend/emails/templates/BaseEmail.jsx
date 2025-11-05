@@ -23,30 +23,32 @@ const container = {
 };
 
 const header = {
-  padding: '32px 20px 16px 20px',
+  padding: '48px 20px 24px 20px',
   textAlign: 'center',
   backgroundColor: colors.bgDark,
 };
 
 const wordmarkWrap = {
   display: 'inline-block',
-  padding: '16px 24px',
-  borderRadius: '16px',
+  padding: '20px 32px',
+  borderRadius: '20px',
   background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
+  boxShadow: '0 4px 12px rgba(245, 143, 124, 0.3)',
 };
 
 const wordmark = {
-  fontSize: '32px',
-  fontWeight: 800,
+  fontSize: '42px',
+  fontWeight: 900,
   color: colors.bgDark,
-  letterSpacing: '0.2px',
+  letterSpacing: '0.5px',
   margin: 0,
 };
 
 const subtitle = {
   color: colors.textLight,
-  fontSize: '14px',
-  margin: '8px 0 0 0',
+  fontSize: '16px',
+  margin: '12px 0 0 0',
+  fontWeight: '500',
 };
 
 const body = {
@@ -55,30 +57,32 @@ const body = {
 };
 
 const footer = {
-  padding: '40px 20px',
+  padding: '48px 20px',
   textAlign: 'center',
   backgroundColor: colors.bgDarkSecondary,
 };
 
 const footerLogoWrap = {
   display: 'inline-block',
-  padding: '16px 28px',
-  borderRadius: '16px',
+  padding: '20px 36px',
+  borderRadius: '20px',
   background: 'linear-gradient(135deg, #F58F7C 0%, #F2C4CE 100%)',
-  marginBottom: '12px',
+  marginBottom: '16px',
+  boxShadow: '0 4px 12px rgba(245, 143, 124, 0.3)',
 };
 
 const footerLogo = {
-  fontSize: '32px',
-  fontWeight: 800,
+  fontSize: '38px',
+  fontWeight: 900,
   color: colors.bgDark,
   margin: 0,
 };
 
 const footerSubtitle = {
   color: colors.textLight,
-  fontSize: '13px',
-  marginBottom: '20px',
+  fontSize: '15px',
+  marginBottom: '24px',
+  fontWeight: '500',
 };
 
 const footerLink = {
@@ -148,20 +152,7 @@ function BaseEmail({ children, previewText = '' }) {
         // HEADER with logo
         React.createElement(Section, { style: header, 'data-bg-dark': true },
           React.createElement('div', { style: wordmarkWrap },
-            React.createElement('img', {
-              src: 'https://applytide.com/images/logomark.png',
-              alt: 'Applytide',
-              width: '32',
-              height: '32',
-              style: {
-                display: 'inline-block',
-                verticalAlign: 'middle',
-                marginRight: '12px',
-                width: '32px',
-                height: '32px',
-              }
-            }),
-            React.createElement(Text, { style: { ...wordmark, display: 'inline-block', verticalAlign: 'middle' } }, 'Applytide')
+            React.createElement(Text, { style: wordmark }, 'Applytide')
           ),
           React.createElement(Text, { style: subtitle }, 'AI-Powered Job Tracking')
         ),
@@ -172,20 +163,7 @@ function BaseEmail({ children, previewText = '' }) {
         // FOOTER with bigger logo
         React.createElement(Section, { style: footer, 'data-bg-dark-2': true },
           React.createElement('div', { style: footerLogoWrap },
-            React.createElement('img', {
-              src: 'https://applytide.com/images/logomark.png',
-              alt: 'Applytide',
-              width: '36',
-              height: '36',
-              style: {
-                display: 'inline-block',
-                verticalAlign: 'middle',
-                marginRight: '14px',
-                width: '36px',
-                height: '36px',
-              }
-            }),
-            React.createElement(Text, { style: { ...footerLogo, display: 'inline-block', verticalAlign: 'middle' } }, 'Applytide')
+            React.createElement(Text, { style: footerLogo }, 'Applytide')
           ),
           React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
           React.createElement('table', { align: 'center', role: 'presentation', cellSpacing: '0', cellPadding: '0', border: '0', style: { marginBottom: '14px' } },

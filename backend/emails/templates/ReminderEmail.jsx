@@ -91,11 +91,12 @@ function ReminderEmail({
     // Main Event Card
     React.createElement(Section, {
       style: {
-        backgroundColor: colors.bgDarkSecondary,
-        borderRadius: '20px',
+        background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+        borderRadius: '24px',
         padding: '40px 32px',
         marginBottom: '48px',
-        border: `1px solid rgba(255,255,255,0.05)`,
+        border: `2px solid rgba(245, 143, 124, 0.2)`,
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
       }
     },
 
@@ -225,28 +226,31 @@ function ReminderEmail({
       // AI Prep Header
       React.createElement(Section, {
         style: {
-          background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
-          borderRadius: '20px',
-          padding: '36px 32px',
+          background: `linear-gradient(135deg, ${colors.coral} 0%, ${colors.coralLight} 50%, #ffd6e8 100%)`,
+          borderRadius: '24px',
+          padding: '48px 32px',
           textAlign: 'center',
           marginBottom: '48px',
+          boxShadow: '0 8px 24px rgba(245, 143, 124, 0.35)',
         }
       },
         React.createElement(Text, {
           style: {
-            fontSize: '28px',
-            fontWeight: '700',
+            fontSize: '34px',
+            fontWeight: '800',
             color: colors.bgDark,
-            margin: '0 0 8px 0',
-            letterSpacing: '-0.5px',
+            margin: '0 0 10px 0',
+            letterSpacing: '-0.6px',
+            textShadow: '0 2px 4px rgba(255,255,255,0.3)',
           }
         }, 'AI-Powered Interview Prep'),
         React.createElement(Text, {
           style: {
-            fontSize: '15px',
-            color: colors.bgDarkSecondary,
+            fontSize: '16px',
+            color: colors.bgDark,
             margin: 0,
-            fontWeight: '500',
+            fontWeight: '600',
+            opacity: 0.8,
           }
         }, 'Personalized insights generated just for you')
       ),
@@ -254,12 +258,13 @@ function ReminderEmail({
       // Company Intelligence
       aiPrepTips.company && React.createElement(Section, {
         style: {
-          backgroundColor: colors.bgDarkSecondary,
-          borderRadius: '16px',
-          padding: '28px',
+          background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+          borderRadius: '20px',
+          padding: '32px',
           marginBottom: '48px',
-          border: `1px solid rgba(255,255,255,0.05)`,
-          borderLeft: `4px solid ${colors.coral}`
+          border: `1px solid rgba(255,255,255,0.08)`,
+          borderLeft: `5px solid ${colors.coral}`,
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
         }
       },
         React.createElement(Text, {
@@ -299,9 +304,10 @@ function ReminderEmail({
         React.createElement('div', {
           style: {
             display: 'inline-block',
-            backgroundColor: colors.coralLight,
-            padding: '12px 28px',
-            borderRadius: '24px',
+            background: `linear-gradient(135deg, ${colors.coralLight}, #ffd6e8)`,
+            padding: '16px 32px',
+            borderRadius: '28px',
+            boxShadow: '0 4px 12px rgba(242, 196, 206, 0.4)',
           }
         },
           React.createElement('table', {
@@ -320,7 +326,7 @@ function ReminderEmail({
                 },
                   React.createElement('span', {
                     style: {
-                      fontSize: '16px',
+                      fontSize: '18px',
                       lineHeight: 1,
                       color: colors.bgDark,
                       fontWeight: 'bold',
@@ -335,9 +341,9 @@ function ReminderEmail({
                   React.createElement(Text, {
                     style: {
                       color: colors.bgDark,
-                      fontWeight: '600',
+                      fontWeight: '700',
                       margin: 0,
-                      fontSize: '14px',
+                      fontSize: '15px',
                     }
                   }, `Suggested Prep: ${aiPrepTips.prepTime}`)
                 )
@@ -391,29 +397,52 @@ function ReminderEmail({
                       },
                         React.createElement('div', {
                           style: {
-                            backgroundColor: colors.bgDarkSecondary,
-                            borderRadius: '12px',
-                            padding: '18px 18px',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            textAlign: 'left'
+                            background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+                            borderRadius: '16px',
+                            padding: '20px 18px',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            textAlign: 'left',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                           }
                         },
-                          React.createElement('div', {
-                            style: {
-                              borderLeft: `3px solid ${colors.coral}`,
-                              paddingLeft: '12px',
-                              marginBottom: '8px'
-                            }
-                          },
-                            React.createElement(Text, {
-                              style: {
-                                fontSize: '16px',
-                                fontWeight: 700,
-                                color: colors.textWhite,
-                                margin: 0,
-                                letterSpacing: '-0.2px'
-                              }
-                            }, area.title)
+                          React.createElement('table', { style: { width: '100%', marginBottom: '8px' } },
+                            React.createElement('tbody', null,
+                              React.createElement('tr', null,
+                                React.createElement('td', {
+                                  style: {
+                                    verticalAlign: 'middle',
+                                    width: '48px',
+                                    paddingRight: '12px',
+                                  }
+                                },
+                                  React.createElement('div', {
+                                    style: {
+                                      width: '44px',
+                                      height: '44px',
+                                      borderRadius: '12px',
+                                      background: index % 2 === 0 ? colors.coral : colors.coralLight,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '20px',
+                                      fontWeight: 'bold',
+                                      color: colors.bgDark,
+                                    }
+                                  }, area.icon || '●')
+                                ),
+                                React.createElement('td', { style: { verticalAlign: 'middle' } },
+                                  React.createElement(Text, {
+                                    style: {
+                                      fontSize: '16px',
+                                      fontWeight: 700,
+                                      color: colors.textWhite,
+                                      margin: 0,
+                                      letterSpacing: '-0.2px'
+                                    }
+                                  }, area.title)
+                                )
+                              )
+                            )
                           ),
                           React.createElement(Text, {
                             style: {
@@ -441,32 +470,53 @@ function ReminderEmail({
                             'div',
                             {
                               style: {
-                                backgroundColor: colors.bgDarkSecondary,
-                                borderRadius: '12px',
-                                padding: '18px 18px',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+                                borderRadius: '16px',
+                                padding: '20px 18px',
+                                border: '1px solid rgba(255,255,255,0.08)',
                                 textAlign: 'left',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                               },
                             },
-                            React.createElement(
-                              'div',
-                              {
-                                style: {
-                                  borderLeft: `3px solid ${colors.coral}`,
-                                  paddingLeft: '12px',
-                                  marginBottom: '8px',
-                                },
-                              },
-                              React.createElement(Text, {
-                                style: {
-                                  fontSize: '16px',
-                                  fontWeight: 700,
-                                  color: colors.textWhite,
-                                  margin: 0,
-                                  letterSpacing: '-0.2px',
-                                },
-                                children: nextArea.title,
-                              })
+                            React.createElement('table', { style: { width: '100%', marginBottom: '8px' } },
+                              React.createElement('tbody', null,
+                                React.createElement('tr', null,
+                                  React.createElement('td', {
+                                    style: {
+                                      verticalAlign: 'middle',
+                                      width: '48px',
+                                      paddingRight: '12px',
+                                    }
+                                  },
+                                    React.createElement('div', {
+                                      style: {
+                                        width: '44px',
+                                        height: '44px',
+                                        borderRadius: '12px',
+                                        background: (index + 1) % 2 === 0 ? colors.coral : colors.coralLight,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '20px',
+                                        fontWeight: 'bold',
+                                        color: colors.bgDark,
+                                      }
+                                    }, nextArea.icon || '●')
+                                  ),
+                                  React.createElement('td', { style: { verticalAlign: 'middle' } },
+                                    React.createElement(Text, {
+                                      style: {
+                                        fontSize: '16px',
+                                        fontWeight: 700,
+                                        color: colors.textWhite,
+                                        margin: 0,
+                                        letterSpacing: '-0.2px',
+                                      },
+                                      children: nextArea.title,
+                                    })
+                                  )
+                                )
+                              )
                             ),
                             React.createElement(Text, {
                               style: {
@@ -535,12 +585,13 @@ function ReminderEmail({
                       },
                         React.createElement('div', {
                           style: {
-                            backgroundColor: colors.bgDarkSecondary,
-                            borderRadius: '12px',
-                            padding: '16px 18px',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+                            borderRadius: '16px',
+                            padding: '18px 18px',
+                            border: '1px solid rgba(255,255,255,0.08)',
                             textAlign: 'left',
-                            borderLeft: `3px solid ${colors.coralLight}`
+                            borderLeft: `4px solid ${colors.coralLight}`,
+                            boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
                           }
                         },
                           React.createElement(Text, {
@@ -564,12 +615,13 @@ function ReminderEmail({
                         },
                           React.createElement('div', {
                             style: {
-                              backgroundColor: colors.bgDarkSecondary,
-                              borderRadius: '12px',
-                              padding: '16px 18px',
-                              border: '1px solid rgba(255,255,255,0.05)',
+                              background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+                              borderRadius: '16px',
+                              padding: '18px 18px',
+                              border: '1px solid rgba(255,255,255,0.08)',
                               textAlign: 'left',
-                              borderLeft: `3px solid ${colors.coralLight}`
+                              borderLeft: `4px solid ${colors.coralLight}`,
+                              boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
                             }
                           },
                             React.createElement(Text, {
@@ -653,10 +705,11 @@ function ReminderEmail({
                     React.createElement('td', { style: { paddingLeft: '12px' } },
                       React.createElement('div', {
                         style: {
-                          backgroundColor: colors.bgDarkSecondary,
-                          borderRadius: '12px',
-                          padding: '14px 16px',
-                          border: '1px solid rgba(255,255,255,0.05)',
+                          background: `linear-gradient(135deg, ${colors.bgDarkSecondary} 0%, #3a3a3c 100%)`,
+                          borderRadius: '16px',
+                          padding: '16px 18px',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
                         }
                       },
                         React.createElement(Text, {
@@ -683,40 +736,27 @@ function ReminderEmail({
         style: {
           background: `linear-gradient(135deg, ${colors.coral}, ${colors.coralLight})`,
           borderRadius: '20px',
-          padding: '36px 32px',
+          padding: '40px 32px',
           textAlign: 'center',
+          boxShadow: '0 4px 16px rgba(245, 143, 124, 0.4)',
         }
       },
-        React.createElement('div', {
-          style: {
-            display: 'inline-flex',
-            width: '52px',
-            height: '52px',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '12px',
-            backgroundColor: colors.bgDark,
-            marginBottom: '16px',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: colors.coral,
-          }
-        }, '◎'), // Target symbol
         React.createElement(Text, {
           style: {
-            fontSize: '26px',
-            fontWeight: '700',
+            fontSize: '32px',
+            fontWeight: '800',
             color: colors.bgDark,
-            margin: '0 0 8px 0',
-            letterSpacing: '-0.3px',
+            margin: '0 0 10px 0',
+            letterSpacing: '-0.5px',
           }
         }, "You've Got This!"),
         React.createElement(Text, {
           style: {
-            fontSize: '15px',
-            color: colors.bgDarkSecondary,
+            fontSize: '16px',
+            color: colors.bgDark,
             margin: 0,
-            fontWeight: '500',
+            fontWeight: '600',
+            opacity: 0.85,
           }
         }, 'Follow this plan and nail your interview')
       )
