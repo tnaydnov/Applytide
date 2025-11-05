@@ -11,8 +11,35 @@ async function jsonFetch(url, options = {}) {
     },
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed: ${res.status}`);
+    try {
+      const errorData = await res.json();
+      
+      // Handle validation errors with details array
+      if (errorData.error?.details && Array.isArray(errorData.error.details)) {
+        const messages = errorData.error.details.map(err => {
+          // Clean up the message (remove "Value error, " prefix)
+          return err.msg?.replace('Value error, ', '') || err.message || 'Validation error';
+        });
+        throw new Error(messages.join('. '));
+      }
+      
+      // Handle simple error messages
+      if (errorData.error?.message) {
+        throw new Error(errorData.error.message);
+      }
+      
+      // Handle detail field (common in FastAPI)
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+      
+      // Fallback to status text
+      throw new Error(`Request failed: ${res.status}`);
+    } catch (parseError) {
+      // If JSON parsing fails, try text
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `Request failed: ${res.status}`);
+    }
   }
   return res.json().catch(() => ({}));
 }

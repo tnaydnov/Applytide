@@ -64,8 +64,17 @@ export async function changePassword({ current_password, new_password }) {
     body: JSON.stringify({ current_password, new_password }),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Password change failed (${res.status})`);
+    try {
+      const errorData = await res.json();
+      // Extract validation error message if present
+      if (errorData.error?.details?.[0]?.msg) {
+        throw new Error(errorData.error.details[0].msg.replace('Value error, ', ''));
+      }
+      throw new Error(errorData.error?.message || errorData.detail || "Password change failed");
+    } catch (parseError) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `Password change failed (${res.status})`);
+    }
   }
   return res.json().catch(() => ({}));
 }

@@ -71,11 +71,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     
     errors = exc.errors()
     
+    # Serialize errors to make them JSON-safe (convert ValueError objects to strings)
+    serializable_errors = []
+    for error in errors:
+        error_dict = dict(error)
+        if "ctx" in error_dict and "error" in error_dict["ctx"]:
+            # Convert ValueError to string
+            error_dict["ctx"]["error"] = str(error_dict["ctx"]["error"])
+        serializable_errors.append(error_dict)
+    
     logger.warning(
         f"Validation error on {request.method} {request.url.path}",
         extra={
             "event_type": "validation_error",
-            "validation_errors": errors,
+            "validation_errors": str(serializable_errors),
             "body": exc.body if hasattr(exc, "body") else None
         }
     )
@@ -87,7 +96,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "message": "Validation error",
                 "status_code": 422,
                 "type": "validation_error",
-                "details": errors
+                "details": serializable_errors
             }
         }
     )

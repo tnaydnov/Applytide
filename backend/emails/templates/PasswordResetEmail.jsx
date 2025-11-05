@@ -48,21 +48,12 @@ function PasswordResetEmail({ resetUrl }) {
     },
       React.createElement(Text, {
         style: {
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: colors.textWhite,
-          textAlign: 'center',
-          marginBottom: '16px',
-        }
-      }, 'Password Reset Request'),
-      React.createElement(Text, {
-        style: {
           color: colors.textLight,
           lineHeight: '1.7',
           textAlign: 'center',
           marginBottom: '32px',
         }
-      }, 'We received a request to reset your password. Click the button below to create a new password.')
+      }, 'Click the button below to create a new password.')
     ),
 
     // CTA Button
@@ -85,27 +76,36 @@ function PasswordResetEmail({ resetUrl }) {
     // Manual Link Section
     React.createElement(Section, {
       style: {
-        backgroundColor: colors.bgDarkSecondary,
-        borderRadius: '16px',
-        padding: '24px',
+        textAlign: 'center',
         marginBottom: '48px',
       }
     },
       React.createElement(Text, {
         style: {
-          fontSize: '14px',
+          fontSize: '13px',
           color: colors.textLight,
-          marginBottom: '12px',
+          marginBottom: '8px',
         }
       }, "If the button doesn't work, copy and paste this link into your browser:"),
-      React.createElement(Link, {
-        href: resetUrl,
+      React.createElement('div', {
         style: {
-          color: colors.coral,
-          wordBreak: 'break-all',
-          fontSize: '14px',
+          backgroundColor: colors.bgDarkSecondary,
+          borderRadius: '8px',
+          padding: '12px 16px',
+          maxWidth: '500px',
+          margin: '0 auto',
         }
-      }, resetUrl)
+      },
+        React.createElement(Link, {
+          href: resetUrl,
+          style: {
+            color: colors.coral,
+            wordBreak: 'break-all',
+            fontSize: '12px',
+            textDecoration: 'none',
+          }
+        }, resetUrl)
+      )
     ),
 
     // Warning Section
