@@ -1,14 +1,15 @@
 const React = require('react');
-const { Html, Head, Body, Container, Section, Text, Link, Hr } = require('@react-email/components');
+const { Html, Head, Body, Text, Link, Hr } = require('@react-email/components');
 
 const colors = {
-  bgDark: '#1a1a1a',
-  bgDarkSecondary: '#2d2d2d',
-  textLight: '#cccccc',
+  bgDark: '#2e2e30',
+  bgDarkCard: '#3f3f42',
+  bgDarkSecondary: '#4a4a4e',
+  textLight: '#d1d1d6',
   textWhite: '#ffffff',
-  coral: '#F58F7C',
-  coralLight: '#F2C4CE',
-  coralBg: '#fff5f3',
+  coral: '#FF9580',
+  coralLight: '#FFB5A7',
+  coralBg: '#FFC9BD',
 };
 
 const main = {
@@ -19,76 +20,83 @@ const main = {
 };
 
 const container = {
-  maxWidth: '600px',
+  maxWidth: '900px',
   margin: '0 auto',
   backgroundColor: colors.bgDark,
 };
 
 const header = {
-  padding: '40px 20px 32px',
+  padding: '48px 32px 40px',
   textAlign: 'center',
   backgroundColor: colors.bgDark,
 };
 
-const logoBox = {
-  display: 'inline-block',
-  backgroundColor: colors.coral,
-  padding: '16px 32px',
-  borderRadius: '12px',
+const logoWrapper = {
   marginBottom: '16px',
 };
 
+const logoBox = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '12px',
+};
+
+const logoIcon = {
+  width: '48px',
+  height: '48px',
+  backgroundColor: colors.coral,
+  borderRadius: '12px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '24px',
+};
+
 const logoText = {
-  fontSize: '32px',
+  fontSize: '36px',
   fontWeight: '900',
   color: '#ffffff',
   margin: '0',
   letterSpacing: '-0.5px',
+  display: 'inline-block',
+  verticalAlign: 'middle',
 };
 
 const subtitle = {
   color: colors.textLight,
-  fontSize: '14px',
+  fontSize: '15px',
   margin: '0',
   fontWeight: '400',
 };
 
 const body = {
-  padding: '20px',
+  padding: '0 32px 40px',
   backgroundColor: colors.bgDark,
 };
 
 const footer = {
-  padding: '40px 20px',
+  padding: '48px 32px',
   textAlign: 'center',
   backgroundColor: colors.bgDarkSecondary,
-  borderTop: `1px solid ${colors.bgDark}`,
-};
-
-const footerLogoBox = {
-  display: 'inline-block',
-  backgroundColor: colors.coral,
-  padding: '14px 28px',
-  borderRadius: '10px',
-  marginBottom: '12px',
+  borderTop: `1px solid ${colors.bgDarkCard}`,
 };
 
 const footerLogoText = {
-  fontSize: '28px',
-  fontWeight: '900',
-  color: '#ffffff',
-  margin: '0',
+  fontSize: '24px',
+  fontWeight: '700',
+  color: colors.textWhite,
+  margin: '0 0 8px 0',
 };
 
 const footerSubtitle = {
   color: colors.textLight,
-  fontSize: '13px',
-  margin: '0 0 20px 0',
+  fontSize: '14px',
+  margin: '0 0 24px 0',
   fontWeight: '400',
 };
 
 const footerLinks = {
-  margin: '0 0 16px 0',
+  margin: '0 0 24px 0',
 };
 
 const footerLink = {
@@ -114,9 +122,11 @@ function BaseEmail({ children, previewText = '' }) {
       React.createElement('style', null, `
         body { margin: 0; padding: 0; }
         table { border-collapse: collapse; }
-        @media only screen and (max-width: 600px) {
-          .mobile-full { width: 100% !important; }
+        @media only screen and (max-width: 920px) {
+          .container { width: 100% !important; }
           .mobile-padding { padding: 16px !important; }
+          .two-col { width: 100% !important; display: block !important; }
+          .two-col-padding { padding: 0 0 12px 0 !important; }
         }
       `)
     ),
@@ -146,25 +156,33 @@ function BaseEmail({ children, previewText = '' }) {
           React.createElement('td', { align: 'center', style: { padding: '0' } },
             React.createElement('table', {
               role: 'presentation',
-              width: '600',
+              width: '900',
               cellPadding: '0',
               cellSpacing: '0',
               border: '0',
-              className: 'mobile-full',
+              className: 'container',
               style: container
             },
               // HEADER
               React.createElement('tr', null,
                 React.createElement('td', { style: header },
-                  React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0', align: 'center' },
-                    React.createElement('tr', null,
-                      React.createElement('td', { style: logoBox },
-                        React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0' },
-                          React.createElement('tr', null,
-                            React.createElement('td', null,
-                              React.createElement(Text, { style: logoText }, 'Applytide')
-                            )
-                          )
+                  React.createElement('div', { style: logoWrapper },
+                    React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0', align: 'center' },
+                      React.createElement('tr', null,
+                        React.createElement('td', {
+                          style: {
+                            width: '48px',
+                            height: '48px',
+                            backgroundColor: colors.coral,
+                            borderRadius: '12px',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            fontSize: '28px',
+                            paddingRight: '16px',
+                          }
+                        }, '⚡'),
+                        React.createElement('td', { style: { verticalAlign: 'middle' } },
+                          React.createElement(Text, { style: logoText }, 'Applytide')
                         )
                       )
                     )
@@ -183,13 +201,7 @@ function BaseEmail({ children, previewText = '' }) {
               // FOOTER
               React.createElement('tr', null,
                 React.createElement('td', { style: footer },
-                  React.createElement('table', { role: 'presentation', cellPadding: '0', cellSpacing: '0', border: '0', align: 'center' },
-                    React.createElement('tr', null,
-                      React.createElement('td', { style: footerLogoBox },
-                        React.createElement(Text, { style: footerLogoText }, 'Applytide')
-                      )
-                    )
-                  ),
+                  React.createElement(Text, { style: footerLogoText }, 'Applytide'),
                   React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
                   React.createElement('div', { style: footerLinks },
                     React.createElement(Link, { href: 'https://applytide.com', style: footerLink }, 'Home'),
@@ -200,7 +212,7 @@ function BaseEmail({ children, previewText = '' }) {
                     React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
                     React.createElement(Link, { href: 'https://applytide.com/contact', style: footerLink }, 'Contact')
                   ),
-                  React.createElement(Hr, { style: { borderColor: colors.bgDark, margin: '20px 0 16px 0' } }),
+                  React.createElement(Hr, { style: { borderColor: colors.bgDarkCard, margin: '24px 0 20px 0' } }),
                   React.createElement(Text, { style: footerCopyright }, '© 2025 Applytide. All rights reserved.'),
                   React.createElement(Text, { style: footerCopyright }, "You're receiving this because you have an account with us.")
                 )
