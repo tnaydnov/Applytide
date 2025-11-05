@@ -102,7 +102,7 @@ function ReminderEmail({
           
           React.createElement(Text, {
             style: {
-              fontSize: '32px',
+              fontSize: '38px',
               fontWeight: '700',
               color: colors.textWhite,
               margin: '0 0 12px 0',
@@ -212,7 +212,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.coral,
-                          fontSize: '24px',
+                          fontSize: '18px',
                           textTransform: 'uppercase',
                           fontWeight: '700',
                           letterSpacing: '1px',
@@ -222,7 +222,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.textWhite,
-                          fontSize: '20px',
+                          fontSize: '22px',
                           fontWeight: '700',
                           margin: '0',
                         }
@@ -257,7 +257,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.coralLight,
-                          fontSize: '24px',
+                          fontSize: '18px',
                           textTransform: 'uppercase',
                           fontWeight: '700',
                           letterSpacing: '1px',
@@ -267,7 +267,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.textWhite,
-                          fontSize: '20px',
+                          fontSize: '22px',
                           fontWeight: '700',
                           margin: '0',
                         }
@@ -384,7 +384,7 @@ function ReminderEmail({
                       width: '48px',
                       height: '48px',
                       backgroundColor: colors.coral,
-                      borderRadius: '12px',
+                      borderRadius: '50%',
                       display: 'inline-flex',
                       alignItems: 'center',
                       textAlign: 'center',
