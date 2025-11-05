@@ -178,12 +178,12 @@ function BaseEmail({ children, previewText = '' }) {
                           React.createElement('img', {
                             src: 'https://applytide.com/images/logomark.png',
                             alt: 'Applytide Logo',
-                            width: '48',
-                            height: '48',
+                            width: '64',
+                            height: '64',
                             style: {
                               display: 'block',
-                              width: '48px',
-                              height: '48px',
+                              width: '64px',
+                              height: '64px',
                             }
                           })
                         ),
@@ -218,12 +218,12 @@ function BaseEmail({ children, previewText = '' }) {
                         React.createElement('img', {
                           src: 'https://applytide.com/images/logomark.png',
                           alt: 'Applytide Logo',
-                          width: '32',
-                          height: '32',
+                          width: '48',
+                          height: '48',
                           style: {
                             display: 'block',
-                            width: '32px',
-                            height: '32px',
+                            width: '48px',
+                            height: '48px',
                           }
                         })
                       ),

@@ -90,8 +90,10 @@ export default function RemindersPage() {
           setSortBy={setSortBy}
           onSelect={(r) => setDetails({ type: "reminder", data: r })}
           onDelete={async (id) => {
-            await deleteReminder(id);
-            await refresh();
+            if (window.confirm("Are you sure you want to delete this reminder? This action cannot be undone.")) {
+              await deleteReminder(id);
+              await refresh();
+            }
           }}
         />
       )}

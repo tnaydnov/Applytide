@@ -573,9 +573,9 @@ function ReminderEmail({
                           },
                             React.createElement('div', {
                               style: {
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '12px',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
                                 backgroundColor: colors.coral,
                                 display: 'inline-flex',
                                 alignItems: 'center',

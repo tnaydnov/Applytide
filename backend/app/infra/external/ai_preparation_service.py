@@ -343,9 +343,12 @@ OUTPUT FORMAT (JSON):
     "company_insights": "2-3 paragraphs about company culture, values, interview process FOR THIS SPECIFIC EVENT TYPE. If HR screen: focus on culture/values/mission. If technical: focus on tech stack/engineering practices. Be specific with recent news or notable facts.",
     "key_focus_areas": [
         "5-7 critical areas to focus preparation - MUST BE SPECIFIC TO THE EVENT TYPE",
-        "HR Screen example: 'Research company mission and values to articulate cultural alignment', 'Prepare salary range based on market research and current compensation'",
-        "Technical example: 'Graph traversal algorithms (BFS, DFS) with complexity analysis', 'System design: Designing scalable microservices with message queues'",
-        "Behavioral example: 'Leadership conflict resolution: Prepare 2 STAR stories showing diplomacy and team unity', 'Cross-functional collaboration: Stories demonstrating influence without authority'",
+        "⚠️ CRITICAL: Keep each focus area under 60 characters - these are displayed as card headers",
+        "HR Screen example: 'Research company values and cultural alignment'",
+        "Technical example: 'Graph algorithms (BFS, DFS) and complexity'",
+        "Behavioral example: 'Leadership conflict resolution STAR stories'",
+        "BAD (too long): 'Research and articulate CodeValue's mission and values, emphasizing how they resonate with your own professional principles'",
+        "GOOD (concise): 'Align your values with CodeValue's mission'",
         "..."
     ],
     "tips": [

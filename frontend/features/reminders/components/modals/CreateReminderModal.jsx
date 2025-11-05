@@ -320,9 +320,9 @@ export default function CreateReminderModal({
                     </span>
                   </label>
 
-                  {/* AI Preparation Tips - Pro/Premium Feature */}
+                  {/* AI Preparation Tips - Pro/Premium Feature - Moved right with margin */}
                   {hasProAccess ? (
-                    <label className="inline-flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition-colors">
+                    <label className="inline-flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition-colors ml-8">
                       <input
                         type="checkbox"
                         checked={form.ai_prep_tips_enabled}
@@ -342,7 +342,7 @@ export default function CreateReminderModal({
                       </span>
                     </label>
                   ) : (
-                    <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 opacity-60">
+                    <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 opacity-60 ml-8">
                       <div className="flex items-center gap-2 text-sm text-slate-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

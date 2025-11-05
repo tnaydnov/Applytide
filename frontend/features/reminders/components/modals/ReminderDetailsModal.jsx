@@ -99,7 +99,11 @@ export default function ReminderDetailsModal({
             </section>
 
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="destructive" onClick={() => onDelete?.(reminder?.id)}>
+              <Button variant="destructive" onClick={() => {
+                if (window.confirm("Are you sure you want to delete this reminder? This action cannot be undone.")) {
+                  onDelete?.(reminder?.id);
+                }
+              }}>
                 Delete
               </Button>
               <Button variant="outline" onClick={onClose}>Close</Button>

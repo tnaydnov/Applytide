@@ -123,11 +123,20 @@ export default function useRemindersData(opts = {}) {
           return;
         }
 
-        // Fold “type” into the title (e.g., "Follow-up: ACME") if not already present
+        // Fold "type" into the title (e.g., "Technical Interview: ACME") if not already present
+        // Format the type to be human-readable (remove underscores, capitalize)
+        const formatEventType = (type) => {
+          return type
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        };
+        
         const baseType =
           form?.type === "Custom" && form?.customType
             ? String(form.customType)
-            : String(form?.type || "");
+            : form?.type ? formatEventType(String(form.type)) : "";
+        
         const finalTitle =
           baseType && !titleRaw.toLowerCase().includes(baseType.toLowerCase())
             ? `${baseType}: ${titleRaw}`
