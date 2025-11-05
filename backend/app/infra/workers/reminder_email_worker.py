@@ -343,8 +343,8 @@ def _convert_to_user_timezone(dt: datetime, timezone_str: str) -> datetime:
     Convert datetime to user's timezone.
     
     Args:
-        dt: Datetime object to convert
-        timezone_str: Target timezone string
+        dt: Datetime object to convert (assumed to be UTC if naive)
+        timezone_str: Target timezone string (e.g., "Asia/Jerusalem")
         
     Returns:
         datetime: Converted datetime in user's timezone
@@ -353,6 +353,11 @@ def _convert_to_user_timezone(dt: datetime, timezone_str: str) -> datetime:
         TimezoneError: If timezone conversion fails
     """
     try:
+        # CRITICAL FIX: If datetime is naive (no timezone info), assume it's UTC
+        # PostgreSQL DateTime(timezone=True) stores in UTC but SQLAlchemy might return naive datetime
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        
         user_tz = ZoneInfo(timezone_str)
         return dt.astimezone(user_tz)
     except Exception as e:

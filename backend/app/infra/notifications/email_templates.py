@@ -76,35 +76,6 @@ def reminder_email(
         raise
 
 
-def deletion_confirmation_email(name: str, deletion_date: str, recovery_token: str, recovery_url: str) -> str:
-    """Account deletion confirmation with 7-day recovery period using React Email service"""
-    try:
-        html = email_renderer.render_template('DeletionConfirmationEmail', {
-            'name': name, 'deletionDate': deletion_date, 'recoveryUrl': recovery_url
-        })
-        if html:
-            logger.info(f" Rendered deletion confirmation email via React Email service for {name}")
-            return html
-        else:
-            raise Exception("Empty HTML returned from React Email service")
-    except Exception as e:
-        logger.error(f" Failed to render deletion confirmation email: {e}")
-        raise
-
-
-def recovery_success_email(name: str) -> str:
-    """Account recovery success confirmation using React Email service"""
-    try:
-        html = email_renderer.render_template('RecoverySuccessEmail', {'name': name})
-        if html:
-            logger.info(f" Rendered recovery success email via React Email service for {name}")
-            return html
-        else:
-            raise Exception("Empty HTML returned from React Email service")
-    except Exception as e:
-        logger.error(f" Failed to render recovery success email: {e}")
-        raise
-
-
 # Legacy alias for compatibility
 reminder_email_react = reminder_email
+

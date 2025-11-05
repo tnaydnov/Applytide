@@ -133,25 +133,31 @@ export default function useRemindersData(opts = {}) {
             ? `${baseType}: ${titleRaw}`
             : titleRaw;
 
+        // Get user's timezone
+        const userTimezone =
+          (typeof Intl !== "undefined" &&
+            Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+          "UTC";
+
+        // CRITICAL FIX: Ensure datetime-local value is interpreted as local time, not UTC
+        // The datetime-local input gives us "2024-12-15T14:00" (naive, no TZ info)
+        // We need to explicitly treat this as the user's local time before converting to ISO
+        const dueDateLocal = new Date(dueRaw); // Parse as local time
+        const dueDateISO = dueDateLocal.toISOString(); // Convert to UTC for storage
+
         const payload = {
           application_id: appId,
           title: finalTitle,
           description: String(form?.description || ""),
-          due_date: new Date(dueRaw).toISOString(), // RFC3339
+          due_date: dueDateISO, // UTC timestamp for consistent storage
           add_meet_link: !!form?.add_meet_link,
-          timezone_str:
-            (typeof Intl !== "undefined" &&
-              Intl.DateTimeFormat().resolvedOptions().timeZone) ||
-            "UTC",
+          timezone_str: userTimezone, // For Google Calendar sync
           // Email notification fields from modal
           email_notifications_enabled: form?.email_notifications_enabled ?? false,
           notification_schedule: form?.notification_schedule || null,
           event_type: form?.event_type || "general",
-          // User timezone for correct time display in emails
-          user_timezone:
-            (typeof Intl !== "undefined" &&
-              Intl.DateTimeFormat().resolvedOptions().timeZone) ||
-            "UTC",
+          // User timezone for correct time display in emails and UI
+          user_timezone: userTimezone,
           // AI prep tips (Pro/Premium feature)
           ai_prep_tips_enabled: form?.ai_prep_tips_enabled ?? false,
         };

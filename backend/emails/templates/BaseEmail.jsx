@@ -176,7 +176,7 @@ function BaseEmail({ children, previewText = '' }) {
                           }
                         },
                           React.createElement('img', {
-                            src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik02NCAyMDggTDEyOCA0OCIgc3Ryb2tlPSIjRjNGNkZGIiBzdHJva2Utd2lkdGg9IjI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTkyIDIwOCBMMTI4IDQ4IiBzdHJva2U9IiNGM0Y2RkYiIHN0cm9rZS13aWR0aD0iMjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0gNTggMTQ2IEMgODYgODYsIDEwNiAyMDYsIDEyOCAxNDYgUyAxNzAgODYsIDE5NCAxNDYiIHN0cm9rZT0iI0ZGOTU4MCIgc3Ryb2tlLXdpZHRoPSIyNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+PC9zdmc+',
+                            src: 'https://applytide.com/images/logomark.png',
                             alt: 'Applytide Logo',
                             width: '48',
                             height: '48',
@@ -216,7 +216,7 @@ function BaseEmail({ children, previewText = '' }) {
                         }
                       },
                         React.createElement('img', {
-                          src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik02NCAyMDggTDEyOCA0OCIgc3Ryb2tlPSIjRjNGNkZGIiBzdHJva2Utd2lkdGg9IjI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTkyIDIwOCBMMTI4IDQ4IiBzdHJva2U9IiNGM0Y2RkYiIHN0cm9rZS13aWR0aD0iMjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0gNTggMTQ2IEMgODYgODYsIDEwNiAyMDYsIDEyOCAxNDYgUyAxNzAgODYsIDE5NCAxNDYiIHN0cm9rZT0iI0ZGOTU4MCIgc3Ryb2tlLXdpZHRoPSIyNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+PC9zdmc+',
+                          src: 'https://applytide.com/images/logomark.png',
                           alt: 'Applytide Logo',
                           width: '32',
                           height: '32',

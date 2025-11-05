@@ -270,10 +270,8 @@ class EmailService:
         send_password_reset_email: Send password reset link
         send_welcome_email: Send welcome email to new users
         send_password_changed_email: Send security alert
-        send_account_deleted_email: Send deletion confirmation
+        send_account_deleted_email: Send deletion confirmation (immediate)
         send_reminder_email: Send reminder with dynamic urgency
-        send_deletion_confirmation_email: Send deletion with recovery option
-        send_recovery_success_email: Send recovery confirmation
     """
     
     def __init__(self):
@@ -744,109 +742,6 @@ class EmailService:
         
         return self._send_email(to_email, f"{subject_prefix} Reminder: {title}", html_content)
 
-    def send_deletion_confirmation_email(
-        self, 
-        to_email: str, 
-        name: str, 
-        deletion_date: datetime, 
-        recovery_token: str
-    ) -> bool:
-        """
-        Send account deletion confirmation email with recovery link.
-        
-        Args:
-            to_email: Recipient email address
-            name: User's full name
-            deletion_date: Scheduled deletion datetime
-            recovery_token: Token to recover account before deletion
-            
-        Returns:
-            bool: True if email sent successfully
-            
-        Raises:
-            ValidationError: If any input validation fails
-            
-        Notes:
-            - Sent when user requests account deletion with grace period
-            - Contains recovery link valid until deletion_date
-            - Explains what will be deleted
-            - Account can be recovered before deletion_date
-        """
-        try:
-            _validate_email(to_email)
-            _validate_name(name)
-            _validate_token(recovery_token)
-            
-            if not isinstance(deletion_date, datetime):
-                raise ValidationError("deletion_date must be a datetime object")
-            
-        except ValidationError as e:
-            logger.error(f"Validation error in send_deletion_confirmation_email: {str(e)}")
-            return False
-        
-        from .email_templates import deletion_confirmation_email
-        
-        recovery_url = f"{self.frontend_url}/auth/recover?token={recovery_token}"
-        
-        try:
-            _validate_url(recovery_url)
-        except ValidationError as e:
-            logger.error(f"Invalid recovery URL: {str(e)}")
-            return False
-        
-        formatted_date = deletion_date.strftime("%B %d, %Y at %I:%M %p UTC")
-        
-        html_content = deletion_confirmation_email(name, formatted_date, recovery_token, recovery_url)
-        
-        logger.info(
-            "Sending deletion confirmation email",
-            extra={
-                "to_email": to_email,
-                "name": name,
-                "deletion_date": formatted_date
-            }
-        )
-        
-        return self._send_email(to_email, "⚠️ Your Applytide Account Will Be Deleted", html_content)
-
-    def send_recovery_success_email(self, to_email: str, name: str) -> bool:
-        """
-        Send account recovery success confirmation email.
-        
-        Args:
-            to_email: Recipient email address
-            name: User's full name
-            
-        Returns:
-            bool: True if email sent successfully
-            
-        Raises:
-            ValidationError: If email or name validation fails
-            
-        Notes:
-            - Sent after successful account recovery
-            - Confirms deletion has been cancelled
-            - Account and data remain intact
-        """
-        try:
-            _validate_email(to_email)
-            _validate_name(name)
-        except ValidationError as e:
-            logger.error(f"Validation error in send_recovery_success_email: {str(e)}")
-            return False
-        
-        from .email_templates import recovery_success_email
-        
-        html_content = recovery_success_email(name)
-        
-        logger.info(
-            "Sending recovery success email",
-            extra={"to_email": to_email, "user_name": name}
-        )
-        
-        return self._send_email(to_email, "✅ Your Applytide Account Has Been Recovered", html_content)
-
 
 # Global email service instance
 email_service = EmailService()
-
