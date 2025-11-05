@@ -212,7 +212,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.coral,
-                          fontSize: '12px',
+                          fontSize: '24px',
                           textTransform: 'uppercase',
                           fontWeight: '700',
                           letterSpacing: '1px',
@@ -257,7 +257,7 @@ function ReminderEmail({
                       React.createElement(Text, {
                         style: {
                           color: colors.coralLight,
-                          fontSize: '12px',
+                          fontSize: '24px',
                           textTransform: 'uppercase',
                           fontWeight: '700',
                           letterSpacing: '1px',
@@ -332,7 +332,7 @@ function ReminderEmail({
           },
             React.createElement(Text, {
               style: {
-                fontSize: '32px',
+                fontSize: '38px',
                 fontWeight: '800',
                 color: colors.bgDark,
                 margin: '0 0 8px 0',
@@ -340,7 +340,7 @@ function ReminderEmail({
             }, 'AI-Powered Interview Prep'),
             React.createElement(Text, {
               style: {
-                fontSize: '16px',
+                fontSize: '20px',
                 color: colors.bgDark,
                 margin: '0',
                 fontWeight: '500',
