@@ -26,8 +26,8 @@ app.post('/render', async (req, res) => {
       return res.status(404).json({ error: `Template '${template}' not found` });
     }
 
-    // Render to HTML
-    const html = render(React.createElement(EmailComponent, data || {}));
+    // Render to HTML (await the Promise)
+    const html = await render(React.createElement(EmailComponent, data || {}));
 
     res.json({ 
       html,
