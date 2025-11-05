@@ -28,59 +28,16 @@ const iconStyles = {
 };
 
 function ReminderEmail({ 
-  name = 'Alex',
-  title = 'Technical Interview - Senior Software Engineer',
-  description = 'System design round with the engineering team. Focus on scalability and microservices architecture.',
-  dueDate = 'Tomorrow, Nov 5 at 2:00 PM',
-  timeUntil = '18 hours',
-  urgency = 'tomorrow',
+  name,
+  title,
+  description,
+  dueDate,
+  timeUntil,
+  urgency = 'future',
   eventType = 'interview',
-  actionUrl = 'https://applytide.com',
-  company = 'TechCorp',
-  aiPrepTips = {
-    company: 'TechCorp',
-    companyInfo: 'TechCorp is a rapidly growing SaaS company known for their innovative cloud infrastructure solutions. They value engineers who can think at scale and design resilient systems.',
-    prepTime: '8-12 hours',
-    focusAreas: [
-      { 
-        icon: '▦', // Layers symbol
-        title: 'System Design', 
-        description: 'Load balancing, caching, sharding' 
-      },
-      { 
-        icon: '⚡', // Lightning - professional looking
-        title: 'Microservices', 
-        description: 'Service discovery, API gateways' 
-      },
-      { 
-        icon: '≡', // Layers symbol
-        title: 'Scalability', 
-        description: 'Horizontal vs vertical, CAP theorem' 
-      },
-      { 
-        icon: '◈', // Diamond for cloud
-        title: 'Cloud-Native', 
-        description: 'Kubernetes, Docker, service mesh' 
-      },
-      { 
-        icon: '◐', // Circle for tradeoffs
-        title: 'Tradeoffs', 
-        description: 'Performance vs consistency' 
-      },
-      { 
-        icon: '▣', // Square for best practices
-        title: 'Best Practices', 
-        description: 'SOLID principles, patterns' 
-      }
-    ],
-    roadmap: [
-      'Review TechCorp\'s engineering blog and identify 2-3 technical challenges they\'re solving.',
-      'Practice designing a distributed system end-to-end. Focus on load balancer → API gateway → services → databases.',
-      'Prepare 3 STAR stories: handling traffic spikes, debugging distributed systems, architectural decisions.',
-      'Review CAP theorem and practice explaining it with concrete examples.',
-      'Brush up on Kubernetes: pods, deployments, services, ingress.'
-    ]
-  }
+  actionUrl,
+  company,
+  aiPrepTips
 }) {
   
   // Urgency badge config
@@ -145,7 +102,7 @@ function ReminderEmail({
         border: `1px solid rgba(255,255,255,0.05)`,
       }
     },
-      // Icon - Professional circle target
+      // Logo
       React.createElement('div', { 
         style: { 
           textAlign: 'center', 
@@ -159,14 +116,23 @@ function ReminderEmail({
             height: '64px',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: '50%',
+            borderRadius: '12px',
             background: `linear-gradient(135deg, ${colors.coral} 0%, ${colors.coralLight} 100%)`,
-            fontSize: '28px',
-            fontWeight: 'bold',
-            color: colors.bgDark,
-            letterSpacing: '-1px',
+            padding: '8px',
           }
-        }, '◎') // Professional target/bullseye
+        },
+          React.createElement('img', {
+            src: 'https://applytide.com/images/logomark.png',
+            alt: 'Applytide',
+            width: '48',
+            height: '48',
+            style: {
+              display: 'block',
+              width: '48px',
+              height: '48px',
+            }
+          })
+        )
       ),
 
       // Description (shorter version for email)
@@ -181,7 +147,7 @@ function ReminderEmail({
           marginLeft: 'auto',
           marginRight: 'auto',
         }
-      }, description || 'System design round with the engineering team. Focus on scalability and microservices architecture.'),
+      }, description),
 
       // Stats Grid (Due Date & Time Left)
       React.createElement('table', {
@@ -192,7 +158,8 @@ function ReminderEmail({
           borderSpacing: '12px',
         }
       },
-        React.createElement('tr', null,
+        React.createElement('tbody', null,
+          React.createElement('tr', null,
           React.createElement('td', { 
             style: { 
               width: '50%', 
@@ -209,12 +176,30 @@ function ReminderEmail({
             },
               React.createElement('div', {
                 style: { 
-                  fontSize: '24px', 
                   marginBottom: '8px',
-                  color: colors.coral,
-                  fontWeight: 'bold',
                 }
-              }, '◆'),
+              },
+                React.createElement('div', {
+                  style: {
+                    width: '36px',
+                    height: '36px',
+                    backgroundColor: colors.coral,
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }
+                },
+                  React.createElement('div', {
+                    style: {
+                      width: '10px',
+                      height: '10px',
+                      backgroundColor: colors.bgDark,
+                      borderRadius: '50%',
+                    }
+                  })
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   color: colors.textLight,
@@ -253,12 +238,30 @@ function ReminderEmail({
             },
               React.createElement('div', {
                 style: { 
-                  fontSize: '24px', 
                   marginBottom: '8px',
-                  color: colors.coral,
-                  fontWeight: 'bold',
                 }
-              }, '◷'),
+              },
+                React.createElement('div', {
+                  style: {
+                    width: '36px',
+                    height: '36px',
+                    backgroundColor: colors.coralLight,
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }
+                },
+                  React.createElement('div', {
+                    style: {
+                      width: '10px',
+                      height: '10px',
+                      backgroundColor: colors.bgDark,
+                      borderRadius: '50%',
+                    }
+                  })
+                )
+              ),
               React.createElement(Text, {
                 style: {
                   color: colors.textLight,
@@ -281,6 +284,7 @@ function ReminderEmail({
               }, timeUntil)
             )
           )
+        )
         )
       )
     ),
@@ -365,7 +369,8 @@ function ReminderEmail({
         }
       },
         React.createElement('table', { style: { width: '100%' } },
-          React.createElement('tr', null,
+          React.createElement('tbody', null,
+            React.createElement('tr', null,
             React.createElement('td', { 
               style: { 
                 verticalAlign: 'top', 
@@ -410,6 +415,7 @@ function ReminderEmail({
               )
             )
           )
+        )
         ),
         aiPrepTips.companyInfo && React.createElement(Text, {
           style: {
@@ -443,7 +449,8 @@ function ReminderEmail({
               padding: 0,
             } 
           },
-            React.createElement('tr', null,
+            React.createElement('tbody', null,
+              React.createElement('tr', null,
               React.createElement('td', { 
                 style: { 
                   verticalAlign: 'middle',
@@ -473,6 +480,7 @@ function ReminderEmail({
                   }
                 }, `Suggested Prep: ${aiPrepTips.prepTime}`)
               )
+            )
             )
           )
         )
@@ -507,7 +515,8 @@ function ReminderEmail({
         // Focus Areas Grid (2 columns)
         React.createElement(Section, { style: { marginBottom: '52px' } },
           React.createElement('table', { style: { width: '100%', borderSpacing: '16px' } },
-            ...aiPrepTips.focusAreas.reduce((rows, area, index) => {
+            React.createElement('tbody', null,
+              ...aiPrepTips.focusAreas.reduce((rows, area, index) => {
               if (index % 2 === 0) {
                 const nextArea = aiPrepTips.focusAreas[index + 1];
                 rows.push(
@@ -528,7 +537,8 @@ function ReminderEmail({
                         }
                       },
                         React.createElement('table', { style: { width: '100%', marginBottom: '12px' } },
-                          React.createElement('tr', null,
+                          React.createElement('tbody', null,
+                            React.createElement('tr', null,
                             React.createElement('td', {
                               style: {
                                 verticalAlign: 'middle',
@@ -555,6 +565,7 @@ function ReminderEmail({
                                 }
                               }, area.title)
                             )
+                          )
                           )
                         ),
                         React.createElement(Text, {
@@ -584,7 +595,8 @@ function ReminderEmail({
                         }
                       },
                         React.createElement('table', { style: { width: '100%', marginBottom: '12px' } },
-                          React.createElement('tr', null,
+                          React.createElement('tbody', null,
+                            React.createElement('tr', null,
                             React.createElement('td', {
                               style: {
                                 verticalAlign: 'middle',
@@ -612,6 +624,7 @@ function ReminderEmail({
                               }, nextArea.title)
                             )
                           )
+                          )
                         ),
                         React.createElement(Text, {
                           style: {
@@ -629,6 +642,104 @@ function ReminderEmail({
               }
               return rows;
             }, [])
+            )
+          )
+        )
+      ),
+
+      // Preparation Tips Section
+      aiPrepTips.tips && aiPrepTips.tips.length > 0 && React.createElement(React.Fragment, null,
+        React.createElement(Section, { 
+          style: { 
+            textAlign: 'center', 
+            marginBottom: '36px' 
+          } 
+        },
+          React.createElement(Text, {
+            style: {
+              fontSize: '28px',
+              fontWeight: '700',
+              color: colors.textWhite,
+              margin: '0 0 12px 0',
+              letterSpacing: '-0.5px',
+            }
+          }, 'Preparation Tips'),
+          React.createElement(Text, {
+            style: {
+              fontSize: '15px',
+              color: colors.textLight,
+              margin: 0,
+            }
+          }, 'Essential tips to maximize your preparation')
+        ),
+
+        React.createElement(Section, { style: { marginBottom: '52px' } },
+          ...aiPrepTips.tips.map((tip, index) =>
+            React.createElement('div', {
+              key: `tip-${index}`,
+              style: {
+                marginBottom: index < aiPrepTips.tips.length - 1 ? '14px' : '0',
+              }
+            },
+              React.createElement('table', { style: { width: '100%' } },
+                React.createElement('tbody', null,
+                  React.createElement('tr', null,
+                    React.createElement('td', {
+                      style: {
+                        verticalAlign: 'top',
+                        width: '52px',
+                        paddingRight: '14px',
+                      }
+                    },
+                      React.createElement('div', {
+                        style: {
+                          width: '36px',
+                          height: '36px',
+                          backgroundColor: colors.coral,
+                          borderRadius: '8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginTop: '6px',
+                        }
+                      },
+                        React.createElement('div', {
+                          style: {
+                            width: '10px',
+                            height: '10px',
+                            backgroundColor: colors.bgDark,
+                            borderRadius: '50%',
+                          }
+                        })
+                      )
+                    ),
+                    React.createElement('td', {
+                      style: {
+                        verticalAlign: 'center',
+                      }
+                    },
+                      React.createElement('div', {
+                        style: {
+                          backgroundColor: colors.bgDarkSecondary,
+                          borderRadius: '12px',
+                          padding: '18px 20px',
+                          border: `1px solid rgba(255,255,255,0.05)`,
+                        }
+                      },
+                        React.createElement(Text, {
+                          style: {
+                            color: colors.textLight,
+                            fontSize: '14px',
+                            lineHeight: '1.6',
+                            margin: 0,
+                          }
+                        }, tip)
+                      )
+                    )
+                  )
+                )
+              )
+            )
           )
         )
       ),
@@ -669,50 +780,52 @@ function ReminderEmail({
               }
             },
               React.createElement('table', { style: { width: '100%' } },
-                React.createElement('tr', null,
-                  React.createElement('td', {
-                    style: {
-                      verticalAlign: 'top',
-                      width: '52px',
-                      paddingRight: '14px',
-                    }
-                  },
-                    React.createElement('div', {
+                React.createElement('tbody', null,
+                  React.createElement('tr', null,
+                    React.createElement('td', {
                       style: {
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        background: index % 2 === 0 ? colors.coral : colors.coralLight,
-                        color: index % 2 === 0 ? colors.textWhite : colors.bgDark,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '700',
-                        fontSize: '18px',
-                      }
-                    }, (index + 1).toString())
-                  ),
-                  React.createElement('td', {
-                    style: {
-                      verticalAlign: 'center',
-                    }
-                  },
-                    React.createElement('div', {
-                      style: {
-                        backgroundColor: colors.bgDarkSecondary,
-                        borderRadius: '12px',
-                        padding: '18px 20px',
-                        border: `1px solid rgba(255,255,255,0.05)`,
+                        verticalAlign: 'top',
+                        width: '52px',
+                        paddingRight: '14px',
                       }
                     },
-                      React.createElement(Text, {
+                      React.createElement('div', {
                         style: {
-                          color: colors.textLight,
-                          fontSize: '14px',
-                          lineHeight: '1.6',
-                          margin: 0,
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: index % 2 === 0 ? colors.coral : colors.coralLight,
+                          color: index % 2 === 0 ? colors.textWhite : colors.bgDark,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '700',
+                          fontSize: '18px',
                         }
-                      }, step)
+                      }, (index + 1).toString())
+                    ),
+                    React.createElement('td', {
+                      style: {
+                        verticalAlign: 'center',
+                      }
+                    },
+                      React.createElement('div', {
+                        style: {
+                          backgroundColor: colors.bgDarkSecondary,
+                          borderRadius: '12px',
+                          padding: '18px 20px',
+                          border: `1px solid rgba(255,255,255,0.05)`,
+                        }
+                      },
+                        React.createElement(Text, {
+                          style: {
+                            color: colors.textLight,
+                            fontSize: '14px',
+                            lineHeight: '1.6',
+                            margin: 0,
+                          }
+                        }, step)
+                      )
                     )
                   )
                 )
