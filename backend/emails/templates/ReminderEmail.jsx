@@ -164,7 +164,7 @@ function ReminderEmail({
                     fontSize: '28px',
                     margin: '0 auto 16px',
                   }
-                }, '🎯')
+                })
               )
             )
           ),
@@ -209,19 +209,6 @@ function ReminderEmail({
                         borderTop: `4px solid ${colors.coral}`,
                       }
                     },
-                      React.createElement('div', {
-                        style: {
-                          width: '40px',
-                          height: '40px',
-                          backgroundColor: colors.coral,
-                          borderRadius: '10px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '20px',
-                          marginBottom: '12px',
-                        }
-                      }, '📅'),
                       React.createElement(Text, {
                         style: {
                           color: colors.coral,
@@ -267,20 +254,6 @@ function ReminderEmail({
                         borderTop: `4px solid ${colors.coralLight}`,
                       }
                     },
-                      React.createElement('div', {
-                        style: {
-                          width: '40px',
-                          height: '40px',
-                          backgroundColor: colors.coralLight,
-                          borderRadius: '10px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          justifyContent: 'center',
-                          fontSize: '20px',
-                          marginBottom: '12px',
-                        }
-                      }, '⏰'),
                       React.createElement(Text, {
                         style: {
                           color: colors.coralLight,
@@ -357,20 +330,6 @@ function ReminderEmail({
               textAlign: 'center',
             }
           },
-            React.createElement('div', {
-              style: {
-                width: '56px',
-                height: '56px',
-                backgroundColor: colors.bgDark,
-                borderRadius: '14px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                textAlign: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-                marginBottom: '16px',
-              }
-            }, '✨'),
             React.createElement(Text, {
               style: {
                 fontSize: '32px',
@@ -432,7 +391,7 @@ function ReminderEmail({
                       justifyContent: 'center',
                       fontSize: '24px',
                     }
-                  }, '🏢')
+                  })
                 ),
                 React.createElement('td', { style: { verticalAlign: 'middle' } },
                   React.createElement(Text, {
@@ -558,7 +517,7 @@ function ReminderEmail({
                                 justifyContent: 'center',
                                 fontSize: '24px',
                               }
-                            }, leftArea.icon || '📋')
+                            })
                           ),
                           React.createElement('td', { style: { verticalAlign: 'middle' } },
                             React.createElement(Text, {
@@ -624,7 +583,7 @@ function ReminderEmail({
                                 justifyContent: 'center',
                                 fontSize: '24px',
                               }
-                            }, rightArea.icon || '📋')
+                            })
                           ),
                           React.createElement('td', { style: { verticalAlign: 'middle' } },
                             React.createElement(Text, {
@@ -829,20 +788,6 @@ function ReminderEmail({
               textAlign: 'center',
             }
           },
-            React.createElement('div', {
-              style: {
-                width: '64px',
-                height: '64px',
-                backgroundColor: colors.bgDark,
-                borderRadius: '16px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                textAlign: 'center',
-                justifyContent: 'center',
-                fontSize: '32px',
-                marginBottom: '20px',
-              }
-            }, '🎯'),
             React.createElement(Text, {
               style: {
                 fontSize: '32px',

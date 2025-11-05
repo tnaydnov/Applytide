@@ -53,7 +53,7 @@ const logoIcon = {
 };
 
 const logoText = {
-  fontSize: '36px',
+  fontSize: '48px',
   fontWeight: '900',
   color: '#ffffff',
   margin: '0',
@@ -171,16 +171,22 @@ function BaseEmail({ children, previewText = '' }) {
                       React.createElement('tr', null,
                         React.createElement('td', {
                           style: {
-                            width: '48px',
-                            height: '48px',
-                            backgroundColor: colors.coral,
-                            borderRadius: '12px',
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                            fontSize: '28px',
                             paddingRight: '16px',
+                            verticalAlign: 'middle',
                           }
-                        }, '⚡'),
+                        },
+                          React.createElement('img', {
+                            src: 'https://applytide.com/images/logomark.svg',
+                            alt: 'Applytide Logo',
+                            width: '48',
+                            height: '48',
+                            style: {
+                              display: 'block',
+                              width: '48px',
+                              height: '48px',
+                            }
+                          })
+                        ),
                         React.createElement('td', { style: { verticalAlign: 'middle' } },
                           React.createElement(Text, { style: logoText }, 'Applytide')
                         )
