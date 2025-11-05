@@ -67,6 +67,16 @@ services:
     environment:
       SKIP_MIGRATIONS: "1"
 
+  email_service:
+    image: ghcr.io/${GITHUB_OWNER:-tnaydnov}/applytide-email-service:${IMAGE_TAG}
+    container_name: applytide_email_service
+    restart: always
+    networks: [applytide_network]
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+
   nginx:
     image: nginx:1.27-alpine
     container_name: applytide_nginx

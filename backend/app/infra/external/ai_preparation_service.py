@@ -553,6 +553,44 @@ IMPORTANT:
         """)
         
         return "".join(html_parts)
+    
+    def format_tips_for_react_email(self, tips_data: Dict[str, Any], company_name: str = "") -> Optional[Dict[str, Any]]:
+        """
+        Format AI tips into a data structure for React Email component
+        
+        Returns:
+            Dict with keys: company, companyInfo, prepTime, focusAreas, roadmap
+        """
+        if not tips_data.get("success"):
+            return None
+        
+        # Map icons to focus areas
+        focus_icon_map = {
+            0: "🎯", 1: "💎", 2: "⚡", 3: "🚀", 
+            4: "🔥", 5: "💪", 6: "🌟", 7: "📊"
+        }
+        
+        focus_areas = []
+        if tips_data.get("key_focus_areas"):
+            for idx, area in enumerate(tips_data["key_focus_areas"]):
+                focus_areas.append({
+                    "icon": focus_icon_map.get(idx, "📌"),
+                    "title": area.split(":")[0] if ":" in area else area[:30],
+                    "description": area.split(":", 1)[1].strip() if ":" in area else area
+                })
+        
+        # Format roadmap steps
+        roadmap = []
+        if tips_data.get("preparation_roadmap"):
+            roadmap = tips_data["preparation_roadmap"]
+        
+        return {
+            "company": company_name,
+            "companyInfo": tips_data.get("company_insights", ""),
+            "prepTime": tips_data.get("estimated_prep_time", "8-12 hours"),
+            "focusAreas": focus_areas,
+            "roadmap": roadmap
+        }
 
 
 # Singleton instance
