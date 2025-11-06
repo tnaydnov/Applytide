@@ -19,17 +19,16 @@ from pydantic import BaseModel, Field, validator
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
-from .....db.session import get_db
-from .....db import models
-from .....infra.security.ban_service import (
+from app.api.deps import get_db, get_admin_user
+from app.db import models
+from app.infra.security.ban_service import (
     BanService,
     BanServiceError,
     DuplicateBanError,
     InvalidBanDataError
 )
-from .....infra.http.client_ip import get_client_ip
-from .....infra.logging import get_logger
-from .....api.dependencies import get_current_admin_user
+from app.infra.http.client_ip import get_client_ip
+from app.infra.logging import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -121,7 +120,7 @@ class BanOperationResponse(BaseModel):
 def ban_user(
     request: Request,
     payload: BanUserRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -307,7 +306,7 @@ def ban_user(
 def unban_user(
     request: Request,
     payload: UnbanUserRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -408,7 +407,7 @@ def unban_user(
 def list_bans(
     active_only: bool = True,
     entity_type: Optional[str] = None,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -482,7 +481,7 @@ def list_bans(
 @router.get("/users/{user_id}/bans", response_model=List[BanInfo])
 def get_user_bans(
     user_id: uuid.UUID,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -542,7 +541,7 @@ def get_user_bans(
 def ban_email_address(
     request: Request,
     payload: BanEmailRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -605,7 +604,7 @@ def ban_email_address(
 def ban_ip_address(
     request: Request,
     payload: BanIPRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -668,7 +667,7 @@ def ban_ip_address(
 def unban_email_address(
     request: Request,
     payload: UnbanEmailRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -719,7 +718,7 @@ def unban_email_address(
 def unban_ip_address(
     request: Request,
     payload: UnbanIPRequest,
-    current_admin: models.User = Depends(get_current_admin_user),
+    current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
