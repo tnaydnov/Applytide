@@ -1,7 +1,7 @@
 """Add banned_entities table for user and IP banning
 
 Revision ID: 20251106_banned_entities
-Revises: 20251103_subscription_plan
+Revises: 20251103_ai_prep_tips
 Create Date: 2025-11-06 12:00:00
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '20251106_banned_entities'
-down_revision = '20251103_subscription_plan'
+down_revision = '20251103_ai_prep_tips'
 branch_labels = None
 depends_on = None
 
