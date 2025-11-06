@@ -63,19 +63,37 @@ export async function changePassword({ current_password, new_password }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ current_password, new_password }),
   });
+  
   if (!res.ok) {
+    let errorMessage = "Password change failed";
+    
     try {
       const errorData = await res.json();
-      // Extract validation error message if present
-      if (errorData.error?.details?.[0]?.msg) {
-        throw new Error(errorData.error.details[0].msg.replace('Value error, ', ''));
+      
+      // Handle validation errors with details array
+      if (errorData.error?.details && Array.isArray(errorData.error.details)) {
+        const messages = errorData.error.details.map(err => {
+          // Clean up the message (remove "Value error, " prefix)
+          return err.msg?.replace('Value error, ', '') || err.message || 'Validation error';
+        });
+        errorMessage = messages.join('. ');
       }
-      throw new Error(errorData.error?.message || errorData.detail || "Password change failed");
+      // Handle simple error messages
+      else if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      }
+      // Handle detail field (common in FastAPI)
+      else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
     } catch (parseError) {
       const text = await res.text().catch(() => "");
-      throw new Error(text || `Password change failed (${res.status})`);
+      if (text) errorMessage = text;
     }
+    
+    throw new Error(errorMessage);
   }
+  
   return res.json().catch(() => ({}));
 }
 

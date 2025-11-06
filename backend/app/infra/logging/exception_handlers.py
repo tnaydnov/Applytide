@@ -4,6 +4,12 @@ Global Exception Handler for FastAPI
 Catches all unhandled exceptions and logs them with full context.
 Returns user-friendly error responses.
 Integrates with error tracking database.
+
+SECURITY NOTES:
+- All request body logging is sanitized to prevent password/token leakage
+- Sensitive fields (password, token, api_key, etc.) are redacted before logging
+- Pydantic schemas use hide_input_in_errors=True for additional protection
+- Error messages are generic to prevent information disclosure
 """
 
 from fastapi import Request, status
@@ -66,7 +72,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """
     Handle validation errors (422)
     
-    Logs validation failures and returns detailed error info
+    Logs validation failures and returns detailed error info.
+    
+    SECURITY: Request body is sanitized before logging to prevent
+    password and token leakage in logs. Sensitive fields are redacted.
     """
     
     errors = exc.errors()
@@ -80,12 +89,42 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             error_dict["ctx"]["error"] = str(error_dict["ctx"]["error"])
         serializable_errors.append(error_dict)
     
+    # SECURITY: Sanitize request body to remove sensitive fields before logging
+    # This prevents passwords, tokens, and other secrets from appearing in logs
+    sanitized_body = None
+    if hasattr(exc, "body") and exc.body:
+        try:
+            import json
+            body_dict = json.loads(exc.body) if isinstance(exc.body, (str, bytes)) else exc.body
+            if isinstance(body_dict, dict):
+                # List of sensitive field names to redact
+                sensitive_fields = {
+                    "password", 
+                    "current_password", 
+                    "new_password", 
+                    "confirm_password", 
+                    "token",
+                    "access_token",
+                    "refresh_token",
+                    "api_key",
+                    "secret",
+                    "private_key"
+                }
+                sanitized_body = {
+                    k: "***REDACTED***" if k.lower() in sensitive_fields else v
+                    for k, v in body_dict.items()
+                }
+            else:
+                sanitized_body = body_dict
+        except:
+            sanitized_body = None
+    
     logger.warning(
         f"Validation error on {request.method} {request.url.path}",
         extra={
             "event_type": "validation_error",
             "validation_errors": str(serializable_errors),
-            "body": exc.body if hasattr(exc, "body") else None
+            "body": sanitized_body
         }
     )
     

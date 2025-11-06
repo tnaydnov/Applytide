@@ -127,7 +127,7 @@ async def delete_user_account(
             
             # Verify password
             from ....infra.security.passwords import verify_password
-            if not verify_password(password, current_user.hashed_password):
+            if not verify_password(password, current_user.password_hash):
                 logger.warning("Account deletion failed: Incorrect password", extra={
                     "user_id": current_user.id
                 })

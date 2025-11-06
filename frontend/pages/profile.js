@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("personal");
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
 
   const avatar = useAvatarUpload();
   const router = useRouter();
@@ -116,12 +117,18 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    setPasswordError(null); // Clear previous errors
+    
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      toast.error("New passwords do not match");
+      const errorMsg = "New passwords do not match";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
     if ((passwordForm.new_password || "").length < 8) {
-      toast.error("Password must be at least 8 characters");
+      const errorMsg = "Password must be at least 8 characters";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
@@ -133,8 +140,11 @@ export default function ProfilePage() {
       });
       toast.success("Password changed successfully!");
       setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
+      setPasswordError(null);
     } catch (error) {
-      toast.error(error?.message || "Failed to change password");
+      const errorMsg = error?.message || "Failed to change password";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -313,6 +323,7 @@ export default function ProfilePage() {
                 onLogoutAll={handleLogout}
                 onDeleteAccount={handleDeleteAccount}
                 onExportData={handleExportData}
+                passwordError={passwordError}
               />
             )}
 

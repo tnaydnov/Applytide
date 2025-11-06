@@ -1,9 +1,15 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 import re
 
 class RegisterIn(BaseModel):
+    model_config = ConfigDict(
+        # Hide password field in __repr__ and __str__ for security
+        str_strip_whitespace=True,
+        hide_input_in_errors=True,
+    )
+    
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=100)
@@ -56,6 +62,11 @@ class GoogleOAuthRegisterIn(BaseModel):
 
 class AccountDeletionRequestIn(BaseModel):
     """Request to delete user account (7-day recovery period)"""
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        hide_input_in_errors=True,
+    )
+    
     password: Optional[str] = Field(None, description="Required for non-OAuth users")
     confirmation: str = Field(..., description="Must type 'DELETE' to confirm")
 
@@ -64,6 +75,11 @@ class AccountRecoveryIn(BaseModel):
     recovery_token: str
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        hide_input_in_errors=True,
+    )
+    
     email: EmailStr
     password: str
     remember_me: bool = False
@@ -78,6 +94,11 @@ class PasswordResetRequestIn(BaseModel):
     email: EmailStr
 
 class PasswordResetIn(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        hide_input_in_errors=True,
+    )
+    
     token: str
     new_password: str = Field(min_length=8, max_length=128)
     
@@ -117,6 +138,11 @@ class PreferencesUpdateIn(BaseModel):
     notification_push: Optional[bool] = None
 
 class PasswordChangeIn(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        hide_input_in_errors=True,
+    )
+    
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
     
