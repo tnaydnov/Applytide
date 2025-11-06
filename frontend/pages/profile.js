@@ -119,16 +119,52 @@ export default function ProfilePage() {
     e.preventDefault();
     setPasswordError(null); // Clear previous errors
     
-    if (passwordForm.new_password !== passwordForm.confirm_password) {
-      const errorMsg = "New passwords do not match";
+    // Frontend validation with clear error messages
+    if (!passwordForm.current_password) {
+      const errorMsg = "❌ Current password is required";
       setPasswordError(errorMsg);
       toast.error(errorMsg);
       return;
     }
-    if ((passwordForm.new_password || "").length < 8) {
-      const errorMsg = "Password must be at least 8 characters";
+    
+    if (!passwordForm.new_password) {
+      const errorMsg = "❌ New password is required";
       setPasswordError(errorMsg);
       toast.error(errorMsg);
+      return;
+    }
+    
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      const errorMsg = "❌ Passwords Don't Match: The new password and confirmation password must be identical.";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    if (passwordForm.new_password.length < 8) {
+      const errorMsg = "❌ Password Too Short: Your password must be at least 8 characters long.";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    // Check if new password is same as current password
+    if (passwordForm.new_password === passwordForm.current_password) {
+      const errorMsg = "❌ Same Password: Your new password cannot be the same as your current password. Please choose a different password.";
+      setPasswordError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(passwordForm.new_password);
+    const hasLowerCase = /[a-z]/.test(passwordForm.new_password);
+    const hasNumber = /\d/.test(passwordForm.new_password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      const errorMsg = "🔒 Weak Password: Your password must include:\n• At least one UPPERCASE letter (A-Z)\n• At least one lowercase letter (a-z)\n• At least one number (0-9)";
+      setPasswordError(errorMsg);
+      toast.error("Password must contain uppercase, lowercase, and numbers");
       return;
     }
 
@@ -138,11 +174,50 @@ export default function ProfilePage() {
         current_password: passwordForm.current_password,
         new_password: passwordForm.new_password,
       });
-      toast.success("Password changed successfully!");
+      toast.success("✅ Password changed successfully!");
       setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
       setPasswordError(null);
     } catch (error) {
-      const errorMsg = error?.message || "Failed to change password";
+      // Extract proper error message from backend
+      let errorMsg = "Failed to change password";
+      
+      if (error?.response) {
+        const data = error.response.data;
+        
+        // Check for detail field (FastAPI standard)
+        if (data?.detail) {
+          if (typeof data.detail === 'string') {
+            errorMsg = data.detail;
+          } else if (Array.isArray(data.detail)) {
+            // Pydantic validation errors
+            const messages = data.detail.map(e => {
+              const msg = e.msg || e.message || 'Validation error';
+              return msg.replace(/^Value error,\s*/i, '');
+            });
+            errorMsg = messages.join('. ');
+          }
+        }
+        
+        // Handle specific status codes with clear messages
+        if (error.response.status === 400) {
+          // Current password incorrect or validation error
+          if (data?.detail?.toLowerCase().includes('current password')) {
+            errorMsg = "❌ Wrong Password: The current password you entered is incorrect. Please try again.";
+          } else if (data?.detail?.toLowerCase().includes('same')) {
+            errorMsg = "❌ Same Password: Your new password cannot be the same as your current password.";
+          } else {
+            errorMsg = `❌ ${data?.detail || "Current password is incorrect"}`;
+          }
+        } else if (error.response.status === 422) {
+          // Validation error (Pydantic)
+          errorMsg = `🔒 Password Requirements Not Met: ${errorMsg}`;
+        } else if (error.response.status === 500) {
+          errorMsg = "⚠️ Server Error: Something went wrong on our end. Please try again in a moment.";
+        }
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
+      
       setPasswordError(errorMsg);
       toast.error(errorMsg);
     } finally {

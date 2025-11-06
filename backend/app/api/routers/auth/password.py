@@ -247,7 +247,11 @@ def password_reset(
             
             # Send password changed confirmation email
             try:
-                email_service.send_password_changed_email(user.email, user.full_name or "User")
+                email_service.send_password_changed_email(
+                    user.email, 
+                    user.full_name or "User",
+                    user.timezone or 'UTC'
+                )
                 logger.info("Password changed email sent", extra={"user_id": user_id})
             except Exception as e:
                 logger.error(f"Failed to send password changed email: {e}", extra={"user_id": user_id})
@@ -354,7 +358,8 @@ def change_password(
         try:
             email_service.send_password_changed_email(
                 current_user.email, 
-                current_user.full_name or "User"
+                current_user.full_name or "User",
+                current_user.timezone or 'UTC'
             )
             logger.info(
                 "Password changed email sent",

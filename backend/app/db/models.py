@@ -547,3 +547,40 @@ class LLMUsage(Base):
     
     # Additional context
     extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Feature-specific metadata
+
+
+class BannedEntity(Base):
+    """Track banned users by email and IP address
+    
+    Prevents banned users from:
+    - Registering new accounts with banned email
+    - Registering new accounts from banned IP
+    - Logging in with banned email
+    - Accessing system from banned IP
+    """
+    __tablename__ = "banned_entities"
+    
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Entity information
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # "email" or "ip"
+    entity_value: Mapped[str] = mapped_column(String(320), nullable=False, index=True)  # Email address or IP address
+    
+    # Ban details
+    banned_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Original user who was banned (if applicable)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)  # Reason for ban
+    banned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Admin who issued the ban
+    
+    # Status
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)  # Can be deactivated without deleting
+    
+    # Timestamps
+    banned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # Optional expiration (null = permanent)
+    unbanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unbanned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Admin who removed the ban
+    
+    # Prevent duplicate bans
+    __table_args__ = (
+        UniqueConstraint('entity_type', 'entity_value', name='uix_entity_type_value'),
+    )

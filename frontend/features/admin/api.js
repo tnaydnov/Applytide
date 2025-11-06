@@ -289,6 +289,83 @@ export const adminApi = {
   getSecurityEvents: async (params = {}) => {
     const response = await api.get('/admin/security/events', { params });
     return response.data;
+  },
+
+  // ============================================================================
+  // Ban Management
+  // ============================================================================
+  
+  /**
+   * Ban a user (email + optional IP)
+   */
+  banUser: async (userId, data) => {
+    const response = await api.post('/admin/users/ban', {
+      user_id: userId,
+      ...data
+    });
+    return response.data;
+  },
+
+  /**
+   * Unban a user (removes all bans)
+   */
+  unbanUser: async (userId) => {
+    const response = await api.post('/admin/users/unban', {
+      user_id: userId
+    });
+    return response.data;
+  },
+
+  /**
+   * Get user's ban history
+   */
+  getUserBans: async (userId) => {
+    const response = await api.get(`/admin/users/${userId}/bans`);
+    return response.data;
+  },
+
+  /**
+   * List all bans
+   */
+  listBans: async (params = {}) => {
+    const response = await api.get('/admin/bans', { params });
+    return response.data;
+  },
+
+  /**
+   * Ban email address directly
+   */
+  banEmail: async (data) => {
+    const response = await api.post('/admin/bans/email', data);
+    return response.data;
+  },
+
+  /**
+   * Ban IP address directly
+   */
+  banIP: async (data) => {
+    const response = await api.post('/admin/bans/ip', data);
+    return response.data;
+  },
+
+  /**
+   * Unban email address
+   */
+  unbanEmail: async (email) => {
+    const response = await api.delete('/admin/bans/email', {
+      body: JSON.stringify({ email })
+    });
+    return response.data;
+  },
+
+  /**
+   * Unban IP address
+   */
+  unbanIP: async (ipAddress) => {
+    const response = await api.delete('/admin/bans/ip', {
+      body: JSON.stringify({ ip_address: ipAddress })
+    });
+    return response.data;
   }
 };
 

@@ -32,19 +32,28 @@ export default function PasswordResetPage() {
 
       if (response.ok) {
         setStep("success");
-        toast.success("Password reset email sent!");
+        toast.success("✅ Reset link sent! Check your email inbox.");
       } else {
         const data = await response.json();
+        let errorMsg = "Failed to send reset email";
+        
         if (response.status === 404) {
-          // Email not registered
-          toast.error(data.detail || "This email is not registered");
+          // Email not registered - but don't reveal this for security
+          errorMsg = "📧 If this email is registered, you'll receive a reset link shortly. Check your spam folder too.";
+          toast.info(errorMsg);
+        } else if (response.status === 429) {
+          errorMsg = "⏱️ Too Many Requests: Please wait a few minutes before requesting another reset link.";
+          toast.error(errorMsg);
+        } else if (response.status === 400) {
+          errorMsg = `❌ ${data?.detail || "Invalid email address"}`;
+          toast.error(errorMsg);
         } else {
-          // Other errors
-          toast.error(data.detail || "Failed to send reset email");
+          errorMsg = data?.detail || "Failed to send reset email";
+          toast.error(errorMsg);
         }
       }
     } catch (error) {
-      toast.error("Network error occurred");
+      toast.error("🌐 Network Error: Unable to connect. Please check your internet connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -53,13 +62,24 @@ export default function PasswordResetPage() {
   async function resetPassword(e) {
     e.preventDefault();
     
+    // Frontend validation with clear error messages
     if (password !== confirmPassword) {
-      toast.error("Passwords don't match");
+      toast.error("❌ Passwords Don't Match: Please make sure both password fields are identical.");
       return;
     }
 
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error("❌ Password Too Short: Your password must be at least 8 characters long.");
+      return;
+    }
+    
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      toast.error("🔒 Weak Password: Must include UPPERCASE, lowercase, and numbers (e.g., Pass123)");
       return;
     }
 
@@ -73,16 +93,48 @@ export default function PasswordResetPage() {
       });
 
       if (response.ok) {
-        toast.success("Password reset successfully!");
+        toast.success("✅ Password reset successfully! Redirecting to login...");
         setTimeout(() => {
           router.push("/login");
         }, 2000);
       } else {
         const data = await response.json();
-        toast.error(data.detail || "Failed to reset password");
+        
+        // Extract error message
+        let errorMsg = "Failed to reset password";
+        
+        if (data?.detail) {
+          if (typeof data.detail === 'string') {
+            errorMsg = data.detail;
+          } else if (Array.isArray(data.detail)) {
+            // Pydantic validation errors
+            const messages = data.detail.map(e => {
+              const msg = e.msg || e.message || 'Validation error';
+              return msg.replace(/^Value error,\s*/i, '');
+            });
+            errorMsg = messages.join('. ');
+          }
+        }
+        
+        // Handle specific status codes with actionable messages
+        if (response.status === 400) {
+          if (data?.detail?.toLowerCase().includes('token') || data?.detail?.toLowerCase().includes('expired')) {
+            errorMsg = "⏰ Link Expired: This password reset link has expired or is invalid. Please request a new one.";
+          } else {
+            errorMsg = `❌ ${data?.detail || "Invalid reset request"}`;
+          }
+        } else if (response.status === 422) {
+          errorMsg = `🔒 Password Requirements Not Met: ${errorMsg}`;
+        } else if (response.status === 404) {
+          errorMsg = "❌ Invalid Link: This reset link is not valid. Please request a new password reset.";
+        } else if (response.status === 500) {
+          errorMsg = "⚠️ Server Error: Something went wrong on our end. Please try again in a moment.";
+        }
+        
+        toast.error(errorMsg);
       }
     } catch (error) {
-      toast.error("Network error occurred");
+      toast.error("🌐 Network Error: Unable to connect. Please check your internet connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -186,6 +238,9 @@ export default function PasswordResetPage() {
                     borderColor: 'rgb(148 163 184 / 0.3)'
                   }}
                 />
+                <p className="mt-1 text-xs text-slate-400">
+                  Must be at least 8 characters with uppercase, lowercase, and number
+                </p>
               </div>
 
               <div>

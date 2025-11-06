@@ -5,10 +5,17 @@ import { useToast } from '../../../lib/toast';
 import { api, apiFetch } from '../../../lib/api';
 import { getReminders as getGoogleReminders, createReminder as createGoogleReminder } from '../../../services/googleCalendar';
 import { DOC_TYPES, typeLabel, typeChipClass, ACCEPT_ATTR } from "../utils/docTypes";
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function ApplicationDrawer({ application, onClose }) {
     const toast = useToast();
     const router = useRouter();
+    const { user } = useAuth();
+
+    // Check if user has Pro/Premium access
+    const hasProAccess = user && 
+        user.subscription_plan !== 'starter' && 
+        user.subscription_status === 'active';
 
     // App ID (defensive across shapes)
     const appId = String(application?.id ?? application?.application_id ?? '');
@@ -56,6 +63,7 @@ export default function ApplicationDrawer({ application, onClose }) {
         add_meet_link: false,
         email_notify: true,
         description: '',
+        ai_prep_tips_enabled: false,
     });
 
     // Notification settings
@@ -256,6 +264,21 @@ export default function ApplicationDrawer({ application, onClose }) {
         );
     }, [allReminders, appId]);
 
+    // Check if form is valid for submission
+    const isReminderFormValid = () => {
+        // Must have title (or customType if type is custom)
+        if (newReminder.type === 'Custom') {
+            if (!newReminder.customType || !newReminder.customType.trim()) return false;
+        } else {
+            if (!newReminder.title || !newReminder.title.trim()) return false;
+        }
+        
+        // Must have date & time
+        if (!newReminder.due_date) return false;
+        
+        return true;
+    };
+
     const createReminderInline = async (e) => {
         e?.preventDefault?.();
         if (!appId) return;
@@ -325,6 +348,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                 notification_schedule: notificationSchedule,
                 event_type: getEventType(newReminder.type),
                 timezone_str: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+                ai_prep_tips_enabled: hasProAccess && newReminder.ai_prep_tips_enabled,
             };
 
             await createGoogleReminder(payload);
@@ -338,6 +362,7 @@ export default function ApplicationDrawer({ application, onClose }) {
                 add_meet_link: false,
                 email_notify: true,
                 description: '',
+                ai_prep_tips_enabled: false,
             });
             setNotificationMode('presets');
             setSelectedPresets(['1_hour']);
@@ -891,6 +916,56 @@ export default function ApplicationDrawer({ application, onClose }) {
                                                 />
                                                 Add Google Meet link
                                             </label>
+                                            
+                                            {/* AI Preparation Tips - Pro/Premium Feature */}
+                                            {hasProAccess ? (
+                                                <label className="inline-flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 cursor-pointer hover:border-blue-500/40 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!newReminder.ai_prep_tips_enabled}
+                                                        onChange={(e) => setNewReminder((r) => ({ ...r, ai_prep_tips_enabled: e.target.checked }))}
+                                                        className="w-4 h-4 rounded border-slate-600 text-blue-600"
+                                                    />
+                                                    <span className="flex items-center gap-2 text-sm">
+                                                        <span className="flex items-center gap-1 text-slate-200 font-medium">
+                                                            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                            </svg>
+                                                            Receive AI-powered preparation tips
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold">
+                                                            💎 PRO
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            ) : (
+                                                <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 opacity-60">
+                                                    <div className="flex items-center gap-2 text-sm text-slate-400">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                        </svg>
+                                                        <span>AI preparation tips available for Pro/Premium users</span>
+                                                        <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold ml-auto">
+                                                            💎 PRO
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {newReminder.ai_prep_tips_enabled && hasProAccess && (
+                                                <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                                                    <div className="flex items-start gap-2 text-xs text-slate-300">
+                                                        <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <p>
+                                                            You'll receive an email with personalized interview preparation tips based on the job description, 
+                                                            company research, and your resume. Tips are generated immediately when you create this reminder.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
                                             <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                                                 <input
                                                     type="checkbox"
@@ -1062,7 +1137,11 @@ export default function ApplicationDrawer({ application, onClose }) {
                                             <Button variant="outline" onClick={() => setShowCreateReminder(false)} type="button" className="flex-1">
                                                 Cancel
                                             </Button>
-                                            <Button disabled={creatingReminder} type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                            <Button 
+                                                disabled={creatingReminder || !isReminderFormValid()} 
+                                                type="submit" 
+                                                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
                                                 {creatingReminder ? 'Creating...' : 'Create Event'}
                                             </Button>
                                         </div>

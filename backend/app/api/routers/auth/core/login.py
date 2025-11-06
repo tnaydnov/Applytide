@@ -25,6 +25,8 @@ from .....infra.security.passwords import verify_password
 from .....api.schemas import auth as schemas
 from .....infra.security.tokens import create_access_token, create_refresh_token
 from .....infra.security.rate_limiter import login_limiter
+from .....infra.security.ban_service import BanService, InvalidBanDataError
+from .....infra.http.client_ip import get_client_ip
 from .....infra.logging import get_logger
 from .....infra.logging.business_logger import BusinessEventLogger
 from .....config import settings
@@ -124,6 +126,58 @@ async def login(
             }
         )
         
+        # Check if email or IP is banned
+        try:
+            if BanService.is_email_banned(db, form_data.email):
+                logger.warning(
+                    "Login blocked: email is banned",
+                    extra={"email": form_data.email, "ip_address": ip_address}
+                )
+                event_logger.log_login(
+                    user_id=None,
+                    success=False,
+                    method="email",
+                    ip_address=ip_address,
+                    failure_reason="account_banned"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied. Your account has been suspended."
+                )
+            
+            if BanService.is_ip_banned(db, ip_address):
+                logger.warning(
+                    "Login blocked: IP is banned",
+                    extra={"email": form_data.email, "ip_address": ip_address}
+                )
+                event_logger.log_login(
+                    user_id=None,
+                    success=False,
+                    method="email",
+                    ip_address=ip_address,
+                    failure_reason="ip_banned"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied. This IP address has been blocked."
+                )
+        except InvalidBanDataError as e:
+            # Log validation error but don't block login on data format issues
+            logger.error(
+                f"Ban check validation error: {e}",
+                extra={"email": form_data.email, "ip_address": ip_address}
+            )
+        except HTTPException:
+            # Re-raise HTTP exceptions (403 Forbidden)
+            raise
+        except Exception as e:
+            # Log other errors but fail open (don't block login on service errors)
+            logger.error(
+                f"Ban check service error: {e}",
+                extra={"email": form_data.email, "ip_address": ip_address},
+                exc_info=True
+            )
+        
         # Rate limiting by email
         email_allowed, _ = login_limiter.check_rate_limit(f"email:{form_data.email.lower()}")
         if not email_allowed:
@@ -132,7 +186,7 @@ async def login(
                 extra={"email": form_data.email, "ip_address": ip_address}
             )
             event_logger.log_login(
-                user_id="unknown",
+                user_id=None,  # Use None instead of "unknown" for database compatibility
                 success=False,
                 method="email",
                 ip_address=ip_address,
@@ -152,7 +206,7 @@ async def login(
                 extra={"email": form_data.email, "ip_address": ip_address}
             )
             event_logger.log_login(
-                user_id="unknown",
+                user_id=None,  # Use None instead of "unknown" for database compatibility
                 success=False,
                 method="email",
                 ip_address=ip_address,

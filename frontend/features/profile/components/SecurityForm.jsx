@@ -75,7 +75,7 @@ export default function SecurityForm({
                 required
               />
               <p className="mt-1 text-xs text-gray-400">
-                Must be at least 8 characters with uppercase, lowercase, number, and special character
+                Must be at least 8 characters with uppercase, lowercase, and number
               </p>
             </div>
             <div>

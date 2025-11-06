@@ -6,21 +6,8 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
   return React.createElement(BaseEmail, {
     previewText: 'Your Applytide password was changed'
   },
-    // Hero Section
+    // Hero Section with simplified badge
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '48px' } },
-      React.createElement('div', {
-        style: {
-          width: '80px',
-          height: '80px',
-          backgroundColor: colors.coral,
-          borderRadius: '16px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '24px',
-          fontSize: '40px',
-        }
-      }, '🛡️'),
       React.createElement('div', {
         style: {
           display: 'inline-block',
@@ -30,7 +17,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           borderRadius: '20px',
           fontWeight: 'bold',
           fontSize: '14px',
-          marginBottom: '16px',
+          marginBottom: '24px',
         }
       }, '🛡️ Security Update'),
       React.createElement(Text, {
@@ -38,7 +25,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           fontSize: '36px',
           fontWeight: 'bold',
           color: colors.textWhite,
-          margin: '24px 0 12px 0',
+          margin: '24px 0 16px 0',
         }
       }, 'Password Changed'),
       React.createElement(Text, {
@@ -47,10 +34,10 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
           color: colors.textLight,
           margin: 0,
         }
-      }, `Hi ${name}, your password was just updated`)
+      }, `Hi ${name}, your password was successfully updated on ${changedAt}`)
     ),
 
-    // Success Confirmation
+    // Warning Section - Simplified
     React.createElement(Section, {
       style: {
         backgroundColor: colors.bgDarkSecondary,
@@ -59,96 +46,21 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
         marginBottom: '48px',
       }
     },
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
-        React.createElement('tr', null,
-          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'middle' } },
-            React.createElement('div', {
-              style: {
-                width: '56px',
-                height: '56px',
-                backgroundColor: colors.coral,
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-              }
-            }, '✓')
-          ),
-          React.createElement('td', { style: { verticalAlign: 'middle' } },
-            React.createElement(Text, {
-              style: {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: colors.textWhite,
-                margin: 0,
-              }
-            }, 'Password successfully updated')
-          )
-        )
-      ),
-      React.createElement('div', {
+      React.createElement(Text, {
         style: {
-          backgroundColor: colors.bgDark,
-          borderRadius: '12px',
-          padding: '16px',
-          marginTop: '24px',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: colors.textWhite,
+          marginBottom: '12px',
         }
-      },
-        React.createElement(Text, {
-          style: {
-            fontWeight: 'bold',
-            color: colors.textLight,
-            margin: 0,
-          }
-        }, `Changed on: ${changedAt}`)
-      )
-    ),
-
-    // Warning Section
-    React.createElement(Section, {
-      style: {
-        backgroundColor: colors.bgDarkSecondary,
-        borderRadius: '16px',
-        padding: '32px',
-        marginBottom: '48px',
-      }
-    },
-      React.createElement('table', { width: '100%', cellSpacing: '0', cellPadding: '0' },
-        React.createElement('tr', null,
-          React.createElement('td', { style: { paddingRight: '24px', verticalAlign: 'top' } },
-            React.createElement('div', {
-              style: {
-                width: '56px',
-                height: '56px',
-                backgroundColor: colors.coral,
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '28px',
-              }
-            }, '⚠️')
-          ),
-          React.createElement('td', { style: { verticalAlign: 'top' } },
-            React.createElement(Text, {
-              style: {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: colors.textWhite,
-                marginBottom: '12px',
-              }
-            }, "Didn't make this change?"),
-            React.createElement(Text, {
-              style: {
-                color: colors.textLight,
-                lineHeight: '1.7',
-                marginBottom: '24px',
-              }
-            }, "If you didn't request this password change, your account may be compromised. Secure it immediately.")
-          )
-        )
-      ),
+      }, "⚠️ Didn't make this change?"),
+      React.createElement(Text, {
+        style: {
+          color: colors.textLight,
+          lineHeight: '1.7',
+          marginBottom: '24px',
+        }
+      }, "If you didn't request this password change, your account may be compromised. Secure it immediately."),
       React.createElement(Link, {
         href: 'https://applytide.com/auth/reset',
         style: {
@@ -163,7 +75,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
       }, 'Reset Password Now')
     ),
 
-    // Security Best Practices
+    // Security Best Practices - Simplified
     React.createElement(Section, { style: { marginBottom: '48px' } },
       React.createElement(Text, {
         style: {
@@ -182,34 +94,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '32px 24px',
+                textAlign: 'center',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coral,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px',
-                  fontSize: '24px',
-                }
-              }, '🔑'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '12px',
+                  fontSize: '18px',
                 }
               }, 'Strong Password'),
               React.createElement(Text, {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '15px',
                   color: colors.textLight,
                   margin: 0,
+                  lineHeight: '1.5',
                 }
               }, 'Use numbers, symbols, and mixed case')
             )
@@ -219,34 +121,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '32px 24px',
+                textAlign: 'center',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coralLight,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px',
-                  fontSize: '24px',
-                }
-              }, '🔒'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '12px',
+                  fontSize: '18px',
                 }
               }, 'Never Share'),
               React.createElement(Text, {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '15px',
                   color: colors.textLight,
                   margin: 0,
+                  lineHeight: '1.5',
                 }
               }, "Don't share with anyone, including staff")
             )
@@ -258,34 +150,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '32px 24px',
+                textAlign: 'center',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coral,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px',
-                  fontSize: '24px',
-                }
-              }, '🛡️'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '12px',
+                  fontSize: '18px',
                 }
               }, 'Two-Factor Auth'),
               React.createElement(Text, {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '15px',
                   color: colors.textLight,
                   margin: 0,
+                  lineHeight: '1.5',
                 }
               }, 'Extra security layer (coming soon!)')
             )
@@ -295,34 +177,24 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
               style: {
                 backgroundColor: colors.bgDarkSecondary,
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '32px 24px',
+                textAlign: 'center',
               }
             },
-              React.createElement('div', {
-                style: {
-                  width: '48px',
-                  height: '48px',
-                  backgroundColor: colors.coralLight,
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '16px',
-                  fontSize: '24px',
-                }
-              }, '👁️'),
               React.createElement(Text, {
                 style: {
                   fontWeight: 'bold',
                   color: colors.textWhite,
-                  marginBottom: '8px',
+                  marginBottom: '12px',
+                  fontSize: '18px',
                 }
               }, 'Watch for Phishing'),
               React.createElement(Text, {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '15px',
                   color: colors.textLight,
                   margin: 0,
+                  lineHeight: '1.5',
                 }
               }, "We'll never ask for your password")
             )

@@ -24,12 +24,25 @@ def welcome_email(name: str, email: str) -> str:
         raise
 
 
-def password_changed_email(name: str) -> str:
+def password_changed_email(name: str, user_timezone: str = 'UTC') -> str:
     """Security alert when password is changed using React Email service"""
     try:
+        from datetime import datetime, timezone
+        from zoneinfo import ZoneInfo
+        
+        # Get current time in user's timezone
+        now_utc = datetime.now(timezone.utc)
+        try:
+            user_tz = ZoneInfo(user_timezone)
+            now_local = now_utc.astimezone(user_tz)
+            formatted_time = now_local.strftime('%B %d, %Y at %I:%M %p')
+        except Exception as tz_error:
+            logger.warning(f"Invalid timezone {user_timezone}, using UTC: {tz_error}")
+            formatted_time = now_utc.strftime('%B %d, %Y at %I:%M %p UTC')
+        
         html = email_renderer.render_template('PasswordChangedEmail', {
             'name': name,
-            'changedAt': datetime.now().strftime('%B %d, %Y at %I:%M %p %Z')
+            'changedAt': formatted_time
         })
         if html:
             logger.info(f" Rendered password changed email via React Email service for {name}")

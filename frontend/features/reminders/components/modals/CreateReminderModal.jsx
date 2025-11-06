@@ -73,6 +73,24 @@ export default function CreateReminderModal({
     return type.toLowerCase().replace(/\s+/g, '_');
   };
 
+  // Check if form is valid for submission
+  const isFormValid = () => {
+    // Must have application selected
+    if (!form.application_id) return false;
+    
+    // Must have title (or customType if type is custom)
+    if (form.type === "custom") {
+      if (!form.customType || !form.customType.trim()) return false;
+    } else {
+      if (!form.title || !form.title.trim()) return false;
+    }
+    
+    // Must have date & time
+    if (!form.due_date) return false;
+    
+    return true;
+  };
+
   const submit = async (e) => {
     e?.preventDefault?.();
     
@@ -610,7 +628,8 @@ export default function CreateReminderModal({
             <Button 
               type="submit" 
               onClick={submit}
-              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium shadow-lg shadow-blue-500/30"
+              disabled={!isFormValid()}
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
               Create Reminder
             </Button>

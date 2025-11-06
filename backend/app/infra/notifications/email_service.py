@@ -481,13 +481,14 @@ class EmailService:
         
         return self._send_email(to_email, f"Welcome to Applytide, {name}! 🎉", html_content)
     
-    def send_password_changed_email(self, to_email: str, name: str) -> bool:
+    def send_password_changed_email(self, to_email: str, name: str, user_timezone: str = 'UTC') -> bool:
         """
         Send security alert when password is changed.
         
         Args:
             to_email: Recipient email address
             name: User's full name
+            user_timezone: User's timezone (e.g., 'Asia/Jerusalem')
             
         Returns:
             bool: True if email sent successfully
@@ -497,7 +498,7 @@ class EmailService:
             
         Notes:
             - Sent immediately after password change
-            - Includes timestamp of change
+            - Includes timestamp of change in user's timezone
             - Contains security tips
             - If user didn't make change, provides reset link
         """
@@ -508,10 +509,7 @@ class EmailService:
             logger.error(f"Validation error in send_password_changed_email: {str(e)}")
             return False
         
-        html_content = password_changed_email(name).replace(
-            '{datetime}',
-            datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')
-        )
+        html_content = password_changed_email(name, user_timezone)
         
         logger.info(
             "Sending password changed alert",

@@ -12,10 +12,12 @@ import {
   FiMapPin,
   FiGlobe,
   FiLinkedin,
-  FiPhone
+  FiPhone,
+  FiBan
 } from 'react-icons/fi';
 import AdminGuard from '../../../components/guards/AdminGuard';
 import AdminLayout from '../../../components/admin/AdminLayout';
+import BanUserModal from '../../../components/admin/BanUserModal';
 import { adminApi } from '../../../features/admin/api';
 import { useToast } from '../../../lib/toast';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -33,6 +35,11 @@ export default function UserDetailPage() {
   const [subscriptionStatus, setSubscriptionStatus] = useState('active');
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('');
   
+  // Ban management
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [userBans, setUserBans] = useState([]);
+  const [loadingBans, setLoadingBans] = useState(false);
+  
   // Optional data
   const [applications, setApplications] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -44,6 +51,7 @@ export default function UserDetailPage() {
   useEffect(() => {
     if (id) {
       loadUser();
+      loadBans();
       loadApplications();
       loadJobs();
       loadActivity();
@@ -61,6 +69,19 @@ export default function UserDetailPage() {
       router.push('/admin/users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBans = async () => {
+    try {
+      setLoadingBans(true);
+      const data = await adminApi.getUserBans(id);
+      setUserBans(data || []);
+    } catch (error) {
+      console.error('Error loading bans:', error);
+      // Non-critical, don't show error toast
+    } finally {
+      setLoadingBans(false);
     }
   };
 
@@ -162,6 +183,43 @@ export default function UserDetailPage() {
     }
   };
 
+  const handleBanUser = async (banData) => {
+    try {
+      setActionLoading(true);
+      await adminApi.banUser(id, banData);
+      toast.success(`User banned successfully`);
+      await loadUser();
+      await loadBans();
+    } catch (error) {
+      console.error('Error banning user:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to ban user';
+      toast.error(errorMessage);
+      throw error; // Re-throw for modal error handling
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async () => {
+    if (!confirm(`Remove all bans for ${user.email}? This will restore their access immediately.`)) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await adminApi.unbanUser(id);
+      toast.success('User unbanned successfully');
+      await loadUser();
+      await loadBans();
+    } catch (error) {
+      console.error('Error unbanning user:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to unban user';
+      toast.error(errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <AdminGuard>
@@ -219,6 +277,11 @@ export default function UserDetailPage() {
             {user.is_oauth_user && (
               <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-900/30 text-blue-300 border border-blue-600">
                 🔗 OAuth
+              </span>
+            )}
+            {userBans.some(b => b.is_active) && (
+              <span className="px-3 py-1 text-sm font-medium rounded-full bg-red-900/30 text-red-300 border border-red-600">
+                🚫 Banned
               </span>
             )}
           </div>
@@ -497,6 +560,31 @@ export default function UserDetailPage() {
                   Revoke Sessions ({user.active_sessions_count})
                 </button>
 
+                {/* Ban/Unban Actions */}
+                {user.role !== 'admin' && (
+                  <>
+                    {userBans.some(b => b.is_active) ? (
+                      <button
+                        onClick={handleUnbanUser}
+                        disabled={actionLoading}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        <FiBan />
+                        Unban User
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowBanModal(true)}
+                        disabled={actionLoading}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        <FiBan />
+                        Ban User
+                      </button>
+                    )}
+                  </>
+                )}
+
                 <div className="pt-3 border-t border-slate-700">
                   <button
                     onClick={handleDeleteUser}
@@ -659,6 +747,92 @@ export default function UserDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Ban History */}
+        {userBans.length > 0 && (
+          <div className="mt-6 bg-slate-800 border border-slate-700 rounded-lg shadow">
+            <div className="p-6 border-b border-slate-700">
+              <h2 className="text-lg font-semibold text-white">Ban History</h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {loadingBans ? (
+                  <p className="text-center text-slate-400">Loading...</p>
+                ) : (
+                  userBans.map((ban) => (
+                    <div 
+                      key={ban.id} 
+                      className={`p-4 rounded-lg border ${
+                        ban.is_active 
+                          ? 'bg-red-900/20 border-red-800' 
+                          : 'bg-slate-900 border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${
+                            ban.entity_type === 'email'
+                              ? 'bg-purple-900/30 text-purple-300'
+                              : 'bg-blue-900/30 text-blue-300'
+                          }`}>
+                            {ban.entity_type.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${
+                            ban.is_active
+                              ? 'bg-red-900/30 text-red-300'
+                              : 'bg-gray-900/30 text-gray-400'
+                          }`}>
+                            {ban.is_active ? 'ACTIVE' : 'INACTIVE'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {ban.banned_at 
+                            ? format(new Date(ban.banned_at), 'MMM d, yyyy h:mm a')
+                            : 'Unknown date'
+                          }
+                        </span>
+                      </div>
+                      
+                      <p className="text-sm font-mono text-slate-300 mb-2">
+                        {ban.entity_value}
+                      </p>
+                      
+                      {ban.reason && (
+                        <p className="text-sm text-slate-400 mb-2">
+                          <span className="font-medium">Reason:</span> {ban.reason}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                        {ban.expires_at && (
+                          <span>
+                            {ban.is_active ? 'Expires' : 'Expired'}: {format(new Date(ban.expires_at), 'MMM d, yyyy')}
+                          </span>
+                        )}
+                        {!ban.expires_at && ban.is_active && (
+                          <span className="text-red-400 font-medium">Permanent</span>
+                        )}
+                        {ban.unbanned_at && (
+                          <span>
+                            Unbanned: {format(new Date(ban.unbanned_at), 'MMM d, yyyy')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ban User Modal */}
+        <BanUserModal
+          user={user}
+          isOpen={showBanModal}
+          onClose={() => setShowBanModal(false)}
+          onBan={handleBanUser}
+        />
       </AdminLayout>
     </AdminGuard>
   );

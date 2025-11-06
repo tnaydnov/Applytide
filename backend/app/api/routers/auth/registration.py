@@ -30,6 +30,8 @@ from ....infra.security.tokens import (
     verify_email_token
 )
 from ....infra.security.rate_limiter import login_limiter, email_limiter
+from ....infra.security.ban_service import BanService, InvalidBanDataError
+from ....infra.http.client_ip import get_client_ip
 from ....infra.notifications.email_service import email_service
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
@@ -132,6 +134,44 @@ def register(
             "user_agent": user_agent[:100]
         }
     )
+    
+    # Check if email or IP is banned
+    try:
+        if BanService.is_email_banned(db, payload.email):
+            logger.warning(
+                "Registration blocked: email is banned",
+                extra={"email": payload.email, "ip_address": ip_address}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Your account has been suspended."
+            )
+        
+        if BanService.is_ip_banned(db, ip_address):
+            logger.warning(
+                "Registration blocked: IP is banned",
+                extra={"email": payload.email, "ip_address": ip_address}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. This IP address has been blocked."
+            )
+    except InvalidBanDataError as e:
+        # Log validation error but don't block registration on data format issues
+        logger.error(
+            f"Ban check validation error: {e}",
+            extra={"email": payload.email, "ip_address": ip_address}
+        )
+    except HTTPException:
+        # Re-raise HTTP exceptions (403 Forbidden)
+        raise
+    except Exception as e:
+        # Log other errors but fail open (don't block registration on service errors)
+        logger.error(
+            f"Ban check service error: {e}",
+            extra={"email": payload.email, "ip_address": ip_address},
+            exc_info=True
+        )
     
     # Validate legal agreements (all must be True)
     if not all([
