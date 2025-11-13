@@ -422,7 +422,7 @@ function WelcomeEmail({ name = 'there' }) {
         }
       }, 'Save jobs from any website with one click!'),
       React.createElement(Link, {
-        href: 'https://chrome.google.com/webstore',
+        href: 'https://chromewebstore.google.com/detail/onilaanepnjcbcoehjphgicieliclmmo?utm_source=item-share-cb',
         style: {
           display: 'inline-block',
           backgroundColor: colors.bgDark,

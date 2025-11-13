@@ -430,10 +430,19 @@ def should_send_notification(
         time_since_last = (now - reminder.last_notification_sent).total_seconds()
         if time_since_last < SPAM_PREVENTION_SECONDS:
             logger.debug(
-                f"Skipping notification - sent {int(time_since_last)}s ago",
-                extra={"reminder_id": str(reminder.id)}
+                f"Skipping notification - sent {int(time_since_last)}s ago (cooldown: {SPAM_PREVENTION_SECONDS}s)",
+                extra={
+                    "reminder_id": str(reminder.id),
+                    "time_since_last": int(time_since_last),
+                    "cooldown_seconds": SPAM_PREVENTION_SECONDS
+                }
             )
             return False
+    else:
+        logger.debug(
+            "No previous notification sent for this reminder",
+            extra={"reminder_id": str(reminder.id)}
+        )
     
     notification_type = notification_time.get('type')
     
@@ -565,6 +574,10 @@ def send_reminder_notifications(db: Session):
         - Continues processing on individual notification errors
         - Comprehensive logging for monitoring
     """
+    # EMERGENCY STOP: Disable email sending temporarily to prevent spam
+    logger.warning("⚠️ REMINDER EMAIL NOTIFICATIONS TEMPORARILY DISABLED - Fix in progress")
+    return
+    
     now = datetime.now(timezone.utc)
     
     logger.info("Checking for reminders to send notifications...")

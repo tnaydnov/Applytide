@@ -1,0 +1,549 @@
+﻿
+--- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\services\analytics.js ---
+// frontend/services/analytics.js
+
+/**
+ * Thin service layer for Analytics-related API calls.
+ * It prefers your existing ../lib/api helpers if available,
+ * and gracefully falls back to direct fetch() calls.
+ */
+
+import api from "../lib/api";
+
+/** Internal: fetch wrapper that throws on non-2xx */
+async function _jsonFetch(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get analytics data for a given time range.
+ * @param {("1m"|"3m"|"6m"|"1y"|"all")} range
+ */
+export async function fetchAnalytics(range = "6m") {
+  if (api?.getAnalytics) {
+    // Use existing lib/api helper if present
+    return api.getAnalytics(range);
+  }
+  // Fallback to REST endpoint
+  return _jsonFetch(`/api/analytics?range=${encodeURIComponent(range)}`);
+}
+
+// Alias to match older imports (if you used api.getAnalytics before)
+export const getAnalytics = fetchAnalytics;
+
+/**
+ * Export analytics as CSV.
+ * @param {("1m"|"3m"|"6m"|"1y"|"all")} range
+ */
+export async function exportAnalyticsCSV(range = "6m") {
+  if (api?.exportAnalyticsCSV) {
+    return api.exportAnalyticsCSV(range);
+  }
+  // Fallback: trigger a file download URL endpoint
+  // Expecting the server to return a file; here we just hit the URL to start download.
+  const url = `/api/analytics/export/csv?range=${encodeURIComponent(range)}`;
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = ""; // let server filename win
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Export analytics as PDF.
+ * @param {("1m"|"3m"|"6m"|"1y"|"all")} range
+ */
+export async function exportAnalyticsPDF(range = "6m") {
+  if (api?.exportAnalyticsPDF) {
+    return api.exportAnalyticsPDF(range);
+  }
+  const url = `/api/analytics/export/pdf?range=${encodeURIComponent(range)}`;
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = ""; // let server filename win
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Optionally expose a convenience helper that normalizes empty fields.
+ * Call this if you want guaranteed shapes in the UI components.
+ */
+export function normalizeAnalytics(raw) {
+  const safe = (v, d) => (v == null ? d : v);
+  const pick = (obj, keys, def) => {
+    for (const k of keys) {
+      if (obj && obj[k] != null) return obj[k];
+    }
+    return def;
+  };
+
+  const r = raw || {};
+  const ov = r.overview || {};
+  const ap = r.applications || {};
+  const iv = r.interviews || {};
+  const co = r.companies || {};
+  const tl = r.timeline || {};
+  const ac = r.activity || {};
+  const so = r.sources || {};
+  const ex = r.experiments || {};
+  const bt = r.bestTime || {};
+  const expt = r.expectations || {};
+
+  return {
+    overview: {
+      totalApplications: safe(ov.totalApplications, 0),
+      applicationsChange: safe(ov.applicationsChange, 0),
+      interviewRate: safe(ov.interviewRate, 0),
+      interviewRateChange: safe(ov.interviewRateChange, 0),
+      offerRate: safe(ov.offerRate, 0),
+      offerRateChange: safe(ov.offerRateChange, 0),
+      avgResponseTime: safe(ov.avgResponseTime, 0),
+      responseTimeChange: safe(ov.responseTimeChange, 0),
+      statusDistribution: safe(ov.statusDistribution, []),
+      applicationsOverTime: safe(ov.applicationsOverTime, []),
+      funnel: safe(ov.funnel, []),
+    },
+
+    applications: {
+      statusBreakdown: safe(pick(ap, ["statusBreakdown"], [])),
+      monthlyData: safe(pick(ap, ["monthlyData", "applicationsByMonth"], [])),
+      jobTitles: safe(pick(ap, ["jobTitles", "topJobTitles"], [])),
+      totalApplications: safe(ap.totalApplications, 0),
+      successRate: safe(ap.successRate, 0),
+      avgResponseTime: safe(ap.avgResponseTime, 0),
+      uniqueCompanies: safe(pick(ap, ["uniqueCompanies"], 0)),
+    },
+
+    interviews: {
+      typeBreakdown: safe(pick(iv, ["typeBreakdown", "interviewTypeBreakdown"], [])),
+      successByType: safe(pick(iv, ["successByType"], [])),
+      totalInterviews: safe(iv.totalInterviews, 0),
+      successRate: safe(iv.successRate, 0),
+      avgInterviewsPerApp: safe(iv.avgInterviewsPerApp, 0),
+      conversionRate: safe(pick(iv, ["conversionRate","interviewConversionRate"], 0)),
+      performanceOverTime: safe(pick(iv, ["performanceOverTime"], [])),
+      interviewOutcomes: safe(pick(iv, ["interviewOutcomes"], [])),
+    },
+
+    companies: {
+      topCompanies: safe(co.topCompanies, []),
+      sizeDistribution: safe(pick(co, ["sizeDistribution","companySizeDistribution"], [])),
+      successBySize: safe(co.successBySize, []),
+      totalCompanies: safe(co.totalCompanies, 0),
+      avgSuccessRate: safe(co.avgSuccessRate, 0),
+      responseRate: safe(co.responseRate, 0),
+      avgApplicationsPerCompany: safe(co.avgApplicationsPerCompany, 0),
+    },
+
+    timeline: {
+      stageDurations: safe(pick(tl, ["stageDurations","stageTransitions"], [])),
+      timelineTrends: safe(pick(tl, ["timelineTrends","weeklyApplicationTrends"], [])),
+      bottlenecks: safe(tl.bottlenecks, []),
+      avgProcessDuration: safe(tl.avgProcessDuration, 0),
+      avgResponseTime: safe(tl.avgResponseTime, 0),
+      avgInterviewTime: safe(tl.avgInterviewTime, 0),
+      avgDecisionTime: safe(tl.avgDecisionTime, 0),
+      totalProcesses: safe(tl.totalProcesses, 0),
+    },
+
+    activity: {
+      activityByDay: safe(ac.activityByDay, []),
+      streak: safe(ac.streak, { current: 0, best: 0 }),
+    },
+
+    sources: {
+      breakdown: safe(so.breakdown, []),
+      interviewRateBySource: safe(so.interviewRateBySource, []),
+      offerRateBySource: safe(so.offerRateBySource, []),
+      topSources: safe(so.topSources, []),
+    },
+
+    experiments: {
+      resumeVersions: safe(ex.resumeVersions, []),
+      coverLetterImpact: safe(ex.coverLetterImpact, null),
+    },
+
+    bestTime: {
+      byWeekday: safe(bt.byWeekday, []),
+      byHour: safe(bt.byHour, []),
+      bestWindowText: safe(bt.bestWindowText, ""),
+    },
+
+    expectations: {
+      medians: safe(expt.medians, {}),
+      p75: safe(expt.p75, {}),
+    },
+  };
+}
+
+
+export default {
+  fetchAnalytics,
+  getAnalytics: fetchAnalytics,
+  exportAnalyticsCSV,
+  exportAnalyticsPDF,
+  normalizeAnalytics,
+};
+
+--- END FILE ---
+
+
+--- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\services\auth.js ---
+import { login as libLogin, api as libApi } from "../lib/api";
+
+/** POST JSON helper (fallback when lib/api is missing a method) */
+async function jsonFetch(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      
+      // Handle validation errors with details array
+      if (errorData.error?.details && Array.isArray(errorData.error.details)) {
+        const messages = errorData.error.details.map(err => {
+          // Clean up the message (remove "Value error, " prefix)
+          return err.msg?.replace('Value error, ', '') || err.message || 'Validation error';
+        });
+        throw new Error(messages.join('. '));
+      }
+      
+      // Handle simple error messages
+      if (errorData.error?.message) {
+        throw new Error(errorData.error.message);
+      }
+      
+      // Handle detail field (common in FastAPI)
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+      
+      // Fallback to status text
+      throw new Error(`Request failed: ${res.status}`);
+    } catch (parseError) {
+      // If JSON parsing fails, try text
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `Request failed: ${res.status}`);
+    }
+  }
+  return res.json().catch(() => ({}));
+}
+
+/** Email/password login with remember-me */
+export async function loginWithEmail(email, password, remember = false) {
+  if (typeof libLogin === "function") {
+    return libLogin(email, password, remember);
+  }
+  // Fallback to REST
+  const data = await jsonFetch("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password, remember }),
+  });
+  return !!data?.success;
+}
+
+/** Register user */
+export async function registerUser({ 
+  email, 
+  password, 
+  full_name,
+  terms_accepted,
+  privacy_accepted,
+  age_verified,
+  data_processing_consent
+}) {
+  if (libApi?.register) {
+    return libApi.register({ 
+      email, 
+      password, 
+      full_name,
+      terms_accepted,
+      privacy_accepted,
+      age_verified,
+      data_processing_consent
+    });
+  }
+  return jsonFetch("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      full_name,
+      terms_accepted,
+      privacy_accepted,
+      age_verified,
+      data_processing_consent
+    }),
+  });
+}
+
+/** Logout */
+export async function logoutUser() {
+  if (libApi?.logout) return libApi.logout();
+  return jsonFetch("/api/auth/logout", { method: "POST" });
+}
+
+/** Optional: password reset start (if needed later) */
+export async function startPasswordReset(email) {
+  if (libApi?.startPasswordReset) return libApi.startPasswordReset(email);
+  return jsonFetch("/api/auth/reset/start", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export default {
+  loginWithEmail,
+  registerUser,
+  logoutUser,
+  startPasswordReset,
+};
+
+--- END FILE ---
+
+
+--- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\services\googleCalendar.js ---
+// filepath: c:\Users\PC\OneDrive\Desktop\Applytide\frontend\services\googleCalendar.js
+import { apiFetch } from '../lib/api';
+
+
+export const listReminderNotes = (rid) => apiFetch(`/calendars/reminders/${rid}/notes`).then(r=>r.json());
+export const createReminderNote = (rid, body) => apiFetch(`/calendars/reminders/${rid}/notes`, {method:'POST', body: JSON.stringify({ body })}).then(r=>r.json());
+export const updateReminderNote = (noteId, body) => apiFetch(`/calendars/reminder-notes/${noteId}`, {method:'PUT', body: JSON.stringify({ body })}).then(r=>r.json());
+export const deleteReminderNote = (noteId) => apiFetch(`/calendars/reminder-notes/${noteId}`, {method:'DELETE'});
+
+export const checkGoogleConnection = async () => {
+  try {
+    const r = await apiFetch("/calendars/google/check-connection");
+    const data = await r.json();
+    return data.connected === true;
+  } catch (error) {
+    console.error("Error checking Google connection:", error);
+    return false;
+  }
+};
+
+export const createReminder = async (reminderData) => {
+  const r = await apiFetch('/calendars/reminders', {
+    method: 'POST',
+    body: JSON.stringify(reminderData),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: `HTTP ${r.status}` }));
+    throw new Error(err.detail || 'Failed to create reminder');
+  }
+  return r.json();
+};
+
+
+export const getReminderNotes = async (reminderId) => {
+  const r = await apiFetch(`/calendars/reminders/${reminderId}/notes`);
+  if (!r.ok) throw new Error('Failed to load notes');
+  return r.json();
+};
+
+export const addReminderNote = async (reminderId, body) => {
+  const r = await apiFetch(`/calendars/reminders/${reminderId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
+  if (!r.ok) throw new Error('Failed to add note');
+  return r.json();
+};
+
+export const updateReminder = async (id, patch) => {
+  const r = await apiFetch(`/calendars/reminders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) throw new Error('Failed to update reminder');
+  return r.json();
+};
+
+export const getReminders = async () => {
+  try {
+    const r = await apiFetch('/calendars/reminders');
+    return r.json();
+  } catch (error) {
+    console.error('Error fetching reminders:', error);
+    throw error;
+  }
+};
+
+export const getGoogleCalendarEvents = async (params) => {
+  try {
+    const qs = new URLSearchParams(params || {}).toString();
+    const r = await apiFetch(`/calendars/google/events${qs ? `?${qs}` : ''}`);
+    const data = await r.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Error fetching Google Calendar events:", error);
+    return [];
+  }
+};
+
+export const deleteReminder = async (id) => {
+  const r = await apiFetch(`/calendars/reminders/${id}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error('Failed to delete reminder');
+  return true;
+};
+
+
+export const importGoogleEventAsReminder = async ({ google_event_id, application_id }) => {
+  const r = await apiFetch('/calendars/reminders/import-google-event', {
+    method: 'POST',
+    body: JSON.stringify({ google_event_id, application_id }),
+  });
+  if (!r.ok) throw new Error('Failed to import event');
+  return r.json();
+};
+
+// optional: create google event directly (used server-side already)
+export const createGoogleEventDirect = async (payload) => {
+  // if you expose a direct endpoint, wire here; currently we create during reminder create
+  return null;
+};
+
+--- END FILE ---
+
+
+--- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\services\user.js ---
+import { api as libApi } from "../lib/api";
+
+/** Upload avatar */
+export async function uploadAvatar(file) {
+  if (libApi?.uploadAvatar) return libApi.uploadAvatar(file);
+
+  const form = new FormData();
+  form.append("avatar", file);
+
+  const res = await fetch("/api/user/avatar", {
+    method: "POST",
+    body: form,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Upload failed (${res.status})`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+/** Update personal info */
+export async function updateProfile(data) {
+  if (libApi?.updateProfile) return libApi.updateProfile(data);
+
+  const res = await fetch("/api/user/profile", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Update failed (${res.status})`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+/** Update notification preferences */
+export async function updatePreferences(data) {
+  if (libApi?.updatePreferences) return libApi.updatePreferences(data);
+
+  const res = await fetch("/api/user/preferences", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Update failed (${res.status})`);
+  }
+  return res.json().catch(() => ({}));
+}
+
+/** Change password */
+export async function changePassword({ current_password, new_password }) {
+  if (libApi?.changePassword) return libApi.changePassword({ current_password, new_password });
+
+  const res = await fetch("/api/auth/change-password", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password, new_password }),
+  });
+  
+  if (!res.ok) {
+    let errorMessage = "Password change failed";
+    
+    try {
+      const errorData = await res.json();
+      
+      // Handle validation errors with details array
+      if (errorData.error?.details && Array.isArray(errorData.error.details)) {
+        const messages = errorData.error.details.map(err => {
+          // Clean up the message (remove "Value error, " prefix)
+          return err.msg?.replace('Value error, ', '') || err.message || 'Validation error';
+        });
+        errorMessage = messages.join('. ');
+      }
+      // Handle simple error messages
+      else if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      }
+      // Handle detail field (common in FastAPI)
+      else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+    } catch (parseError) {
+      const text = await res.text().catch(() => "");
+      if (text) errorMessage = text;
+    }
+    
+    throw new Error(errorMessage);
+  }
+  
+  return res.json().catch(() => ({}));
+}
+
+/** Logout */
+export async function logout() {
+  if (libApi?.logout) return libApi.logout();
+  return fetch("/api/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  });
+}
+
+export default {
+  uploadAvatar,
+  updateProfile,
+  updatePreferences,
+  changePassword,
+  logout,
+};
+
+--- END FILE ---
+

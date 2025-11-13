@@ -171,7 +171,7 @@ export default function JobsPage() {
                     {/* CTA Button - Chrome focused, NO FREE BADGE */}
                     <div className="mb-5">
                       <a
-                        href="https://chrome.google.com/webstore"
+                        href="https://chromewebstore.google.com/detail/onilaanepnjcbcoehjphgicieliclmmo?utm_source=item-share-cb"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group inline-flex items-center gap-3 px-8 py-3.5 bg-white text-orange-600 rounded-xl font-black text-lg hover:bg-yellow-300 hover:text-orange-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 transform duration-300"

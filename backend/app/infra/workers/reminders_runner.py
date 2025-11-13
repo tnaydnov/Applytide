@@ -109,6 +109,10 @@ def check_upcoming_interviews(db) -> int:
         - Logs each email attempt
         - Includes application URL in email
     """
+    # EMERGENCY STOP: Disable interview emails - missing reminder_sent_at field causes infinite loop
+    logger.warning("⚠️ INTERVIEW REMINDERS TEMPORARILY DISABLED - Missing reminder_sent_at field in Stage model")
+    return 0
+    
     try:
         now = _utcnow()
         soon = now + timedelta(hours=INTERVIEW_WINDOW_HOURS)
@@ -226,6 +230,10 @@ def check_followups(db) -> int:
         - Logs each email attempt
         - Includes application URL in email
     """
+    # EMERGENCY STOP: Disable follow-up emails - missing tracking field causes infinite loop
+    logger.warning("⚠️ FOLLOW-UP REMINDERS TEMPORARILY DISABLED - Missing follow_up_sent_at field in Application model")
+    return 0
+    
     try:
         cutoff = _utcnow() - timedelta(days=FOLLOW_UP_DAYS)
         
