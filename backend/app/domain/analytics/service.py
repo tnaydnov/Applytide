@@ -55,7 +55,7 @@ from .metrics import (
     calculate_sources_metrics, calculate_experiments_metrics, calculate_best_time_metrics,
     calculate_expectations_metrics
 )
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

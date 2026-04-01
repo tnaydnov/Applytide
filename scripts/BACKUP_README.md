@@ -274,7 +274,7 @@ cat /var/backups/applytide/backup.log | grep "Backup Summary" -A 10
 3. **Clone repository:**
    ```bash
    cd /opt
-   git clone https://github.com/tnaydnov/applytide.git
+   git clone https://github.com/your-username/applytide.git
    cd applytide
    ```
 

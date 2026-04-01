@@ -18,6 +18,17 @@ services:
     restart: always
     networks: [applytide_network]
     logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U applytide_user -d applytide_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
 
   redis:
     image: redis:7-alpine
@@ -29,36 +40,74 @@ services:
     restart: always
     networks: [applytide_network]
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
   backend:
-    image: ghcr.io/${GITHUB_OWNER:-tnaydnov}/applytide-backend:${IMAGE_TAG}
+    image: ghcr.io/${GITHUB_OWNER:-your-github-username}/applytide-backend:${IMAGE_TAG}
     container_name: applytide_api
     env_file: .env.production
     restart: always
-    depends_on: [pg, redis]
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [applytide_network]
     logging: *default-logging
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - documents:/app/uploads/documents
       - attachments:/app/uploads/app_attachments
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
 
-  frontend:
-    image: ghcr.io/${GITHUB_OWNER:-tnaydnov}/applytide-frontend:${IMAGE_TAG}
+  newfront:
+    image: ghcr.io/${GITHUB_OWNER:-your-github-username}/applytide-newfront:${IMAGE_TAG}
     container_name: applytide_web
-    environment:
-      - NEXT_PUBLIC_API_BASE=/api
     restart: always
     networks: [applytide_network]
     logging: *default-logging
 
   worker:
-    image: ghcr.io/${GITHUB_OWNER:-tnaydnov}/applytide-worker:${IMAGE_TAG}
+    image: ghcr.io/${GITHUB_OWNER:-your-github-username}/applytide-worker:${IMAGE_TAG}
     container_name: applytide_worker
     env_file: .env.production
     command: ["python", "-m", "app.infra.workers.reminders_runner"]
     restart: always
-    depends_on: [pg, redis]
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [applytide_network]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./backend/alembic.ini:/app/alembic.ini
       - documents:/app/uploads/documents
@@ -66,9 +115,20 @@ services:
     logging: *default-logging
     environment:
       SKIP_MIGRATIONS: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import app; print(1)' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
 
   email_service:
-    image: ghcr.io/${GITHUB_OWNER:-tnaydnov}/applytide-email-service:${IMAGE_TAG}
+    image: ghcr.io/${GITHUB_OWNER:-your-github-username}/applytide-email-service:${IMAGE_TAG}
     container_name: applytide_email_service
     restart: always
     networks: [applytide_network]
@@ -76,6 +136,17 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
 
   nginx:
     image: nginx:1.27-alpine
@@ -88,7 +159,7 @@ services:
       - ./nginx/main.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
     restart: always
-    depends_on: [frontend, backend]
+    depends_on: [newfront, backend]
     networks: [applytide_network]
     logging: *default-logging
 

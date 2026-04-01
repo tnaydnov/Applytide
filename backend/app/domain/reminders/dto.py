@@ -79,6 +79,12 @@ class ReminderDTO:
     meet_url: Optional[str]
     created_at: datetime
     updated_at: datetime
+    event_type: Optional[str] = "general"
+    email_notifications_enabled: bool = False
+    notification_schedule: Optional[Dict[str, Any]] = None
+    ai_prep_tips_enabled: bool = False
+    ai_prep_tips_generated: Optional[str] = None
+    ai_prep_tips_generated_at: Optional[datetime] = None
     
     def __post_init__(self):
         """

@@ -10,41 +10,24 @@ All endpoints require admin authentication.
 """
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
-from app.api.deps import get_admin_user
+from app.api.deps import get_db, get_admin_user, get_admin_service
 from app.db import models
 from app.domain.admin.service import AdminService
 from app.domain.admin import dto
 from app.infra.logging import get_logger
+from app.api.schemas.common import AdminUserDeleteResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
-    """
-    Dependency function to inject AdminService instance.
-    
-    Creates and returns an AdminService instance with the current
-    database session. Used as a FastAPI dependency for all user
-    management endpoints.
-    
-    Args:
-        db: Database session (from get_db dependency)
-        
-    Returns:
-        AdminService: Service instance for admin operations
-    """
-    return AdminService(db)
-
-
 @router.get("/", response_model=dto.PaginatedUsersDTO)
 def list_users(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = None,
     role: Optional[str] = None,
     is_premium: Optional[bool] = None,
@@ -254,7 +237,7 @@ def get_user(
         )
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", response_model=AdminUserDeleteResponse)
 def delete_user(
     user_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
@@ -324,7 +307,14 @@ def delete_user(
     
     # Delete user (cascade will handle related records)
     db.delete(user)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete user"
+        )
     
     logger.warning(
         f"Admin {admin_user.email} deleted user {user_email}",

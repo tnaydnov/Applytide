@@ -47,7 +47,7 @@ from typing import Tuple
 from redis import Redis
 from redis.exceptions import RedisError, ConnectionError, TimeoutError
 
-from ..cache.redis_client import r
+from ..cache.redis_client import r, redis_key
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -158,6 +158,8 @@ class RateLimiter:
         key_prefix: Prefix for Redis keys (e.g., "rate_limit:login")
         max_attempts: Maximum attempts allowed within window
         window_seconds: Time window in seconds
+        fail_closed: If True, deny requests when Redis is unavailable
+                     (recommended for auth-critical limiters)
     """
     
     def __init__(
@@ -165,6 +167,7 @@ class RateLimiter:
         key_prefix: str,
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         window_seconds: int = DEFAULT_WINDOW_SECONDS,
+        fail_closed: bool = False,
     ):
         """
         Initialize rate limiter with configuration.
@@ -190,6 +193,7 @@ class RateLimiter:
         self.key_prefix = key_prefix
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
+        self.fail_closed = fail_closed
         
         logger.info(
             "Initialized rate limiter",
@@ -240,7 +244,7 @@ class RateLimiter:
             _validate_identifier(identifier)
             
             # Build Redis key
-            key = f"{self.key_prefix}:{identifier}"
+            key = redis_key(self.key_prefix, identifier)
             current_time = int(time.time())
             window_start = current_time - self.window_seconds
             
@@ -278,15 +282,19 @@ class RateLimiter:
                 
             except (RedisError, ConnectionError, TimeoutError) as e:
                 logger.error(
-                    "Failed to check rate limit due to Redis error, allowing request",
+                    "Failed to check rate limit due to Redis error",
                     exc_info=True,
                     extra={
                         "identifier": identifier,
                         "key": key,
                         "error": str(e),
+                        "fail_closed": self.fail_closed,
                     }
                 )
-                # Fail-open: allow request on Redis error
+                if self.fail_closed:
+                    # Auth-critical: deny on Redis failure
+                    return False, self.window_seconds
+                # Non-critical: allow on Redis failure
                 return True, 0
             
             # Check if rate limit exceeded
@@ -356,38 +364,92 @@ class RateLimiter:
             # Re-raise validation errors
             raise
         except Exception as e:
-            # Unexpected errors: fail-open for availability
+            # Unexpected errors
             logger.error(
-                "Rate limit check failed due to unexpected error, allowing request",
+                "Rate limit check failed due to unexpected error",
                 exc_info=True,
                 extra={
                     "identifier": identifier,
                     "error": str(e),
+                    "fail_closed": self.fail_closed,
                 }
             )
+            if self.fail_closed:
+                return False, self.window_seconds
             return True, 0
 
 # ============================================================================
 # Pre-configured Rate Limiters
 # ============================================================================
 
-# Login attempts: 5 per 5 minutes
+# Login attempts: 5 per 5 minutes (fail-closed — auth critical)
 login_limiter = RateLimiter(
     key_prefix="rate_limit:login",
     max_attempts=5,
     window_seconds=300,
+    fail_closed=True,
 )
 
-# Token refresh: 10 per 5 minutes
+# Registration: 3 per 10 minutes per IP (fail-closed)
+registration_limiter = RateLimiter(
+    key_prefix="rate_limit:register",
+    max_attempts=3,
+    window_seconds=600,
+    fail_closed=True,
+)
+
+# Password reset request: 3 per 15 minutes per IP (fail-closed)
+password_reset_limiter = RateLimiter(
+    key_prefix="rate_limit:password_reset",
+    max_attempts=3,
+    window_seconds=900,
+    fail_closed=True,
+)
+
+# Token refresh: 10 per 5 minutes (fail-open — availability matters more)
 refresh_limiter = RateLimiter(
     key_prefix="rate_limit:refresh",
     max_attempts=10,
     window_seconds=300,
+    fail_closed=False,
 )
 
-# Email sending: 3 per hour
+# Email sending: 3 per hour (fail-closed — prevents spam)
 email_limiter = RateLimiter(
     key_prefix="rate_limit:email",
     max_attempts=3,
     window_seconds=3600,
+    fail_closed=True,
+)
+
+# 2FA OTP verification: 5 per 5 minutes (fail-closed — prevents brute-force)
+otp_limiter = RateLimiter(
+    key_prefix="rate_limit:otp",
+    max_attempts=5,
+    window_seconds=300,
+    fail_closed=True,
+)
+
+# Feedback submission: 5 per 15 minutes per IP (fail-closed — prevents spam)
+feedback_limiter = RateLimiter(
+    key_prefix="rate_limit:feedback",
+    max_attempts=5,
+    window_seconds=900,
+    fail_closed=True,
+)
+
+# AI / LLM endpoints: 20 per hour per user (fail-closed — prevents cost overrun)
+ai_limiter = RateLimiter(
+    key_prefix="rate_limit:ai",
+    max_attempts=20,
+    window_seconds=3600,
+    fail_closed=True,
+)
+
+# Document analysis: 15 per hour per user (fail-closed — LLM cost control)
+analysis_limiter = RateLimiter(
+    key_prefix="rate_limit:analysis",
+    max_attempts=15,
+    window_seconds=3600,
+    fail_closed=True,
 )

@@ -118,6 +118,7 @@ Return JSON with:
 Rules:
 - Do not fabricate content not present in resume.
 - 'section_scores' keys can be any sections present or expected (e.g., Summary, Experience, Education, Certifications).
+- IMPORTANT: Every section in ai_detailed_analysis MUST have at least 1-2 items in its 'improvements' array. Convert weaknesses into actionable improvement suggestions. Never leave improvements empty.
 """
             
             try:
@@ -314,6 +315,8 @@ Return JSON with exactly these keys:
 Rules:
 - Only mark a hard skill as 'found' if present in RESUME.
 - Prefer concise bullets. No markdown. Keep arrays short but useful.
+- IMPORTANT: Every section in ai_detailed_analysis MUST have at least 1-2 items in its 'improvements' array. Convert weaknesses into actionable improvement suggestions with concrete examples. Never leave improvements empty.
+- IMPORTANT: keyword_analysis MUST always identify relevant keywords from the job posting. keywords_found should list job-relevant terms present in the resume. keywords_missing should list important job terms absent from the resume. Never leave both empty.
 """
             
             try:
@@ -357,8 +360,8 @@ Rules:
                     cnt = int(entry.get("count", 0))
                     if term:
                         kd_map[term] = int(max(0, cnt))
-                except Exception:
-                    pass
+                except Exception as parse_err:
+                    logger.warning("Skipping malformed keyword_density entry", extra={"entry": str(entry)[:200], "error": str(parse_err)})
             
             section_scores = j.get("section_scores") if isinstance(j.get("section_scores"), dict) else {}
             norm_sections = {}

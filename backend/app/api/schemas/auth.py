@@ -1,7 +1,35 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import re
+
+
+# ── Shared password validator ────────────────────────────────────────────
+
+def _check_password_strength(password: str) -> str:
+    """
+    Centralised password-strength check used by every schema that
+    accepts a user-chosen password.
+
+    Rules:
+        - 8–128 characters (enforced via Field, but double-checked here)
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - At least one special character
+    """
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", password):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r"\d", password):
+        raise ValueError("Password must contain at least one number")
+    if not re.search(r"[!@#$%^&*()_+\-=\[\]{}|;':\",./<>?`~\\]", password):
+        raise ValueError("Password must contain at least one special character")
+    return password
+
 
 class RegisterIn(BaseModel):
     model_config = ConfigDict(
@@ -28,22 +56,7 @@ class RegisterIn(BaseModel):
     @field_validator('password')
     @classmethod
     def validate_password(cls, v: str) -> str:
-        """
-        Validate password strength:
-        - At least 8 characters
-        - At least one uppercase letter
-        - At least one lowercase letter
-        - At least one number
-        """
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain at least one number')
-        return v
+        return _check_password_strength(v)
 
 class GoogleOAuthRegisterIn(BaseModel):
     """Schema for Google OAuth registration with legal agreements"""
@@ -105,16 +118,7 @@ class PasswordResetIn(BaseModel):
     @field_validator('new_password')
     @classmethod
     def validate_new_password(cls, v: str) -> str:
-        """Validate password strength"""
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain at least one number')
-        return v
+        return _check_password_strength(v)
 
 class VerifyEmailIn(BaseModel):
     token: str
@@ -149,16 +153,7 @@ class PasswordChangeIn(BaseModel):
     @field_validator('new_password')
     @classmethod
     def validate_new_password(cls, v: str) -> str:
-        """Validate password strength"""
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        if not re.search(r'[A-Z]', v):
-            raise ValueError('Password must contain at least one uppercase letter')
-        if not re.search(r'[a-z]', v):
-            raise ValueError('Password must contain at least one lowercase letter')
-        if not re.search(r'\d', v):
-            raise ValueError('Password must contain at least one number')
-        return v
+        return _check_password_strength(v)
 
 class MessageResponse(BaseModel):
     message: str
@@ -203,6 +198,11 @@ class UserInfo(BaseModel):
     email_verified: bool = False
     is_oauth_user: bool = False
     google_id: Optional[str] = None
+    
+    # UI state fields
+    has_seen_welcome_modal: bool = False
+    has_dismissed_extension_banner: bool = False
+    weekly_goal: Optional[int] = None
 
 class TokenResponse(BaseModel):
     user: UserInfo
@@ -217,3 +217,29 @@ class TokenPairOut(BaseModel):
     token_type: str = "bearer"
 
 User = UserInfo  # alias/back-compat
+
+
+# ── Additional response schemas ──────────────────────────────────────────
+
+class SessionOut(BaseModel):
+    """Active session information."""
+    id: str
+    device: str
+    ip: str
+    location: str = ""
+    last_active: str
+    current: bool = False
+
+class AvatarUploadResponse(BaseModel):
+    """Response for avatar upload."""
+    message: str
+    avatar_url: str
+
+class WsTicketResponse(BaseModel):
+    """Response for WebSocket ticket."""
+    token: str
+
+class SuccessResponse(BaseModel):
+    """Generic success response."""
+    success: bool = True
+    message: str

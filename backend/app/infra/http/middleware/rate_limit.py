@@ -102,6 +102,7 @@ from redis.asyncio import Redis
 from redis.exceptions import RedisError, TimeoutError as RedisTimeoutError
 from ....config import settings
 from ...logging import get_logger
+from ...cache.redis_client import redis_key as _redis_key
 
 
 # Initialize logger
@@ -714,7 +715,7 @@ class GlobalRateLimitMiddleware:
             await self.app(scope, receive, send)
             return
         
-        key = f"{self.key_prefix}:{ident}"
+        key = _redis_key(self.key_prefix, ident)
         
         # Execute rate limiting check
         try:

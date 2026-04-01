@@ -4,7 +4,7 @@ Document Generation Module
 Handles AI-powered document generation (cover letters, etc.).
 """
 from __future__ import annotations
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ....db.session import get_db
@@ -14,12 +14,15 @@ from .schemas import CoverLetterRequest
 from ...deps import get_document_service
 from ....domain.documents.service import DocumentService
 from ....infra.logging import get_logger
+from ...schemas.common import CoverLetterGenerationResponse
+from ....infra.security.rate_limiter import ai_limiter
+from ....infra.external.llm_tracker import check_llm_budget
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/cover-letter/generate")
+@router.post("/cover-letter/generate", response_model=CoverLetterGenerationResponse)
 async def generate_cover_letter(
     request: CoverLetterRequest,
     db: Session = Depends(get_db),
@@ -102,6 +105,22 @@ async def generate_cover_letter(
             "tone_applied": "professional"
         }
     """
+    # Per-user AI rate limit for cover letter generation
+    allowed, retry_after = ai_limiter.check_rate_limit(str(current_user.id))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"AI generation rate limit exceeded. Try again in {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    # Global daily LLM budget cap
+    if not check_llm_budget():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable. Please try again later.",
+        )
+
     logger.info(
         "Generating cover letter",
         extra={

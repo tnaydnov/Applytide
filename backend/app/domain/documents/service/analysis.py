@@ -711,6 +711,7 @@ FULL JOB DESCRIPTION:
                     job_match_summary={"summary": analysis.get("job_match_summary", "")},
                     keyword_analysis=analysis.get("keyword_analysis"),
                     missing_skills={"skills": analysis.get("missing_skills", [])},
+                    tech_analysis=analysis.get("tech_analysis"),
                     ai_detailed_analysis=analysis.get("ai_detailed_analysis"),
                     section_quality=analysis.get("section_quality"),
                     action_verb_count=None,

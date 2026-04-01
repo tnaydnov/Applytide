@@ -79,6 +79,7 @@ class JobDTO:
     requirements: List[str] = field(default_factory=list)
     skills: List[str] = field(default_factory=list)
     source_url: Optional[str] = None
+    is_archived: bool = False
     created_at: datetime = field(default_factory=datetime.now)
     
     def __post_init__(self):

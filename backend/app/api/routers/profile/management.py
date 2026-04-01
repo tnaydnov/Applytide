@@ -4,24 +4,23 @@ Core profile CRUD operations: get, create, update, and export
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import ValidationError
 from datetime import datetime, timezone
-import json
 
 from ....db.session import get_db
 from ....api.deps import get_current_user
 from ....db.models import User, UserProfile
 from ....infra.logging import get_logger
 from .schemas import ProfileRequest
+from ...schemas.common import ProfileCompletenessResponse, UserProfileResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
 @router.get("/")
-async def get_user_profile(
+def get_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -81,11 +80,26 @@ async def get_user_profile(
         
         profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
         
-        if not profile:
-            logger.debug("No profile found, returning empty", extra={"user_id": current_user.id})
-            return {
-                "id": "",
-                "user_id": str(current_user.id),
+        # Build career profile fields
+        career_data = {}
+        if profile:
+            logger.debug("Profile retrieved", extra={
+                "user_id": current_user.id,
+                "profile_id": str(profile.id)
+            })
+            career_data = {
+                "preferred_locations": profile.preferred_locations or [],
+                "country": profile.country or "",
+                "remote_preference": profile.remote_preference or "",
+                "target_roles": profile.target_roles or [],
+                "target_industries": profile.target_industries or [],
+                "experience_level": profile.experience_level or "",
+                "career_goals": profile.career_goals or [],
+                "skills": profile.skills or [],
+            }
+        else:
+            logger.debug("No career profile found", extra={"user_id": current_user.id})
+            career_data = {
                 "preferred_locations": [],
                 "country": "",
                 "remote_preference": "",
@@ -93,15 +107,39 @@ async def get_user_profile(
                 "target_industries": [],
                 "experience_level": "",
                 "career_goals": [],
-                "skills": []
+                "skills": [],
             }
         
-        logger.debug("Profile retrieved", extra={
-            "user_id": current_user.id,
-            "profile_id": str(profile.id)
-        })
+        # Map subscription_plan to subscription_tier for frontend
+        plan = getattr(current_user, 'subscription_plan', 'free') or 'free'
+        tier_map = {'free': 'free', 'pro': 'premium', 'premium': 'premium', 'enterprise': 'enterprise'}
+        subscription_tier = tier_map.get(plan, 'free')
         
-        return profile
+        # Merge user account data with career profile data
+        result = {
+            "id": str(current_user.id),
+            "user_id": str(current_user.id),
+            "email": current_user.email,
+            "first_name": current_user.first_name or "",
+            "last_name": current_user.last_name or "",
+            "full_name": current_user.full_name or "",
+            "avatar_url": current_user.avatar_url or getattr(current_user, 'google_avatar_url', None),
+            "bio": current_user.bio or "",
+            "phone": current_user.phone or "",
+            "location": current_user.location or "",
+            "timezone": current_user.timezone or "",
+            "linkedin_url": current_user.linkedin_url or "",
+            "github_url": current_user.github_url or "",
+            "portfolio_url": getattr(current_user, 'website', '') or "",
+            "subscription_tier": subscription_tier,
+            "email_verified": bool(current_user.email_verified_at),
+            "two_factor_enabled": bool(getattr(current_user, 'totp_enabled', False)),
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+            "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+            **career_data,
+        }
+        
+        return result
         
     except Exception as e:
         logger.error("Failed to retrieve user profile", extra={
@@ -111,9 +149,9 @@ async def get_user_profile(
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
 
 
-@router.put("/")
-async def update_user_profile(
-    request: Request,
+@router.put("/", response_model=UserProfileResponse)
+def update_user_profile(
+    profile_data: ProfileRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -179,26 +217,7 @@ async def update_user_profile(
     """
     try:
         logger.debug("Updating user profile", extra={"user_id": current_user.id})
-        
-        body = await request.body()
-        raw_data = json.loads(body.decode())
-        profile_data = ProfileRequest(**raw_data)
-        
-    except ValidationError as e:
-        logger.warning("Profile validation error", extra={
-            "user_id": current_user.id,
-            "error": str(e)
-        })
-        raise HTTPException(status_code=422, detail=f"Validation error: {e}")
-        
-    except Exception as e:
-        logger.error("Profile request parsing error", extra={
-            "user_id": current_user.id,
-            "error": str(e)
-        }, exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Error: {e}")
 
-    try:
         profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
 
         if profile:
@@ -249,12 +268,12 @@ async def update_user_profile(
         }, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save profile: {str(e)}"
+            detail="Failed to save profile. Please try again."
         )
 
 
 @router.get("/export")
-async def export_user_data(
+def export_user_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -396,36 +415,45 @@ async def export_user_data(
         
         # Export reminders data with notes
         reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id).all()
+
+        # Bulk-fetch all notes for these reminders in a single query (avoid N+1)
+        reminder_ids = [r.id for r in reminders]
+        all_notes = (
+            db.query(ReminderNote)
+            .filter(ReminderNote.reminder_id.in_(reminder_ids))
+            .all()
+        ) if reminder_ids else []
+
+        # Group notes by reminder_id
+        notes_by_reminder: dict = {}
+        for note in all_notes:
+            notes_by_reminder.setdefault(note.reminder_id, []).append(note)
+
         for reminder in reminders:
             reminder_data = {
                 "id": str(reminder.id),
                 "title": reminder.title,
                 "description": reminder.description,
-                "reminder_date": reminder.reminder_date.isoformat() if reminder.reminder_date else None,
-                "is_completed": reminder.is_completed,
-                "job_id": str(reminder.job_id) if reminder.job_id else None,
+                "due_date": reminder.due_date.isoformat() if reminder.due_date else None,
+                "application_id": str(reminder.application_id) if reminder.application_id else None,
                 "created_at": reminder.created_at.isoformat() if reminder.created_at else None,
-                "notes": []
+                "notes": [
+                    {
+                        "id": str(note.id),
+                        "body": note.body,
+                        "created_at": note.created_at.isoformat() if note.created_at else None,
+                    }
+                    for note in notes_by_reminder.get(reminder.id, [])
+                ],
             }
-            
-            # Get reminder notes
-            notes = db.query(ReminderNote).filter(ReminderNote.reminder_id == reminder.id).all()
-            for note in notes:
-                reminder_data["notes"].append({
-                    "id": str(note.id),
-                    "content": note.content,
-                    "created_at": note.created_at.isoformat() if note.created_at else None
-                })
-            
             export_data["reminders"].append(reminder_data)
         
-        # Export user preferences
-        prefs = db.query(UserPreferences).filter(UserPreferences.user_id == current_user.id).first()
-        if prefs:
+        # Export user preferences (key-value store)
+        pref_rows = db.query(UserPreferences).filter(UserPreferences.user_id == current_user.id).all()
+        if pref_rows:
             export_data["preferences"] = {
-                "email_notifications": prefs.email_notifications,
-                "theme": prefs.theme,
-                "created_at": prefs.created_at.isoformat() if prefs.created_at else None
+                row.preference_key: row.preference_value
+                for row in pref_rows
             }
         
         logger.info("Data export completed", extra={
@@ -444,12 +472,12 @@ async def export_user_data(
         }, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export data: {str(e)}"
+            detail="Failed to export data. Please try again."
         )
 
 
-@router.get("/completeness")
-async def get_profile_completeness(
+@router.get("/completeness", response_model=ProfileCompletenessResponse)
+def get_profile_completeness(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

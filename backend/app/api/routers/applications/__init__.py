@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from . import crud, queries, stages, notes, attachments
 
 # Create main router with prefix and tags (like auth router)
-router = APIRouter(prefix="/api/applications", tags=["applications"])
+router = APIRouter(prefix="/applications", tags=["applications"])
 
 # Include all sub-routers WITHOUT prefix (they inherit from main router)
 # IMPORTANT: Specific routes MUST be registered before generic path parameters

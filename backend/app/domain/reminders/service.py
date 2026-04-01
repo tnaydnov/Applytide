@@ -20,7 +20,7 @@ from uuid import UUID
 import logging
 
 from .dto import ReminderDTO, ReminderNoteDTO
-from .ports import IReminderRepo, IReminderNoteRepo, ICalendarGateway
+from .ports import IReminderRepo, IReminderNoteRepo, ICalendarGateway, IUserLookup, IResumeLookup
 
 if TYPE_CHECKING:
     from app.infra.external.ai_preparation_service import AIPreparationService
@@ -91,7 +91,9 @@ class ReminderService:
         calendar: ICalendarGateway,
         ai_prep_service: Optional["AIPreparationService"] = None,
         email_service: Optional["EmailService"] = None,
-        app_service: Optional["ApplicationService"] = None
+        app_service: Optional["ApplicationService"] = None,
+        user_lookup: Optional["IUserLookup"] = None,
+        resume_lookup: Optional["IResumeLookup"] = None,
     ):
         """
         Initialize reminder service.
@@ -103,6 +105,8 @@ class ReminderService:
             ai_prep_service: AI service for preparation tips (optional, for Pro features)
             email_service: Email service for sending tips (optional, for Pro features)
             app_service: Application service for fetching job data (optional, for Pro features)
+            user_lookup: Lightweight user lookup for background tasks (optional)
+            resume_lookup: Lightweight resume text lookup for AI tips (optional)
         
         Raises:
             ValueError: If required dependencies are None
@@ -117,6 +121,8 @@ class ReminderService:
         self.ai_prep_service = ai_prep_service
         self.email_service = email_service
         self.app_service = app_service
+        self._user_lookup = user_lookup
+        self._resume_lookup = resume_lookup
         
         logger.debug(
             "ReminderService initialized successfully",
@@ -1274,16 +1280,8 @@ class ReminderService:
                 
                 # Get resume text if available
                 resume_text = None
-                if app_dto.resume_id:
-                    from app.db.models import Resume
-                    from app.db.session import SessionLocal
-                    db = SessionLocal()
-                    try:
-                        resume = db.get(Resume, app_dto.resume_id)
-                        if resume and resume.text:
-                            resume_text = resume.text
-                    finally:
-                        db.close()
+                if app_dto.resume_id and self._resume_lookup:
+                    resume_text = self._resume_lookup.get_text(app_dto.resume_id)
                 
                 # Get cover letter text if available
                 cover_letter_text = None
@@ -1409,23 +1407,18 @@ class ReminderService:
             
             # Send immediate email with AI tips
             try:
-                # Get user info for email
-                from app.db.models import User
-                from app.db.session import SessionLocal
-                db = SessionLocal()
-                try:
-                    user = db.get(User, user_id)
-                    if not user:
-                        logger.warning(
-                            f"User not found for AI tips email",
-                            extra={"user_id": str(user_id), "reminder_id": str(reminder.id)}
-                        )
-                        return
-                    
-                    user_email = user.email
-                    user_name = user.full_name or user.email.split('@')[0]
-                finally:
-                    db.close()
+                # Get user info for email via injected lookup
+                if not self._user_lookup:
+                    logger.warning("No user_lookup injected, cannot send AI tips email")
+                    return
+                user_info = self._user_lookup.get_email_and_name(user_id)
+                if not user_info:
+                    logger.warning(
+                        "User not found for AI tips email",
+                        extra={"user_id": str(user_id), "reminder_id": str(reminder.id)}
+                    )
+                    return
+                user_email, user_name = user_info
                 
                 # Format due date for email
                 from datetime import timezone as tz

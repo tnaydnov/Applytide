@@ -5,14 +5,14 @@ Provides dashboard metrics, activity feed, and chart data for the admin panel.
 Handles all dashboard-related operations including statistics aggregation
 and real-time activity monitoring.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from sqlalchemy import select, func, and_, or_, desc, distinct
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import models
 from app.domain.admin import dto
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -34,7 +34,7 @@ class DashboardService:
         try:
             logger.debug("Fetching dashboard statistics")
             
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             week_start = today_start - timedelta(days=7)
             
@@ -225,7 +225,7 @@ class DashboardService:
                     
                     events.append(dto.ActivityEventDTO(
                         id=log.id if hasattr(log, 'id') else None,
-                        timestamp=log.timestamp if hasattr(log, 'timestamp') else datetime.utcnow(),
+                        timestamp=log.timestamp if hasattr(log, 'timestamp') else datetime.now(timezone.utc),
                         user_email=users_map.get(log.user_id) if hasattr(log, 'user_id') and log.user_id else None,
                         user_id=log.user_id if hasattr(log, 'user_id') else None,
                         event_type=event_type,
@@ -252,7 +252,7 @@ class DashboardService:
         try:
             logger.debug("Fetching dashboard charts for last 7 days")
             
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             start_date = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
             
             # Generate date range (8 days to include today)

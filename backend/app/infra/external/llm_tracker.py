@@ -33,14 +33,52 @@ Usage Example:
 from __future__ import annotations
 import time
 import uuid
+from datetime import date
 from typing import Optional, Dict, Any
 from contextlib import contextmanager
 from sqlalchemy.orm import Session
 
 from ...db import models
 from ..logging import get_logger
+from ..cache.redis_client import r, redis_key
 
 logger = get_logger(__name__)
+
+# ── Daily budget cap (USD) ───────────────────────────────────────────────
+# System-wide daily LLM spend ceiling.  Set via LLM_DAILY_BUDGET_USD env var.
+import os
+LLM_DAILY_BUDGET_USD: float = float(os.getenv("LLM_DAILY_BUDGET_USD", "50.0"))
+
+_BUDGET_KEY_PREFIX = "llm_budget"
+
+
+def _daily_budget_key() -> str:
+    """Redis key for today's accumulated LLM cost counter."""
+    return redis_key(_BUDGET_KEY_PREFIX, date.today().isoformat())
+
+
+def check_llm_budget() -> bool:
+    """Return True if daily LLM budget has NOT been exhausted."""
+    try:
+        raw = r.get(_daily_budget_key())
+        if raw is None:
+            return True
+        return float(raw) < LLM_DAILY_BUDGET_USD
+    except Exception:
+        # Fail-open: if Redis is down, allow the call
+        logger.warning("Cannot check LLM budget (Redis error), allowing call")
+        return True
+
+
+def _record_llm_cost(cost: float) -> None:
+    """Atomically add *cost* to today's budget counter in Redis."""
+    try:
+        key = _daily_budget_key()
+        r.incrbyfloat(key, cost)
+        # Expire counter at end of day + 1 h buffer
+        r.expire(key, 90_000)  # 25 hours
+    except Exception:
+        logger.warning("Failed to record LLM cost in Redis", exc_info=True)
 
 # Model pricing per 1M tokens (last updated: Oct 26, 2025)
 # Source: https://openai.com/api/pricing/ (Standard tier)
@@ -733,7 +771,11 @@ class LLMUsageTracker:
             
             self.db.add(usage)
             self.db.commit()
-            
+
+            # Track cost against daily budget in Redis
+            if cost > 0:
+                _record_llm_cost(cost)
+
             logger.info(
                 "LLM usage tracked successfully",
                 extra={
@@ -751,6 +793,7 @@ class LLMUsageTracker:
             )
             
         except Exception as e:
+            self.db.rollback()
             logger.error(
                 "Error saving LLM usage to database",
                 extra={

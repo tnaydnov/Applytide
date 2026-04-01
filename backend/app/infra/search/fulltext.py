@@ -146,6 +146,10 @@ def _sanitize_query_text(query_text: str) -> str:
     sanitized = ' '.join(sanitized.split())
     return sanitized
 
+def _escape_like(value: str) -> str:
+    """Escape LIKE/ILIKE metacharacters (%, _) for safe use in LIKE patterns."""
+    return value.replace('%', '\\%').replace('_', '\\_')
+
 # ==================== Full-Text Search Service ====================
 
 # ==================== Full-Text Search Service ====================
@@ -236,13 +240,13 @@ class FullTextSearchService:
                     params["user_id"] = filters["user_id"]
                 if filters.get("location"):
                     base_query += " AND j.location ILIKE :location"
-                    params["location"] = f"%{filters['location']}%"
+                    params["location"] = f"%{_escape_like(filters['location'])}%"
                 if filters.get("remote_type"):
                     base_query += " AND j.remote_type = :remote_type"
                     params["remote_type"] = filters["remote_type"]
                 if filters.get("company"):
                     base_query += " AND c.name ILIKE :company"
-                    params["company"] = f"%{filters['company']}%"
+                    params["company"] = f"%{_escape_like(filters['company'])}%"
                     
             base_query += " ORDER BY relevance_score DESC, j.created_at DESC LIMIT :limit OFFSET :offset"
             params.update({"limit": limit, "offset": offset})
@@ -333,13 +337,13 @@ class FullTextSearchService:
                     params["user_id"] = filters["user_id"]
                 if filters.get("location"):
                     base_query += " AND j.location ILIKE :location"
-                    params["location"] = f"%{filters['location']}%"
+                    params["location"] = f"%{_escape_like(filters['location'])}%"
                 if filters.get("remote_type"):
                     base_query += " AND j.remote_type = :remote_type"
                     params["remote_type"] = filters["remote_type"]
                 if filters.get("company"):
                     base_query += " AND c.name ILIKE :company"
-                    params["company"] = f"%{filters['company']}%"
+                    params["company"] = f"%{_escape_like(filters['company'])}%"
                     
             result = db.execute(text(base_query), params)
             count = int(result.scalar() or 0)
@@ -389,10 +393,14 @@ class FullTextSearchService:
                 extra={"query": sanitized_query, "limit": limit, "user_id": user_id}
             )
             
-            # Build stop words list for SQL
-            stop_words_list = "','".join(STOP_WORDS)
+            # Build stop words as parameterized array to avoid SQL injection
+            user_clause = "AND j.user_id = :user_id" if user_id else ""
             
-            query = """
+            # Generate named params for stop words (:sw_0, :sw_1, ...)
+            sw_params = {f"sw_{i}": w for i, w in enumerate(STOP_WORDS)}
+            sw_placeholders = ", ".join(f":{k}" for k in sw_params)
+            
+            query = f"""
                 SELECT DISTINCT word, COUNT(*) AS frequency
                 FROM (
                     SELECT unnest(string_to_array(lower(j.title), ' ')) AS word
@@ -401,19 +409,17 @@ class FullTextSearchService:
                     {user_clause}
                 ) words
                 WHERE length(word) >= :min_word_length
-                  AND word NOT IN ('{stop_words}')
+                  AND word NOT IN ({sw_placeholders})
                 GROUP BY word
                 ORDER BY frequency DESC, word
                 LIMIT :limit
-            """.format(
-                user_clause="AND j.user_id = :user_id" if user_id else "",
-                stop_words=stop_words_list
-            )
+            """
             
             params: Dict[str, Any] = {
-                "partial": f"%{sanitized_query}%",
+                "partial": f"%{_escape_like(sanitized_query)}%",
                 "limit": limit,
-                "min_word_length": MIN_WORD_LENGTH
+                "min_word_length": MIN_WORD_LENGTH,
+                **sw_params,
             }
             if user_id:
                 params["user_id"] = user_id

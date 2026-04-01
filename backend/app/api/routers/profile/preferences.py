@@ -11,13 +11,14 @@ from ....db.session import get_db
 from ....api.deps import get_current_user
 from ....db.models import User, UserProfile
 from ....infra.logging import get_logger
+from ...schemas.common import JobPreferencesResponse, CareerGoalsResponse, MessageResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/job-preferences")
-async def get_job_preferences(
+@router.get("/job-preferences", response_model=JobPreferencesResponse)
+def get_job_preferences(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -87,8 +88,8 @@ async def get_job_preferences(
         return {"preferences": {}}
 
 
-@router.put("/job-preferences")
-async def update_job_preferences(
+@router.put("/job-preferences", response_model=MessageResponse)
+def update_job_preferences(
     preferences: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -148,8 +149,8 @@ async def update_job_preferences(
         return {"message": "Job preferences updated successfully"}
 
 
-@router.get("/career-goals")
-async def get_career_goals(
+@router.get("/career-goals", response_model=CareerGoalsResponse)
+def get_career_goals(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -211,8 +212,8 @@ async def get_career_goals(
         return {"goals": []}
 
 
-@router.put("/career-goals")
-async def update_career_goals(
+@router.put("/career-goals", response_model=MessageResponse)
+def update_career_goals(
     goals: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

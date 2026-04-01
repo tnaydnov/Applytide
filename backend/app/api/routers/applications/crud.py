@@ -19,6 +19,7 @@ from ...deps import get_current_user
 from ...utils.pagination import PaginationParams, PaginatedResponse
 from ....db import models
 from ...schemas.applications import ApplicationCreate, ApplicationOut, ApplicationUpdate
+from ...schemas.common import MessageResponse
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import logger, event_logger, paginate, broadcast_event
@@ -537,7 +538,7 @@ def toggle_archive_application(
         )
 
 
-@router.delete("/{app_id}")
+@router.delete("/{app_id}", response_model=MessageResponse)
 def delete_application(
     app_id: uuid.UUID,
     svc: ApplicationService = Depends(get_application_service),

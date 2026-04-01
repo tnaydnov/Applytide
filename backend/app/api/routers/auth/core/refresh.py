@@ -41,7 +41,7 @@ logger = get_logger(__name__)
 event_logger = BusinessEventLogger()
 
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=schemas.TokenResponse)
 def refresh_token(
     request: Request, 
     response: Response, 

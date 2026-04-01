@@ -469,3 +469,52 @@ class OAuthTokenSQLARepo(IOAuthTokenRepo):
                 extra={"error": str(e)}
             )
             return False
+
+    def delete_token(self, *, user_id: UUID, provider: str) -> bool:
+        """
+        Delete OAuth token for user and provider (disconnect).
+
+        Args:
+            user_id: User UUID
+            provider: OAuth provider name (e.g., "google")
+
+        Returns:
+            True if a token was deleted, False if none existed
+        """
+        try:
+            _validate_user_id(user_id)
+            _validate_provider(provider)
+
+            token = (
+                self.db.query(models.OAuthToken)
+                .filter(
+                    models.OAuthToken.user_id == user_id,
+                    models.OAuthToken.provider == provider,
+                )
+                .first()
+            )
+
+            if not token:
+                logger.info(
+                    "No OAuth token to delete",
+                    extra={"user_id": str(user_id), "provider": provider},
+                )
+                return False
+
+            self.db.delete(token)
+            self.db.commit()
+
+            logger.info(
+                "OAuth token deleted (disconnect)",
+                extra={"user_id": str(user_id), "provider": provider},
+            )
+            return True
+
+        except Exception as e:
+            self.db.rollback()
+            logger.error(
+                "Failed to delete OAuth token",
+                exc_info=True,
+                extra={"user_id": str(user_id), "provider": provider, "error": str(e)},
+            )
+            raise DatabaseOperationError(f"Token deletion failed: {e}") from e

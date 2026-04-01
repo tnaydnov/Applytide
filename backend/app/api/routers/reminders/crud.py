@@ -6,7 +6,7 @@ Handles reminder create, read, update, delete operations with Google Calendar sy
 from __future__ import annotations
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ....db.models import User
 from ...deps import get_current_user
@@ -125,13 +125,13 @@ async def create_reminder(
             extra={"user_id": str(user.id), "error": str(e)},
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch reminders")
 
 
 @router.get("/", response_model=List[ReminderResponse])
 async def get_reminders(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     user: User = Depends(get_current_user),
     svc: ReminderService = Depends(get_reminder_service),
 ):

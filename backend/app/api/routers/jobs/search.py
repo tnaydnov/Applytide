@@ -10,16 +10,11 @@ from ....db import models
 from ...deps import get_current_user
 from ...deps import get_job_service
 from ....domain.jobs.service import JobService
-from ...utils.pagination import PaginatedResponse
+from ...utils.pagination import PaginatedResponse, calculate_pagination
 from .schemas import JobSearchOut
+from ...schemas.common import SearchSuggestionsResponse
 
 router = APIRouter()
-
-
-def _paginate(total: int, page: int, page_size: int):
-    """Helper function to calculate pagination metadata."""
-    pages = (total + page_size - 1) // page_size if page_size else 1
-    return pages, page < pages, page > 1
 
 
 @router.get("/search", response_model=PaginatedResponse[JobSearchOut])
@@ -98,7 +93,7 @@ def search_jobs(
         page_size=page_size,
         filters=filters,
     )
-    pages, has_next, has_prev = _paginate(total, page, page_size)
+    pages, has_next, has_prev = calculate_pagination(total, page, page_size)
     return PaginatedResponse(
         items=[
             JobSearchOut(
@@ -123,7 +118,7 @@ def search_jobs(
     )
 
 
-@router.get("/suggestions")
+@router.get("/suggestions", response_model=SearchSuggestionsResponse)
 def get_search_suggestions(
     q: str = Query(..., min_length=2, description="Partial search query"),
     svc: JobService = Depends(get_job_service),

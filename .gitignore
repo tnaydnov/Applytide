@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 .env
 .env.production
+.env.local
+.env.*.local
 
 # Node
 node_modules/
@@ -11,6 +13,19 @@ node_modules/
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
+
+# Build outputs
+newfront/dist/
+
+# SSL certificates and keys
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.cert
+nginx/ssl/*.crt
+
+# User uploads (may contain PII)
+backend/app/uploads/**
+!backend/app/uploads/**/.gitkeep
 
 # OS/editor
 .DS_Store

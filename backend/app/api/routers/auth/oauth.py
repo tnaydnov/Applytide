@@ -19,15 +19,19 @@ from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from redis.exceptions import RedisError
 
 from ....db.session import get_db
 from ....db import models
-from ....infra.security.tokens import create_access_token, create_refresh_token, decode_access
+from ....infra.security.tokens import create_access_token, create_refresh_token
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
 from ....infra.external.google_oauth import OAuthService as GoogleOAuthService
 from ....infra.notifications.email_service import email_service
+from ....infra.cache.redis_client import get_redis, redis_key
 from ....config import settings
+from ...deps import get_current_user
+from ...schemas.common import SuccessMessageResponse
 
 from .utils import get_client_info
 
@@ -36,6 +40,38 @@ router = APIRouter()
 # Initialize logging
 logger = get_logger(__name__)
 event_logger = BusinessEventLogger()
+
+# OAuth state CSRF protection — 5-minute TTL
+_OAUTH_STATE_TTL: int = 300
+
+
+def _state_key(state: str) -> str:
+    """Redis key for OAuth state CSRF token."""
+    return redis_key("oauth", "state", state)
+
+
+def _store_oauth_state(state: str) -> None:
+    """Store OAuth state token in Redis with short TTL."""
+    try:
+        r = get_redis()
+        r.setex(_state_key(state), _OAUTH_STATE_TTL, "1")
+    except RedisError:
+        logger.error("Failed to store OAuth state in Redis", exc_info=True)
+        raise
+
+
+def _consume_oauth_state(state: str) -> bool:
+    """Validate and consume an OAuth state token. Returns True if valid."""
+    try:
+        r = get_redis()
+        pipe = r.pipeline(transaction=True)
+        pipe.get(_state_key(state))
+        pipe.delete(_state_key(state))
+        value, _ = pipe.execute()
+        return value is not None
+    except RedisError:
+        logger.error("Redis error consuming OAuth state", exc_info=True)
+        return False
 
 
 class LegalAgreementsIn(BaseModel):
@@ -87,6 +123,7 @@ async def login_google(
     """
     try:
         state = secrets.token_urlsafe(16)
+        _store_oauth_state(state)
         url = GoogleOAuthService(db).get_google_authorization_url(state=state)
         
         logger.info(
@@ -151,7 +188,7 @@ async def callback_google(
         Redirects to login with error parameter on failure
         
     Security:
-        - State validation: CSRF protection (TODO: implement)
+        - State validation: CSRF protection via Redis-backed single-use token
         - Code exchange: Secure token retrieval
         - Profile verification: Email from Google validated
         - Extended session: 30-day refresh token for OAuth
@@ -189,6 +226,16 @@ async def callback_google(
         )
         return RedirectResponse(
             f"{settings.FRONTEND_URL}/login?error={error or 'missing_code'}"
+        )
+
+    # Validate OAuth state for CSRF protection
+    if not state or not _consume_oauth_state(state):
+        logger.warning(
+            "OAuth state validation failed",
+            extra={"has_state": bool(state), "ip_address": ip_address}
+        )
+        return RedirectResponse(
+            f"{settings.FRONTEND_URL}/login?error=invalid_state"
         )
 
     try:
@@ -291,11 +338,12 @@ async def callback_google(
         )
 
 
-@router.post("/google/store-agreements")
+@router.post("/google/store-agreements", response_model=SuccessMessageResponse)
 async def store_google_agreements(
     payload: LegalAgreementsIn,
     request: Request,
-    db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Store legal agreements for OAuth user.
@@ -354,24 +402,7 @@ async def store_google_agreements(
     """
     user_agent, ip_address = get_client_info(request)
     
-    # Get user from access token cookie
-    access_token = request.cookies.get("access_token")
-    if not access_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
-    
     try:
-        token_data = decode_access(access_token)
-        user_id = token_data.get("sub")
-        
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-        
         # Validate all agreements are True
         if not all([
             payload.terms_accepted,
@@ -384,28 +415,20 @@ async def store_google_agreements(
                 detail="All legal agreements must be accepted"
             )
         
-        # Get user and update legal agreements
-        user = db.query(models.User).filter(models.User.id == uuid.UUID(user_id)).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
         # Store legal agreement acceptance
         now = datetime.now(timezone.utc)
-        user.terms_accepted_at = now
-        user.privacy_accepted_at = now
-        user.terms_version = "1.0"
-        user.acceptance_ip = ip_address
+        current_user.terms_accepted_at = now
+        current_user.privacy_accepted_at = now
+        current_user.terms_version = "1.0"
+        current_user.acceptance_ip = ip_address
         
         db.commit()
         
         logger.info(
             "Legal agreements stored for OAuth user",
             extra={
-                "user_id": user_id,
-                "email": user.email,
+                "user_id": str(current_user.id),
+                "email": current_user.email,
                 "ip_address": ip_address
             }
         )
@@ -415,6 +438,7 @@ async def store_google_agreements(
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         logger.error(
             "Failed to store legal agreements",
             extra={"error": str(e), "ip_address": ip_address},

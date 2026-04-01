@@ -54,6 +54,7 @@ class DocumentAnalysis(BaseModel):
     job_match_summary: Optional[Dict[str, Any]] = None
     keyword_analysis: Optional[Dict[str, Any]] = None
     missing_skills: Optional[Dict[str, Any]] = None
+    tech_analysis: Optional[Dict[str, Any]] = None
     ai_detailed_analysis: Optional[Dict[str, Any]] = None
     section_quality: Optional[Dict[str, Any]] = None
     action_verb_count: Optional[int] = None

@@ -31,7 +31,7 @@ from .attachment_operations import (
     AttachmentPort,
     DocumentServicePort
 )
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -98,13 +98,31 @@ class ApplicationService:
         source: Optional[str]
     ) -> ApplicationDTO:
         """Create or update application (deduplicates by user+job)."""
-        return self._app_ops.create_or_update(
+        app = self._app_ops.create_or_update(
             user_id=user_id,
             job_id=job_id,
             resume_id=resume_id,
             status=status,
             source=source
         )
+        
+        # Create initial "Applied" stage for new applications (best-effort)
+        try:
+            existing_stages = self._stage_ops.list_stages(
+                user_id=user_id, app_id=app.id
+            )
+            if not existing_stages:
+                initial_status = status or "Applied"
+                if initial_status == "Saved":
+                    initial_status = "Applied"
+                self._stage_ops.create_stage_for_status_change(
+                    app_id=app.id,
+                    status=initial_status
+                )
+        except Exception as e:
+            logger.warning(f"Failed to create initial stage: {e}")
+        
+        return app
 
     def list_paginated(
         self, *,

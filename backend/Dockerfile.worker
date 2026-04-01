@@ -19,14 +19,21 @@ RUN pip install --upgrade pip && \
 RUN python -m playwright install chromium && \
     python -m playwright install-deps chromium
 
+# Create non-root user
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
 # App files
 COPY alembic.ini .
 COPY app ./app
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
+RUN mkdir -p /app/app/uploads && chown -R appuser:appgroup /app/app/uploads
+
 ENV PYTHONUNBUFFERED=1
 # Worker doesn't expose a port
+
+USER appuser
 
 ENTRYPOINT ["/entrypoint.sh"]
 # The actual command is set in compose: python -m app.infra.workers.reminders_runner

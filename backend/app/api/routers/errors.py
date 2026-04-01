@@ -33,14 +33,15 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.deps import get_db
 from app.api.deps import get_current_user_optional
 from app.db import models
 from app.infra.logging import get_logger
+from app.api.schemas.common import ErrorLogResponse
 
-router = APIRouter(prefix="/api/errors", tags=["errors"])
+router = APIRouter(prefix="/errors", tags=["errors"])
 logger = get_logger(__name__)
 
 
@@ -56,8 +57,8 @@ class FrontendErrorPayload(BaseModel):
     extra: Optional[dict] = None
 
 
-@router.post("/log")
-async def log_frontend_error(
+@router.post("/log", response_model=ErrorLogResponse)
+def log_frontend_error(
     payload: FrontendErrorPayload,
     request: Request,
     db: Session = Depends(get_db),
@@ -139,7 +140,7 @@ async def log_frontend_error(
     try:
         # Create error log entry
         log_entry = models.ApplicationLog(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             level="ERROR",
             logger=f"client.{payload.source}",
             message=payload.message,
@@ -176,5 +177,6 @@ async def log_frontend_error(
 
     except Exception as e:
         # Don't fail the client request if logging fails
+        db.rollback()
         logger.error(f"Failed to log client error: {e}")
-        return {"status": "failed", "error": str(e)}
+        return {"status": "failed", "error": "Failed to log error"}

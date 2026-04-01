@@ -167,7 +167,7 @@ def list_cards(
                     title=r.title,
                     company_name=r.company_name
                 )
-            ) for r in rows
+            ) for r in rows[:500]  # Hard cap to prevent unbounded results
         ]
         
         logger.info(
@@ -238,7 +238,7 @@ def list_applications_with_stages(
             extra={"user_id": str(current_user.id)}
         )
         
-        results = svc.list_with_stages(user_id=current_user.id)
+        results = svc.list_with_stages(user_id=current_user.id)[:500]  # Hard cap
         
         logger.info(
             "Applications with stages retrieved",

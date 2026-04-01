@@ -206,10 +206,10 @@ class BanService:
             return is_banned
             
         except InvalidBanDataError:
-            logger.error(f"Invalid email format in ban check: {email}")
+            logger.error("Invalid email format in ban check", extra={"email_hash": hash(email) % 10000})
             raise
         except Exception as e:
-            logger.error(f"Error checking email ban: {e}", extra={"email": email})
+            logger.error("Error checking email ban", extra={"email_hash": hash(email) % 10000}, exc_info=True)
             # Fail open - don't block access on error, but log it
             return False
     
@@ -261,10 +261,10 @@ class BanService:
             return is_banned
             
         except InvalidBanDataError:
-            logger.error(f"Invalid IP format in ban check: {ip_address}")
+            logger.error("Invalid IP format in ban check", extra={"ip_hash": hash(ip_address) % 10000})
             raise
         except Exception as e:
-            logger.error(f"Error checking IP ban: {e}", extra={"ip_address": ip_address})
+            logger.error("Error checking IP ban", extra={"ip_hash": hash(ip_address) % 10000}, exc_info=True)
             # Fail open - don't block access on error, but log it
             return False
     

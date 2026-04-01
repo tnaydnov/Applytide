@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ...deps import get_current_user
 from ....db import models
 from ...schemas.applications import NoteCreate, NoteUpdate, NoteOut
+from ...schemas.common import MessageResponse
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event, logger
@@ -309,7 +310,7 @@ def update_note(
         )
 
 
-@router.delete("/{app_id}/notes/{note_id}")
+@router.delete("/{app_id}/notes/{note_id}", response_model=MessageResponse)
 def delete_note(
     app_id: uuid.UUID,
     note_id: uuid.UUID,

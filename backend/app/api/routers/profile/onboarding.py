@@ -13,6 +13,7 @@ from ....api.deps import get_current_user
 from ....db.models import User
 from ....infra.logging import get_logger
 from .schemas import WelcomeModalStatusResponse
+from ...schemas.common import WelcomeModalResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -64,8 +65,8 @@ async def get_welcome_modal_status(
     }
 
 
-@router.post("/welcome-modal-seen")
-async def mark_welcome_modal_seen(
+@router.post("/welcome-modal-seen", response_model=WelcomeModalResponse)
+def mark_welcome_modal_seen(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

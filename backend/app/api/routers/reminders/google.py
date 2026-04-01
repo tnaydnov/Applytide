@@ -1,14 +1,17 @@
 """
 Reminders Google Calendar Integration Module
 
-Handles Google Calendar connection checking, event fetching, and importing.
+Handles Google Calendar connection checking, event fetching, importing,
+and disconnecting.
 """
 from __future__ import annotations
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from sqlalchemy.orm import Session
 
-from ....db.models import User
+from ....db.models import User, OAuthToken
+from ....db.session import get_db
 from ...deps import get_current_user
 from ...deps import get_reminder_service
 from ....domain.reminders.service import ReminderService
@@ -62,7 +65,7 @@ async def check_google_connection(
 async def get_google_calendar_events(
     time_min: Optional[str] = None,
     time_max: Optional[str] = None,
-    max_results: int = 100,
+    max_results: int = Query(100, ge=1, le=500),
     user: User = Depends(get_current_user),
     svc: ReminderService = Depends(get_reminder_service),
 ):
@@ -120,7 +123,7 @@ async def get_google_calendar_events(
             extra={"user_id": str(user.id), "error": str(e)},
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch Google Calendar events")
 
 
 @router.post("/reminders/import-google-event", response_model=ReminderResponse)
@@ -192,4 +195,55 @@ async def import_google_event(
             },
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to import Google Calendar event")
+
+
+@router.post("/google/disconnect", response_model=dict)
+async def disconnect_google_calendar(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Disconnect Google Calendar integration.
+
+    Removes the stored OAuth token for the Google provider, effectively
+    disconnecting Google Calendar sync for this user.
+
+    Returns:
+        dict: {"disconnected": True}
+
+    Raises:
+        HTTPException: 500 if deletion fails
+    """
+    try:
+        token = (
+            db.query(OAuthToken)
+            .filter(
+                OAuthToken.user_id == user.id,
+                OAuthToken.provider == "google",
+            )
+            .first()
+        )
+
+        if token:
+            db.delete(token)
+            db.commit()
+            logger.info(
+                "Google Calendar disconnected",
+                extra={"user_id": str(user.id)},
+            )
+        else:
+            logger.info(
+                "No Google Calendar connection to disconnect",
+                extra={"user_id": str(user.id)},
+            )
+
+        return {"disconnected": True}
+    except Exception as e:
+        db.rollback()
+        logger.error(
+            "Failed to disconnect Google Calendar",
+            extra={"user_id": str(user.id), "error": str(e)},
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to disconnect Google Calendar")

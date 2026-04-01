@@ -176,6 +176,19 @@ async def upload_document(
                 }
             )
             raise HTTPException(status_code=400, detail="Empty file")
+
+        # Enforce size limit at router layer to prevent memory exhaustion
+        MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
+        if len(content) > MAX_UPLOAD_SIZE:
+            logger.warning(
+                "Upload exceeds size limit",
+                extra={
+                    "user_id": str(current_user.id),
+                    "file_name": file.filename,
+                    "size_mb": round(len(content) / (1024 * 1024), 2)
+                }
+            )
+            raise HTTPException(status_code=413, detail=f"File exceeds {MAX_UPLOAD_SIZE // (1024 * 1024)}MB limit")
         
         # SECURITY: Verify actual file content matches claimed extension
         try:
@@ -212,7 +225,7 @@ async def upload_document(
                 )
                 raise HTTPException(
                     status_code=400,
-                    detail=f"File extension doesn't match content. Expected {allowed_mimes[mime_type]}, got {ext}"
+                    detail="File extension does not match the detected content type"
                 )
             
             logger.info(
@@ -234,6 +247,8 @@ async def upload_document(
                     "file_name": file.filename
                 }
             )
+        except HTTPException:
+            raise
         except Exception as mime_error:
             logger.error(
                 "Error during MIME type validation",
@@ -244,8 +259,11 @@ async def upload_document(
                 },
                 exc_info=True
             )
-            # Don't fail upload if MIME check fails - but log it
-            pass
+            # MIME validation error is a security concern — reject rather than silently pass
+            raise HTTPException(
+                status_code=400,
+                detail="File content validation failed"
+            )
 
         meta_dict: Dict[str, Any] = {}
         if metadata:

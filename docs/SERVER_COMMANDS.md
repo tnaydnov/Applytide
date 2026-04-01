@@ -551,10 +551,10 @@ sudo du -h --max-depth=1 /var/lib/docker/volumes/applytide_documents/_data | sor
 
 ```bash
 # Copy from server to local machine (run on your computer)
-scp user@applytide.com:/var/lib/docker/volumes/applytide_documents/_data/abc-123.pdf ~/Downloads/
+scp user@your-server.example.com:/var/lib/docker/volumes/applytide_documents/_data/abc-123.pdf ~/Downloads/
 
 # Or use rsync
-rsync -avz user@applytide.com:/var/lib/docker/volumes/applytide_documents/_data/abc-123.pdf ~/Downloads/
+rsync -avz user@your-server.example.com:/var/lib/docker/volumes/applytide_documents/_data/abc-123.pdf ~/Downloads/
 ```
 **What it does:** Downloads file from server to your computer.  
 **When to use:** Recovering specific files, debugging file issues, user support.
@@ -565,7 +565,7 @@ rsync -avz user@applytide.com:/var/lib/docker/volumes/applytide_documents/_data/
 
 ```bash
 # Copy from local to server (run on your computer)
-scp ~/file.pdf user@applytide.com:/tmp/
+scp ~/file.pdf user@your-server.example.com:/tmp/
 
 # Then on server, move to correct location
 sudo mv /tmp/file.pdf /var/lib/docker/volumes/applytide_documents/_data/
@@ -1344,7 +1344,7 @@ docker volume ls > volumes.txt
 # 2. Install Docker & Docker Compose
 # 3. Clone repository
 cd /opt
-git clone https://github.com/tnaydnov/applytide.git
+git clone https://github.com/your-username/applytide.git
 cd applytide
 
 # 4. Restore environment file

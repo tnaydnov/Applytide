@@ -35,9 +35,10 @@ from ...db.session import get_db
 from ...db import models
 from ...api.deps import get_current_user
 from ...api.schemas.preferences import PreferenceCreate, PreferenceUpdate, PreferenceOut
+from ...api.schemas.common import MessageResponse
 from ...infra.logging import get_logger
 
-router = APIRouter(prefix="/api/preferences", tags=["preferences"])
+router = APIRouter(prefix="/preferences", tags=["preferences"])
 logger = get_logger(__name__)
 
 @router.get("", response_model=List[PreferenceOut])
@@ -350,7 +351,7 @@ def update_preference(
     )
 
 
-@router.delete("/{preference_key}")
+@router.delete("/{preference_key}", response_model=MessageResponse)
 def delete_preference(
     preference_key: str,
     db: Session = Depends(get_db),

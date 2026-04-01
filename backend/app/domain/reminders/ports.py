@@ -4,6 +4,21 @@ from uuid import UUID
 from datetime import datetime
 from .dto import ReminderDTO, ReminderNoteDTO
 
+
+class IUserLookup(Protocol):
+    """Lightweight lookup for user info needed by background tasks."""
+    def get_email_and_name(self, user_id: UUID) -> Optional[Tuple[str, str]]:
+        """Return ``(email, display_name)`` or ``None``."""
+        ...
+
+
+class IResumeLookup(Protocol):
+    """Lightweight lookup for resume text needed by AI tips."""
+    def get_text(self, resume_id: UUID) -> Optional[str]:
+        """Return extracted plain text or ``None``."""
+        ...
+
+
 class IReminderRepo(Protocol):
     def find_duplicate(self, *, user_id: UUID, title: str, application_id: Optional[UUID], due_date: datetime) -> Optional[ReminderDTO]: ...
     def create(self, *, user_id: UUID, title: str, description: Optional[str], due_date: datetime, application_id: Optional[UUID], email_notifications_enabled: bool = False, notification_schedule: Optional[dict] = None, event_type: Optional[str] = "general", user_timezone: Optional[str] = "UTC", ai_prep_tips_enabled: bool = False) -> ReminderDTO: ...

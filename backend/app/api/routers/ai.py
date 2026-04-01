@@ -31,9 +31,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from ...domain.jobs.extraction.service import JobExtractionService
 from ..deps import get_job_extraction_service
+from ..deps import get_current_user
+from ...db.models import User
 from ...infra.logging import get_logger
+from ...infra.security.rate_limiter import ai_limiter
+from ...infra.external.llm_tracker import check_llm_budget
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 logger = get_logger(__name__)
 
 class ExtractIn(BaseModel):
@@ -63,6 +67,7 @@ class ExtractOut(BaseModel):
 @router.post("/extract", response_model=ExtractOut)
 def extract_job(
     payload: ExtractIn,
+    current_user: User = Depends(get_current_user),
     svc: JobExtractionService = Depends(get_job_extraction_service),
 ):
     """
@@ -155,6 +160,22 @@ def extract_job(
         }
     """
     try:
+        # Per-user AI rate limit (prevents LLM cost overrun)
+        allowed, retry_after = ai_limiter.check_rate_limit(str(current_user.id))
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"AI extraction rate limit exceeded. Try again in {retry_after} seconds.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        # Global daily LLM budget cap
+        if not check_llm_budget():
+            raise HTTPException(
+                status_code=503,
+                detail="AI service temporarily unavailable. Please try again later.",
+            )
+
         html_len = len(payload.html or "")
         manual_text_len = len(payload.manual_text or "")
 
@@ -244,11 +265,11 @@ def extract_job(
             "Job extraction validation error",
             extra={"url": payload.url, "error": str(e)},
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid input for job extraction")
     except Exception as e:
         logger.error(
             "Job extraction failed",
             extra={"url": payload.url, "error": str(e), "error_type": type(e).__name__},
             exc_info=True,
         )
-        raise HTTPException(status_code=500, detail=f"Failed to extract job: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to extract job. Please try again later.")

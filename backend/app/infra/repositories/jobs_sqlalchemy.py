@@ -292,6 +292,7 @@ def _to_dto(job: models.Job, company_name: Optional[str], company_website: Optio
         requirements=list(job.requirements or []),
         skills=list(job.skills or []),
         source_url=job.source_url,
+        is_archived=job.is_archived,
         created_at=job.created_at,
     )
 
@@ -509,11 +510,13 @@ class JobSQLARepository(IJobRepository):
 
             # Apply filters
             if location:
-                base = base.where(models.Job.location.ilike(f"%{location}%"))
+                _loc = location.replace('%', '\\%').replace('_', '\\_')
+                base = base.where(models.Job.location.ilike(f"%{_loc}%"))
             if remote_type:
                 base = base.where(models.Job.remote_type == remote_type)
             if company:
-                base = base.where(models.Company.name.ilike(f"%{company}%"))
+                _comp = company.replace('%', '\\%').replace('_', '\\_')
+                base = base.where(models.Company.name.ilike(f"%{_comp}%"))
 
             base = apply_sorting(base, models.Job, sort, order)
 
@@ -523,13 +526,13 @@ class JobSQLARepository(IJobRepository):
             # Count with same filters
             total_q = select(func.count(models.Job.id)).where(models.Job.user_id == user_id)
             if location:
-                total_q = total_q.where(models.Job.location.ilike(f"%{location}%"))
+                total_q = total_q.where(models.Job.location.ilike(f"%{_loc}%"))
             if remote_type:
                 total_q = total_q.where(models.Job.remote_type == remote_type)
             if company:
                 total_q = (
                     total_q.join(models.Company, models.Job.company_id == models.Company.id, isouter=True)
-                    .where(models.Company.name.ilike(f"%{company}%"))
+                    .where(models.Company.name.ilike(f"%{_comp}%"))
                 )
             total = self.db.execute(total_q).scalar() or 0
 
@@ -654,36 +657,44 @@ class JobSQLARepository(IJobRepository):
                 logger.warning(f"Job not found or permission denied for deletion: {job_id} for user {user_id}")
                 raise NotFoundError(f"Job {job_id} not found or you don't have permission")
 
-            # Get applications to delete their children
-            apps = self.db.execute(
-                select(models.Application).where(models.Application.job_id == job_id)
-            ).scalars().all()
+            # Get application IDs for bulk child deletion
+            app_ids = [
+                row[0]
+                for row in self.db.execute(
+                    select(models.Application.id).where(models.Application.job_id == job_id)
+                ).all()
+            ]
 
-            # Delete in correct order for referential integrity
+            # Bulk-delete children in correct order for referential integrity
             attachments_deleted = 0
             stages_deleted = 0
             notes_deleted = 0
-            
-            for app in apps:
-                # Delete application attachments
-                attachments_deleted += self.db.execute(
+            apps_deleted = 0
+
+            if app_ids:
+                attachments_deleted = self.db.execute(
                     delete(models.ApplicationAttachment).where(
-                        models.ApplicationAttachment.application_id == app.id
+                        models.ApplicationAttachment.application_id.in_(app_ids)
                     )
                 ).rowcount
-                
-                # Delete stages
-                stages_deleted += self.db.execute(
-                    delete(models.Stage).where(models.Stage.application_id == app.id)
+
+                stages_deleted = self.db.execute(
+                    delete(models.Stage).where(
+                        models.Stage.application_id.in_(app_ids)
+                    )
                 ).rowcount
-                
-                # Delete notes
-                notes_deleted += self.db.execute(
-                    delete(models.Note).where(models.Note.application_id == app.id)
+
+                notes_deleted = self.db.execute(
+                    delete(models.Note).where(
+                        models.Note.application_id.in_(app_ids)
+                    )
                 ).rowcount
-                
-                # Delete application
-                self.db.delete(app)
+
+                apps_deleted = self.db.execute(
+                    delete(models.Application).where(
+                        models.Application.job_id == job_id
+                    )
+                ).rowcount
 
             # Delete match results
             match_results_deleted = self.db.execute(
@@ -698,7 +709,7 @@ class JobSQLARepository(IJobRepository):
                 f"Deleted job {job_id} and related data",
                 extra={
                     "job_id": str(job_id),
-                    "applications_deleted": len(apps),
+                    "applications_deleted": apps_deleted,
                     "attachments_deleted": attachments_deleted,
                     "stages_deleted": stages_deleted,
                     "notes_deleted": notes_deleted,

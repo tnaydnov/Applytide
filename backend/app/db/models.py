@@ -1,17 +1,20 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint, JSON, Column, Float
+from sqlalchemy import (
+    DateTime, Integer, String, Text, Boolean, ForeignKey,
+    UniqueConstraint, Index, JSON, Float,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-
-
 from .base import Base
-from .session import engine
+from ..infra.security.encryption import EncryptedText
 
-IS_POSTGRES = engine.dialect.name == "postgresql"
-JSONList = JSONB if IS_POSTGRES else JSONB  # keep JSONB when available; fallback above if you add SQLite JSON
+# Always use JSONB on PostgreSQL. If you ever need SQLite fallback, detect
+# dialect at migration time or via a runtime flag — never import the engine
+# at module level (it forces a DB connection at import time).
+JSONList = JSONB
 
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
@@ -21,26 +24,29 @@ class UserProfile(Base):
     """Simplified user profile for AI personalization"""
     __tablename__ = "user_profiles"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, unique=True,
+    )
 
     # Geographic Preferences
-    preferred_locations = Column(JSON)   # ["San Francisco, CA", "Remote", ...]
-    country = Column(String)
-    remote_preference = Column(String)   # "remote_only", "hybrid", "onsite", "any"
+    preferred_locations: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    remote_preference: Mapped[str | None] = mapped_column(String(20), nullable=True)  # remote_only / hybrid / onsite / any
 
     # Career Preferences
-    target_roles = Column(JSON)
-    target_industries = Column(JSON)
-    experience_level = Column(String)
+    target_roles: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    target_industries: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    experience_level: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     # Skills and Career Goals
-    skills = Column(JSON)
-    career_goals = Column(JSON)
+    skills: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    career_goals: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc, nullable=False)
 
 # ---------- Users ----------
 class User(Base):
@@ -90,6 +96,11 @@ class User(Base):
     
     # Calendar & API Access
     calendar_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    
+    # Two-Factor Authentication (TOTP)
+    totp_secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    backup_codes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # List of hashed backup codes
     
     # Onboarding & User Experience
     has_seen_welcome_modal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -244,10 +255,13 @@ class User(Base):
 class OAuthToken(Base):
     __tablename__ = "oauth_tokens"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     provider: Mapped[str] = mapped_column(String(20), nullable=False)  # "google", "github", etc.
-    access_token: Mapped[str] = mapped_column(Text, nullable=False)
-    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    access_token: Mapped[str] = mapped_column(EncryptedText, nullable=False)
+    refresh_token: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     token_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     scope: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -271,8 +285,14 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    company_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
 
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     title: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
@@ -284,6 +304,7 @@ class Job(Base):
     requirements: Mapped[list[str]] = mapped_column(JSONList, nullable=False, default=list)
     skills: Mapped[list[str]] = mapped_column(JSONList, nullable=False, default=list)
 
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False, index=True)
 
 
@@ -291,7 +312,10 @@ class Job(Base):
 class Resume(Base):
     __tablename__ = "resumes"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True, index=True,
+    )
     label: Mapped[str] = mapped_column(String(120), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -314,9 +338,18 @@ PIPELINE_STATUSES = [
 class Application(Base):
     __tablename__ = "applications"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    resume_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True, index=True,
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    resume_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     status: Mapped[str] = mapped_column(String(32), default="Applied", nullable=False, index=True)
     source: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
@@ -324,12 +357,19 @@ class Application(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_id", name="uq_user_job_application"),
+    )
+
 
 # ---------- Stages (timeline entries) ----------
 class Stage(Base):
     __tablename__ = "stages"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    application_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     name: Mapped[str] = mapped_column(String(60), nullable=False)  # e.g., "Phone Screen"
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     outcome: Mapped[str | None] = mapped_column(String(60), nullable=True)  # "passed"/"failed"
@@ -340,8 +380,14 @@ class Stage(Base):
 class Note(Base):
     __tablename__ = "notes"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    application_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
 
@@ -349,13 +395,26 @@ class Note(Base):
 class MatchResult(Base):
     __tablename__ = "match_results"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    resume_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
-    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True, index=True,
+    )
+    resume_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     score: Mapped[int] = mapped_column(Integer, nullable=False)  # 0..100 stored as int
     keywords_present: Mapped[str | None] = mapped_column(Text, nullable=True)   # comma-joined
     keywords_missing: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("resume_id", "job_id", name="uq_resume_job_match"),
+    )
 
 
 # ---------- Application Attachments ----------
@@ -365,7 +424,10 @@ class ApplicationAttachment(Base):
     __tablename__ = "application_attachments"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    application_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     filename: Mapped[str] = mapped_column(String(300), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -379,7 +441,10 @@ class ApplicationAttachment(Base):
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True, index=True)
     family_id: Mapped[str] = mapped_column(String(36), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
@@ -394,7 +459,10 @@ class RefreshToken(Base):
 class EmailAction(Base):
     __tablename__ = "email_actions"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # VERIFY, RESET
     token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
@@ -404,8 +472,14 @@ class EmailAction(Base):
 class Reminder(Base):
     __tablename__ = "reminders"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    application_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("applications.id"), nullable=True, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    application_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("applications.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -435,19 +509,32 @@ class Reminder(Base):
 class UserPreferences(Base):
     __tablename__ = "user_preferences"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     preference_key: Mapped[str] = mapped_column(String(255), nullable=False)
     preference_value: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "preference_key", name="uq_user_preference_key"),
+    )
 
 
 # ---------- Reminder Notes ----------
 class ReminderNote(Base):
     __tablename__ = "reminder_notes"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    reminder_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("reminders.id"), nullable=False, index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    reminder_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("reminders.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
@@ -569,7 +656,7 @@ class BannedEntity(Base):
     # Ban details
     banned_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Original user who was banned (if applicable)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)  # Reason for ban
-    banned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Admin who issued the ban
+    banned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Admin who issued the ban
     
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)  # Can be deactivated without deleting
@@ -578,7 +665,7 @@ class BannedEntity(Base):
     banned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # Optional expiration (null = permanent)
     unbanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    unbanned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Admin who removed the ban
+    unbanned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # Admin who removed the ban
     
     # Prevent duplicate bans
     __table_args__ = (

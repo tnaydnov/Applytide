@@ -5,14 +5,14 @@ Provides security monitoring, event tracking, and threat analysis
 for the admin panel. Tracks authentication failures, rate limiting,
 and unauthorized access attempts.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import models
 from app.domain.admin import dto
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,7 +52,7 @@ class SecurityService:
             hours = 8760
         
         # Calculate cutoff time
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         logger.debug(f"Fetching security stats since {cutoff}")
         
         # Query security-related logs
@@ -302,7 +302,7 @@ class SecurityService:
             
             # Time window filter
             if hours:
-                cutoff = datetime.utcnow() - timedelta(hours=hours)
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
                 query = query.filter(models.ApplicationLog.timestamp >= cutoff)
         except Exception as e:
             logger.error(f"Failed to build security events query: {e}", exc_info=True)

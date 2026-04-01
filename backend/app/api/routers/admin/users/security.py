@@ -10,18 +10,19 @@ Critical security operations - all actions are logged.
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.deps import get_db
 from app.api.deps import get_admin_user
 from app.db import models
 from app.infra.logging import get_logger
+from app.api.schemas.common import SessionsRevokedResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.post("/{user_id}/revoke-sessions")
+@router.post("/{user_id}/revoke-sessions", response_model=SessionsRevokedResponse)
 def revoke_user_sessions(
     user_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
@@ -83,13 +84,20 @@ def revoke_user_sessions(
     ).all()
     
     count = 0
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for session in sessions:
         session.is_active = False
         session.revoked_at = now
         count += 1
     
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to revoke sessions"
+        )
     
     logger.warning(
         f"Admin {admin_user.email} revoked {count} sessions for user {user.email}",

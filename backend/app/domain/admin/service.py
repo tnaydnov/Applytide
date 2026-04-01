@@ -29,7 +29,7 @@ from app.domain.admin.dashboard_service import DashboardService
 from app.domain.admin.user_service import UserService
 from app.domain.admin.llm_service import LLMService
 from app.domain.admin.security_service import SecurityService
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

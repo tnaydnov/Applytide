@@ -121,6 +121,23 @@ class PaginatedResponse(BaseModel, Generic[T]):
     has_next: bool = Field(description="Whether next page exists")
     has_prev: bool = Field(description="Whether previous page exists")
 
+
+def calculate_pagination(total: int, page: int, page_size: int) -> tuple[int, bool, bool]:
+    """
+    Calculate pagination metadata from totals.
+
+    Args:
+        total: Total number of items
+        page: Current page (1-indexed)
+        page_size: Items per page
+
+    Returns:
+        Tuple of (total_pages, has_next, has_prev)
+    """
+    pages = ceil(total / page_size) if page_size else 1
+    return pages, page < pages, page > 1
+
+
 def paginate_query(query, params: PaginationParams, total_query=None, db_session=None) -> Dict[str, Any]:
     """
     Paginate a SQLAlchemy query and return pagination metadata.

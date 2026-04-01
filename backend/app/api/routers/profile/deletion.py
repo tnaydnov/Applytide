@@ -4,6 +4,8 @@ Account and profile deletion endpoints for GDPR compliance
 """
 from __future__ import annotations
 
+from typing import Optional
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -12,16 +14,59 @@ from ....db.session import get_db
 from ....api.deps import get_current_user
 from ....db.models import User, UserProfile
 from ....infra.logging import get_logger
+from ...schemas.common import MessageResponse, AccountDeletionResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.delete("/account")
-async def delete_user_account(
+class DeleteAccountRequest(BaseModel):
+    """Schema for account deletion request body."""
+    password: Optional[str] = Field(None, min_length=1, max_length=500)
+    confirmation: Optional[str] = Field(None, max_length=10)
+
+
+@router.post("/cancel-deletion", response_model=MessageResponse)
+def cancel_account_deletion(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Cancel a pending account deletion.
+
+    Clears deletion_scheduled_at, deleted_at, and deletion_recovery_token
+    so the account remains active.
+
+    Returns:
+        dict with success message
+
+    Raises:
+        400 if no deletion is pending
+    """
+    if not current_user.deletion_scheduled_at and not current_user.deleted_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No deletion is pending for this account",
+        )
+
+    current_user.deleted_at = None
+    current_user.deletion_scheduled_at = None
+    current_user.deletion_recovery_token = None
+    db.commit()
+
+    logger.info(
+        "Account deletion cancelled",
+        extra={"user_id": str(current_user.id), "email": current_user.email},
+    )
+    return {"message": "Account deletion has been cancelled. Your account is active."}
+
+
+@router.delete("/account", response_model=AccountDeletionResponse)
+def delete_user_account(
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    body: DeleteAccountRequest = DeleteAccountRequest(),
 ):
     """
     Delete user account and ALL associated data (GDPR Right to Erasure).
@@ -95,14 +140,8 @@ async def delete_user_account(
         }
     """
     try:
-        # Parse request body for password verification
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        
-        password = body.get("password")
-        confirmation = body.get("confirmation")
+        password = body.password
+        confirmation = body.confirmation
         
         # Verify confirmation text (if provided)
         if confirmation and confirmation != "DELETE":
@@ -154,86 +193,53 @@ async def delete_user_account(
         )
         
         # Delete all child records first (order matters for foreign key constraints)
+        # All deletes run in a single transaction — any failure triggers
+        # full rollback in the outer except block (atomicity guaranteed).
+        
+        deletion_stats: dict[str, int] = {}
         
         # 1. Delete all resumes (documents)
-        try:
-            deleted_resumes = db.query(Resume).filter(Resume.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_resumes} resumes", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete resumes: {str(e)}", exc_info=True)
+        deletion_stats["resumes"] = db.query(Resume).filter(Resume.user_id == user_id).delete()
         
         # 2. Delete all match results
-        try:
-            deleted_matches = db.query(MatchResult).filter(MatchResult.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_matches} match results", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete match results: {str(e)}", exc_info=True)
+        deletion_stats["match_results"] = db.query(MatchResult).filter(MatchResult.user_id == user_id).delete()
         
         # 3. Delete all notes
-        try:
-            deleted_notes = db.query(Note).filter(Note.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_notes} notes", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete notes: {str(e)}", exc_info=True)
+        deletion_stats["notes"] = db.query(Note).filter(Note.user_id == user_id).delete()
         
         # 4. Delete all stages (via applications)
-        try:
-            app_ids = [app.id for app in db.query(Application.id).filter(Application.user_id == user_id).all()]
-            if app_ids:
-                deleted_stages = db.query(Stage).filter(Stage.application_id.in_(app_ids)).delete(synchronize_session=False)
-                logger.info(f"Deleted {deleted_stages} stages", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete stages: {str(e)}", exc_info=True)
+        app_ids = [app.id for app in db.query(Application.id).filter(Application.user_id == user_id).all()]
+        if app_ids:
+            deletion_stats["stages"] = db.query(Stage).filter(Stage.application_id.in_(app_ids)).delete(synchronize_session=False)
+        else:
+            deletion_stats["stages"] = 0
         
         # 5. Delete all applications
-        try:
-            deleted_apps = db.query(Application).filter(Application.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_apps} applications", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete applications: {str(e)}", exc_info=True)
+        deletion_stats["applications"] = db.query(Application).filter(Application.user_id == user_id).delete()
         
         # 6. Delete all reminder notes first, then reminders
-        try:
-            deleted_reminder_notes = db.query(ReminderNote).filter(ReminderNote.user_id == user_id).delete()
-            deleted_reminders = db.query(Reminder).filter(Reminder.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_reminders} reminders and {deleted_reminder_notes} notes", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete reminders: {str(e)}", exc_info=True)
+        deletion_stats["reminder_notes"] = db.query(ReminderNote).filter(ReminderNote.user_id == user_id).delete()
+        deletion_stats["reminders"] = db.query(Reminder).filter(Reminder.user_id == user_id).delete()
         
         # 7. Delete all jobs
-        try:
-            deleted_jobs = db.query(Job).filter(Job.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_jobs} jobs", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete jobs: {str(e)}", exc_info=True)
+        deletion_stats["jobs"] = db.query(Job).filter(Job.user_id == user_id).delete()
         
         # 8. Delete user preferences
-        try:
-            deleted_prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_prefs} preferences", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete preferences: {str(e)}", exc_info=True)
+        deletion_stats["preferences"] = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).delete()
         
         # 9. Delete user profile
-        try:
-            deleted_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_profile} profile", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete profile: {str(e)}", exc_info=True)
+        deletion_stats["profile"] = db.query(UserProfile).filter(UserProfile.user_id == user_id).delete()
         
         # 10. Delete OAuth tokens
-        try:
-            deleted_oauth = db.query(OAuthToken).filter(OAuthToken.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_oauth} OAuth tokens", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete OAuth tokens: {str(e)}", exc_info=True)
+        deletion_stats["oauth_tokens"] = db.query(OAuthToken).filter(OAuthToken.user_id == user_id).delete()
         
         # 11. Delete all refresh tokens
-        try:
-            deleted_tokens = db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete()
-            logger.info(f"Deleted {deleted_tokens} refresh tokens", extra={"user_id": str(user_id)})
-        except Exception as e:
-            logger.error(f"Failed to delete refresh tokens: {str(e)}", exc_info=True)
+        deletion_stats["refresh_tokens"] = db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete()
+        
+        logger.info("Child records deleted", extra={
+            "user_id": str(user_id),
+            "deletion_stats": deletion_stats,
+        })
         
         # 12. Delete user account (LAST - after all related data)
         db.delete(current_user)
@@ -272,12 +278,12 @@ async def delete_user_account(
         }, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete account. Please contact support. Error: {str(e)}"
+            detail="Failed to delete account. Please contact support."
         )
 
 
-@router.delete("/")
-async def delete_user_profile(
+@router.delete("/", response_model=MessageResponse)
+def delete_user_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

@@ -14,7 +14,7 @@ from fastapi import APIRouter
 
 from . import management, preferences, deletion, onboarding
 
-router = APIRouter(prefix="/api/profile", tags=["User Profile"])
+router = APIRouter(prefix="/profile", tags=["User Profile"])
 
 # Include all sub-routers
 router.include_router(management.router)

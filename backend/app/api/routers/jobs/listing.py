@@ -10,18 +10,12 @@ from ....db import models
 from ...deps import get_current_user
 from ...deps import get_job_service
 from ....domain.jobs.service import JobService
-from ...utils.pagination import PaginatedResponse, PaginationParams
+from ...utils.pagination import PaginatedResponse, PaginationParams, calculate_pagination
 from .schemas import JobOut
 from ....infra.logging import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
-
-
-def _paginate(total: int, page: int, page_size: int):
-    """Helper function to calculate pagination metadata."""
-    pages = (total + page_size - 1) // page_size if page_size else 1
-    return pages, page < pages, page > 1
 
 
 @router.get("/", response_model=PaginatedResponse[JobOut])
@@ -120,7 +114,7 @@ def list_jobs(
             order=params.order,
             q=params.q,
         )
-        pages, has_next, has_prev = _paginate(total, page, page_size)
+        pages, has_next, has_prev = calculate_pagination(total, page, page_size)
         
         return PaginatedResponse(
             items=[JobOut(**i.__dict__) for i in items],

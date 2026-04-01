@@ -8,13 +8,14 @@ Attachments are files associated with applications (e.g., cover letters,
 additional documents, interview prep materials).
 """
 from __future__ import annotations
+from pathlib import Path
 from typing import Optional, List
 from uuid import UUID
 from .repository import IApplicationRepo, IAttachmentRepo
 from .dto import AttachmentDTO
 from .errors import ApplicationNotFound, AttachmentNotFound, BadRequest
 from app.domain.documents.service.preview import PreviewNotFoundError
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -313,6 +314,11 @@ class AttachmentOperationsService:
                 )
                 return attachment
             except Exception as e:
+                # Clean up orphaned file on DB failure
+                try:
+                    Path(dst).unlink(missing_ok=True)
+                except Exception:
+                    logger.warning(f"Failed to clean up orphaned file: {dst}")
                 logger.error(
                     f"Failed to create attachment record: {e}",
                     exc_info=True

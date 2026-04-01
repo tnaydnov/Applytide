@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from app.api.routers.admin import dashboard, users, errors, sessions, system, llm_usage, security
 
 # Main admin router
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 # Include sub-routers
 router.include_router(dashboard.router)

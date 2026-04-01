@@ -137,6 +137,11 @@ class GoogleCalendarGateway(ICalendarGateway):
             extra={"http_timeout": http_timeout}
         )
 
+    async def aclose(self) -> None:
+        """Close the underlying httpx.AsyncClient to free resources."""
+        await self._client.aclose()
+        logger.debug("GoogleCalendarGateway httpx client closed")
+
     async def _token(self, *, user_id: UUID, db) -> Optional[str]:
         """
         Get valid OAuth access token for user.
@@ -1082,6 +1087,23 @@ class GoogleCalendarGateway(ICalendarGateway):
 # Export all public classes and constants
 __all__ = [
     'GoogleCalendarGateway',
+    'get_calendar_gateway',
     'DEFAULT_HTTP_TIMEOUT',
     'DEFAULT_CALENDAR_ID',
 ]
+
+
+# ── module-level singleton ──────────────────────────────────────
+_calendar_gateway: GoogleCalendarGateway | None = None
+
+
+def get_calendar_gateway() -> GoogleCalendarGateway:
+    """Return a module-level singleton GoogleCalendarGateway.
+
+    The instance is created lazily on first call and reused thereafter.
+    Call ``await get_calendar_gateway().aclose()`` during app shutdown.
+    """
+    global _calendar_gateway
+    if _calendar_gateway is None:
+        _calendar_gateway = GoogleCalendarGateway()
+    return _calendar_gateway

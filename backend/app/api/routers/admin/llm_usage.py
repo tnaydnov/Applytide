@@ -17,11 +17,9 @@ Usage data includes:
 - Breakdown by endpoint and usage type
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_db
-from app.api.deps import get_admin_user
+from app.api.deps import get_admin_user, get_admin_service
 from app.db import models
 from app.domain.admin.service import AdminService
 from app.domain.admin import dto
@@ -30,19 +28,6 @@ from app.infra.logging import get_logger
 # Router configuration
 router = APIRouter(prefix="/llm-usage", tags=["admin-llm-usage"])
 logger = get_logger(__name__)
-
-
-def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
-    """
-    Dependency injection for AdminService.
-    
-    Args:
-        db: Database session from FastAPI dependency
-        
-    Returns:
-        AdminService: Initialized service instance with database access
-    """
-    return AdminService(db)
 
 
 @router.get("/stats", response_model=dto.LLMUsageStatsDTO)
@@ -128,8 +113,8 @@ def get_llm_usage_stats(
 
 @router.get("/", response_model=dto.PaginatedLLMUsageDTO)
 def list_llm_usage(
-    page: int = 1,
-    page_size: int = 50,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     endpoint: Optional[str] = None,
     usage_type: Optional[str] = None,
     user_id: Optional[int] = None,

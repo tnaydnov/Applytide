@@ -4,14 +4,14 @@ LLM Service - Admin LLM Usage Tracking and Analytics
 Provides LLM usage monitoring, cost analysis, and performance metrics
 for the admin panel. Tracks all LLM API calls across the application.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import models
 from app.domain.admin import dto
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -56,7 +56,7 @@ class LLMService:
         
         cutoff = None
         if hours:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
             logger.debug(f"Fetching LLM usage stats since {cutoff}")
         
         # Build base filter
@@ -304,7 +304,7 @@ class LLMService:
                 stmt = stmt.where(models.LLMUsage.success == success_only)
             
             if hours:
-                cutoff = datetime.utcnow() - timedelta(hours=hours)
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
                 stmt = stmt.where(models.LLMUsage.timestamp >= cutoff)
         except Exception as e:
             logger.error(f"Failed to apply filters: {e}", exc_info=True)
@@ -370,7 +370,7 @@ class LLMService:
                 
                 items.append(dto.LLMUsageDTO(
                     id=record.id if hasattr(record, 'id') else None,
-                    timestamp=record.timestamp if hasattr(record, 'timestamp') else datetime.utcnow(),
+                    timestamp=record.timestamp if hasattr(record, 'timestamp') else datetime.now(timezone.utc),
                     user_id=record.user_id if hasattr(record, 'user_id') else None,
                     user_email=user_email,
                     provider=record.provider if hasattr(record, 'provider') else None,

@@ -13,7 +13,7 @@ comprehensive audit logging.
 from __future__ import annotations
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 
 from ....db.session import get_db
@@ -22,14 +22,17 @@ from ....infra.security.passwords import hash_password, verify_password
 from ....api.schemas import auth as schemas
 from ....api.deps import get_current_user
 from ....infra.security.tokens import (
+    create_access_token,
+    create_refresh_token,
     create_email_token,
     verify_email_token,
     revoke_all_user_tokens
 )
-from ....infra.security.rate_limiter import email_limiter
+from ....infra.security.rate_limiter import email_limiter, password_reset_limiter
 from ....infra.notifications.email_service import email_service
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
+from ....config import settings
 
 from .utils import get_client_info
 
@@ -99,7 +102,7 @@ def password_reset_request(
     )
     
     # Rate limiting
-    is_allowed, retry_after = email_limiter.check_rate_limit(f"reset:{ip_address}")
+    is_allowed, retry_after = password_reset_limiter.check_rate_limit(ip_address)
     if not is_allowed:
         logger.warning(
             "Password reset rate limit exceeded",
@@ -132,9 +135,9 @@ def password_reset_request(
             "Password reset requested for non-existent email",
             extra={"email": payload.email, "ip_address": ip_address}
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This email address is not registered. Please check your email or create an account."
+        # Return same success message to prevent user enumeration
+        return schemas.MessageResponse(
+            message="Password reset email sent successfully! Check your inbox."
         )
 
     # Send reset email
@@ -286,6 +289,8 @@ def password_reset(
 @router.post("/change-password", response_model=schemas.MessageResponse)
 def change_password(
     payload: schemas.PasswordChangeIn,
+    request: Request,
+    response: Response,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -316,14 +321,16 @@ def change_password(
     Security:
         - Requires authentication via get_current_user dependency
         - Verifies current password before allowing change
-        - All sessions remain valid (user not logged out)
+        - Revokes all existing tokens (invalidates stolen sessions)
+        - Re-issues fresh tokens for current session via HttpOnly cookies
         - Sends confirmation email
         - Audit logging of password changes
         
     Notes:
         - User must provide correct current password
         - New password validated by schema (strength, length)
-        - Does NOT revoke existing sessions (unlike password reset)
+        - All other sessions are invalidated for security
+        - Current session stays active via fresh cookie tokens
         - User receives confirmation email
         - Use for: user-initiated password changes from profile
         
@@ -353,6 +360,59 @@ def change_password(
         # Update password
         current_user.password_hash = hash_password(payload.new_password)
         db.commit()
+        
+        # Revoke all existing tokens (invalidate stolen sessions)
+        try:
+            revoke_all_user_tokens(str(current_user.id))
+            logger.info(
+                "All tokens revoked after password change",
+                extra={"user_id": str(current_user.id)}
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to revoke tokens after password change",
+                extra={"user_id": str(current_user.id), "error": str(e)},
+                exc_info=True
+            )
+        
+        # Re-issue fresh tokens for current session
+        try:
+            user_agent = request.headers.get("user-agent", "")
+            ip_address = request.client.host if request.client else "unknown"
+            
+            new_access = create_access_token(str(current_user.id))
+            new_refresh, _fam = create_refresh_token(
+                str(current_user.id),
+                user_agent=user_agent,
+                ip_address=ip_address
+            )
+            
+            response.set_cookie(
+                "access_token", new_access,
+                httponly=True,
+                secure=settings.SECURE_COOKIES,
+                samesite=settings.SAME_SITE_COOKIES,
+                max_age=60 * 15,
+                path="/"
+            )
+            response.set_cookie(
+                "refresh_token", new_refresh,
+                httponly=True,
+                secure=settings.SECURE_COOKIES,
+                samesite=settings.SAME_SITE_COOKIES,
+                max_age=60 * 60 * 24 * settings.REFRESH_TTL_DAYS,
+                path="/api/auth"
+            )
+            logger.info(
+                "Fresh tokens issued after password change",
+                extra={"user_id": str(current_user.id)}
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to issue fresh tokens after password change",
+                extra={"user_id": str(current_user.id), "error": str(e)},
+                exc_info=True
+            )
         
         # Send password changed confirmation email
         try:

@@ -116,7 +116,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 }
             else:
                 sanitized_body = body_dict
-        except:
+        except (json.JSONDecodeError, TypeError, ValueError, UnicodeDecodeError):
             sanitized_body = None
     
     logger.warning(

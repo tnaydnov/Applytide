@@ -531,7 +531,8 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
                 query = query.where(models.Application.status == status)
                 
             if q.strip():
-                term = f"%{q}%"
+                safe_q = q.replace('%', '\\%').replace('_', '\\_')
+                term = f"%{safe_q}%"
                 query = query.where(or_(models.Job.title.ilike(term), models.Company.name.ilike(term)))
 
             query = apply_sorting(query, models.Application, sort, order)
@@ -553,7 +554,8 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
                 total_q = total_q.where(models.Application.status == status)
                 
             if q.strip():
-                term = f"%{q}%"
+                safe_q = q.replace('%', '\\%').replace('_', '\\_')
+                term = f"%{safe_q}%"
                 total_q = total_q.where(or_(models.Job.title.ilike(term), models.Company.name.ilike(term)))
                 
             total = self.db.execute(total_q).scalar() or 0
@@ -729,22 +731,58 @@ class ApplicationSQLARepository(_GuardMixin, IApplicationRepo):
 
     def list_with_stages_dict(self, user_id: UUID) -> List[dict]:
         # Preserve legacy shape for this endpoint
+        # Uses batch queries to avoid N+1 (1 + 3 queries instead of 1 + 3N).
         apps = self.db.execute(
             select(models.Application).where(models.Application.user_id == user_id).order_by(models.Application.created_at.desc())
         ).scalars().all()
 
+        if not apps:
+            return []
+
+        # Batch-load all related jobs
+        job_ids = {app.job_id for app in apps}
+        jobs = {
+            j.id: j
+            for j in self.db.execute(
+                select(models.Job).where(models.Job.id.in_(job_ids))
+            ).scalars().all()
+        }
+
+        # Batch-load all related companies
+        company_ids = {j.company_id for j in jobs.values() if j.company_id}
+        companies: dict = {}
+        if company_ids:
+            companies = {
+                c.id: c
+                for c in self.db.execute(
+                    select(models.Company).where(models.Company.id.in_(company_ids))
+                ).scalars().all()
+            }
+
+        # Batch-load all stages
+        app_ids = [app.id for app in apps]
+        all_stages = self.db.execute(
+            select(models.Stage).where(models.Stage.application_id.in_(app_ids))
+            .order_by(models.Stage.created_at.asc())
+        ).scalars().all()
+        stages_by_app: dict[UUID, list] = {}
+        for s in all_stages:
+            stages_by_app.setdefault(s.application_id, []).append(s)
+
         out = []
         for app in apps:
-            job = self.db.get(models.Job, app.job_id)
+            job = jobs.get(app.job_id)
             if not job:
                 continue
-            company = self.db.get(models.Company, job.company_id) if job.company_id else None
-            stages = self.db.execute(
-                select(models.Stage).where(models.Stage.application_id == app.id).order_by(models.Stage.created_at.asc())
-            ).scalars().all()
+            company = companies.get(job.company_id) if job.company_id else None
+            stages = stages_by_app.get(app.id, [])
             out.append({
                 "id": app.id,
                 "status": app.status,
+                "source": app.source,
+                "is_archived": app.is_archived,
+                "archived_at": app.archived_at,
+                "resume_id": app.resume_id,
                 "created_at": app.created_at,
                 "updated_at": app.updated_at,
                 "job": {

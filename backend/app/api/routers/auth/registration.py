@@ -16,7 +16,7 @@ import uuid
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 
 from ....db.session import get_db
@@ -29,12 +29,13 @@ from ....infra.security.tokens import (
     create_email_token,
     verify_email_token
 )
-from ....infra.security.rate_limiter import login_limiter, email_limiter
+from ....infra.security.rate_limiter import registration_limiter, email_limiter
 from ....infra.security.ban_service import BanService, InvalidBanDataError
 from ....infra.http.client_ip import get_client_ip
 from ....infra.notifications.email_service import email_service
 from ....infra.logging import get_logger
 from ....infra.logging.business_logger import BusinessEventLogger
+from ....config import settings
 
 from .utils import get_client_info
 
@@ -45,10 +46,11 @@ logger = get_logger(__name__)
 event_logger = BusinessEventLogger()
 
 
-@router.post("/register", response_model=schemas.TokenPairOut)
+@router.post("/register", response_model=schemas.TokenResponse)
 def register(
     payload: schemas.RegisterIn, 
-    request: Request, 
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db)
 ):
     """
@@ -81,10 +83,10 @@ def register(
         db: Database session (from dependency)
         
     Returns:
-        TokenPairOut: Initial tokens with:
-            - access_token: JWT access token
-            - refresh_token: JWT refresh token
-            Sets cookies: access_token, refresh_token
+        TokenResponse: Authentication response with:
+            - user: UserInfo with all profile fields
+            - expires_in: Access token TTL in seconds (900)
+            Sets HttpOnly cookies: access_token, refresh_token
             
     Raises:
         HTTPException: 400 if legal agreements not all true
@@ -120,8 +122,8 @@ def register(
             "data_processing_consent": true
         }
         Returns: {
-            "access_token": "eyJ...",
-            "refresh_token": "eyJ..."
+            "user": { "id": "...", "email": "user@example.com", ... },
+            "expires_in": 900
         }
     """
     user_agent, ip_address = get_client_info(request)
@@ -190,7 +192,7 @@ def register(
         )
     
     # Rate limiting
-    is_allowed, retry_after = login_limiter.check_rate_limit(ip_address)
+    is_allowed, retry_after = registration_limiter.check_rate_limit(ip_address)
     if not is_allowed:
         logger.warning(
             "Registration rate limit exceeded",
@@ -330,7 +332,61 @@ def register(
         extra={"user_id": str(user.id), "email": user.email}
     )
     
-    return schemas.TokenPairOut(access_token=access, refresh_token=refresh)
+    # Set authentication cookies (matching login pattern)
+    response.set_cookie(
+        "access_token", access,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
+        max_age=60 * 15,  # 15 minutes
+        path="/"
+    )
+    response.set_cookie(
+        "refresh_token", refresh,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite=settings.SAME_SITE_COOKIES,
+        max_age=60 * 60 * 24 * settings.REFRESH_TTL_DAYS,
+        path="/api/auth"
+    )
+
+    # Build user response
+    user_data = schemas.UserInfo(
+        id=str(user.id),
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        avatar_url=None,
+        bio=None,
+        phone=user.phone,
+        location=None,
+        timezone=user.timezone,
+        website=None,
+        linkedin_url=None,
+        github_url=None,
+        language=user.language or "en",
+        theme_preference="dark",
+        notification_email=True,
+        notification_push=True,
+        subscription_plan="starter",
+        subscription_status="active",
+        subscription_period=None,
+        subscription_started_at=None,
+        subscription_renews_at=None,
+        subscription_ends_at=None,
+        subscription_canceled_at=None,
+        is_premium=False,
+        created_at=user.created_at.isoformat(),
+        updated_at=None,
+        last_login_at=None,
+        email_verified=False,
+        is_oauth_user=False,
+        google_id=None
+    )
+
+    return schemas.TokenResponse(user=user_data, expires_in=900)
 
 
 @router.post("/send_verification", response_model=schemas.MessageResponse)

@@ -534,7 +534,7 @@ class AttachmentDTO:
                 extra={
                     "attachment_id": str(self.id),
                     "application_id": str(self.application_id),
-                    "filename": self.filename,
+                    "file_name": self.filename,
                     "file_size": self.file_size,
                     "content_type": self.content_type
                 }

@@ -18,6 +18,7 @@ from ....db import models
 from ....api.deps import get_current_user
 from ....api.schemas import auth as schemas
 from ....infra.security.tokens import create_access_token
+from ....infra.security.ws_tickets import create_ws_ticket as _create_ws_ticket
 from ....infra.logging import get_logger
 
 router = APIRouter()
@@ -93,70 +94,36 @@ async def get_extension_token(
         )
 
 
-@router.post("/ws-ticket")
-def create_ws_ticket(
-    current_user: models.User = Depends(get_current_user)
+@router.post("/ws-ticket", response_model=schemas.WsTicketResponse)
+def ws_ticket_endpoint(
+    current_user: models.User = Depends(get_current_user),
 ):
     """
-    Create short-lived token for WebSocket authentication.
-    
-    Generates a JWT access token specifically for WebSocket connection
-    authentication. Token should be used immediately to establish WS
-    connection before expiration.
-    
-    Args:
-        current_user: Authenticated user (from dependency)
-        
+    Create a single-use, short-lived WebSocket authentication ticket.
+
+    The ticket is an opaque token stored in Redis with a 30-second TTL.
+    It is consumed (deleted) on first use by the WebSocket handshake,
+    preventing replay attacks.  Unlike the previous implementation that
+    returned a full JWT, the ticket never leaks long-lived credentials
+    into query strings, server logs, or browser history.
+
     Returns:
-        dict: Token response with:
-            - token: JWT access token string
-            Valid for 15 minutes (use immediately)
-            
+        dict: ``{"token": "<opaque ticket>"}``
+
     Raises:
-        HTTPException: 401 if not authenticated or token generation fails
-        
-    Security:
-        Requires user authentication via cookies
-        Frontend auto-refreshes if access cookie stale
-        Token valid for 15 minutes (same as access token)
-        Use immediately for WS connection
-        
-    Notes:
-        - Frontend calls this before WebSocket connect
-        - Token sent as query param or first WS message
-        - Server validates JWT on WebSocket handshake
-        - Use for: real-time notifications, live updates
-        - Short TTL recommended for security (5-15 min)
-        
-    Example:
-        POST /api/auth/ws-ticket
-        Headers: Cookie: access_token=<valid>
-        Returns: {"token": "eyJ..."}
-        Usage: ws://api/ws?token=eyJ...
+        HTTPException 401: Not authenticated
+        HTTPException 503: Redis unavailable
     """
     try:
-        logger.info(
-            "WebSocket ticket requested",
-            extra={"user_id": str(current_user.id), "email": current_user.email}
-        )
-        
-        # If your helper supports expires_delta, prefer a short TTL:
-        token = create_access_token(str(current_user.id))  # or: expires_delta=timedelta(minutes=5)
-        
-        logger.debug(
-            "WebSocket ticket created successfully",
-            extra={"user_id": str(current_user.id)}
-        )
-        
-        return {"token": token}
-    
+        ticket = _create_ws_ticket(current_user.id)
+        return {"token": ticket}
     except Exception as e:
         logger.error(
             "Failed to create WebSocket ticket",
             extra={"user_id": str(current_user.id), "error": str(e)},
-            exc_info=True
+            exc_info=True,
         )
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unable to create WS ticket"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to create WS ticket",
         )

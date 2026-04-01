@@ -17,7 +17,7 @@ from .schemas import ReminderNoteCreate, ReminderNoteOut
 router = APIRouter()
 
 
-@router.get("/reminders/{reminder_id}/notes", response_model=List[ReminderNoteOut])
+@router.get("/{reminder_id}/notes", response_model=List[ReminderNoteOut])
 def list_notes(
     reminder_id: uuid.UUID,
     user: User = Depends(get_current_user),
@@ -61,7 +61,7 @@ def list_notes(
     return svc.list_notes(user_id=user.id, reminder_id=reminder_id)
 
 
-@router.post("/reminders/{reminder_id}/notes", response_model=ReminderNoteOut)
+@router.post("/{reminder_id}/notes", response_model=ReminderNoteOut)
 def create_note(
     reminder_id: uuid.UUID,
     payload: ReminderNoteCreate,

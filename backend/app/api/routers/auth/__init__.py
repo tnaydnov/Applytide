@@ -12,13 +12,18 @@ All authentication endpoints are organized by feature:
 - profile.py: User profile and preferences
 - avatar.py: Avatar upload
 - oauth.py: Google OAuth integration
+- sessions.py: Active session management
+- activity.py: User activity log
+- security.py: Security settings overview
+- twofa.py: Two-factor authentication (TOTP)
 """
 from fastapi import APIRouter
 
 from . import tokens, registration, core, password, profile, avatar, oauth
+from . import sessions, activity, security, twofa
 
 # Create main auth router with prefix and tags
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Include all sub-routers
 router.include_router(tokens.router)
@@ -28,6 +33,10 @@ router.include_router(password.router)
 router.include_router(profile.router)
 router.include_router(avatar.router)
 router.include_router(oauth.router)
+router.include_router(sessions.router)
+router.include_router(activity.router)
+router.include_router(security.router)
+router.include_router(twofa.router)
 
 # Re-export router for backward compatibility
 __all__ = ["router"]

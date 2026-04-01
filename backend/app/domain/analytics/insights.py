@@ -24,7 +24,7 @@ from typing import List, Dict, Any
 from uuid import UUID
 
 from .dto import ApplicationLiteDTO, StageLiteDTO
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

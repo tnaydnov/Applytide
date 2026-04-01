@@ -267,6 +267,7 @@ async def login(
                 extra={"user_id": str(user.id)}
             )
         except Exception as e:
+            db.rollback()
             logger.error(
                 "Failed to update last_login_at",
                 extra={"user_id": str(user.id), "error": str(e)},

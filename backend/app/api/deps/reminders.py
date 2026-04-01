@@ -9,8 +9,13 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from ...db.session import get_db
 from ...domain.reminders.service import ReminderService
-from ...infra.repositories.reminders_sqlalchemy import ReminderSQLARepository, ReminderNoteSQLARepository
-from ...infra.external.google_calendar_gateway import GoogleCalendarGateway
+from ...infra.repositories.reminders_sqlalchemy import (
+    ReminderSQLARepository,
+    ReminderNoteSQLARepository,
+    UserLookupSQLA,
+    ResumeLookupSQLA,
+)
+from ...infra.external.google_calendar_gateway import get_calendar_gateway
 from ...infra.external.ai_preparation_service import AIPreparationService
 from ...infra.notifications.email_service import EmailService
 from ...infra.logging import get_logger
@@ -98,7 +103,7 @@ def get_reminder_service(
         notes = ReminderNoteSQLARepository(db)
         
         # Wrap gateway so it always receives db when called (currying)
-        gateway = GoogleCalendarGateway()
+        gateway = get_calendar_gateway()
         
         # Initialize AI preparation service (graceful degradation if unavailable)
         try:
@@ -157,7 +162,9 @@ def get_reminder_service(
             calendar=_GatewayWithDB(),
             ai_prep_service=ai_prep_service,
             email_service=email_service,
-            app_service=app_service
+            app_service=app_service,
+            user_lookup=UserLookupSQLA(),
+            resume_lookup=ResumeLookupSQLA(),
         )
         
         logger.debug(

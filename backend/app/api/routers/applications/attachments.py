@@ -19,10 +19,32 @@ from fastapi.responses import FileResponse
 from ...deps import get_current_user
 from app.domain.documents.service.preview import PreviewNotFoundError
 from ....db import models
-from ...schemas.applications import AttachmentOut
+from ...schemas.applications import AttachmentOut, AttachFromDocumentRequest
+from ...schemas.common import MessageResponse
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event, logger
+
+try:
+    import magic as _magic
+    _HAS_MAGIC = True
+except ImportError:
+    _HAS_MAGIC = False
+
+# Allowed extensions for application file attachments
+_ATTACHMENT_ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".jpg", ".jpeg", ".png"}
+_ATTACHMENT_MAX_SIZE = 20 * 1024 * 1024  # 20 MB
+
+# Mapping from allowed extensions to expected MIME prefixes
+_EXTENSION_MIME_MAP: dict[str, tuple[str, ...]] = {
+    ".pdf": ("application/pdf",),
+    ".docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip"),
+    ".doc": ("application/msword", "application/x-ole-storage", "application/CDFV2"),
+    ".txt": ("text/plain", "text/"),
+    ".jpg": ("image/jpeg",),
+    ".jpeg": ("image/jpeg",),
+    ".png": ("image/png",),
+}
 
 router = APIRouter()
 
@@ -30,7 +52,7 @@ router = APIRouter()
 @router.post("/{app_id}/attachments/from-document", response_model=AttachmentOut)
 def attach_from_document(
     app_id: uuid.UUID,
-    payload: dict,
+    payload: AttachFromDocumentRequest,
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -88,16 +110,16 @@ def attach_from_document(
             extra={
                 "user_id": str(current_user.id),
                 "application_id": str(app_id),
-                "document_id": payload.get("document_id"),
-                "document_type": payload.get("document_type")
+                "document_id": str(payload.document_id),
+                "document_type": payload.document_type
             }
         )
         
         a = svc.attach_from_document(
             user_id=current_user.id,
             app_id=app_id,
-            document_id=str(payload.get("document_id")),
-            document_type=(payload.get("document_type") or "other"),
+            document_id=str(payload.document_id),
+            document_type=payload.document_type,
         )
         
         logger.info(
@@ -152,7 +174,7 @@ def attach_from_document(
 async def upload_attachment(
     app_id: uuid.UUID,
     file: UploadFile = File(...),
-    document_type: str = Form("other"),
+    document_type: str = Form("other", pattern=r"^(resume|cover_letter|portfolio|certificate|transcript|reference|other)$"),
     svc: ApplicationService = Depends(get_application_service),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -225,7 +247,46 @@ async def upload_attachment(
                 status_code=400,
                 detail="File must have a filename"
             )
-        
+
+        # Validate file extension
+        ext = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in _ATTACHMENT_ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file format. Allowed: {', '.join(sorted(_ATTACHMENT_ALLOWED_EXTENSIONS))}"
+            )
+
+        # Validate file size before reading into memory
+        content = await file.read()
+        if len(content) > _ATTACHMENT_MAX_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds {_ATTACHMENT_MAX_SIZE // (1024 * 1024)}MB limit"
+            )
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty file")
+
+        # Validate file content matches declared extension (defense-in-depth)
+        if _HAS_MAGIC:
+            detected_mime = _magic.from_buffer(content[:2048], mime=True)
+            expected_mimes = _EXTENSION_MIME_MAP.get(ext, ())
+            if expected_mimes and not any(detected_mime.startswith(m) for m in expected_mimes):
+                logger.warning(
+                    "Attachment content mismatch",
+                    extra={
+                        "user_id": str(current_user.id),
+                        "file_name": file.filename,
+                        "extension": ext,
+                        "detected_mime": detected_mime,
+                    },
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File content does not match extension '{ext}'"
+                )
+
+        await file.seek(0)
+
         a = await svc.upload_attachment(
             user_id=current_user.id,
             app_id=app_id,
@@ -472,7 +533,7 @@ def download_attachment(
         )
 
 
-@router.delete("/{app_id}/attachments/{attachment_id}")
+@router.delete("/{app_id}/attachments/{attachment_id}", response_model=MessageResponse)
 def delete_attachment(
     app_id: uuid.UUID,
     attachment_id: uuid.UUID,

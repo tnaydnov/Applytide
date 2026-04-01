@@ -243,7 +243,8 @@ def get_directory_size(path: str) -> float:
             # Return file size if it's a file
             try:
                 return round(path_obj.stat().st_size / (1024 ** 2), 2)
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to stat file", extra={"path": path, "error": str(e)})
                 return 0.0
         
         total_size = 0

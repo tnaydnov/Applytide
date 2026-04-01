@@ -5,7 +5,7 @@ Handles AI-powered document analysis and optimization for ATS compatibility.
 """
 from __future__ import annotations
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ....db.session import get_db
@@ -14,6 +14,9 @@ from ....db.models import User
 from .schemas import DocumentAnalysis, DocumentOptimizationRequest
 from ...deps import get_document_service
 from ....domain.documents.service import DocumentService
+from ...schemas.common import DocumentOptimizationResponse
+from ....infra.security.rate_limiter import analysis_limiter
+from ....infra.external.llm_tracker import check_llm_budget
 
 router = APIRouter()
 
@@ -90,10 +93,24 @@ def analyze_document(
             "ai_insights": "Consider emphasizing cloud infrastructure..."
         }
     """
+    # Per-user AI rate limit for analysis
+    allowed, retry_after = analysis_limiter.check_rate_limit(str(current_user.id))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Analysis rate limit exceeded. Try again in {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    # Global daily LLM budget cap
+    if not check_llm_budget():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable. Please try again later.",
+        )
     return svc.analyze_document_ats(db=db, document_id=document_id, job_id=job_id, user_id=str(current_user.id), use_ai=use_ai)
 
 
-@router.post("/optimize")
+@router.post("/optimize", response_model=DocumentOptimizationResponse)
 def optimize_document(
     request: DocumentOptimizationRequest,
     db: Session = Depends(get_db),
@@ -171,6 +188,20 @@ def optimize_document(
             "after_score": 89
         }
     """
+    # Per-user AI rate limit for optimization
+    allowed, retry_after = analysis_limiter.check_rate_limit(str(current_user.id))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Analysis rate limit exceeded. Try again in {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    # Global daily LLM budget cap
+    if not check_llm_budget():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable. Please try again later.",
+        )
     optimized = svc.optimize_document(db=db, request=request)
     return {
         "optimized_content": optimized,

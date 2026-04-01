@@ -515,8 +515,8 @@ class PDFExtractor:
             if pdf_document:
                 try:
                     pdf_document.close()
-                except Exception:
-                    pass
+                except Exception as close_err:
+                    logger.debug("Failed to close PDF document", extra={"error": str(close_err)})
         
         result = "\n".join(text_parts)
         

@@ -31,12 +31,14 @@ Dependencies:
 Router: /api/analytics
 """
 from __future__ import annotations
+import os
 import tempfile, csv
 from io import BytesIO
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 from ...api.deps import get_current_user
 from ...db.models import User
@@ -44,8 +46,16 @@ from ...domain.analytics.service import AnalyticsService, time_range_start
 from ..deps import get_analytics_service
 from ...infra.logging import get_logger
 
-router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+router = APIRouter(prefix="/analytics", tags=["analytics"])
 logger = get_logger(__name__)
+
+
+def _cleanup_temp_file(path: str) -> None:
+    """Remove a temporary file after the response has been sent."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 @router.get("")
 def get_analytics(
@@ -274,7 +284,12 @@ def export_analytics_csv(
             "range": range_param
         })
         
-        return FileResponse(temp_file.name, media_type="text/csv", filename=f"analytics-data-{range_param}.csv")
+        return FileResponse(
+            temp_file.name,
+            media_type="text/csv",
+            filename=f"analytics-data-{range_param}.csv",
+            background=BackgroundTask(_cleanup_temp_file, temp_file.name),
+        )
     except Exception as e:
         temp_file.close()
         logger.error("Failed to generate CSV export", extra={
@@ -282,7 +297,7 @@ def export_analytics_csv(
             "range": range_param,
             "error": str(e)
         }, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate CSV export. Please try again.")
 
 @router.get("/export/pdf")
 def export_analytics_pdf(
@@ -446,7 +461,12 @@ def export_analytics_pdf(
                 "range": range_param
             })
             
-            return FileResponse(tmp.name, media_type="text/plain", filename=f"analytics-report-{range_param}.txt")
+            return FileResponse(
+                tmp.name,
+                media_type="text/plain",
+                filename=f"analytics-report-{range_param}.txt",
+                background=BackgroundTask(_cleanup_temp_file, tmp.name),
+            )
         except Exception as fallback_error:
             logger.error("Failed to generate fallback text export", extra={
                 "user_id": user.id,

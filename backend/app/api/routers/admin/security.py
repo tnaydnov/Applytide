@@ -18,14 +18,13 @@ Security events tracked include:
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
-from app.api.deps import get_admin_user
+from app.api.deps import get_admin_user, get_admin_service
 from app.db import models
 from app.domain.admin.service import AdminService
 from app.domain.admin import dto
 from app.infra.logging import get_logger
+from app.api.schemas.common import PaginatedSecurityEventsResponse
 
 # Router configuration
 router = APIRouter(prefix="/security", tags=["admin-security"])
@@ -33,10 +32,10 @@ logger = get_logger(__name__)
 
 
 @router.get("/stats", response_model=dto.SecurityStatsDTO)
-async def get_security_stats(
+def get_security_stats(
     hours: int = Query(24, description="Time window in hours"),
     admin_user: models.User = Depends(get_admin_user),
-    db: Session = Depends(get_db)
+    admin_service: AdminService = Depends(get_admin_service)
 ):
     """
     Retrieve security statistics for threat monitoring.
@@ -81,7 +80,6 @@ async def get_security_stats(
         )
         
         # Fetch statistics from service
-        admin_service = AdminService(db)
         stats = admin_service.get_security_stats(hours=hours)
         
         # Log successful retrieval with key security metrics
@@ -109,14 +107,14 @@ async def get_security_stats(
         )
 
 
-@router.get("/events")
-async def get_security_events(
+@router.get("/events", response_model=PaginatedSecurityEventsResponse)
+def get_security_events(
     hours: Optional[int] = Query(24, description="Time window in hours"),
     event_type: Optional[str] = Query(None, description="Filter by event type"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     admin_user: models.User = Depends(get_admin_user),
-    db: Session = Depends(get_db)
+    admin_service: AdminService = Depends(get_admin_service)
 ):
     """
     Retrieve paginated list of security events with filtering.
@@ -177,7 +175,6 @@ async def get_security_events(
         )
         
         # Fetch events from service
-        admin_service = AdminService(db)
         events = admin_service.get_security_events(
             hours=hours,
             event_type=event_type,

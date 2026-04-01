@@ -23,16 +23,17 @@ Use cases:
 """
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, and_, desc
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.api.deps import get_db
 from app.api.deps import get_admin_user
 from app.db import models
 from app.domain.admin import dto
 from app.infra.logging import get_logger
+from app.api.schemas.common import SessionRevokeResponse
 
 router = APIRouter(prefix="/sessions", tags=["admin-sessions"])
 logger = get_logger(__name__)
@@ -40,8 +41,8 @@ logger = get_logger(__name__)
 
 @router.get("/", response_model=dto.PaginatedSessionsDTO)
 def list_sessions(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     user_id: Optional[uuid.UUID] = None,
     active_only: bool = True,
     admin_user: models.User = Depends(get_admin_user),
@@ -115,7 +116,7 @@ def list_sessions(
             }
         )
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Base query
         stmt = select(models.RefreshToken)
@@ -142,12 +143,19 @@ def list_sessions(
         
         sessions = db.scalars(stmt).all()
         
+        # Batch-load user emails to avoid N+1 queries
+        user_ids = {s.user_id for s in sessions if s.user_id}
+        user_map: dict = {}
+        if user_ids:
+            users = db.scalars(
+                select(models.User).where(models.User.id.in_(user_ids))
+            ).all()
+            user_map = {u.id: u.email for u in users}
+        
         # Build DTOs
         items = []
         for session in sessions:
-            # Get user email
-            user = db.get(models.User, session.user_id)
-            user_email = user.email if user else "Unknown"
+            user_email = user_map.get(session.user_id, "Unknown")
             
             items.append(dto.SessionDTO(
                 id=session.id,
@@ -234,7 +242,7 @@ def get_session_stats(
             extra={"admin_id": str(admin_user.id)}
         )
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expiring_threshold = now + timedelta(hours=24)
         
         # Total active sessions
@@ -298,7 +306,7 @@ def get_session_stats(
         )
 
 
-@router.delete("/{session_id}")
+@router.delete("/{session_id}", response_model=SessionRevokeResponse)
 def revoke_session(
     session_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
@@ -374,7 +382,14 @@ def revoke_session(
         
         # Revoke session
         session.is_active = False
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to revoke session"
+            )
         
         # Log security warning with full context
         logger.warning(

@@ -81,7 +81,7 @@ import os
 import json
 import uuid
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Tuple, Dict, Any
 
 import httpx
@@ -594,7 +594,7 @@ class AICoverLetterService:
                 "cover_letter": cover_letter_text,
                 "job_title": job_title,
                 "company_name": company_name,
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
                 "model_used": self.model,
                 "tone": tone,
                 "length": length,

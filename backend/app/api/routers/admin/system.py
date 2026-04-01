@@ -23,7 +23,7 @@ Use cases:
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 from app.api.deps import get_db
@@ -307,7 +307,7 @@ def get_api_health(
             extra={"admin_id": str(admin_user.id)}
         )
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
         
         # Uptime since startup

@@ -22,7 +22,7 @@ from .schemas import (
 )
 
 # Create main jobs router with prefix
-router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 # Include all sub-routers
 router.include_router(crud_router)

@@ -4,7 +4,7 @@ User Service - Admin User Management Operations
 Provides user management operations for the admin panel including user listing,
 user details, and user resource access (applications, jobs, activity).
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Union
 from uuid import UUID
 from sqlalchemy import select, func, and_, or_, desc
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.db import models
 from app.domain.admin import dto
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -80,7 +80,8 @@ class UserService:
             
             if search:
                 try:
-                    search_term = f"%{search}%"
+                    safe_search = search.replace('%', '\\%').replace('_', '\\_')
+                    search_term = f"%{safe_search}%"
                     filters.append(
                         or_(
                             models.User.email.ilike(search_term),
@@ -152,39 +153,50 @@ class UserService:
                 )
             
             # Build DTOs with computed fields
+            # Batch-load session and application counts to avoid N+1 queries
+            user_ids = [u.id for u in users if u and hasattr(u, 'id') and u.id]
+            
+            sessions_map: dict = {}
+            apps_map: dict = {}
+            if user_ids:
+                try:
+                    session_rows = self.db.execute(
+                        select(
+                            models.RefreshToken.user_id,
+                            func.count(models.RefreshToken.id)
+                        ).where(
+                            and_(
+                                models.RefreshToken.user_id.in_(user_ids),
+                                models.RefreshToken.is_active == True,
+                                models.RefreshToken.expires_at > datetime.now(timezone.utc)
+                            )
+                        ).group_by(models.RefreshToken.user_id)
+                    ).all()
+                    sessions_map = {row[0]: row[1] for row in session_rows}
+                except SQLAlchemyError as e:
+                    logger.debug(f"Failed to batch-count sessions: {e}")
+
+                try:
+                    app_rows = self.db.execute(
+                        select(
+                            models.Application.user_id,
+                            func.count(models.Application.id)
+                        ).where(
+                            models.Application.user_id.in_(user_ids)
+                        ).group_by(models.Application.user_id)
+                    ).all()
+                    apps_map = {row[0]: row[1] for row in app_rows}
+                except SQLAlchemyError as e:
+                    logger.debug(f"Failed to batch-count applications: {e}")
+
             items = []
             for user in users:
                 if not user:
                     continue
                 
                 try:
-                    # Count active sessions
-                    sessions_count = 0
-                    try:
-                        if hasattr(user, 'id') and user.id:
-                            sessions_count = self.db.scalar(
-                                select(func.count(models.RefreshToken.id))
-                                .where(
-                                    and_(
-                                        models.RefreshToken.user_id == user.id,
-                                        models.RefreshToken.is_active == True,
-                                        models.RefreshToken.expires_at > datetime.utcnow()
-                                    )
-                                )
-                            ) or 0
-                    except SQLAlchemyError as e:
-                        logger.debug(f"Failed to count sessions for user {user.id}: {e}")
-                    
-                    # Count applications
-                    apps_count = 0
-                    try:
-                        if hasattr(user, 'id') and user.id:
-                            apps_count = self.db.scalar(
-                                select(func.count(models.Application.id))
-                                .where(models.Application.user_id == user.id)
-                            ) or 0
-                    except SQLAlchemyError as e:
-                        logger.debug(f"Failed to count applications for user {user.id}: {e}")
+                    sessions_count = sessions_map.get(user.id, 0) if hasattr(user, 'id') and user.id else 0
+                    apps_count = apps_map.get(user.id, 0) if hasattr(user, 'id') and user.id else 0
                     
                     items.append(dto.UserListItemDTO(
                         id=user.id if hasattr(user, 'id') else None,
@@ -195,7 +207,7 @@ class UserService:
                         email_verified_at=user.email_verified_at if hasattr(user, 'email_verified_at') else None,
                         is_oauth_user=user.is_oauth_user if hasattr(user, 'is_oauth_user') else False,
                         last_login_at=user.last_login_at if hasattr(user, 'last_login_at') else None,
-                        created_at=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
+                        created_at=user.created_at if hasattr(user, 'created_at') else datetime.now(timezone.utc),
                         active_sessions_count=sessions_count,
                         total_applications=apps_count
                     ))
@@ -278,7 +290,7 @@ class UserService:
                         and_(
                             models.RefreshToken.user_id == user.id,
                             models.RefreshToken.is_active == True,
-                            models.RefreshToken.expires_at > datetime.utcnow()
+                            models.RefreshToken.expires_at > datetime.now(timezone.utc)
                         )
                     )
                 ) or 0
@@ -338,8 +350,8 @@ class UserService:
                 linkedin_url=user.linkedin_url if hasattr(user, 'linkedin_url') else None,
                 website=user.website if hasattr(user, 'website') else None,
                 last_login_at=user.last_login_at if hasattr(user, 'last_login_at') else None,
-                created_at=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
-                updated_at=user.updated_at if hasattr(user, 'updated_at') else datetime.utcnow(),
+                created_at=user.created_at if hasattr(user, 'created_at') else datetime.now(timezone.utc),
+                updated_at=user.updated_at if hasattr(user, 'updated_at') else datetime.now(timezone.utc),
                 active_sessions_count=sessions_count,
                 total_applications=apps_count,
                 total_jobs=jobs_count,
@@ -425,7 +437,7 @@ class UserService:
                         company_name=app.company_name if hasattr(app, 'company_name') else "",
                         current_stage=app.current_stage if hasattr(app, 'current_stage') else "",
                         applied_date=app.applied_date if hasattr(app, 'applied_date') else None,
-                        created_at=app.created_at if hasattr(app, 'created_at') else datetime.utcnow()
+                        created_at=app.created_at if hasattr(app, 'created_at') else datetime.now(timezone.utc)
                     ))
                 except Exception as e:
                     logger.warning(f"Failed to build UserApplicationDTO for app {getattr(app, 'id', 'unknown')}: {e}")
@@ -508,7 +520,7 @@ class UserService:
                         title=job.title if hasattr(job, 'title') else "",
                         company=job.company if hasattr(job, 'company') else "",
                         location=job.location if hasattr(job, 'location') else "",
-                        created_at=job.created_at if hasattr(job, 'created_at') else datetime.utcnow()
+                        created_at=job.created_at if hasattr(job, 'created_at') else datetime.now(timezone.utc)
                     ))
                 except Exception as e:
                     logger.warning(f"Failed to build UserJobDTO for job {getattr(job, 'id', 'unknown')}: {e}")
@@ -600,7 +612,7 @@ class UserService:
                     
                     results.append(dto.ActivityEventDTO(
                         id=log.id if hasattr(log, 'id') else None,
-                        timestamp=log.timestamp if hasattr(log, 'timestamp') else datetime.utcnow(),
+                        timestamp=log.timestamp if hasattr(log, 'timestamp') else datetime.now(timezone.utc),
                         user_email=None,  # Not needed since we know the user
                         user_id=log.user_id if hasattr(log, 'user_id') else user_id,
                         event_type=event_type,

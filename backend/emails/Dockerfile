@@ -14,5 +14,8 @@ COPY . .
 # Expose port
 EXPOSE 3001
 
+# Run as non-root user
+USER node
+
 # Start the service
 CMD ["node", "server.js"]

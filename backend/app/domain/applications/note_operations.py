@@ -13,7 +13,7 @@ from uuid import UUID
 from .repository import IApplicationRepo, INoteRepo
 from .dto import NoteDTO
 from .errors import ApplicationNotFound, BadRequest, NoteNotFound
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -19,6 +19,7 @@ from app.api.deps import get_db
 from app.api.deps import get_admin_user
 from app.db import models
 from app.infra.logging import get_logger
+from app.api.schemas.common import SubscriptionUpdateResponse, RoleChangeResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -31,7 +32,7 @@ class UpdateSubscriptionRequest(BaseModel):
     subscription_ends_at: Optional[datetime] = None
 
 
-@router.patch("/{user_id}/premium")
+@router.patch("/{user_id}/premium", response_model=SubscriptionUpdateResponse)
 def toggle_user_premium(
     user_id: uuid.UUID,
     request: UpdateSubscriptionRequest,
@@ -107,7 +108,14 @@ def toggle_user_premium(
         user.subscription_renews_at = None
         user.subscription_canceled_at = None
     
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update subscription"
+        )
     
     logger.info(
         f"Admin {admin_user.email} changed subscription for user {user.email} to {request.subscription_plan} ({request.subscription_status})",
@@ -131,7 +139,7 @@ def toggle_user_premium(
     }
 
 
-@router.patch("/{user_id}/role")
+@router.patch("/{user_id}/role", response_model=RoleChangeResponse)
 def change_user_role(
     user_id: uuid.UUID,
     role: str,
@@ -208,7 +216,14 @@ def change_user_role(
     
     old_role = user.role
     user.role = role
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change user role"
+        )
     
     logger.warning(
         f"Admin {admin_user.email} changed role for user {user.email} from {old_role} to {role}",

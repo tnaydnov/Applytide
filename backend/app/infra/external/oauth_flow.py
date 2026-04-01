@@ -40,13 +40,15 @@ from .oauth_tokens import (
     _get_oauth_token,
     _token_is_valid,
 )
+from .google_urls import (
+    GOOGLE_AUTH_URL,
+    GOOGLE_TOKEN_URL,
+    GOOGLE_USERINFO_URL,
+)
 
 logger = get_logger(__name__)
 
 # Configuration constants
-GOOGLE_AUTH_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL: str = "https://www.googleapis.com/oauth2/v3/userinfo"
 HTTP_TIMEOUT_SECONDS: int = 15  # Timeout for Google API calls
 USERINFO_TIMEOUT_SECONDS: int = 10  # Shorter timeout for user info
 DEFAULT_TERMS_VERSION: str = "1.0"  # Current terms version
@@ -535,6 +537,10 @@ class OAuthService:
             raise
         
         except Exception as e:
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
             logger.error(
                 "Error processing Google login",
                 extra={

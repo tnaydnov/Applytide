@@ -12,11 +12,11 @@ All ban operations are logged with admin audit trail.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from pydantic import BaseModel, Field, validator
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_admin_user
@@ -116,7 +116,7 @@ class BanOperationResponse(BaseModel):
 
 # ============= Endpoints =============
 
-@router.post("/users/ban", response_model=BanOperationResponse)
+@router.post("/ban", response_model=BanOperationResponse)
 def ban_user(
     request: Request,
     payload: BanUserRequest,
@@ -258,7 +258,7 @@ def ban_user(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="A ban already exists for this entity"
         )
     except InvalidBanDataError as e:
         logger.error(
@@ -270,7 +270,7 @@ def ban_user(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid ban data: {str(e)}"
+            detail="Invalid ban data. Please check your input."
         )
     except BanServiceError as e:
         logger.error(
@@ -283,7 +283,7 @@ def ban_user(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to ban user: {str(e)}"
+            detail="Failed to ban user. Please try again."
         )
     except HTTPException:
         raise
@@ -302,7 +302,7 @@ def ban_user(
         )
 
 
-@router.post("/users/unban", response_model=BanOperationResponse)
+@router.post("/unban", response_model=BanOperationResponse)
 def unban_user(
     request: Request,
     payload: UnbanUserRequest,
@@ -407,6 +407,8 @@ def unban_user(
 def list_bans(
     active_only: bool = True,
     entity_type: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     current_admin: models.User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -436,20 +438,30 @@ def list_bans(
                 )
             query = query.filter(models.BannedEntity.entity_type == entity_type)
         
-        # Get all bans
-        all_bans = query.order_by(models.BannedEntity.banned_at.desc()).all()
+        # Get total count
+        total_count = query.count()
         
-        # Count active/inactive
-        active_count = sum(1 for ban in all_bans if ban.is_active)
-        inactive_count = len(all_bans) - active_count
+        # Count active/inactive from total
+        active_count = db.query(models.BannedEntity).filter(
+            models.BannedEntity.is_active == True
+        )
+        if entity_type:
+            active_count = active_count.filter(models.BannedEntity.entity_type == entity_type)
+        active_count = active_count.count()
+        inactive_count = total_count - active_count if not active_only else 0
         
-        ban_list = [BanInfo.from_orm(ban) for ban in all_bans]
+        # Apply pagination
+        bans = query.order_by(
+            models.BannedEntity.banned_at.desc()
+        ).offset((page - 1) * page_size).limit(page_size).all()
+        
+        ban_list = [BanInfo.from_orm(ban) for ban in bans]
         
         logger.info(
             "Admin fetched ban list",
             extra={
                 "admin_id": str(current_admin.id),
-                "total_bans": len(all_bans),
+                "total_bans": total_count,
                 "active_count": active_count,
                 "inactive_count": inactive_count,
                 "filter_active_only": active_only,
@@ -459,7 +471,7 @@ def list_bans(
         
         return BanListResponse(
             bans=ban_list,
-            total=len(all_bans),
+            total=total_count,
             active_count=active_count,
             inactive_count=inactive_count
         )
@@ -478,7 +490,7 @@ def list_bans(
         )
 
 
-@router.get("/users/{user_id}/bans", response_model=List[BanInfo])
+@router.get("/{user_id}/bans", response_model=List[BanInfo])
 def get_user_bans(
     user_id: uuid.UUID,
     current_admin: models.User = Depends(get_admin_user),
@@ -569,7 +581,7 @@ def ban_email_address(
             reason=payload.reason,
             banned_by_admin_id=current_admin.id,
             expires_at=None if not payload.ban_duration_days else 
-                datetime.now(timezone.utc) + __import__('datetime').timedelta(days=payload.ban_duration_days)
+                datetime.now(timezone.utc) + timedelta(days=payload.ban_duration_days)
         )
         
         logger.info(
@@ -590,7 +602,7 @@ def ban_email_address(
     except (DuplicateBanError, InvalidBanDataError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Invalid or duplicate ban entry"
         )
     except Exception as e:
         logger.error(f"Error banning email: {e}", exc_info=True)
@@ -632,7 +644,7 @@ def ban_ip_address(
             reason=payload.reason,
             banned_by_admin_id=current_admin.id,
             expires_at=None if not payload.ban_duration_days else 
-                datetime.now(timezone.utc) + __import__('datetime').timedelta(days=payload.ban_duration_days)
+                datetime.now(timezone.utc) + timedelta(days=payload.ban_duration_days)
         )
         
         logger.info(
@@ -653,7 +665,7 @@ def ban_ip_address(
     except (DuplicateBanError, InvalidBanDataError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Invalid or duplicate ban entry"
         )
     except Exception as e:
         logger.error(f"Error banning IP: {e}", exc_info=True)

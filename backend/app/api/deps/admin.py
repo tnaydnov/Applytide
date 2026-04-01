@@ -34,8 +34,11 @@ Router Pattern:
     )
 """
 from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from .auth import get_current_user
 from ...db import models
+from ...db.session import get_db
+from ...domain.admin.service import AdminService
 from ...infra.logging import get_logger
 
 logger = get_logger(__name__)
@@ -133,3 +136,16 @@ def get_admin_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to verify admin permissions"
         )
+
+
+def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
+    """
+    Dependency injection for AdminService.
+
+    Args:
+        db: Database session from FastAPI dependency
+
+    Returns:
+        AdminService: Initialized service instance with database access
+    """
+    return AdminService(db)

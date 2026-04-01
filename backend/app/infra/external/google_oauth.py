@@ -96,11 +96,13 @@ from .oauth_tokens import (
     _token_is_valid,
 )
 
-# Google OAuth API endpoints (for reference)
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-GOOGLE_CALENDAR_URL = "https://www.googleapis.com/calendar/v3"
+# Google OAuth API endpoints
+from .google_urls import (
+    GOOGLE_AUTH_URL,
+    GOOGLE_TOKEN_URL,
+    GOOGLE_USERINFO_URL,
+    GOOGLE_CALENDAR_URL,
+)
 
 # Export public API
 __all__ = [

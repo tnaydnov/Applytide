@@ -78,7 +78,7 @@ from .reminders import get_reminder_service
 from .analytics import get_analytics_service
 from .oauth import get_oauth_service
 from .auth import get_current_user, get_current_user_optional
-from .admin import get_admin_user
+from .admin import get_admin_user, get_admin_service
 
 __all__ = [
     # Database
@@ -95,4 +95,5 @@ __all__ = [
     "get_current_user",
     "get_current_user_optional",
     "get_admin_user",
+    "get_admin_service",
 ]

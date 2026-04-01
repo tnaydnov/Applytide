@@ -21,16 +21,20 @@ Tags: feedback
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException
-from fastapi.responses import JSONResponse
-from typing import Optional
+import html
 import os
 import uuid
+from typing import Optional
+
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+
 from ...config import settings
 from ...infra.notifications.email_service import email_service
 from ...infra.logging import get_logger
+from ...infra.security.rate_limiter import feedback_limiter
 
-router = APIRouter(prefix="/api", tags=["feedback"])
+router = APIRouter(prefix="/feedback", tags=["feedback"])
 logger = get_logger(__name__)
 
 def _feedback_html(name: str, email: str, feedback_type: str, message: str, has_screenshot: bool) -> str:
@@ -49,17 +53,18 @@ def _feedback_html(name: str, email: str, feedback_type: str, message: str, has_
         <h2>🚀 New Beta Feedback Received</h2><span style="background:#ff6b35;color:#fff;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:bold">BETA</span>
       </div>
       <div style="background:#f8f9fa;padding:20px;border-radius:8px">
-        <p><b>Feedback Type:</b> {feedback_types.get(feedback_type, feedback_type)}</p>
-        <p><b>From:</b> {name or 'Anonymous'}</p>
-        <p><b>Email:</b> {email or 'Not provided'}</p>
-        <div><b>Message:</b><div style="white-space:pre-wrap;border:1px solid #ddd;padding:12px;border-radius:6px;background:#fff">{message}</div></div>
+        <p><b>Feedback Type:</b> {feedback_types.get(feedback_type, html.escape(feedback_type))}</p>
+        <p><b>From:</b> {html.escape(name) if name else 'Anonymous'}</p>
+        <p><b>Email:</b> {html.escape(email) if email else 'Not provided'}</p>
+        <div><b>Message:</b><div style="white-space:pre-wrap;border:1px solid #ddd;padding:12px;border-radius:6px;background:#fff">{html.escape(message)}</div></div>
         {"<p>📎 Screenshot attached</p>" if has_screenshot else ""}
       </div>
     </body></html>
     """
 
-@router.post("/feedback")
+@router.post("")
 async def submit_feedback(
+    request: Request,
     name: str = Form(""),
     email: str = Form(""),
     type: str = Form(...),
@@ -128,6 +133,15 @@ async def submit_feedback(
     if type not in ["bug", "suggestion", "feature", "general", "other"]:
         raise HTTPException(status_code=400, detail="Invalid feedback type")
 
+    # Rate limit feedback submissions per IP
+    ip_address = request.client.host if request.client else "unknown"
+    is_allowed, retry_after = feedback_limiter.check_rate_limit(ip_address)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many feedback submissions. Please try again later."
+        )
+
     screenshot_path = None
     try:
         logger.info(
@@ -142,7 +156,7 @@ async def submit_feedback(
 
         # Save screenshot (if any)
         if screenshot:
-            if not screenshot.content_type.startswith("image/"):
+            if not screenshot.content_type or not screenshot.content_type.startswith("image/"):
                 logger.warning(
                     "Invalid file type for screenshot",
                     extra={
@@ -166,8 +180,8 @@ async def submit_feedback(
             upload_dir = "/tmp/feedback_uploads"
             os.makedirs(upload_dir, exist_ok=True)
             ext = (
-                screenshot.filename.rsplit(".", 1)[-1]
-                if "." in screenshot.filename
+                (screenshot.filename or "").rsplit(".", 1)[-1]
+                if screenshot.filename and "." in screenshot.filename
                 else "jpg"
             )
             unique = f"feedback_{uuid.uuid4().hex[:8]}.{ext}"
@@ -223,15 +237,15 @@ async def submit_feedback(
         if screenshot_path and os.path.exists(screenshot_path):
             try:
                 os.remove(screenshot_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.debug("Failed to cleanup screenshot", extra={"path": screenshot_path, "error": str(cleanup_err)})
         raise
     except Exception as e:
         if screenshot_path and os.path.exists(screenshot_path):
             try:
                 os.remove(screenshot_path)
-            except Exception:
-                pass
+            except Exception as cleanup_err:
+                logger.debug("Failed to cleanup screenshot", extra={"path": screenshot_path, "error": str(cleanup_err)})
         logger.error(
             "Feedback submission error",
             extra={"feedback_type": type, "error": str(e)},

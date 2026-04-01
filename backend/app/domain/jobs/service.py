@@ -649,6 +649,13 @@ class JobService:
                 "cleaned_count": len(data["skills"])
             })
 
+        # Pass through is_archived flag
+        if "is_archived" in payload:
+            data["is_archived"] = bool(payload["is_archived"])
+
+        # Remove None values to avoid overwriting existing data with null
+        data = {k: v for k, v in data.items() if v is not None or k == "is_archived"}
+
         try:
             job = self.jobs.update_for_user(job_id, user_id, data)
             logger.info("Job updated successfully", extra={

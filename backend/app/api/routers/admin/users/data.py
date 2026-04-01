@@ -10,40 +10,22 @@ All endpoints require admin authentication.
 Read-only operations for user support and analytics.
 """
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_db
-from app.api.deps import get_admin_user
+from app.api.deps import get_admin_user, get_admin_service
 from app.db import models
 from app.domain.admin.service import AdminService
 from app.domain.admin import dto
 from app.infra.logging import get_logger
-from sqlalchemy.orm import Session
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
-    """
-    Dependency function to inject AdminService instance.
-    
-    Creates and returns an AdminService instance with the current
-    database session. Used as a FastAPI dependency for data endpoints.
-    
-    Args:
-        db: Database session (from get_db dependency)
-        
-    Returns:
-        AdminService: Service instance for admin operations
-    """
-    return AdminService(db)
-
-
 @router.get("/{user_id}/applications", response_model=list[dto.UserApplicationDTO])
 def get_user_applications(
     user_id: uuid.UUID,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
 ):
@@ -143,7 +125,7 @@ def get_user_applications(
 @router.get("/{user_id}/jobs", response_model=list[dto.UserJobDTO])
 def get_user_jobs(
     user_id: uuid.UUID,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
 ):
@@ -243,7 +225,7 @@ def get_user_jobs(
 @router.get("/{user_id}/activity", response_model=list[dto.ActivityEventDTO])
 def get_user_activity(
     user_id: uuid.UUID,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=100),
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
 ):

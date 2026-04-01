@@ -20,13 +20,14 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_, desc
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.api.deps import get_db
 from app.api.deps import get_admin_user
 from app.db import models
 from app.domain.admin import dto
 from app.infra.logging import get_logger
+from app.api.schemas.common import ErrorDetailResponse
 
 # Router configuration
 router = APIRouter(prefix="/errors", tags=["admin-errors"])
@@ -119,11 +120,12 @@ def list_errors(
         
         if endpoint:
             # Case-insensitive partial match for endpoint
-            stmt = stmt.where(models.ApplicationLog.endpoint.ilike(f"%{endpoint}%"))
+            safe_ep = endpoint.replace('%', '\\%').replace('_', '\\_')
+            stmt = stmt.where(models.ApplicationLog.endpoint.ilike(f"%{safe_ep}%"))
         
         if hours:
             # Time-based filter - last N hours
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
             stmt = stmt.where(models.ApplicationLog.timestamp >= cutoff)
         
         # Get total count for pagination metadata
@@ -137,14 +139,19 @@ def list_errors(
         # Execute query
         logs = db.scalars(stmt).all()
         
+        # Batch-load user emails to avoid N+1 queries
+        user_ids = {log.user_id for log in logs if log.user_id}
+        user_map: dict = {}
+        if user_ids:
+            users = db.scalars(
+                select(models.User).where(models.User.id.in_(user_ids))
+            ).all()
+            user_map = {u.id: u.email for u in users}
+        
         # Build response DTOs with user email enrichment
         items = []
         for log in logs:
-            # Enrich with user email if available
-            user_email = None
-            if log.user_id:
-                user = db.get(models.User, log.user_id)
-                user_email = user.email if user else None
+            user_email = user_map.get(log.user_id) if log.user_id else None
             
             items.append(dto.ErrorLogDTO(
                 id=log.id,
@@ -235,7 +242,7 @@ def get_error_summary(
         )
         
         # Calculate time boundaries
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today_start - timedelta(days=7)
         
@@ -317,7 +324,7 @@ def get_error_summary(
         )
 
 
-@router.get("/{log_id}")
+@router.get("/{log_id}", response_model=ErrorDetailResponse)
 def get_error_detail(
     log_id: uuid.UUID,
     admin_user: models.User = Depends(get_admin_user),
@@ -430,20 +437,6 @@ def get_error_detail(
         raise
     except Exception as e:
         # Log unexpected errors with full context
-        logger.error(
-            "Error fetching error detail",
-            extra={
-                "admin_id": str(admin_user.id),
-                "log_id": str(log_id),
-                "error": str(e)
-            },
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to fetch error detail"
-        )
-    except Exception as e:
         logger.error(
             "Error fetching error detail",
             extra={

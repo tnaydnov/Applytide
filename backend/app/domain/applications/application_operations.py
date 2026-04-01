@@ -14,7 +14,7 @@ from uuid import UUID
 from .repository import IApplicationRepo
 from .dto import ApplicationDTO, CardRowDTO
 from .errors import ApplicationNotFound, BadRequest
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

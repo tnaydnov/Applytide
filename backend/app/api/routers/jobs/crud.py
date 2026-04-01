@@ -13,6 +13,7 @@ from ...deps import get_job_service
 from ....domain.jobs.service import JobService
 from .schemas import JobCreate, ManualJobCreate, JobOut
 from ....infra.logging import get_logger
+from ...schemas.common import MessageResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -291,7 +292,7 @@ def update_job(
         raise HTTPException(status_code=500, detail="Failed to update job")
 
 
-@router.delete("/{job_id}")
+@router.delete("/{job_id}", response_model=MessageResponse)
 def delete_job(
     job_id: uuid.UUID,
     svc: JobService = Depends(get_job_service),
@@ -380,3 +381,45 @@ def delete_job(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to delete job")
+
+
+@router.post("/{job_id}/archive", response_model=JobOut)
+def archive_job(
+    job_id: uuid.UUID,
+    svc: JobService = Depends(get_job_service),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Archive a job (set is_archived=True)."""
+    try:
+        dto = svc.update_job(
+            user_id=current_user.id,
+            job_id=job_id,
+            payload={"is_archived": True},
+        )
+        return JobOut(**dto.__dict__)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found or not authorized")
+    except Exception as e:
+        logger.error("Error archiving job", extra={"error": str(e)}, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to archive job")
+
+
+@router.post("/{job_id}/unarchive", response_model=JobOut)
+def unarchive_job(
+    job_id: uuid.UUID,
+    svc: JobService = Depends(get_job_service),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Unarchive a job (set is_archived=False)."""
+    try:
+        dto = svc.update_job(
+            user_id=current_user.id,
+            job_id=job_id,
+            payload={"is_archived": False},
+        )
+        return JobOut(**dto.__dict__)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Job not found or not authorized")
+    except Exception as e:
+        logger.error("Error unarchiving job", extra={"error": str(e)}, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to unarchive job")

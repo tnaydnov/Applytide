@@ -43,13 +43,14 @@ import re
 
 from .ports import IOAuthTokenRepo, IHTTPClient, ISettings
 from ...db import models  # reuse your ORM models for user lookups
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
+from ...infra.external.google_urls import (
+    GOOGLE_AUTH_URL,
+    GOOGLE_TOKEN_URL,
+    GOOGLE_USERINFO_URL,
+)
 
 logger = get_logger(__name__)
-
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -195,8 +196,8 @@ class OAuthService:
         # Basic email validation
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
-            logger.warning(f"Invalid email format: {email}")
-            raise OAuthValidationError(f"Invalid email format: {email}")
+            logger.warning("Invalid email format in OAuth", extra={"email_domain": email.split('@')[-1] if '@' in email else 'unknown'})
+            raise OAuthValidationError("Invalid email format")
 
     def _retry_request(self, func, *args, **kwargs):
         """
@@ -620,7 +621,7 @@ class OAuthService:
                         raise OAuthError(f"Failed to link Google account: {e}")
                 else:
                     # Create new user
-                    logger.debug(f"Creating new OAuth user for email: {email}")
+                    logger.debug("Creating new OAuth user", extra={"email_domain": email.split('@')[-1] if '@' in email else 'unknown'})
                     is_new = True
                     
                     try:
@@ -668,8 +669,8 @@ class OAuthService:
             logger.error(f"Unexpected error processing user account: {e}", exc_info=True)
             try:
                 self.db.rollback()
-            except:
-                pass
+            except Exception as rollback_err:
+                logger.warning("Failed to rollback after OAuth error", extra={"error": str(rollback_err)})
             raise OAuthError(f"Failed to process user account: {e}")
 
     # ---------- Refreshing ----------

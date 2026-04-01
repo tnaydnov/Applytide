@@ -27,7 +27,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.get("/me")
+@router.get("/me", response_model=schemas.UserInfo)
 def get_current_user_info(
     current_user: models.User = Depends(get_current_user)
 ):

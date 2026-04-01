@@ -1,185 +1,132 @@
 """
 Redis Client Module
 
-Provides Redis connection management with health monitoring.
+Provides Redis connection management with lazy initialization and health
+monitoring.
 
-This module establishes a global Redis connection pool that can be reused
-across the application. The connection is configured to decode responses
-as strings for easier handling.
-
-Connection Configuration:
-    - decode_responses=True: Automatically decode bytes to strings
-    - Connection pooling: Automatically managed by redis-py
-    - Retry logic: Built into redis-py client
-    - Timeout handling: Configurable via REDIS_URL parameters
-
-Health Monitoring:
-    - check_redis_health(): Verify Redis connectivity
-    - Logs errors to stderr for visibility during initialization
+The connection is created on first use (not at import time) so that modules
+can be safely imported without requiring a live Redis instance.
 
 Usage:
     from app.infra.cache.redis_client import get_redis, check_redis_health
-    
-    # Get Redis client
+
     redis = get_redis()
     redis.set("key", "value")
-    
-    # Check health
+
     if check_redis_health():
         print("Redis is healthy")
-    else:
-        print("Redis is unavailable")
-
-Error Handling:
-    - Connection errors are logged but don't crash the application
-    - Health checks return False on any error
-    - Operations should handle Redis failures gracefully
-
-Configuration:
-    Set REDIS_URL in environment or settings:
-    - redis://localhost:6379/0
-    - redis://:password@localhost:6379/0
-    - redis://localhost:6379/0?socket_timeout=5&socket_connect_timeout=5
 """
 
+from __future__ import annotations
+
 import sys
+import threading
+from typing import Optional
+
 import redis
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
 
 from ...config import settings
 
 # Configuration constants
-REDIS_SOCKET_TIMEOUT: int = 5  # Socket operation timeout in seconds
-REDIS_SOCKET_CONNECT_TIMEOUT: int = 5  # Connection timeout in seconds
-REDIS_RETRY_ON_TIMEOUT: bool = True  # Retry operations on timeout
-REDIS_HEALTH_CHECK_INTERVAL: int = 30  # Health check interval in seconds
+REDIS_SOCKET_TIMEOUT: int = 5
+REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
+REDIS_RETRY_ON_TIMEOUT: bool = True
+REDIS_HEALTH_CHECK_INTERVAL: int = 30
 
-# decode_responses=True → handle str, not bytes
-# This global connection pool is thread-safe and reused across the application
-try:
-    r = redis.Redis.from_url(
+# Key namespace — prevents collisions when sharing a Redis instance
+REDIS_NAMESPACE: str = "applytide"
+
+
+def redis_key(*parts: str) -> str:
+    """
+    Build a namespaced Redis key.
+
+    >>> redis_key("jwt", "blacklist", jti)
+    'applytide:jwt:blacklist:<jti>'
+    """
+    return f"{REDIS_NAMESPACE}:{':'.join(parts)}"
+
+# ── Lazy singleton ──────────────────────────────────────────────────────
+_client: Optional[redis.Redis] = None
+_lock = threading.Lock()
+
+
+def _build_client() -> redis.Redis:
+    """Create a Redis client from current settings."""
+    return redis.Redis.from_url(
         settings.REDIS_URL,
         decode_responses=True,
         socket_timeout=REDIS_SOCKET_TIMEOUT,
         socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
         retry_on_timeout=REDIS_RETRY_ON_TIMEOUT,
-        health_check_interval=REDIS_HEALTH_CHECK_INTERVAL
-    )
-    
-    # Test connection immediately
-    r.ping()
-    
-    sys.stderr.write(f"✓ Redis connected successfully: {settings.REDIS_URL}\n")
-    
-except Exception as e:
-    # Log error but don't crash - let health checks handle it
-    sys.stderr.write(f"✗ Redis connection error during initialization: {e}\n")
-    sys.stderr.write(f"  REDIS_URL: {settings.REDIS_URL}\n")
-    sys.stderr.write("  Application will continue, but cache operations will fail\n")
-    
-    # Create a Redis client anyway (operations will fail with proper errors)
-    r = redis.Redis.from_url(
-        settings.REDIS_URL,
-        decode_responses=True,
-        socket_timeout=REDIS_SOCKET_TIMEOUT,
-        socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
-        retry_on_timeout=REDIS_RETRY_ON_TIMEOUT
+        health_check_interval=REDIS_HEALTH_CHECK_INTERVAL,
     )
 
 
 def get_redis() -> redis.Redis:
     """
-    Get the global Redis client instance.
-    
-    Returns:
-        redis.Redis: Thread-safe Redis client with connection pooling
-    
-    Notes:
-        - This returns the same global connection pool for efficiency
-        - Connection pooling is automatic - no need to create multiple clients
-        - Thread-safe and can be used across asyncio/threading
-    
-    Example:
-        >>> redis_client = get_redis()
-        >>> redis_client.set("key", "value", ex=3600)
-        >>> value = redis_client.get("key")
+    Return the global Redis client, creating it on first call.
+
+    Thread-safe via a lock; subsequent calls return the cached instance.
     """
-    return r
+    global _client
+    if _client is None:
+        with _lock:
+            if _client is None:
+                _client = _build_client()
+    return _client
+
+
+# Backward-compatible module-level proxy so ``from …redis_client import r``
+# still works without triggering a connection at import time.
+class _RedisProxy:
+    """Transparent proxy that defers to ``get_redis()`` on every attribute access."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_redis(), name)
+
+    def __repr__(self) -> str:
+        return f"<_RedisProxy wrapping {get_redis()!r}>"
+
+
+r: redis.Redis = _RedisProxy()  # type: ignore[assignment]
 
 
 def check_redis_health() -> bool:
     """
-    Check if Redis connection is healthy.
-    
-    This function sends a PING command to Redis and returns True if
-    the response is successful. Used for health checks and monitoring.
-    
-    Returns:
-        bool: True if Redis is healthy, False otherwise
-    
-    Raises:
-        No exceptions are raised - all errors are caught and logged
-    
-    Error Handling:
-        - Logs errors to stderr for visibility
-        - Returns False on any error (connection, timeout, etc.)
-        - Safe to call repeatedly for health monitoring
-    
-    Example:
-        >>> if check_redis_health():
-        ...     print("Redis is operational")
-        ... else:
-        ...     print("Redis is down - using fallback")
-    
-    Notes:
-        - This is a blocking operation with timeout
-        - Default timeout is REDIS_SOCKET_TIMEOUT (5 seconds)
-        - Use this for startup health checks and monitoring endpoints
+    Send PING to Redis and return ``True`` if it responds.
+
+    All errors are caught and logged to stderr — never raises.
     """
     try:
-        response = r.ping()
-        
-        if response:
-            return True
-        else:
-            # Unexpected: ping() returned False or None
-            sys.stderr.write("Redis health check failed: ping() returned non-True value\n")
-            return False
-            
+        return bool(get_redis().ping())
+
     except RedisConnectionError as e:
-        # Connection-specific errors
         sys.stderr.write(f"Redis connection error during health check: {e}\n")
-        sys.stderr.write(f"  REDIS_URL: {settings.REDIS_URL}\n")
-        sys.stderr.write("  Check that Redis server is running and accessible\n")
         return False
-        
+
     except redis.exceptions.TimeoutError as e:
-        # Timeout errors
         sys.stderr.write(f"Redis timeout during health check: {e}\n")
-        sys.stderr.write(f"  Timeout: {REDIS_SOCKET_TIMEOUT}s\n")
-        sys.stderr.write("  Redis server may be overloaded or network is slow\n")
         return False
-        
+
     except RedisError as e:
-        # Other Redis-specific errors
         sys.stderr.write(f"Redis error during health check: {e}\n")
-        sys.stderr.write(f"  Error type: {type(e).__name__}\n")
         return False
-        
+
     except Exception as e:
-        # Unexpected errors
         sys.stderr.write(f"Unexpected error during Redis health check: {e}\n")
-        sys.stderr.write(f"  Error type: {type(e).__name__}\n")
         return False
 
 
-# Export all public functions and constants
 __all__ = [
-    'r',
-    'get_redis',
-    'check_redis_health',
-    'REDIS_SOCKET_TIMEOUT',
-    'REDIS_SOCKET_CONNECT_TIMEOUT',
-    'REDIS_RETRY_ON_TIMEOUT',
-    'REDIS_HEALTH_CHECK_INTERVAL',
+    "r",
+    "get_redis",
+    "check_redis_health",
+    "redis_key",
+    "REDIS_NAMESPACE",
+    "REDIS_SOCKET_TIMEOUT",
+    "REDIS_SOCKET_CONNECT_TIMEOUT",
+    "REDIS_RETRY_ON_TIMEOUT",
+    "REDIS_HEALTH_CHECK_INTERVAL",
 ]

@@ -7,8 +7,8 @@ from datetime import datetime
 class ApplicationCreate(BaseModel):
     job_id: uuid.UUID
     resume_id: Optional[uuid.UUID] = None
-    status: str = Field(default="Applied")
-    source: Optional[str] = None
+    status: str = Field(default="Applied", min_length=1, max_length=100)
+    source: Optional[str] = Field(None, max_length=500)
 
 class ApplicationOut(BaseModel):
     id: uuid.UUID
@@ -24,8 +24,8 @@ class ApplicationOut(BaseModel):
         from_attributes = True
 
 class ApplicationUpdate(BaseModel):
-    status: str
-    source: Optional[str] = None
+    status: str = Field(..., min_length=1, max_length=100)
+    source: Optional[str] = Field(None, max_length=500)
 
 # ----- Cards / Detail view models -----
 class JobMini(BaseModel):
@@ -54,10 +54,10 @@ class ApplicationCard(BaseModel):
     updated_at: datetime
 
 class StageCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=200)
     scheduled_at: Optional[datetime] = None
-    outcome: Optional[str] = None
-    notes: Optional[str] = None
+    outcome: Optional[str] = Field(None, max_length=200)
+    notes: Optional[str] = Field(None, max_length=10000)
 
 class StageOut(BaseModel):
     id: uuid.UUID
@@ -71,10 +71,10 @@ class StageOut(BaseModel):
         from_attributes = True
 
 class NoteCreate(BaseModel):
-    body: str
+    body: str = Field(..., min_length=1, max_length=50000)
 
 class NoteUpdate(BaseModel):
-    body: str
+    body: str = Field(..., min_length=1, max_length=50000)
 
 class NoteOut(BaseModel):
     id: uuid.UUID
@@ -105,12 +105,17 @@ class ApplicationDetail(BaseModel):
     notes: List[NoteOut]
     attachments: List[AttachmentOut] = []
 
+class AttachFromDocumentRequest(BaseModel):
+    """Request body for attaching an existing document to an application."""
+    document_id: uuid.UUID
+    document_type: str = Field(default="other", pattern=r"^(resume|cover_letter|portfolio|certificate|transcript|reference|other)$")
+
 class AttachmentUpload(BaseModel):
     filename: str
     content_type: str
 
 class StageUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
     scheduled_at: Optional[datetime] = None
-    outcome: Optional[str] = None
-    notes: Optional[str] = None
+    outcome: Optional[str] = Field(None, max_length=200)
+    notes: Optional[str] = Field(None, max_length=10000)

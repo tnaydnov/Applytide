@@ -129,6 +129,7 @@ def logout(
                     }
                 )
             except Exception as e:
+                db.rollback()
                 logger.warning(
                     "Error revoking refresh token during logout",
                     extra={

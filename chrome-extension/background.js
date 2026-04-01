@@ -2,7 +2,7 @@
 
 const m = chrome.runtime.getManifest();
 const DEV = (m.version_name && m.version_name.includes('dev')) || m.name.includes('(Dev)');
-const API_HOST = DEV ? "http://localhost/api" : "https://applytide.com/api";
+const API_HOST = DEV ? "http://localhost/api/v1" : "https://applytide.com/api/v1";
 const RUNNING_BY_TAB = new Map(); // tabId -> boolean
 const CAPTURE_CACHE = new Map();  // url -> { ts: number, capture }
 const CAPTURE_TTL_MS = 60_000;
@@ -1157,8 +1157,8 @@ async function loginWithEmail({ email, password }) {
 
 // -------- Auth: Google OAuth via small window + polling --------
 async function loginWithGoogle() {
-  const backendBase = API_HOST.replace(/\/api$/, "");   // -> http://localhost  or  https://applytide.com
-  const loginUrl = `${backendBase}/api/auth/google/login?ext=1`; // go through NGINX
+  const backendBase = API_HOST.replace(/\/api\/v1$/, "");   // -> http://localhost  or  https://applytide.com
+  const loginUrl = `${backendBase}/api/v1/auth/google/login?ext=1`; // go through NGINX
   const popup = await chrome.windows.create({ url: loginUrl, type: "popup", width: 480, height: 640 });
   const winId = popup.id;
 

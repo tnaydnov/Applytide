@@ -279,8 +279,8 @@ class DocumentStore:
             if path.exists():
                 try:
                     path.unlink()
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    logger.debug("Failed to cleanup file after storage error", extra={"path": str(path), "error": str(cleanup_err)})
             raise
         
         except Exception as e:
@@ -288,8 +288,8 @@ class DocumentStore:
             if path.exists():
                 try:
                     path.unlink()
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    logger.debug("Failed to cleanup file after unexpected error", extra={"path": str(path), "error": str(cleanup_err)})
             
             logger.error(
                 "Failed to save document",
@@ -506,8 +506,8 @@ class DocumentStore:
                 if path.exists() and path != meta_path:
                     try:
                         path.unlink()
-                    except Exception:
-                        pass
+                    except Exception as cleanup_err:
+                        logger.debug("Failed to cleanup sidecar temp file", extra={"path": str(path), "error": str(cleanup_err)})
             raise
         
         except Exception as e:
@@ -515,8 +515,8 @@ class DocumentStore:
             if temp_path.exists():
                 try:
                     temp_path.unlink()
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    logger.debug("Failed to cleanup sidecar temp file", extra={"path": str(temp_path), "error": str(cleanup_err)})
             
             logger.error(
                 "Failed to write sidecar file",

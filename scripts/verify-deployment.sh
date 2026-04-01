@@ -48,7 +48,7 @@ fi
 # Check if frontend is responding
 echo ""
 echo "🌐 Checking frontend..."
-if docker compose -f docker-compose.prod.yml exec -T frontend curl -sf http://localhost:3000 &> /dev/null; then
+if docker compose -f docker-compose.prod.yml exec -T newfront curl -sf http://localhost:3000 &> /dev/null; then
     echo -e "${GREEN}✅ Frontend is responding${NC}"
 else
     echo -e "${RED}❌ Frontend is not responding${NC}"
@@ -68,7 +68,7 @@ fi
 # Check Nginx can reach frontend
 echo ""
 echo "🔗 Testing Nginx → Frontend connection..."
-if docker compose -f docker-compose.prod.yml exec -T nginx wget -q --spider http://frontend:3000 &> /dev/null; then
+if docker compose -f docker-compose.prod.yml exec -T nginx wget -q --spider http://newfront:3000 &> /dev/null; then
     echo -e "${GREEN}✅ Nginx can reach frontend${NC}"
 else
     echo -e "${RED}❌ Nginx cannot reach frontend${NC}"

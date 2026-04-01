@@ -15,6 +15,7 @@ from .schemas import DocumentType, DocumentStatus, DocumentResponse, DocumentLis
 from ...deps import get_document_service
 from ....domain.documents.service import DocumentService
 from ....infra.logging import get_logger
+from ...schemas.common import MessageResponse, MissingFilesResponse, CleanupResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -199,7 +200,7 @@ def get_document(
         raise HTTPException(status_code=500, detail="Failed to retrieve document")
 
 
-@router.delete("/{document_id}")
+@router.delete("/{document_id}", response_model=MessageResponse)
 def delete_document(
     document_id: str,
     db: Session = Depends(get_db),
@@ -350,7 +351,7 @@ def set_document_status(
     return svc.update_status(db=db, user_id=str(current_user.id), document_id=document_id, status=new_status)
 
 
-@router.get("/health/missing-files")
+@router.get("/health/missing-files", response_model=MissingFilesResponse)
 def check_missing_files(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -437,7 +438,7 @@ def check_missing_files(
         raise HTTPException(status_code=500, detail="Failed to check missing files")
 
 
-@router.post("/cleanup/orphaned")
+@router.post("/cleanup/orphaned", response_model=CleanupResponse)
 def cleanup_orphaned_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

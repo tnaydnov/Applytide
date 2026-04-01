@@ -13,7 +13,7 @@ from uuid import UUID
 from .repository import IApplicationRepo, IStageRepo
 from .dto import StageDTO
 from .errors import ApplicationNotFound, StageNotFound, BadRequest
-from app.infra.logging import get_logger
+from app.domain.logging import get_logger
 
 logger = get_logger(__name__)
 

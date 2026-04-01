@@ -1,10 +1,11 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -56,16 +57,109 @@ setup_logging()
 # Create logger for this module
 logger = get_logger(__name__)
 
+ENV = os.getenv("ENVIRONMENT", "development").lower()
+
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="Applytide API")
+# Enforce debug=False in non-development environments
+_debug = ENV == "development"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown logic."""
+    # --- Startup ---
+    logger.info(
+        "Application starting",
+        extra={
+            "environment": settings.ENVIRONMENT,
+            "log_level": settings.LOG_LEVEL,
+            "log_to_console": settings.LOG_TO_CONSOLE,
+            "log_to_file": settings.LOG_TO_FILE,
+            "log_to_db": settings.LOG_TO_DB,
+            "security_headers": settings.SECURITY_HEADERS_ENABLED,
+            "rate_limit": settings.RATE_LIMIT_ENABLED,
+            "rate_limit_requests": settings.GLOBAL_RATE_LIMIT_REQUESTS,
+            "rate_limit_window": settings.GLOBAL_RATE_LIMIT_WINDOW,
+        }
+    )
+    
+    app.state.scheduler = BackgroundScheduler(daemon=True)
+    app.state.scheduler.start()
+    logger.info("Background scheduler started")
+
+    # ── Scheduled cleanup jobs ───────────────────────────────────────────
+    from .infra.workers.cleanup_tasks import (
+        purge_expired_email_actions,
+        purge_expired_refresh_tokens,
+        purge_old_llm_usage,
+    )
+
+    # Token cleanup every 6 hours
+    app.state.scheduler.add_job(
+        purge_expired_email_actions,
+        "interval",
+        hours=6,
+        id="cleanup_email_actions",
+        replace_existing=True,
+    )
+    app.state.scheduler.add_job(
+        purge_expired_refresh_tokens,
+        "interval",
+        hours=6,
+        id="cleanup_refresh_tokens",
+        replace_existing=True,
+    )
+
+    # LLM usage log cleanup daily at 03:00 UTC
+    app.state.scheduler.add_job(
+        purge_old_llm_usage,
+        "cron",
+        hour=3,
+        minute=0,
+        id="cleanup_llm_usage",
+        replace_existing=True,
+    )
+
+    logger.info("Cleanup jobs registered (email_actions/6h, refresh_tokens/6h, llm_usage/daily)")
+
+    yield  # --- Application runs ---
+
+    # --- Shutdown ---
+    logger.info("Application shutting down")
+    
+    try:
+        app.state.scheduler.shutdown(wait=False)
+        logger.info("Background scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")
+    
+    # Close Google Calendar gateway httpx client
+    try:
+        from .infra.external.google_calendar_gateway import get_calendar_gateway, _calendar_gateway
+        if _calendar_gateway is not None:
+            await get_calendar_gateway().aclose()
+            logger.info("Google Calendar gateway closed")
+    except Exception as e:
+        logger.error(f"Error closing calendar gateway: {e}")
+    
+    # Cleanup logging (flushes database handler)
+    shutdown_logging()
+    logger.info("Logging system shut down")
+
+
+app = FastAPI(
+    title="Applytide API",
+    debug=_debug,
+    docs_url="/docs" if _debug else None,
+    redoc_url="/redoc" if _debug else None,
+    lifespan=lifespan,
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Setup global exception handlers
 setup_exception_handlers(app)
-
-ENV = os.getenv("ENVIRONMENT", "development").lower()
 
 # --- Logging middleware (FIRST - before rate limiting and CORS)
 app.add_middleware(
@@ -111,26 +205,35 @@ else:
 
 allowed_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 allowed_hosts += ["backend", "frontend"]
+# Always allow localhost in development
+if os.getenv("ENVIRONMENT", "development") != "production":
+    for dev_host in ["localhost", "127.0.0.1"]:
+        if dev_host not in allowed_hosts:
+            allowed_hosts.append(dev_host)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # ADMIN CLEANUP: Removed ErrorLoggingMiddleware (used deleted error_tracking module)
 
-# --- Routers
-app.include_router(auth_router)
-app.include_router(errors_router)
-app.include_router(jobs_router)
-app.include_router(applications_router)
-app.include_router(ws_router)
-app.include_router(dashboard_router)
-app.include_router(analytics_router)
-app.include_router(documents_router)
-app.include_router(profile_router)
-app.include_router(preferences_router)
-app.include_router(ai_router)
-app.include_router(feedback_router)
-app.include_router(reminders_router)
-app.include_router(google_calendar_router)
-app.include_router(admin_router)
+# --- Versioned API router
+from fastapi import APIRouter as _APIRouter
+
+v1 = _APIRouter(prefix="/api/v1")
+v1.include_router(auth_router)
+v1.include_router(errors_router)
+v1.include_router(jobs_router)
+v1.include_router(applications_router)
+v1.include_router(ws_router)
+v1.include_router(dashboard_router)
+v1.include_router(analytics_router)
+v1.include_router(documents_router)
+v1.include_router(profile_router)
+v1.include_router(preferences_router)
+v1.include_router(ai_router)
+v1.include_router(feedback_router)
+v1.include_router(reminders_router)
+v1.include_router(google_calendar_router)
+v1.include_router(admin_router)
+app.include_router(v1)
 
 # --- Proxy headers (outermost - must be first in middleware stack)
 if ProxyHeadersMiddleware is not None and os.getenv("TRUST_PROXY_HEADERS", "1") == "1":
@@ -143,64 +246,36 @@ if ENV == "production" or settings.SECURITY_HEADERS_ENABLED:
     logger.info("Security headers middleware enabled")
 
 @app.get("/health", tags=["monitoring"])
-async def health_check(db: AsyncSession = Depends(get_db)):
+def health_check(db: Session = Depends(get_db)):
+    """Liveness/readiness probe for orchestrators and monitoring."""
     try:
-        result = await db.execute(text("SELECT 1"))
+        result = db.execute(text("SELECT 1"))
         db_status = "healthy" if result else "unhealthy"
     except Exception as e:
-        db_status = f"unhealthy: {str(e)}"
+        logger.error("Health check: DB unhealthy", exc_info=True)
+        db_status = "unhealthy"
 
     try:
         redis = get_redis()
         redis_status = "healthy" if redis.ping() else "unhealthy"
     except Exception as e:
-        redis_status = f"unhealthy: {str(e)}"
+        logger.error("Health check: Redis unhealthy", exc_info=True)
+        redis_status = "unhealthy"
 
     overall = "healthy" if db_status == "healthy" and redis_status == "healthy" else "unhealthy"
-    return {
-        "status": overall,
-        "timestamp": datetime.utcnow().isoformat(),
-        "components": {"database": db_status, "redis": redis_status},
-        "version": "1.0.0",
-    }
-
-log = logging.getLogger("uvicorn.error")
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info(
-        "Application starting",
-        extra={
-            "environment": settings.ENVIRONMENT,
-            "log_level": settings.LOG_LEVEL,
-            "log_to_console": settings.LOG_TO_CONSOLE,
-            "log_to_file": settings.LOG_TO_FILE,
-            "log_to_db": settings.LOG_TO_DB,
-            "security_headers": settings.SECURITY_HEADERS_ENABLED,
-            "rate_limit": settings.RATE_LIMIT_ENABLED,
-            "rate_limit_requests": settings.GLOBAL_RATE_LIMIT_REQUESTS,
-            "rate_limit_window": settings.GLOBAL_RATE_LIMIT_WINDOW,
-        }
+    status_code = 200 if overall == "healthy" else 503
+    import json as json_mod
+    return Response(
+        content=json_mod.dumps({
+            "status": overall,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "components": {"database": db_status, "redis": redis_status},
+            "version": "1.0.0",
+        }),
+        media_type="application/json",
+        status_code=status_code,
     )
-    
-    app.state.scheduler = BackgroundScheduler(daemon=True)
-    app.state.scheduler.start()
-    logger.info("Background scheduler started")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Application shutting down")
-    
-    try:
-        app.state.scheduler.shutdown(wait=False)
-        logger.info("Background scheduler stopped")
-    except Exception as e:
-        logger.error(f"Error stopping scheduler: {e}")
-    
-    # Cleanup logging (flushes database handler)
-    shutdown_logging()
-    logger.info("Logging system shut down")
 
 @app.get("/")
 def root():

@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ...deps import get_current_user
 from ....db import models
 from ...schemas.applications import StageCreate, StageOut, StageUpdate
+from ...schemas.common import SuccessResponse
 from ....domain.applications.service import ApplicationService
 from ...deps import get_application_service
 from .utils import broadcast_event, logger
@@ -311,7 +312,7 @@ def update_stage_partial(
         raise HTTPException(status_code=404, detail="Stage not found")
 
 
-@router.delete("/{app_id}/stages/{stage_id}")
+@router.delete("/{app_id}/stages/{stage_id}", response_model=SuccessResponse)
 def delete_stage(
     app_id: uuid.UUID,
     stage_id: uuid.UUID,

@@ -24,9 +24,9 @@ class ReminderCreate(ReminderBase):
     add_meet_link: bool = Field(default=False)
     email_notifications_enabled: bool = Field(default=False)
     notification_schedule: Optional[Dict[str, Any]] = None
-    event_type: str = Field(default="general")
-    timezone_str: str = Field(default="UTC")
-    user_timezone: str = Field(default="UTC")
+    event_type: str = Field(default="general", max_length=50)
+    timezone_str: str = Field(default="UTC", max_length=100)
+    user_timezone: str = Field(default="UTC", max_length=100)
     ai_prep_tips_enabled: bool = Field(default=False)  # Pro/Premium feature
 
 
@@ -45,6 +45,7 @@ class ReminderResponse(ReminderBase):
     google_event_id: Optional[str] = None
     meet_url: Optional[str] = None
     email_notifications_enabled: bool = False
+    notification_schedule: Optional[Dict[str, Any]] = None
     event_type: Optional[str] = "general"
     ai_prep_tips_enabled: bool = False
     ai_prep_tips_generated: Optional[str] = None

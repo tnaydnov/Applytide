@@ -55,7 +55,8 @@ class EmailRendererClient:
         try:
             response = requests.get(f'{self.base_url}/health', timeout=2)
             return response.status_code == 200
-        except:
+        except Exception as e:
+            logger.debug(f"Email service health check failed: {e}")
             return False
     
     def list_templates(self) -> list:
@@ -65,7 +66,8 @@ class EmailRendererClient:
             if response.status_code == 200:
                 return response.json().get('templates', [])
             return []
-        except:
+        except Exception as e:
+            logger.debug(f"Failed to list email templates: {e}")
             return []
 
 

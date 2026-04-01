@@ -10,11 +10,9 @@ This module contains endpoints for:
 All endpoints require admin authentication via get_admin_user dependency.
 """
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_db
-from app.api.deps import get_admin_user
+from app.api.deps import get_admin_user, get_admin_service
 from app.db import models
 from app.domain.admin.service import AdminService
 from app.domain.admin import dto
@@ -23,19 +21,6 @@ from app.infra.logging import get_logger
 # Router configuration
 router = APIRouter(prefix="/dashboard", tags=["admin-dashboard"])
 logger = get_logger(__name__)
-
-
-def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
-    """
-    Dependency injection for AdminService.
-    
-    Args:
-        db: Database session from FastAPI dependency
-        
-    Returns:
-        AdminService: Initialized service instance with database access
-    """
-    return AdminService(db)
 
 
 @router.get("/stats", response_model=dto.DashboardStatsDTO)
@@ -103,7 +88,7 @@ def get_dashboard_stats(
 
 @router.get("/activity", response_model=List[dto.ActivityEventDTO])
 def get_activity_feed(
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=100),
     admin_user: models.User = Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service)
 ):

@@ -1,67 +1,64 @@
 """
 WebSocket Real-time Updates Router
 
-This module provides WebSocket endpoints for real-time bidirectional communication
-between Applytide backend and frontend clients. Enables instant updates for
-application status changes, job notifications, and system events.
+Provides authenticated WebSocket connections for real-time bidirectional
+communication.  Authentication uses **single-use tickets** obtained via
+``POST /auth/ws-ticket`` (30-second Redis-backed tokens), or falls back
+to the ``access_token`` HTTP-only cookie.
 
-Key Features:
-- WebSocket connection management with authentication
-- Token-based authentication (query param or cookie)
-- Per-user connection tracking
-- Targeted and broadcast messaging
-- Automatic cleanup of dead connections
-- Graceful disconnect handling
+Security:
+- Ticket is consumed (deleted from Redis) on first use → replay impossible.
+- ``ws.accept()`` is called ONLY after successful authentication.
+- Origin header is validated against ``settings.CORS_ORIGINS``.
 
-Use Cases:
-- Real-time application status updates
-- Instant job matching notifications
-- Document processing progress
-- System-wide announcements
-
-Dependencies:
-- JWT token authentication
-- User session management
-- Database session for user validation
-
-Router: /api/ws
+Router: /ws
 """
 from __future__ import annotations
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from http.cookies import SimpleCookie
 import uuid
 
+from ...config import settings
 from ...db.session import get_db
 from ...infra.security.tokens import decode_access
+from ...infra.security.ws_tickets import consume_ws_ticket
 from ...db import models
 from ...infra.logging import get_logger
 
-router = APIRouter(prefix="/api/ws", tags=["ws"])
+router = APIRouter(prefix="/ws", tags=["ws"])
 logger = get_logger(__name__)
 
 # Store authenticated clients with their user IDs
 authenticated_clients: dict[WebSocket, uuid.UUID] = {}
 
-async def _user_from_token_str(token: str, db: Session) -> models.User:
-    try:
-        payload = decode_access(token)
-        user_id = payload.get("sub")
-        if not user_id:
-            logger.warning("WebSocket auth failed: Invalid token payload")
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user = db.query(models.User).filter(models.User.id == uuid.UUID(str(user_id))).first()
-        if not user:
-            logger.warning("WebSocket auth failed: User not found", extra={"user_id": user_id})
-            raise HTTPException(status_code=401, detail="User not found")
-        logger.debug("WebSocket user authenticated", extra={"user_id": str(user.id)})
-        return user
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("WebSocket authentication error", extra={"error": str(e)}, exc_info=True)
-        raise HTTPException(status_code=401, detail="Authentication failed")
+# ── Allowed origins for WS connections ───────────────────────────────────
+_ALLOWED_ORIGINS: set[str] = set()
+
+
+def _get_allowed_origins() -> set[str]:
+    """Lazily build allowed-origin set from settings.CORS_ORIGINS."""
+    global _ALLOWED_ORIGINS
+    if not _ALLOWED_ORIGINS:
+        raw = settings.CORS_ORIGINS
+        if isinstance(raw, str):
+            origins = [o.strip() for o in raw.split(",") if o.strip()]
+        else:
+            origins = list(raw)
+        _ALLOWED_ORIGINS = {o.rstrip("/").lower() for o in origins}
+    return _ALLOWED_ORIGINS
+
+
+def _origin_allowed(ws: WebSocket) -> bool:
+    """Return True if the Origin header is in the allow-list (or absent)."""
+    origin = (ws.headers.get("origin") or "").rstrip("/").lower()
+    if not origin:
+        # Same-origin WS connections may omit Origin
+        return True
+    return origin in _get_allowed_origins()
+
 
 def _cookie_access_token(ws: WebSocket) -> Optional[str]:
     raw = ws.headers.get("cookie")
@@ -73,125 +70,89 @@ def _cookie_access_token(ws: WebSocket) -> Optional[str]:
         return c["access_token"].value
     return None
 
+
+def _authenticate_ticket(ticket: str, db: Session) -> Optional[models.User]:
+    """Consume a single-use WS ticket and return the user, or None."""
+    user_id = consume_ws_ticket(ticket)
+    if user_id is None:
+        return None
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    return user
+
+
+def _authenticate_cookie(ws: WebSocket, db: Session) -> Optional[models.User]:
+    """Validate JWT from the access_token cookie and return the user, or None."""
+    token = _cookie_access_token(ws)
+    if not token:
+        return None
+    try:
+        payload = decode_access(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        return db.query(models.User).filter(
+            models.User.id == uuid.UUID(str(user_id))
+        ).first()
+    except Exception as e:
+        logger.debug("WS cookie auth failed", extra={"error": str(e)})
+        return None
+
 @router.websocket("/updates")
 async def updates(
     ws: WebSocket,
-    token: Optional[str] = Query(None),
+    token: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ):
     """
     WebSocket endpoint for real-time updates.
-    
-    Establishes persistent WebSocket connection for receiving real-time updates
-    about applications, jobs, documents, and system events. Requires authentication
-    via JWT token.
-    
-    Query Parameters:
-        - token: JWT access token (optional if provided in cookie)
-    
-    Cookie:
-        - access_token: JWT token (used if query param not provided)
-    
-    Args:
-        ws: WebSocket connection from FastAPI
-        token: Optional JWT token from query parameter
-        db: Database session from dependency injection
-    
-    Connection Flow:
-        1. Accept WebSocket connection
-        2. Authenticate via token (query param or cookie)
-        3. Register client with user_id
-        4. Keep connection alive listening for messages
-        5. Cleanup on disconnect
-    
-    Authentication:
-        - Requires valid JWT access token
-        - Token from query param OR cookie (query takes precedence)
-        - Connection closed with 1008 if authentication fails
-        - User must exist in database
-    
-    Events Received:
-        - Client can send text messages (currently ignored, used for keepalive)
-        - Server broadcasts JSON events to connected clients
-    
-    Events Sent:
-        - Application status changes
-        - New job matches
-        - Document processing completion
-        - System notifications
-        - Custom events via broadcast() function
-    
-    Error Handling:
-        - 1008: Authentication failed or invalid token
-        - 1011: Internal server error
-        - Automatic cleanup of dead connections
-        - Logged disconnects for monitoring
-    
-    Security:
-        - JWT token validation required
-        - Per-user connection isolation
-        - No cross-user message leakage
-        - Automatic disconnection on auth failure
-    
-    Notes:
-        - Connection kept alive until client disconnects
-        - Supports multiple connections per user
-        - Messages sent via broadcast() helper function
-        - Dead connections automatically cleaned up
-        - Logs connection/disconnection for analytics
-    
-    Example:
-        WebSocket: /api/ws/updates?token=<jwt_token>
-        Or with cookie:
-        WebSocket: /api/ws/updates
-        Cookie: access_token=<jwt_token>
-        
-        Server sends:
-        {
-            "type": "application_status_changed",
-            "application_id": "550e8400...",
-            "stage": "Interview"
-        }
+
+    Authentication order:
+        1. ``?token=<ticket>`` — single-use Redis ticket (preferred)
+        2. ``access_token`` cookie — JWT fallback
+
+    The connection is accepted **only after** the caller is authenticated.
+    Origin is validated before any processing.
     """
-    await ws.accept()
-    user_id_str = "unknown"
-    try:
-        token = token or _cookie_access_token(ws)
-        if not token:
-            logger.warning("WebSocket connection rejected: No token")
-            await ws.close(code=1008, reason="Authentication failed")
-            return
+    # ── Origin check ────────────────────────────────────────────────────
+    if not _origin_allowed(ws):
+        logger.warning("WS rejected: bad Origin", extra={"origin": ws.headers.get("origin")})
+        await ws.close(code=1008, reason="Origin not allowed")
+        return
 
-        user = await _user_from_token_str(token, db)
-        user_id_str = str(user.id)
-        authenticated_clients[ws] = user.id
+    # ── Authenticate BEFORE accepting ───────────────────────────────────
+    user: Optional[models.User] = None
 
-        logger.info(
-            "WebSocket connection established", extra={"user_id": user_id_str}
-        )
+    if token:
+        user = _authenticate_ticket(token, db)
 
-        try:
-            while True:
-                await ws.receive_text()
-        except WebSocketDisconnect:
-            logger.info(
-                "WebSocket disconnected normally", extra={"user_id": user_id_str}
-            )
-        finally:
-            authenticated_clients.pop(ws, None)
-            logger.debug("WebSocket client removed", extra={"user_id": user_id_str})
-    except HTTPException:
-        logger.warning(
-            "WebSocket authentication failed", extra={"user_id": user_id_str}
-        )
+    if user is None:
+        user = _authenticate_cookie(ws, db)
+
+    if user is None:
+        logger.warning("WS connection rejected: authentication failed")
         await ws.close(code=1008, reason="Authentication failed")
+        return
+
+    # ── Accept only after successful auth ───────────────────────────────
+    await ws.accept()
+
+    user_id_str = str(user.id)
+    authenticated_clients[ws] = user.id
+    logger.info("WebSocket connected", extra={"user_id": user_id_str})
+
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected", extra={"user_id": user_id_str})
     except Exception as e:
-        logger.error(
-            "WebSocket error",
-            extra={"user_id": user_id_str, "error": str(e)},
-            exc_info=True,
-        )
-        await ws.close(code=1011, reason="Internal server error")
+        logger.error("WebSocket error", extra={"user_id": user_id_str, "error": str(e)}, exc_info=True)
+        try:
+            await ws.close(code=1011, reason="Internal server error")
+        except Exception as close_err:
+            logger.debug("Failed to close WebSocket", extra={"user_id": user_id_str, "error": str(close_err)})
+    finally:
+        authenticated_clients.pop(ws, None)
 
 
 async def broadcast(event: dict, user_id: uuid.UUID = None):

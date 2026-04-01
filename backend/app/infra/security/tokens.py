@@ -67,7 +67,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from redis.exceptions import RedisError
 
 from ...config import settings
-from ...infra.cache.redis_client import r
+from ...infra.cache.redis_client import r, redis_key
 from ...db.session import get_db_session
 from ...db.models import RefreshToken, EmailAction
 from ...db import models
@@ -534,7 +534,7 @@ def revoke_jti(jti: str, seconds: int):
             
         if seconds > 0:
             logger.debug(f"Blacklisting JTI: {jti} for {seconds}s", extra={"jti": jti, "ttl": seconds})
-            r.setex(f"jwt:blacklist:{jti}", seconds, "1")
+            r.setex(redis_key("jwt", "blacklist", jti), seconds, "1")
             logger.info(f"Blacklisted JTI: {jti}", extra={"jti": jti})
             
     except RedisError as e:
@@ -558,7 +558,7 @@ def is_revoked(jti: str) -> bool:
         if not jti:
             return False
             
-        revoked = r.exists(f"jwt:blacklist:{jti}") == 1
+        revoked = r.exists(redis_key("jwt", "blacklist", jti)) == 1
         
         if revoked:
             logger.debug(f"JTI is blacklisted: {jti}", extra={"jti": jti})
@@ -567,9 +567,9 @@ def is_revoked(jti: str) -> bool:
         
     except RedisError as e:
         logger.error(f"Redis error checking JTI: {e}", exc_info=True)
-        # Fail open: if Redis is down, don't block auth
-        logger.warning("Redis unavailable, allowing token (fail-open policy)")
-        return False
+        # Fail closed: if Redis is down, treat token as revoked for safety
+        logger.warning("Redis unavailable, rejecting token (fail-closed policy)")
+        return True
 
 # ==================== Email Verification/Reset Tokens ====================
 

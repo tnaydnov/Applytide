@@ -35,7 +35,7 @@ from ...domain.analytics.insights import generate_dashboard_insights
 from ...domain.analytics.ports import IAnalyticsReadRepo
 from ...infra.repositories.analytics_sqlalchemy import AnalyticsSQLARepository
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 logger = get_logger(__name__)
 
 @router.get("/metrics", response_model=dict)

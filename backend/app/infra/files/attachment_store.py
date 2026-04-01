@@ -311,8 +311,8 @@ ID-based filenames to prevent collisions and overwrite attacks.
             if dst.exists():
                 try:
                     dst.unlink()
-                except Exception:
-                    pass
+                except Exception as cleanup_err:
+                    logger.debug("Failed to cleanup dst on error", extra={"path": str(dst), "error": str(cleanup_err)})
             
             logger.error(
                 "Failed to copy file",
@@ -326,7 +326,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to copy file: {e}"
+                detail="Failed to copy file. Please try again."
             )
         
         # Determine final metadata
@@ -454,8 +454,8 @@ ID-based filenames to prevent collisions and overwrite attacks.
                 if path.exists():
                     try:
                         path.unlink()
-                    except Exception:
-                        pass
+                    except Exception as cleanup_err:
+                        logger.debug("Failed to cleanup on HTTP error", extra={"path": str(path), "error": str(cleanup_err)})
             raise
         
         except Exception as e:
@@ -464,8 +464,8 @@ ID-based filenames to prevent collisions and overwrite attacks.
                 if path.exists():
                     try:
                         path.unlink()
-                    except Exception:
-                        pass
+                    except Exception as cleanup_err:
+                        logger.debug("Failed to cleanup on error", extra={"path": str(path), "error": str(cleanup_err)})
             
             logger.error(
                 "Failed to save upload",
@@ -479,7 +479,7 @@ ID-based filenames to prevent collisions and overwrite attacks.
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to save upload: {e}"
+                detail="Failed to save upload. Please try again."
             )
         
         # Determine final metadata

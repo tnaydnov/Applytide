@@ -4,29 +4,29 @@ import uuid
 from pydantic import BaseModel, HttpUrl
 
 class JobCreate(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=500)
     company_id: Optional[uuid.UUID] = None
-    company_name: Optional[str] = None
-    website: Optional[str] = None
-    location: Optional[str] = None
-    remote_type: Optional[str] = None
-    job_type: Optional[str] = None
-    description: Optional[str] = None
+    company_name: Optional[str] = Field(None, max_length=300)
+    website: Optional[str] = Field(None, max_length=2000)
+    location: Optional[str] = Field(None, max_length=500)
+    remote_type: Optional[str] = Field(None, max_length=50)
+    job_type: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=100000)
     requirements: Optional[List[str]] = None
     skills: Optional[List[str]] = None
-    source_url: Optional[str] = None
+    source_url: Optional[str] = Field(None, max_length=2000)
 
 class ManualJobCreate(BaseModel):
-    title: str
-    company_name: str
-    location: Optional[str] = None
-    remote_type: Optional[str] = "On-site"
-    job_type: Optional[str] = "Full-time"
-    experience_level: Optional[str] = None
-    description: Optional[str] = None
+    title: str = Field(..., min_length=1, max_length=500)
+    company_name: str = Field(..., min_length=1, max_length=300)
+    location: Optional[str] = Field(None, max_length=500)
+    remote_type: Optional[str] = Field("On-site", max_length=50)
+    job_type: Optional[str] = Field("Full-time", max_length=50)
+    experience_level: Optional[str] = Field(None, max_length=100)
+    description: Optional[str] = Field(None, max_length=100000)
     requirements: Optional[List[str]] = None
     skills: Optional[List[str]] = None
-    source_url: Optional[str] = None
+    source_url: Optional[str] = Field(None, max_length=2000)
 
     class Config:
         extra = "ignore"
@@ -44,6 +44,7 @@ class JobOut(BaseModel):
     requirements: Optional[List[str]] = None
     skills: Optional[List[str]] = None
     source_url: Optional[str] = None
+    is_archived: bool = False
     created_at: datetime
 
     class Config:

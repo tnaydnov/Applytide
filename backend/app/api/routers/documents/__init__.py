@@ -31,7 +31,7 @@ from .schemas import (
 )
 
 # Create main documents router with prefix
-router = APIRouter(prefix="/api/documents", tags=["documents"])
+router = APIRouter(prefix="/documents", tags=["documents"])
 
 # Include all sub-routers
 router.include_router(upload_router)
