@@ -11,7 +11,6 @@
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "permissions": ["activeTab", "scripting", "tabs", "alarms", "windows"],
   "host_permissions": [
-    "https://applytide.com/*",
     "http://localhost/*"
   ],
   "background": { "service_worker": "background.js" },

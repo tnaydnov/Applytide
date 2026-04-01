@@ -94,8 +94,8 @@ export const legalTranslations = {
       contact: {
         title: { en: "11. Contact Information", he: "11. יצירת קשר" },
         content: { 
-          en: "If you have any questions about these Terms, please contact us at legal@applytide.com", 
-          he: "לשאלות בנושא תנאי השימוש: legal@applytide.com" 
+          en: "If you have any questions about these Terms, please contact us at legal@localhost", 
+          he: "לשאלות בנושא תנאי השימוש: legal@localhost" 
         }
       }
     }
@@ -175,8 +175,8 @@ export const legalTranslations = {
       contact: {
         title: { en: "Contact Us", he: "צור קשר" },
         content: { 
-          en: "For questions about this Privacy Policy or our data practices, please contact us at privacy@applytide.com", 
-          he: "לשאלות בנוגע למדיניות זו או לנוהלי המידע שלנו: privacy@applytide.com" 
+          en: "For questions about this Privacy Policy or our data practices, please contact us at privacy@localhost", 
+          he: "לשאלות בנוגע למדיניות זו או לנוהלי המידע שלנו: privacy@localhost" 
         }
       }
     }
@@ -272,8 +272,8 @@ export const legalTranslations = {
       dmca: {
         title: { en: "DMCA Notice", he: "הודעת DMCA" },
         content: { 
-          en: "If you believe that your copyrighted work has been infringed, please contact us at dmca@applytide.com with detailed information about the alleged infringement.", 
-          he: "אם לדעתך הופרו זכויות היוצרים שלך, פנה אלינו ל-dmca@applytide.com עם פרטי ההפרה." 
+          en: "If you believe that your copyrighted work has been infringed, please contact us at dmca@localhost with detailed information about the alleged infringement.", 
+          he: "אם לדעתך הופרו זכויות היוצרים שלך, פנה אלינו ל-dmca@localhost עם פרטי ההפרה." 
         }
       },
       attribution: {

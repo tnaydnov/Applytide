@@ -108,9 +108,9 @@ export function AboutPage() {
   ];
 
   const contacts = [
-    { icon: Mail, title: { en: "General", he: "כללי" }, email: "contact@applytide.com", color: "#60a5fa" },
-    { icon: HelpCircle, title: { en: "Support", he: "תמיכה" }, email: "support@applytide.com", color: "#34d399" },
-    { icon: DollarSign, title: { en: "Billing", he: "חיוב" }, email: "billing@applytide.com", color: "#a78bfa" },
+    { icon: Mail, title: { en: "General", he: "כללי" }, email: "contact@localhost", color: "#60a5fa" },
+    { icon: HelpCircle, title: { en: "Support", he: "תמיכה" }, email: "support@localhost", color: "#34d399" },
+    { icon: DollarSign, title: { en: "Billing", he: "חיוב" }, email: "billing@localhost", color: "#a78bfa" },
   ];
 
   return (

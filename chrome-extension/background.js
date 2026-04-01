@@ -2,7 +2,7 @@
 
 const m = chrome.runtime.getManifest();
 const DEV = (m.version_name && m.version_name.includes('dev')) || m.name.includes('(Dev)');
-const API_HOST = DEV ? "http://localhost/api/v1" : "https://applytide.com/api/v1";
+const API_HOST = "http://localhost/api/v1";
 const RUNNING_BY_TAB = new Map(); // tabId -> boolean
 const CAPTURE_CACHE = new Map();  // url -> { ts: number, capture }
 const CAPTURE_TTL_MS = 60_000;
@@ -134,7 +134,7 @@ function notifyProgress(phase, meta = {}) {
 
 
 
-// Convert current cookies (HttpOnly on applytide.com) into a fresh short-lived extension token
+// Convert current cookies (HttpOnly on localhost) into a fresh short-lived extension token
 async function fetchExtensionToken() {
   try {
     const res = await fetch(`${API_HOST}/auth/extension-token`, {
@@ -1130,7 +1130,7 @@ async function loginWithEmail({ email, password }) {
   } catch { }
 
   // Fallback: open a small window to your first-party login page and let the bridge do the rest
-  const base = DEV ? "http://localhost:3000" : "https://applytide.com";
+  const base = "http://localhost:3000";
   const popup = await chrome.windows.create({
     url: `${base}/login?ext=1`,
     type: "popup", width: 480, height: 640
@@ -1157,7 +1157,7 @@ async function loginWithEmail({ email, password }) {
 
 // -------- Auth: Google OAuth via small window + polling --------
 async function loginWithGoogle() {
-  const backendBase = API_HOST.replace(/\/api\/v1$/, "");   // -> http://localhost  or  https://applytide.com
+  const backendBase = API_HOST.replace(/\/api\/v1$/, "");   // -> http://localhost  or  http://localhost
   const loginUrl = `${backendBase}/api/v1/auth/google/login?ext=1`; // go through NGINX
   const popup = await chrome.windows.create({ url: loginUrl, type: "popup", width: 480, height: 640 });
   const winId = popup.id;

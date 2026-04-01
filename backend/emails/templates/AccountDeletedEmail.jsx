@@ -252,7 +252,7 @@ function AccountDeletedEmail({ name = 'there' }) {
         }
       }, "You can create a new account anytime. Your previous data cannot be recovered, but you can start fresh!"),
       React.createElement(Link, {
-        href: 'https://applytide.com/login',
+        href: 'http://localhost/login',
         style: {
           display: 'inline-block',
           backgroundColor: colors.bgDark,
@@ -315,7 +315,7 @@ function AccountDeletedEmail({ name = 'there' }) {
               }
             }, 'Help us improve! Let us know why you left and what we could do better.'),
             React.createElement(Link, {
-              href: 'mailto:feedback@applytide.com?subject=Feedback from deleted account',
+              href: 'mailto:feedback@localhost?subject=Feedback from deleted account',
               style: {
                 color: colors.coral,
                 fontWeight: 'bold',
@@ -345,12 +345,12 @@ function AccountDeletedEmail({ name = 'there' }) {
         }
       }, 'If you have any questions, contact '),
       React.createElement(Link, {
-        href: 'mailto:privacy@applytide.com',
+        href: 'mailto:privacy@localhost',
         style: {
           color: colors.coral,
           fontWeight: 'bold',
         }
-      }, 'privacy@applytide.com')
+      }, 'privacy@localhost')
     )
   );
 }

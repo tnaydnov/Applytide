@@ -1,9 +1,7 @@
 // site-bridge.js (replace the whole file)
 
 // Where to call (dev vs prod)
-const API_BASE = location.hostname === "applytide.com"
-  ? "https://applytide.com/api"
-  : "http://localhost/api";
+const API_BASE = "http://localhost/api";
 
 let sent = false;
 

@@ -55,7 +55,7 @@ Usage:
         time_until="3 hours",
         urgency="today",
         event_type="interview",
-        action_url="https://applytide.com/pipeline?highlight=123"
+        action_url="http://localhost/pipeline?highlight=123"
     )
 
 Security Notes:
@@ -69,10 +69,10 @@ Security Notes:
 Example Configuration (settings.py):
     SMTP_HOST = "smtp.gmail.com"
     SMTP_PORT = 587
-    SMTP_USER = "noreply@applytide.com"
+    SMTP_USER = "noreply@localhost"
     SMTP_PASSWORD = "app_password_here"
-    FROM_EMAIL = "Applytide <noreply@applytide.com>"
-    FRONTEND_URL = "https://applytide.com"
+    FROM_EMAIL = "Applytide <noreply@localhost>"
+    FRONTEND_URL = "http://localhost"
 """
 import smtplib
 import re

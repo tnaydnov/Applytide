@@ -158,8 +158,8 @@ See [Attributions.md](./Attributions.md) for license information.
 ## 📞 Support
 
 - **Documentation**: [/docs](./docs)
-- **Email**: support@applytide.com
-- **Website**: https://applytide.com
+- **Email**: support@localhost
+- **Website**: http://localhost
 
 ---
 

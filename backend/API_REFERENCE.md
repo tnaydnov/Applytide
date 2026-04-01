@@ -465,7 +465,7 @@ Key settings from `config.py` `Settings` class:
 | `SMTP_HOST` | `maildev` | Email SMTP host |
 | `SMTP_PORT` | `1025` | Email SMTP port |
 | `SMTP_USER` / `SMTP_PASS` | `""` | SMTP credentials |
-| `FROM_EMAIL` | `noreply@applytide.com` | Sender email |
+| `FROM_EMAIL` | `noreply@localhost` | Sender email |
 | `OPENAI_API_KEY` | `""` | OpenAI API key for AI features |
 | `GOOGLE_CLIENT_ID` | `""` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | `""` | Google OAuth client secret |

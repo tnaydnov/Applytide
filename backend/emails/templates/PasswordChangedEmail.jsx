@@ -62,7 +62,7 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
         }
       }, "If you didn't request this password change, your account may be compromised. Secure it immediately."),
       React.createElement(Link, {
-        href: 'https://applytide.com/auth/reset',
+        href: 'http://localhost/auth/reset',
         style: {
           display: 'inline-block',
           backgroundColor: colors.coral,
@@ -217,12 +217,12 @@ function PasswordChangedEmail({ name = 'there', changedAt = new Date().toLocaleS
         }
       }, 'Questions? Contact us at '),
       React.createElement(Link, {
-        href: 'mailto:security@applytide.com',
+        href: 'mailto:security@localhost',
         style: {
           color: colors.coral,
           fontWeight: 'bold',
         }
-      }, 'security@applytide.com')
+      }, 'security@localhost')
     )
   );
 }

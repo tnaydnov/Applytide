@@ -406,7 +406,7 @@ Renders HTML emails from React components, called internally by the Python backe
 | **Architecture** | Service Worker (`background.js`) + Popup (`popup.html/js`) + Content Script (`site-bridge.js`) |
 | **Content parsing** | Readability.js (Mozilla) for article extraction |
 | **Permissions** | `activeTab`, `scripting`, `tabs`, `alarms`, `windows` |
-| **Host permissions** | `https://applytide.com/*`, `http://localhost/*` + optional `https://*/*` |
+| **Host permissions** | `http://localhost/*` + optional `https://*/*` |
 
 Extracts job postings from any website and saves them to the user's Applytide account via the API.
 
@@ -423,22 +423,17 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 | **WebSocket** | `proxy_http_version 1.1`, `Upgrade` / `Connection` headers |
 | **Timeouts** | 120 s proxy read/send, 600 s for WebSocket |
 | **Security** | `server_tokens off` (hides version) |
-| **Production** | TLS on port 443 with SSL certificates mounted from `nginx/ssl/` |
 
 ---
 
-## 15. DevOps & Deployment
+## 15. DevOps
 
 | Item | Detail |
 |---|---|
-| **Containerization** | Docker Compose (dev: `docker-compose.yml`, prod: `docker-compose.prod.yml`) |
-| **Registry** | GitHub Container Registry (`ghcr.io`) |
-| **Image tagging** | `${IMAGE_TAG}` variable |
-| **Backups** | Shell scripts (`backup.sh`, `restore.sh`, `setup-backup-cron.sh`, `check-backup-status.sh`) |
+| **Containerization** | Docker Compose (`docker-compose.yml`) |
 | **Logging** | JSON file driver, 10 MB max, 3 file rotation (all containers) |
 | **Health check** | `GET /health` - verifies Postgres + Redis connectivity |
 | **Dev SMTP** | MailDev (web UI on port 1080, SMTP on 1025) |
-| **Deployment scripts** | `verify-deployment.sh`, `restart-nginx.sh`, `DEPLOYMENT_CHECKLIST.md` |
 
 ---
 

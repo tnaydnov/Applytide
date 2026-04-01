@@ -63,7 +63,7 @@ def test_render_reminder():
         time_until="18 hours",
         urgency="tomorrow",
         event_type="interview",
-        action_url="https://applytide.com/application/123",
+        action_url="http://localhost/application/123",
         ai_prep_tips=ai_prep_tips
     )
     
@@ -96,7 +96,7 @@ def test_fallback():
         time_until="1 day",
         urgency="tomorrow",
         event_type="general",
-        action_url="https://applytide.com",
+        action_url="http://localhost",
         ai_prep_tips=None
     )
     

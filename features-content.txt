@@ -16083,7 +16083,7 @@ export function getBaseUrl() {
   // Last resort fallback for SSR/build-time contexts.
   const isProd =
     typeof process !== "undefined" && process.env?.NODE_ENV === "production";
-  return isProd ? "https://applytide.com" : "http://localhost:3000";
+  return isProd ? "http://localhost" : "http://localhost:3000";
 }
 
 /** Format date as UTC `YYYYMMDDTHHMMSSZ` (required by ICS). */

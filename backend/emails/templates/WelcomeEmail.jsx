@@ -57,7 +57,7 @@ function WelcomeEmail({ name = 'there' }) {
     // CTA Button
     React.createElement(Section, { style: { textAlign: 'center', marginBottom: '64px' } },
       React.createElement(Link, {
-        href: 'https://applytide.com/dashboard',
+        href: 'http://localhost/dashboard',
         style: actionButton
       }, 'Open Dashboard →')
     ),

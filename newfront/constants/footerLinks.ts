@@ -72,17 +72,17 @@ export const footerSections: FooterSection[] = [
       {
         label: { en: "Help Center", he: "מרכז התמיכה" },
         icon: MessageCircle,
-        href: "mailto:support@applytide.com",
+        href: "mailto:support@localhost",
       },
       {
         label: { en: "Billing Questions", he: "שאלות חיוב" },
         icon: DollarSign,
-        href: "mailto:billing@applytide.com",
+        href: "mailto:billing@localhost",
       },
       {
         label: { en: "Email Support", he: "תמיכה במייל" },
         icon: Mail,
-        href: "mailto:contact@applytide.com",
+        href: "mailto:contact@localhost",
       },
     ],
   },

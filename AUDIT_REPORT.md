@@ -286,7 +286,7 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 
 ### 🟠 8.1 Broad Permissions
 
-`manifest.json` likely requests `https://*/*` - should be restricted to known job sites + applytide.com.
+`manifest.json` likely requests `https://*/*` - should be restricted to known job sites + localhost.
 
 ---
 
@@ -972,7 +972,7 @@ Comprehensive scan of all API endpoints for input validation vulnerabilities.
 | Check | Result | Details |
 |-------|--------|---------|
 | HttpOnly cookies | ✅ PASS | All auth cookies have `httponly=True`, `secure`, `samesite` |
-| CORS configuration | ✅ PASS | Production restricted to `applytide.com` domains |
+| CORS configuration | ✅ PASS | Production restricted to `localhost` domains |
 | Refresh token rotation | ✅ PASS | Full rotation with family tracking, old tokens revoked |
 | Registration token exposure | 🔴 **FIXED** | Was returning tokens in JSON body; now sets HttpOnly cookies (matching login pattern) |
 | Password change revocation | 🟠 **FIXED** | Was NOT revoking tokens on password change; now revokes all + re-issues fresh cookies |

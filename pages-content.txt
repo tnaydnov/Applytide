@@ -124,8 +124,8 @@ export default function About() {
                   </svg>
                 </div>
                 <h4 className="font-semibold text-white mb-1">General</h4>
-                <a href="mailto:contact@applytide.com" className="text-sm text-slate-300 hover:text-blue-400">
-                  contact@applytide.com
+                <a href="mailto:contact@localhost" className="text-sm text-slate-300 hover:text-blue-400">
+                  contact@localhost
                 </a>
               </div>
               <div>
@@ -135,8 +135,8 @@ export default function About() {
                   </svg>
                 </div>
                 <h4 className="font-semibold text-white mb-1">Support</h4>
-                <a href="mailto:support@applytide.com" className="text-sm text-slate-300 hover:text-green-400">
-                  support@applytide.com
+                <a href="mailto:support@localhost" className="text-sm text-slate-300 hover:text-green-400">
+                  support@localhost
                 </a>
               </div>
               <div>
@@ -146,8 +146,8 @@ export default function About() {
                   </svg>
                 </div>
                 <h4 className="font-semibold text-white mb-1">Billing</h4>
-                <a href="mailto:billing@applytide.com" className="text-sm text-slate-300 hover:text-purple-400">
-                  billing@applytide.com
+                <a href="mailto:billing@localhost" className="text-sm text-slate-300 hover:text-purple-400">
+                  billing@localhost
                 </a>
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function AccessibilityStatement() {
               We welcome your feedback on the accessibility of Applytide. If you encounter accessibility barriers, please let us know:
             </p>
             <ul className="list-none space-y-2">
-              <li><strong>Email:</strong> <a href="mailto:contact@applytide.com" className="text-blue-400 hover:text-blue-300">contact@applytide.com</a></li>
+              <li><strong>Email:</strong> <a href="mailto:contact@localhost" className="text-blue-400 hover:text-blue-300">contact@localhost</a></li>
               <li><strong>Subject Line:</strong> Please include "Accessibility" in your subject line</li>
               <li><strong>Response Time:</strong> We aim to respond within 5 business days</li>
             </ul>
@@ -572,10 +572,10 @@ export default function ContactPage() {
                 Questions about our service, features, or how to use Applytide?
               </p>
               <a 
-                href="mailto:contact@applytide.com" 
+                href="mailto:contact@localhost" 
                 className="text-blue-400 hover:text-blue-300 font-medium no-underline"
               >
-                contact@applytide.com
+                contact@localhost
               </a>
               <p className="text-sm text-slate-400 mt-2 mb-0">Response time: 24-48 hours</p>
             </div>
@@ -594,10 +594,10 @@ export default function ContactPage() {
                 GDPR requests, data export, account deletion, or privacy concerns.
               </p>
               <a 
-                href="mailto:privacy@applytide.com" 
+                href="mailto:privacy@localhost" 
                 className="text-purple-400 hover:text-purple-300 font-medium no-underline"
               >
-                privacy@applytide.com
+                privacy@localhost
               </a>
               <p className="text-sm text-slate-400 mt-2 mb-0">Response time: 30-45 days (legal requirement)</p>
             </div>
@@ -616,10 +616,10 @@ export default function ContactPage() {
                 Found a security vulnerability? We appreciate responsible disclosure.
               </p>
               <a 
-                href="mailto:security@applytide.com" 
+                href="mailto:security@localhost" 
                 className="text-red-400 hover:text-red-300 font-medium no-underline"
               >
-                security@applytide.com
+                security@localhost
               </a>
               <p className="text-sm text-slate-400 mt-2 mb-0">Response time: 72 hours</p>
             </div>
@@ -638,10 +638,10 @@ export default function ContactPage() {
                 Having trouble with the app? Need help with a feature?
               </p>
               <a 
-                href="mailto:contact@applytide.com" 
+                href="mailto:contact@localhost" 
                 className="text-green-400 hover:text-green-300 font-medium no-underline"
               >
-                contact@applytide.com
+                contact@localhost
               </a>
               <p className="text-sm text-slate-400 mt-2 mb-0">Response time: 24-48 hours</p>
             </div>
@@ -695,7 +695,7 @@ export default function ContactPage() {
               <div>
                 <h3 className="text-lg font-semibold text-white mb-2">How do I report a bug?</h3>
                 <p className="text-slate-300 mb-0">
-                  Use the feedback button (bottom-right corner) or email us at contact@applytide.com 
+                  Use the feedback button (bottom-right corner) or email us at contact@localhost 
                   with details about the issue and steps to reproduce it.
                 </p>
               </div>
@@ -844,8 +844,8 @@ export default function CookiePolicy() {
                         If you have any questions about our use of cookies or this Cookie Policy, please contact us:
                     </p>
                     <ul className="list-none space-y-2 text-slate-300">
-                        <li><strong>Email:</strong> <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a></li>
-                        <li><strong>General Contact:</strong> <a href="mailto:contact@applytide.com" className="text-blue-400 hover:text-blue-300">contact@applytide.com</a></li>
+                        <li><strong>Email:</strong> <a href="mailto:privacy@localhost" className="text-blue-400 hover:text-blue-300">privacy@localhost</a></li>
+                        <li><strong>General Contact:</strong> <a href="mailto:contact@localhost" className="text-blue-400 hover:text-blue-300">contact@localhost</a></li>
                     </ul>
                 </div>
             </PageContainer>
@@ -917,8 +917,8 @@ export default function CopyrightPolicy() {
           </p>
           <ul className="list-none space-y-2 text-slate-300">
             <li><strong>Copyright Agent:</strong> Applytide Developer</li>
-            <li><strong>Email:</strong> <a href="mailto:copyright@applytide.com" className="text-blue-400 hover:text-blue-300">copyright@applytide.com</a></li>
-            <li><strong>DMCA Contact:</strong> <a href="mailto:dmca@applytide.com" className="text-blue-400 hover:text-blue-300">dmca@applytide.com</a></li>
+            <li><strong>Email:</strong> <a href="mailto:copyright@localhost" className="text-blue-400 hover:text-blue-300">copyright@localhost</a></li>
+            <li><strong>DMCA Contact:</strong> <a href="mailto:dmca@localhost" className="text-blue-400 hover:text-blue-300">dmca@localhost</a></li>
           </ul>
           <p className="text-slate-300 mt-4">
             <strong>Note:</strong> As an individual developer project, all DMCA notices should be sent to the email addresses above. We respond to all legitimate copyright concerns within 48 hours.
@@ -4341,7 +4341,7 @@ export default function PricingPage() {
   };
 
   const handleContactSales = () => {
-    toast.info('Enterprise features coming soon! Contact us at hello@applytide.com for early access.');
+    toast.info('Enterprise features coming soon! Contact us at hello@localhost for early access.');
   };
 
   const plans = [
@@ -5050,9 +5050,9 @@ export default function Privacy() {
             <p className="mb-4">The data controller responsible for your personal information is:</p>
             <ul className="list-none space-y-2">
               <li><strong>Service:</strong> Applytide (Individual Developer)</li>
-              <li><strong>Email:</strong> <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a></li>
-              <li><strong>Contact:</strong> <a href="mailto:contact@applytide.com" className="text-blue-400 hover:text-blue-300">contact@applytide.com</a></li>
-              <li><strong>Security Contact:</strong> <a href="mailto:security@applytide.com" className="text-blue-400 hover:text-blue-300">security@applytide.com</a></li>
+              <li><strong>Email:</strong> <a href="mailto:privacy@localhost" className="text-blue-400 hover:text-blue-300">privacy@localhost</a></li>
+              <li><strong>Contact:</strong> <a href="mailto:contact@localhost" className="text-blue-400 hover:text-blue-300">contact@localhost</a></li>
+              <li><strong>Security Contact:</strong> <a href="mailto:security@localhost" className="text-blue-400 hover:text-blue-300">security@localhost</a></li>
             </ul>
           </div>
 
@@ -5185,7 +5185,7 @@ export default function Privacy() {
               <li>Regular security audits and access reviews</li>
               <li>Audit logging of system access</li>
             </ul>
-            <p className="mt-4">For security vulnerabilities, please contact <a href="mailto:security@applytide.com" className="text-blue-400 hover:text-blue-300">security@applytide.com</a> with coordinated disclosure.</p>
+            <p className="mt-4">For security vulnerabilities, please contact <a href="mailto:security@localhost" className="text-blue-400 hover:text-blue-300">security@localhost</a> with coordinated disclosure.</p>
           </div>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Data Retention</h2>
@@ -5222,7 +5222,7 @@ export default function Privacy() {
               <li>Objection to processing</li>
             </ul>
             <p className="mt-4">
-              <strong>To exercise your rights:</strong> Contact us at <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a>
+              <strong>To exercise your rights:</strong> Contact us at <a href="mailto:privacy@localhost" className="text-blue-400 hover:text-blue-300">privacy@localhost</a>
               or use the in-app account settings. We will respond within 30-45 days.
             </p>
             <p className="mt-4">
@@ -5240,9 +5240,9 @@ export default function Privacy() {
           <div className="text-slate-300 mb-4">
             <p className="mb-4">If you have any questions or concerns about our privacy policy or data practices, please contact us:</p>
             <ul className="list-none space-y-2">
-              <li><strong>Privacy:</strong> <a href="mailto:privacy@applytide.com" className="text-blue-400 hover:text-blue-300">privacy@applytide.com</a></li>
-              <li><strong>Security:</strong> <a href="mailto:security@applytide.com" className="text-blue-400 hover:text-blue-300">security@applytide.com</a></li>
-              <li><strong>General:</strong> <a href="mailto:contact@applytide.com" className="text-blue-400 hover:text-blue-300">contact@applytide.com</a></li>
+              <li><strong>Privacy:</strong> <a href="mailto:privacy@localhost" className="text-blue-400 hover:text-blue-300">privacy@localhost</a></li>
+              <li><strong>Security:</strong> <a href="mailto:security@localhost" className="text-blue-400 hover:text-blue-300">security@localhost</a></li>
+              <li><strong>General:</strong> <a href="mailto:contact@localhost" className="text-blue-400 hover:text-blue-300">contact@localhost</a></li>
             </ul>
             <p className="mt-4 text-sm text-slate-400">Note: As an individual developer project, all privacy inquiries should be sent to the email addresses above.</p>
           </div>
@@ -6005,7 +6005,7 @@ export default function TermsOfService() {
                         Applytide respects intellectual property rights. If you believe content on our service infringes your copyright, please review our <a href="/copyright-policy" className="text-blue-400 hover:text-blue-300">Copyright (DMCA) Policy</a> for the proper procedure to report infringement.
                     </p>
                     <p className="mb-4">
-                        <strong>Designated Copyright Agent:</strong> <a href="mailto:copyright@applytide.com" className="text-blue-400 hover:text-blue-300">copyright@applytide.com</a>
+                        <strong>Designated Copyright Agent:</strong> <a href="mailto:copyright@localhost" className="text-blue-400 hover:text-blue-300">copyright@localhost</a>
                     </p>
                 </div>
 
@@ -6088,7 +6088,7 @@ export default function TermsOfService() {
                         <strong>Class Action Waiver:</strong> You agree to resolve disputes individually and waive any right to participate in class action lawsuits.
                     </p>
                     <p className="mb-4">
-                        <strong>Opt-out:</strong> You may opt out of arbitration by emailing <a href="mailto:legal@applytide.com" className="text-blue-400 hover:text-blue-300">legal@applytide.com</a> within 30 days of account creation.
+                        <strong>Opt-out:</strong> You may opt out of arbitration by emailing <a href="mailto:legal@localhost" className="text-blue-400 hover:text-blue-300">legal@localhost</a> within 30 days of account creation.
                     </p>
                 </div>
 
@@ -6107,10 +6107,10 @@ export default function TermsOfService() {
                 <div className="text-slate-300 mb-4">
                     <p className="mb-4">If you have any questions about these Terms of Service, please contact us:</p>
                     <ul className="list-none space-y-2">
-                        <li><strong>General:</strong> <a href="mailto:contact@applytide.com" className="text-blue-400 hover:text-blue-300">contact@applytide.com</a></li>
-                        <li><strong>Legal:</strong> <a href="mailto:legal@applytide.com" className="text-blue-400 hover:text-blue-300">legal@applytide.com</a></li>
-                        <li><strong>Support:</strong> <a href="mailto:support@applytide.com" className="text-blue-400 hover:text-blue-300">support@applytide.com</a></li>
-                        <li><strong>Copyright:</strong> <a href="mailto:copyright@applytide.com" className="text-blue-400 hover:text-blue-300">copyright@applytide.com</a></li>
+                        <li><strong>General:</strong> <a href="mailto:contact@localhost" className="text-blue-400 hover:text-blue-300">contact@localhost</a></li>
+                        <li><strong>Legal:</strong> <a href="mailto:legal@localhost" className="text-blue-400 hover:text-blue-300">legal@localhost</a></li>
+                        <li><strong>Support:</strong> <a href="mailto:support@localhost" className="text-blue-400 hover:text-blue-300">support@localhost</a></li>
+                        <li><strong>Copyright:</strong> <a href="mailto:copyright@localhost" className="text-blue-400 hover:text-blue-300">copyright@localhost</a></li>
                     </ul>
                     <p className="mt-4 text-sm text-slate-400">Note: As an individual developer project, formal written notices can be sent to the email addresses above.</p>
                 </div>
@@ -9576,7 +9576,7 @@ export default function RecoverAccountPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-slate-500">
             Having trouble?{' '}
-            <a href="mailto:support@applytide.com" className="text-blue-400 hover:text-blue-300">
+            <a href="mailto:support@localhost" className="text-blue-400 hover:text-blue-300">
               Contact Support
             </a>
           </p>

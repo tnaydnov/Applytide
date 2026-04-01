@@ -29,7 +29,7 @@ export function ContactPage() {
         en: "Questions about our service, features, or how to use Applytide?",
         he: "שאלות על השירות, יכולות או איך משתמשים ב-Applytide?"
       },
-      email: "contact@applytide.com",
+      email: "contact@localhost",
       color: "#60a5fa",
       responseTime: { en: "24-48 hours", he: "24–48 שעות" },
     },
@@ -40,7 +40,7 @@ export function ContactPage() {
         en: "GDPR requests, data export, account deletion, or privacy concerns.",
         he: "בקשות לפי GDPR, ייצוא נתונים, מחיקת חשבון או סוגיות פרטיות."
       },
-      email: "privacy@applytide.com",
+      email: "privacy@localhost",
       color: "#a78bfa",
       responseTime: { en: "30-45 days (legal requirement)", he: "30–45 יום (כנדרש בדין)" },
     },
@@ -51,7 +51,7 @@ export function ContactPage() {
         en: "Found a security vulnerability? We appreciate responsible disclosure.",
         he: "מצאת פגיעות? אנו מעריכים גילוי אחראי."
       },
-      email: "security@applytide.com",
+      email: "security@localhost",
       color: "#f87171",
       responseTime: { en: "72 hours", he: "72 שעות" },
     },
@@ -62,7 +62,7 @@ export function ContactPage() {
         en: "Having trouble with the app? Need help with a feature?",
         he: "בעיה באפליקציה? צריך עזרה בתכונה מסוימת?"
       },
-      email: "contact@applytide.com",
+      email: "contact@localhost",
       color: "#34d399",
       responseTime: { en: "24-48 hours", he: "24–48 שעות" },
     },
@@ -73,7 +73,7 @@ export function ContactPage() {
         en: "Legal questions, terms of service, or compliance matters.",
         he: "שאלות משפטיות, תנאי שימוש או נושאי תאימות/רגולציה."
       },
-      email: "legal@applytide.com",
+      email: "legal@localhost",
       color: "#fb923c",
       responseTime: { en: "5-7 business days", he: "5–7 ימי עסקים" },
     },
@@ -84,7 +84,7 @@ export function ContactPage() {
         en: "Found a bug? Help us improve by reporting it.",
         he: "מצאתם באג? עזרו לנו להשתפר באמצעות דיווח."
       },
-      email: "contact@applytide.com",
+      email: "contact@localhost",
       color: "#f472b6",
       responseTime: { en: "24-48 hours", he: "24–48 שעות" },
     },
@@ -98,7 +98,7 @@ export function ContactPage() {
         en: "Request a copy of all your personal data stored in Applytide",
         he: "בקשת עותק מכלל המידע האישי השמור ב-Applytide"
       },
-      email: "privacy@applytide.com",
+      email: "privacy@localhost",
     },
     {
       icon: Trash2,
@@ -107,7 +107,7 @@ export function ContactPage() {
         en: "Permanently delete your account and all associated data",
         he: "מחיקה סופית של החשבון וכל הנתונים המשויכים"
       },
-      email: "privacy@applytide.com",
+      email: "privacy@localhost",
     },
     {
       icon: Chrome,
@@ -116,7 +116,7 @@ export function ContactPage() {
         en: "Having issues with the Chrome extension?",
         he: "נתקלתם בבעיה בתוסף? אנחנו כאן לעזור."
       },
-      email: "contact@applytide.com",
+      email: "contact@localhost",
     },
   ];
 

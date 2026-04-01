@@ -155,10 +155,8 @@ Applytide runs as a multi-container Docker Compose application:
 ### Infrastructure
 | Category | Technologies |
 |---|---|
-| **Containers** | Docker Compose (dev + prod configs) |
-| **Proxy** | Nginx 1.27 (rate limiting, WebSocket, TLS) |
-| **Registry** | GitHub Container Registry (ghcr.io) |
-| **Backups** | Automated shell scripts with cron scheduling |
+| **Containers** | Docker Compose |
+| **Proxy** | Nginx 1.27 (rate limiting, WebSocket) |
 
 ---
 
@@ -205,14 +203,8 @@ applytide/
 │   ├── main.conf               # Primary Nginx config
 │   └── conf.d/                 # Additional route configs
 │
-├── scripts/                    # DevOps & backup scripts
-│   ├── backup.sh               # Automated PostgreSQL backups
-│   ├── restore.sh              # Backup restoration
-│   └── setup-backup-cron.sh    # Cron job setup
-│
 ├── docs/                       # Documentation
-├── docker-compose.yml          # Development environment
-└── docker-compose.prod.yml     # Production environment
+└── docker-compose.yml          # Docker Compose environment
 ```
 
 ---
@@ -278,8 +270,6 @@ Create a `.env` file in the project root with the following variables:
 | `STRIPE_SECRET_KEY` | Stripe API key | For payments |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | For payments |
 | `LLM_DAILY_BUDGET_USD` | Daily AI spending limit (default: $50) | No |
-| `ALLOWED_ORIGINS` | CORS allowed origins | Production |
-| `IMAGE_TAG` | Docker image tag for deployments | Production |
 
 ---
 
@@ -377,11 +367,8 @@ uvicorn app.main:app --reload --port 8000
 
 ### Running with Docker
 ```bash
-# Development (with hot reload & MailDev)
+# Start all services (with hot reload & MailDev)
 docker-compose up --build
-
-# Production
-docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ### Database Migrations
@@ -395,40 +382,6 @@ docker-compose exec api alembic upgrade head
 # Rollback one migration
 docker-compose exec api alembic downgrade -1
 ```
-
----
-
-## Deployment
-
-### Production Setup
-
-1. Configure production environment variables in `.env`
-2. Set up SSL certificates in `nginx/ssl/`
-3. Update `docker-compose.prod.yml` with your container registry images
-4. Deploy:
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-### Backups
-
-Automated PostgreSQL backup scripts are included:
-
-```bash
-# Set up automated daily backups
-./scripts/setup-backup-cron.sh
-
-# Manual backup
-./scripts/backup.sh
-
-# Restore from backup
-./scripts/restore.sh <backup-file>
-
-# Check backup status
-./scripts/check-backup-status.sh
-```
-
-See [scripts/BACKUP_README.md](scripts/BACKUP_README.md) for more details.
 
 ---
 

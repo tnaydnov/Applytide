@@ -128,7 +128,7 @@ def log_frontend_error(
         {
             "message": "Cannot read property 'id' of undefined",
             "source": "frontend",
-            "url": "https://app.applytide.com/dashboard",
+            "url": "http://localhost/dashboard",
             "line_number": 42,
             "column_number": 15,
             "stack_trace": "Error: ...\n    at ...",

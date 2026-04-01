@@ -176,7 +176,7 @@ function BaseEmail({ children, previewText = '' }) {
                           }
                         },
                           React.createElement('img', {
-                            src: 'https://applytide.com/images/logomark.png',
+                            src: 'http://localhost/images/logomark.png',
                             alt: 'Applytide Logo',
                             width: '64',
                             height: '64',
@@ -216,7 +216,7 @@ function BaseEmail({ children, previewText = '' }) {
                         }
                       },
                         React.createElement('img', {
-                          src: 'https://applytide.com/images/logomark.png',
+                          src: 'http://localhost/images/logomark.png',
                           alt: 'Applytide Logo',
                           width: '48',
                           height: '48',
@@ -234,13 +234,13 @@ function BaseEmail({ children, previewText = '' }) {
                   ),
                   React.createElement(Text, { style: footerSubtitle }, 'Your AI-Powered Job Application Tracker'),
                   React.createElement('div', { style: footerLinks },
-                    React.createElement(Link, { href: 'https://applytide.com', style: footerLink }, 'Home'),
+                    React.createElement(Link, { href: 'http://localhost', style: footerLink }, 'Home'),
                     React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
-                    React.createElement(Link, { href: 'https://applytide.com/dashboard', style: footerLink }, 'Dashboard'),
+                    React.createElement(Link, { href: 'http://localhost/dashboard', style: footerLink }, 'Dashboard'),
                     React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
-                    React.createElement(Link, { href: 'https://applytide.com/privacy', style: footerLink }, 'Privacy'),
+                    React.createElement(Link, { href: 'http://localhost/privacy', style: footerLink }, 'Privacy'),
                     React.createElement('span', { style: { color: colors.textLight, margin: '0 4px' } }, '•'),
-                    React.createElement(Link, { href: 'https://applytide.com/contact', style: footerLink }, 'Contact')
+                    React.createElement(Link, { href: 'http://localhost/contact', style: footerLink }, 'Contact')
                   ),
                   React.createElement(Hr, { style: { borderColor: colors.bgDarkCard, margin: '24px 0 20px 0' } }),
                   React.createElement(Text, { style: footerCopyright }, '© 2025 Applytide. All rights reserved.'),

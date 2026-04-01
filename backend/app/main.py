@@ -182,7 +182,7 @@ if settings.RATE_LIMIT_ENABLED:
 
 # --- CORS
 if ENV == "production":
-    origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "https://applytide.com,https://www.applytide.com").split(",") if x.strip()]
+    origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost,http://localhost").split(",") if x.strip()]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

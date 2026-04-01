@@ -187,11 +187,11 @@ export function AccessibilityPage() {
           <p style={{ color: "#b6bac5", textAlign }}>
             {accessibility.feedback.email[language]}:{" "}
             <a
-              href="mailto:accessibility@applytide.com"
+              href="mailto:accessibility@localhost"
               className="hover:opacity-80 transition-opacity"
               style={{ color: "#9F5F80" }}
             >
-              accessibility@applytide.com
+              accessibility@localhost
             </a>
           </p>
         </motion.div>
