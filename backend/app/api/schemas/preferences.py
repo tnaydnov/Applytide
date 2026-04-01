@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Any, Dict
 import re
 
-# Allowed preference keys — extend as new preferences are added
+# Allowed preference keys - extend as new preferences are added
 ALLOWED_PREFERENCE_KEYS = {
     "theme", "language", "notifications", "dashboard_layout",
     "email_notifications", "sidebar_collapsed", "onboarding_completed",

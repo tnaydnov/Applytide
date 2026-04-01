@@ -1,4 +1,4 @@
-# Applytide Backend — Complete API Reference
+# Applytide Backend - Complete API Reference
 
 > Generated for frontend wiring. Every route path, HTTP method, request/response shape, auth requirement, and service call is documented below.
 
@@ -48,12 +48,12 @@
 | WebSocket | FastAPI native WS |
 
 ### Middleware Stack (applied in order)
-1. `LoggingMiddleware` — request/response logging to `ApplicationLog`
-2. `GlobalRateLimitMiddleware` — IP-based rate limiting
-3. `CORSMiddleware` — origin whitelist
+1. `LoggingMiddleware` - request/response logging to `ApplicationLog`
+2. `GlobalRateLimitMiddleware` - IP-based rate limiting
+3. `CORSMiddleware` - origin whitelist
 4. `TrustedHostMiddleware`
 5. `ProxyHeadersMiddleware`
-6. `SecurityHeadersMiddleware` — CSP, X-Frame, etc.
+6. `SecurityHeadersMiddleware` - CSP, X-Frame, etc.
 
 ### Router Mount Points (from `main.py`)
 ```
@@ -156,24 +156,24 @@ The `User` model has a full subscription system:
 | Method | Path | Auth | Request Body | Response | Description |
 |--------|------|------|-------------|----------|-------------|
 | `POST` | `/api/auth/login` | None | `{ email, password }` | Sets cookies. Returns `{ user: {...}, expires_in: int }` | Email/password login |
-| `POST` | `/api/auth/refresh` | Cookie (`refresh_token`) | — | Rotates both tokens (new cookies) → `{ user, expires_in }` | Token refresh (rotation) |
-| `POST` | `/api/auth/logout` | None (graceful) | — | Clears cookies, returns `{ message }` | Single-device logout |
-| `POST` | `/api/auth/logout_all` | Required | — | `{ message }` | Revoke ALL refresh tokens (all devices) |
+| `POST` | `/api/auth/refresh` | Cookie (`refresh_token`) | - | Rotates both tokens (new cookies) → `{ user, expires_in }` | Token refresh (rotation) |
+| `POST` | `/api/auth/logout` | None (graceful) | - | Clears cookies, returns `{ message }` | Single-device logout |
+| `POST` | `/api/auth/logout_all` | Required | - | `{ message }` | Revoke ALL refresh tokens (all devices) |
 | `POST` | `/api/auth/register` | None | `{ email, password, full_name?, terms_accepted?, privacy_accepted?, ip? }` | `{ access_token, refresh_token }` | User registration |
 | `POST` | `/api/auth/send_verification` | None | `{ email }` | `{ message }` | Send email verification link |
 | `POST` | `/api/auth/verify_email` | None | `{ token }` | `{ message }` | Verify email with token |
 | `POST` | `/api/auth/password_reset_request` | None | `{ email }` | `{ message }` | Request password reset email |
 | `POST` | `/api/auth/password_reset` | None | `{ token, new_password }` | `{ message }` | Reset password with token |
 | `POST` | `/api/auth/change-password` | Required | `{ current_password, new_password }` | `{ message }` | Change password (logged-in user) |
-| `GET` | `/api/auth/me` | Required | — | User profile dict (full fields) | Get current user info |
+| `GET` | `/api/auth/me` | Required | - | User profile dict (full fields) | Get current user info |
 | `PUT` | `/api/auth/profile` | Required | Partial user fields | Updated user dict | Update profile fields |
 | `PUT` | `/api/auth/preferences` | Required | `{ language?, theme?, notifications? }` | Updated user dict | Update user preferences |
-| `POST` | `/api/auth/welcome-modal-seen` | Required | — | `{ message }` | Mark welcome modal as seen |
-| `POST` | `/api/auth/extension-banner-dismissed` | Required | — | `{ message }` | Dismiss extension banner |
+| `POST` | `/api/auth/welcome-modal-seen` | Required | - | `{ message }` | Mark welcome modal as seen |
+| `POST` | `/api/auth/extension-banner-dismissed` | Required | - | `{ message }` | Dismiss extension banner |
 | `POST` | `/api/auth/upload-avatar` | Required | `multipart/form-data` (file, max 5MB) | `{ avatar_url }` | Upload avatar image |
-| `POST` | `/api/auth/extension-token` | Required | — | `{ token }` | Generate chrome extension token |
-| `POST` | `/api/auth/ws-ticket` | Required | — | `{ ticket }` | Generate WebSocket ticket |
-| `GET` | `/api/auth/google/login` | None | — | Redirect to Google OAuth | Initiate Google OAuth |
+| `POST` | `/api/auth/extension-token` | Required | - | `{ token }` | Generate chrome extension token |
+| `POST` | `/api/auth/ws-ticket` | Required | - | `{ ticket }` | Generate WebSocket ticket |
+| `GET` | `/api/auth/google/login` | None | - | Redirect to Google OAuth | Initiate Google OAuth |
 | `GET` | `/api/auth/google/callback` | None | Query: `code`, `state` | Redirect to `/dashboard` with cookies set | Google OAuth callback |
 | `POST` | `/api/auth/google/store-agreements` | Cookie | `{ terms_accepted, privacy_accepted, ip? }` | `{ message }` | Store legal agreements for OAuth users |
 
@@ -187,9 +187,9 @@ The `User` model has a full subscription system:
 |--------|------|------|----------------------|----------|-------------|
 | `POST` | `/api/jobs/` | Required | `JobCreate` (extracted job data) | `JobOut` | Create job from extracted data |
 | `GET` | `/api/jobs/` | Required | Query: `skip`, `limit`, `location`, `remote_type`, `sort_by`, `sort_order` | `PaginatedResponse[JobOut]` | List jobs with filtering |
-| `GET` | `/api/jobs/{job_id}` | Required | — | `JobOut` | Get single job |
+| `GET` | `/api/jobs/{job_id}` | Required | - | `JobOut` | Get single job |
 | `PUT` | `/api/jobs/{job_id}` | Required | `JobUpdate` (full replace) | `JobOut` | Update job |
-| `DELETE` | `/api/jobs/{job_id}` | Required | — | 204 | Delete job |
+| `DELETE` | `/api/jobs/{job_id}` | Required | - | 204 | Delete job |
 | `GET` | `/api/jobs/search` | Required | Query: `q`, `location`, `remote_type`, `job_type`, `sort_by`, `page`, `per_page` | `PaginatedResponse[JobSearchOut]` | Advanced search with relevance scoring |
 | `GET` | `/api/jobs/suggestions` | Required | Query: `q`, `limit` | `List[str]` | Search autocomplete suggestions |
 | `POST` | `/api/jobs/extension` | Required | ExtensionJobCreate (from browser extension) | `JobOut` | Create job from extension |
@@ -205,26 +205,26 @@ The `User` model has a full subscription system:
 |--------|------|------|----------------------|----------|-------------|
 | `POST` | `/api/applications/` | Required | `ApplicationCreate { job_id, status?, resume_id?, source? }` | `ApplicationOut` | Create application |
 | `GET` | `/api/applications/` | Required | Query: `skip`, `limit`, `status`, `source`, `include_archived` | `PaginatedResponse[ApplicationOut]` | List applications |
-| `GET` | `/api/applications/statuses` | Required | — | `List[str]` | Get unique statuses used |
+| `GET` | `/api/applications/statuses` | Required | - | `List[str]` | Get unique statuses used |
 | `GET` | `/api/applications/cards` | Required | Query: `status` | `List[ApplicationCard]` | Kanban card format |
-| `GET` | `/api/applications/with-stages` | Required | — | `List[dict]` | Applications with stage arrays |
-| `GET` | `/api/applications/{app_id}` | Required | — | `ApplicationOut` | Get single application |
-| `GET` | `/api/applications/{app_id}/detail` | Required | — | `ApplicationDetail` (includes job, stages, notes, attachments) | Full detail view |
+| `GET` | `/api/applications/with-stages` | Required | - | `List[dict]` | Applications with stage arrays |
+| `GET` | `/api/applications/{app_id}` | Required | - | `ApplicationOut` | Get single application |
+| `GET` | `/api/applications/{app_id}/detail` | Required | - | `ApplicationDetail` (includes job, stages, notes, attachments) | Full detail view |
 | `PATCH` | `/api/applications/{app_id}` | Required | Partial update fields | `ApplicationOut` | Partial update |
-| `PUT` | `/api/applications/{app_id}/archive` | Required | — | `ApplicationOut` | Toggle archive status |
+| `PUT` | `/api/applications/{app_id}/archive` | Required | - | `ApplicationOut` | Toggle archive status |
 | `POST` | `/api/applications/{app_id}/stages` | Required | `StageCreate { name, scheduled_at?, outcome?, notes? }` | `StageOut` | Add stage |
-| `GET` | `/api/applications/{app_id}/stages` | Required | — | `List[StageOut]` | List stages |
+| `GET` | `/api/applications/{app_id}/stages` | Required | - | `List[StageOut]` | List stages |
 | `PATCH` | `/api/applications/{app_id}/stages/{stage_id}` | Required | Partial stage fields | `StageOut` | Update stage |
-| `DELETE` | `/api/applications/{app_id}/stages/{stage_id}` | Required | — | 204 | Delete stage |
+| `DELETE` | `/api/applications/{app_id}/stages/{stage_id}` | Required | - | 204 | Delete stage |
 | `POST` | `/api/applications/{app_id}/notes` | Required | `{ body }` | `NoteOut` | Add note |
-| `GET` | `/api/applications/{app_id}/notes` | Required | — | `List[NoteOut]` | List notes |
+| `GET` | `/api/applications/{app_id}/notes` | Required | - | `List[NoteOut]` | List notes |
 | `PATCH` | `/api/applications/{app_id}/notes/{note_id}` | Required | `{ body }` | `NoteOut` | Update note |
-| `DELETE` | `/api/applications/{app_id}/notes/{note_id}` | Required | — | 204 | Delete note |
+| `DELETE` | `/api/applications/{app_id}/notes/{note_id}` | Required | - | 204 | Delete note |
 | `POST` | `/api/applications/{app_id}/attachments/from-document` | Required | `{ document_id, document_type? }` | `AttachmentOut` | Attach existing document |
 | `POST` | `/api/applications/{app_id}/attachments` | Required | `multipart/form-data` (file) | `AttachmentOut` | Upload new attachment |
-| `GET` | `/api/applications/{app_id}/attachments` | Required | — | `List[AttachmentOut]` | List attachments |
-| `GET` | `/api/applications/{app_id}/attachments/{id}/download` | Required | — | File stream | Download attachment |
-| `DELETE` | `/api/applications/{app_id}/attachments/{id}` | Required | — | 204 | Delete attachment |
+| `GET` | `/api/applications/{app_id}/attachments` | Required | - | `List[AttachmentOut]` | List attachments |
+| `GET` | `/api/applications/{app_id}/attachments/{id}/download` | Required | - | File stream | Download attachment |
+| `DELETE` | `/api/applications/{app_id}/attachments/{id}` | Required | - | 204 | Delete attachment |
 
 ---
 
@@ -259,17 +259,17 @@ The `User` model has a full subscription system:
 |--------|------|------|----------------------|----------|-------------|
 | `POST` | `/api/documents/upload` | Required | `multipart/form-data` (file, label) | `DocumentResponse` | Upload document (MIME validated) |
 | `GET` | `/api/documents/` | Required | Query: `skip`, `limit`, `label`, `status` | `DocumentListResponse` | List documents |
-| `GET` | `/api/documents/{id}` | Required | — | `DocumentResponse` | Get single document |
-| `DELETE` | `/api/documents/{id}` | Required | — | 204 | Delete document (DB + file) |
+| `GET` | `/api/documents/{id}` | Required | - | `DocumentResponse` | Get single document |
+| `DELETE` | `/api/documents/{id}` | Required | - | 204 | Delete document (DB + file) |
 | `PUT` | `/api/documents/{id}/status` | Required | `{ status }` | `DocumentResponse` | Update document status |
-| `GET` | `/api/documents/{id}/download` | Required | — | File stream | Download document |
-| `GET` | `/api/documents/{id}/preview` | Required | — | HTML/text/inline PDF | Preview document |
+| `GET` | `/api/documents/{id}/download` | Required | - | File stream | Download document |
+| `GET` | `/api/documents/{id}/preview` | Required | - | HTML/text/inline PDF | Preview document |
 | `POST` | `/api/documents/{id}/analyze` | Required | `{ job_id? }` | `DocumentAnalysis { score, sections, keywords_found, keywords_missing, suggestions }` | ATS analysis (optional AI) |
 | `POST` | `/api/documents/optimize` | Required | `{ document_id, job_id }` | AI optimization result | AI-powered ATS optimization |
-| `GET` | `/api/documents/templates/` | None | — | `List[Template]` | List document templates |
+| `GET` | `/api/documents/templates/` | None | - | `List[Template]` | List document templates |
 | `POST` | `/api/documents/cover-letter/generate` | Required | `{ job_id, resume_id?, tone?, additional_info? }` | Generated cover letter | AI cover letter generation |
-| `GET` | `/api/documents/health/missing-files` | Required | — | `{ missing: [...] }` | Check for missing physical files |
-| `POST` | `/api/documents/cleanup/orphaned` | Required | — | `{ archived: int }` | Archive docs with missing files |
+| `GET` | `/api/documents/health/missing-files` | Required | - | `{ missing: [...] }` | Check for missing physical files |
+| `POST` | `/api/documents/cleanup/orphaned` | Required | - | `{ archived: int }` | Archive docs with missing files |
 
 ---
 
@@ -279,11 +279,11 @@ The `User` model has a full subscription system:
 
 | Method | Path | Auth | Request Body | Response | Description |
 |--------|------|------|-------------|----------|-------------|
-| `GET` | `/api/preferences` | Required | — | `List[PreferenceOut]` | Get all preferences |
-| `GET` | `/api/preferences/{key}` | Required | — | `PreferenceOut` | Get single preference |
+| `GET` | `/api/preferences` | Required | - | `List[PreferenceOut]` | Get all preferences |
+| `GET` | `/api/preferences/{key}` | Required | - | `PreferenceOut` | Get single preference |
 | `POST` | `/api/preferences` | Required | `{ key, value }` | `PreferenceOut` | Create/update (upsert) |
 | `PUT` | `/api/preferences/{key}` | Required | `{ value }` | `PreferenceOut` | Update existing (strict) |
-| `DELETE` | `/api/preferences/{key}` | Required | — | 204 | Delete preference |
+| `DELETE` | `/api/preferences/{key}` | Required | - | 204 | Delete preference |
 
 ---
 
@@ -334,14 +334,14 @@ The `User` model has a full subscription system:
 | Method | Path | Auth | Request Body / Params | Response | Description |
 |--------|------|------|----------------------|----------|-------------|
 | `POST` | `/api/calendars/reminders/` | Required | `ReminderCreate { title, due_date, description?, application_id?, event_type?, email_notifications_enabled?, notification_schedule?, google_event_id?, ai_prep_tips_enabled? }` | `ReminderResponse` | Create reminder (syncs to Google Cal, sends email, generates AI prep tips for premium) |
-| `GET` | `/api/calendars/reminders/` | Required | — | `List[ReminderResponse]` | List all reminders |
+| `GET` | `/api/calendars/reminders/` | Required | - | `List[ReminderResponse]` | List all reminders |
 | `PATCH` | `/api/calendars/reminders/{id}` | Required | Partial fields | `ReminderResponse` | Update reminder |
-| `DELETE` | `/api/calendars/reminders/{id}` | Required | — | 204 | Delete reminder |
-| `GET` | `/api/calendars/reminders/{id}/notes` | Required | — | `List[ReminderNoteOut]` | List reminder notes |
+| `DELETE` | `/api/calendars/reminders/{id}` | Required | - | 204 | Delete reminder |
+| `GET` | `/api/calendars/reminders/{id}/notes` | Required | - | `List[ReminderNoteOut]` | List reminder notes |
 | `POST` | `/api/calendars/reminders/{id}/notes` | Required | `{ body }` | `ReminderNoteOut` | Create reminder note |
 | `PUT` | `/api/calendars/reminder-notes/{note_id}` | Required | `{ body }` | `ReminderNoteOut` | Update reminder note |
-| `DELETE` | `/api/calendars/reminder-notes/{note_id}` | Required | — | 204 | Delete reminder note |
-| `GET` | `/api/calendars/google/check-connection` | Required | — | `{ connected: bool, email? }` | Check Google Calendar connection |
+| `DELETE` | `/api/calendars/reminder-notes/{note_id}` | Required | - | 204 | Delete reminder note |
+| `GET` | `/api/calendars/google/check-connection` | Required | - | `{ connected: bool, email? }` | Check Google Calendar connection |
 | `GET` | `/api/calendars/google/events` | Required | Query: `time_min?, time_max?, max_results?` | `List[GoogleEvent]` | List Google Calendar events |
 | `POST` | `/api/calendars/reminders/import-google-event` | Required | `{ event_id }` | `ReminderResponse` | Import Google Calendar event as reminder |
 
@@ -353,24 +353,24 @@ The `User` model has a full subscription system:
 
 | Method | Path | Auth | Request Body | Response | Description |
 |--------|------|------|-------------|----------|-------------|
-| `GET` | `/api/profile/` | Required | — | Profile object (preferred_locations, country, remote_preference, target_roles, target_industries, experience_level, skills, career_goals) | Get user profile |
+| `GET` | `/api/profile/` | Required | - | Profile object (preferred_locations, country, remote_preference, target_roles, target_industries, experience_level, skills, career_goals) | Get user profile |
 | `PUT` | `/api/profile/` | Required | `ProfileRequest { preferred_locations, current_location, country, remote_preference, target_roles, target_industries, experience_level, career_goals, core_skills, learning_goals, years_experience, job_search_status, availability, currency }` | Updated profile | Create or update profile (upsert) |
-| `DELETE` | `/api/profile/` | Required | — | `{ message }` | Delete profile only (keeps account) |
-| `GET` | `/api/profile/export` | Required | — | Full data export JSON (GDPR Article 20) | Export all user data |
-| `GET` | `/api/profile/completeness` | Required | — | `{ is_complete: bool, completeness_percentage: int, message: str }` | Profile completeness check (75% threshold for AI features) |
+| `DELETE` | `/api/profile/` | Required | - | `{ message }` | Delete profile only (keeps account) |
+| `GET` | `/api/profile/export` | Required | - | Full data export JSON (GDPR Article 20) | Export all user data |
+| `GET` | `/api/profile/completeness` | Required | - | `{ is_complete: bool, completeness_percentage: int, message: str }` | Profile completeness check (75% threshold for AI features) |
 | `DELETE` | `/api/profile/account` | Required | `{ password?, confirmation?: "DELETE" }` | `{ message, deleted_user_id, deletion_timestamp }` | **PERMANENT** account deletion (GDPR Article 17). Password required for non-OAuth users |
-| `GET` | `/api/profile/job-preferences` | Required | — | `{ company_size, company_stage, company_culture, team_size, management_interest }` | Get job preferences (placeholder) |
+| `GET` | `/api/profile/job-preferences` | Required | - | `{ company_size, company_stage, company_culture, team_size, management_interest }` | Get job preferences (placeholder) |
 | `PUT` | `/api/profile/job-preferences` | Required | Dict of preferences | `{ message }` | Update job preferences (placeholder, not persisted) |
-| `GET` | `/api/profile/career-goals` | Required | — | `{ short_term_goals, long_term_goals, career_path }` | Get career goals |
+| `GET` | `/api/profile/career-goals` | Required | - | `{ short_term_goals, long_term_goals, career_path }` | Get career goals |
 | `PUT` | `/api/profile/career-goals` | Required | Dict of goals | `{ message }` | Update career goals (placeholder, not persisted) |
-| `GET` | `/api/profile/welcome-modal-status` | Required | — | `{ has_seen_welcome_modal: bool, welcome_modal_seen_at: datetime? }` | Check welcome modal status |
-| `POST` | `/api/profile/welcome-modal-seen` | Required | — | `{ message, has_seen_welcome_modal, welcome_modal_seen_at }` | Mark welcome modal as seen |
+| `GET` | `/api/profile/welcome-modal-status` | Required | - | `{ has_seen_welcome_modal: bool, welcome_modal_seen_at: datetime? }` | Check welcome modal status |
+| `POST` | `/api/profile/welcome-modal-seen` | Required | - | `{ message, has_seen_welcome_modal, welcome_modal_seen_at }` | Mark welcome modal as seen |
 
 ---
 
 ### Admin
 
-**Prefix:** `/api/admin` — All endpoints require **admin role** (`get_admin_user` dependency).
+**Prefix:** `/api/admin` - All endpoints require **admin role** (`get_admin_user` dependency).
 
 #### Admin Dashboard (`/api/admin/dashboard`)
 
@@ -385,15 +385,15 @@ The `User` model has a full subscription system:
 | Method | Path | Auth | Params / Body | Response | Description |
 |--------|------|------|--------------|----------|-------------|
 | `GET` | `/api/admin/users/` | Admin | Query: `page`, `page_size`, `search`, `role`, `is_premium`, `email_verified` | `PaginatedUsersDTO { items: List[UserSummaryDTO], total, page, page_size, total_pages }` | List users with filtering |
-| `GET` | `/api/admin/users/{user_id}` | Admin | — | `UserDetailDTO { id, email, full_name, role, is_premium, avatar_url, statistics: { applications_count, jobs_count, documents_count, activity_count } }` | Get user details |
-| `DELETE` | `/api/admin/users/{user_id}` | Admin | — | `{ success, message, deleted_user_id }` | Delete user (prevents self-deletion) |
+| `GET` | `/api/admin/users/{user_id}` | Admin | - | `UserDetailDTO { id, email, full_name, role, is_premium, avatar_url, statistics: { applications_count, jobs_count, documents_count, activity_count } }` | Get user details |
+| `DELETE` | `/api/admin/users/{user_id}` | Admin | - | `{ success, message, deleted_user_id }` | Delete user (prevents self-deletion) |
 | `PATCH` | `/api/admin/users/{user_id}/premium` | Admin | `{ subscription_plan, subscription_status, subscription_ends_at? }` | `{ success, message, user_id, subscription_plan, subscription_status }` | Change subscription |
 | `PATCH` | `/api/admin/users/{user_id}/role` | Admin | `{ role: "user"|"admin" }` | `{ success, message, user_id, old_role, new_role }` | Change user role |
-| `POST` | `/api/admin/users/{user_id}/revoke-sessions` | Admin | — | `{ success, message, user_id, sessions_revoked: int }` | Force logout (revoke all sessions) |
+| `POST` | `/api/admin/users/{user_id}/revoke-sessions` | Admin | - | `{ success, message, user_id, sessions_revoked: int }` | Force logout (revoke all sessions) |
 | `GET` | `/api/admin/users/{user_id}/applications` | Admin | Query: `limit` (default 50) | `List[UserApplicationDTO]` | Get user's applications |
 | `GET` | `/api/admin/users/{user_id}/jobs` | Admin | Query: `limit` (default 50) | `List[UserJobDTO]` | Get user's saved jobs |
 | `GET` | `/api/admin/users/{user_id}/activity` | Admin | Query: `limit` (default 50) | `List[ActivityEventDTO]` | Get user's activity |
-| `GET` | `/api/admin/users/{user_id}/bans` | Admin | — | `List[BanInfo]` | Get user's ban history |
+| `GET` | `/api/admin/users/{user_id}/bans` | Admin | - | `List[BanInfo]` | Get user's ban history |
 
 #### Admin Bans (`/api/admin`)
 
@@ -412,16 +412,16 @@ The `User` model has a full subscription system:
 | Method | Path | Auth | Params | Response | Description |
 |--------|------|------|--------|----------|-------------|
 | `GET` | `/api/admin/errors/` | Admin | Query: `page`, `page_size`, `level` (ERROR/CRITICAL/WARNING), `user_id`, `endpoint`, `hours` | `PaginatedErrorsDTO` | List error logs with filtering |
-| `GET` | `/api/admin/errors/summary` | Admin | — | `ErrorSummaryDTO { total_errors, critical_count, error_count, warning_count, errors_today, errors_this_week }` | Error statistics |
-| `GET` | `/api/admin/errors/{log_id}` | Admin | — | Full error detail with metadata, stack traces, user info | Error detail |
+| `GET` | `/api/admin/errors/summary` | Admin | - | `ErrorSummaryDTO { total_errors, critical_count, error_count, warning_count, errors_today, errors_this_week }` | Error statistics |
+| `GET` | `/api/admin/errors/{log_id}` | Admin | - | Full error detail with metadata, stack traces, user info | Error detail |
 
 #### Admin Sessions (`/api/admin/sessions`)
 
 | Method | Path | Auth | Params | Response | Description |
 |--------|------|------|--------|----------|-------------|
 | `GET` | `/api/admin/sessions/` | Admin | Query: `page`, `page_size`, `user_id`, `active_only` (default true) | `PaginatedSessionsDTO { items: List[SessionDTO], total, page, page_size, total_pages }` | List sessions |
-| `GET` | `/api/admin/sessions/stats` | Admin | — | `SessionStatsDTO { total_active, expiring_soon, expired_uncleaned }` | Session statistics |
-| `DELETE` | `/api/admin/sessions/{session_id}` | Admin | — | `{ success, message, session_id, user_id }` | Revoke specific session |
+| `GET` | `/api/admin/sessions/stats` | Admin | - | `SessionStatsDTO { total_active, expiring_soon, expired_uncleaned }` | Session statistics |
+| `DELETE` | `/api/admin/sessions/{session_id}` | Admin | - | `{ success, message, session_id, user_id }` | Revoke specific session |
 
 #### Admin System (`/api/admin/system`)
 
@@ -480,13 +480,13 @@ Key settings from `config.py` `Settings` class:
 
 ### Domain Layer (`domain/`)
 Business logic services organized by resource:
-- `admin/` — AdminService, DashboardService, SecurityService, LLMService, UserService, DTOs
-- `analytics/` — AnalyticsService
-- `applications/` — ApplicationService
-- `auth/` — OAuthService, DTOs, Ports
-- `documents/` — DocumentService
-- `jobs/` — JobService
-- `reminders/` — ReminderService
+- `admin/` - AdminService, DashboardService, SecurityService, LLMService, UserService, DTOs
+- `analytics/` - AnalyticsService
+- `applications/` - ApplicationService
+- `auth/` - OAuthService, DTOs, Ports
+- `documents/` - DocumentService
+- `jobs/` - JobService
+- `reminders/` - ReminderService
 
 ### Infrastructure Layer (`infra/`)
 | Directory | Purpose |

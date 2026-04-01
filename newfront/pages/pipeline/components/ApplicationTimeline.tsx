@@ -260,7 +260,7 @@ export function ApplicationTimeline({
               );
             })}
 
-            {/* Applied event marker (initial) — only if first stage isn't already "Applied" */}
+            {/* Applied event marker (initial) - only if first stage isn't already "Applied" */}
             {timeline.length > 0 && 
               timeline[timeline.length - 1].to_status.toLowerCase() !== 'applied' && (
               <motion.div

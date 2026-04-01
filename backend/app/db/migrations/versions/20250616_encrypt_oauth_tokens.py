@@ -5,7 +5,7 @@ Revises: 20250615_fk_constraints
 Create Date: 2025-06-16 00:00:00
 
 This is a DATA migration (no schema change).
-The column type is still Text in the DB — EncryptedText is a Python-side
+The column type is still Text in the DB - EncryptedText is a Python-side
 TypeDecorator that wraps Text.  Here we re-encrypt any plaintext values
 that were written before the TypeDecorator was installed.
 
@@ -38,7 +38,7 @@ def _is_fernet(value: str) -> bool:
 
 
 def upgrade() -> None:
-    # Import encryption lazily — only needed during this migration
+    # Import encryption lazily - only needed during this migration
     from app.infra.security.encryption import encrypt
 
     conn = op.get_bind()

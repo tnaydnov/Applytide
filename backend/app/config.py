@@ -16,7 +16,7 @@ from typing import List, Literal
 
 
 class Settings:
-    """Centralised application settings — all values from env vars."""
+    """Centralised application settings - all values from env vars."""
 
     # ── Environment ──────────────────────────────────────────────────────
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")

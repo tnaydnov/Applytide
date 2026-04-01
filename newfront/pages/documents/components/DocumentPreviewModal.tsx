@@ -69,7 +69,7 @@ export function DocumentPreviewModal({
           const text = await response.text();
           setPreviewHtml(`<pre style="white-space:pre-wrap;font-family:monospace;padding:24px;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
         } else {
-          // PDF or other binary — display via blob URL in iframe
+          // PDF or other binary - display via blob URL in iframe
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
           revoke = url;

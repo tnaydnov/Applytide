@@ -2,7 +2,7 @@
 Domain-level logging facade.
 
 Domain code imports ``get_logger`` from here instead of reaching into
-``app.infra.logging`` — keeping the dependency arrow inward.
+``app.infra.logging`` - keeping the dependency arrow inward.
 
 The implementation currently delegates to the infrastructure logger,
 but the domain layer never has a direct import of ``app.infra``.

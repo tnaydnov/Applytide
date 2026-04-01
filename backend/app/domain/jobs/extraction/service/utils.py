@@ -167,7 +167,7 @@ class ExtractionUtils:
             r"^\s*2nd\s*$",
             r"^\s*Job poster.*$",
             r"^\s*\d+\s+mutual connections\s*$",
-            r"^\s*—\s*$",
+            r"^\s*-\s*$",
             r"^\s*Matches your job preferences.*$",
             r"^\s*workplace type is.*$",
             r"^\s*job type is.*$",

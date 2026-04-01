@@ -1,5 +1,5 @@
 """
-Google OAuth URL constants — single source of truth.
+Google OAuth URL constants - single source of truth.
 
 Import these from here to avoid circular imports between
 google_oauth.py, oauth_flow.py, and oauth_service.py.

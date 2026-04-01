@@ -107,8 +107,8 @@ async def updates(
     WebSocket endpoint for real-time updates.
 
     Authentication order:
-        1. ``?token=<ticket>`` — single-use Redis ticket (preferred)
-        2. ``access_token`` cookie — JWT fallback
+        1. ``?token=<ticket>`` - single-use Redis ticket (preferred)
+        2. ``access_token`` cookie - JWT fallback
 
     The connection is accepted **only after** the caller is authenticated.
     Origin is validated before any processing.

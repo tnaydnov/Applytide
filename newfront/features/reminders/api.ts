@@ -288,7 +288,7 @@ export const remindersApi = {
   },
 
   /**
-   * Sync with Google Calendar — fetches events and imports new ones as reminders
+   * Sync with Google Calendar - fetches events and imports new ones as reminders
    */
   async syncGoogleCalendar(): Promise<{ imported: number }> {
     const events = await remindersApi.getGoogleCalendarEvents();

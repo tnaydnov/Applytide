@@ -499,7 +499,7 @@ async function getRenderedCapture(tabId, {
       return metas;
     }
 
-    // 6) Readability.js — bundled as content script
+    // 6) Readability.js - bundled as content script
     async function getReadable() {
       // Readability.js is now bundled and injected via content_scripts in manifest
       if (window.Readability) {

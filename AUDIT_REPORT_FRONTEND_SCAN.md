@@ -8,7 +8,7 @@
 
 ## 1. XSS via `dangerouslySetInnerHTML`
 
-**Status: ✅ PASS — All instances are sanitized**
+**Status: ✅ PASS - All instances are sanitized**
 
 4 source-code instances found (excluding `dist/` build artifacts). All use `DOMPurify.sanitize()`:
 
@@ -25,21 +25,21 @@
 
 ## 2. Hardcoded Secrets / API Keys
 
-**Status: ✅ PASS — No hardcoded secrets found**
+**Status: ✅ PASS - No hardcoded secrets found**
 
 Search patterns checked: `sk-`, `pk_live`, `pk_test`, `sk_live`, `sk_test`, `api_key =`, `STRIPE_PUBLIC`, `GOOGLE_MAPS_API`, `publishableKey`, `FIREBASE`.
 
 - All `password` references are UI labels/translations (`auth.ts`) or validator logic (`validators.ts`).
-- No `import.meta.env` references contain embedded secrets — only `import.meta.env.DEV` (build-time boolean) is used.
+- No `import.meta.env` references contain embedded secrets - only `import.meta.env.DEV` (build-time boolean) is used.
 - No Stripe publishable keys, Google API keys, or Firebase config found inlined in source.
 
-**Verdict:** Clean. API communication goes through `/api/v1` reverse proxy with httpOnly cookies — no client-side tokens stored.
+**Verdict:** Clean. API communication goes through `/api/v1` reverse proxy with httpOnly cookies - no client-side tokens stored.
 
 ---
 
 ## 3. Error Boundaries
 
-**Status: ✅ PASS — Properly implemented**
+**Status: ✅ PASS - Properly implemented**
 
 | File | Details |
 |------|---------|
@@ -52,7 +52,7 @@ Search patterns checked: `sk-`, `pk_live`, `pk_test`, `sk_live`, `sk_test`, `api
 
 ## 4. Unused Imports
 
-**Status: ✅ PASS — No unused imports found**
+**Status: ✅ PASS - No unused imports found**
 
 | File | Imported | Used? |
 |------|----------|-------|
@@ -80,10 +80,10 @@ Most pages properly implement loading states. One case found:
 | 1 | `newfront/pages/reminders/components/GoogleCalendarButton.tsx` | 23 | LOW | `remindersApi.checkGoogleConnection().then(setConnected)` fires in `useEffect` without a loading indicator. The `connected` state starts as `null` and the component renders conditionally based on it, but there's no spinner/skeleton while the API call is in-flight. |
 
 **Files with proper loading states (no issues):**
-- `PipelinePage.tsx` — uses `useState(true)` for loading, shows `<LoadingSpinner />`
-- `DocumentPreviewModal.tsx` — has `isLoading` state with spinner
-- `AuthContext.tsx` — has `loading` state that gates child rendering
-- `SignUpPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx` — all have loading state for form submissions
+- `PipelinePage.tsx` - uses `useState(true)` for loading, shows `<LoadingSpinner />`
+- `DocumentPreviewModal.tsx` - has `isLoading` state with spinner
+- `AuthContext.tsx` - has `loading` state that gates child rendering
+- `SignUpPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx` - all have loading state for form submissions
 
 ---
 
@@ -95,18 +95,18 @@ Most pages properly implement loading states. One case found:
 
 | # | File | Line | Snippet | Severity |
 |---|------|------|---------|----------|
-| 1 | `newfront/pages/reminders/components/GoogleCalendarButton.tsx` | 23 | `remindersApi.checkGoogleConnection().then(setConnected);` | **MEDIUM** — No `.catch()`, will produce unhandled rejection if API fails |
-| 2 | `newfront/pages/pipeline/PipelinePage.tsx` | 120 | `loadData().then(() => { if (cancelled) return; });` | LOW — `loadData` itself has try/catch, so parent promise won't reject. Safe. |
+| 1 | `newfront/pages/reminders/components/GoogleCalendarButton.tsx` | 23 | `remindersApi.checkGoogleConnection().then(setConnected);` | **MEDIUM** - No `.catch()`, will produce unhandled rejection if API fails |
+| 2 | `newfront/pages/pipeline/PipelinePage.tsx` | 120 | `loadData().then(() => { if (cancelled) return; });` | LOW - `loadData` itself has try/catch, so parent promise won't reject. Safe. |
 
 ### 6b. API layer `.then()` chains
 
-The API modules (`features/jobs/api.ts`, `features/applications/api.ts`, `features/dashboard/api.ts`) use `.then()` chains extensively but **do not add `.catch()` at the API layer** — they rely on callers to handle errors. This is an intentional pattern (promise propagation), not a bug. However:
+The API modules (`features/jobs/api.ts`, `features/applications/api.ts`, `features/dashboard/api.ts`) use `.then()` chains extensively but **do not add `.catch()` at the API layer** - they rely on callers to handle errors. This is an intentional pattern (promise propagation), not a bug. However:
 
 | # | File | Lines | Note |
 |---|------|-------|------|
-| 1 | `features/jobs/api.ts` | 93–136 | 12 `.then()` chains without `.catch()` — only `getSearchSuggestions` (line 158) has a `.catch(() => [])` |
-| 2 | `features/applications/api.ts` | 116–232 | 15 `.then()` chains without `.catch()` — relies entirely on caller error handling |
-| 3 | `features/dashboard/api.ts` | 93–134 | 5 `.then()` chains — only `getWeeklyGoal` has `.catch(() => 5)` |
+| 1 | `features/jobs/api.ts` | 93–136 | 12 `.then()` chains without `.catch()` - only `getSearchSuggestions` (line 158) has a `.catch(() => [])` |
+| 2 | `features/applications/api.ts` | 116–232 | 15 `.then()` chains without `.catch()` - relies entirely on caller error handling |
+| 3 | `features/dashboard/api.ts` | 93–134 | 5 `.then()` chains - only `getWeeklyGoal` has `.catch(() => 5)` |
 
 **Risk:** If any page calls these APIs without try/catch, it will produce an unhandled promise rejection. The `apiFetch` wrapper doesn't throw structured errors for non-2xx responses (it returns the Response object), so callers that don't check `response.ok` may silently process error bodies.
 
@@ -118,7 +118,7 @@ The API modules (`features/jobs/api.ts`, `features/applications/api.ts`, `featur
 
 ### 7a. Buttons without `type` attribute
 
-**Severity: 🟠 MEDIUM — 283 instances found**
+**Severity: 🟠 MEDIUM - 283 instances found**
 
 The custom `<Button>` component (`components/ui/button.tsx`) does **not** set a default `type` attribute. Per HTML spec, buttons without `type` default to `type="submit"`, which can cause unintended form submissions.
 
@@ -137,7 +137,7 @@ The custom `<Button>` component (`components/ui/button.tsx`) does **not** set a 
 | 9 | `pages/pricing/PricingFAQ.tsx` | 135 | FAQ accordion toggle |
 | 10 | `components/admin/BanUserModal.tsx` | 98 | Ban reason selector |
 
-**Note:** The `SignInForm.tsx` line 102 `<button type="button" onClick={onForgotPassword}>` is correctly typed — this is a positive example.
+**Note:** The `SignInForm.tsx` line 102 `<button type="button" onClick={onForgotPassword}>` is correctly typed - this is a positive example.
 
 **Recommendation:** Add `type="button"` as default in the `<Button>` component, or add it explicitly to all non-submit buttons.
 
@@ -146,12 +146,12 @@ The custom `<Button>` component (`components/ui/button.tsx`) does **not** set a 
 **Status: ✅ PASS**
 
 All 6 `<img>` elements found have proper `alt` attributes:
-- `HeroSection.tsx:427` — `alt="Applytide"`
-- `Header.tsx:105` — `alt="Applytide"`
-- `Sidebar.tsx:83` — `alt="Applytide"`
-- `AuthCard.tsx:82` — `alt="Applytide Logo"`
-- `ResetPasswordPage.tsx:119` — `alt="Applytide Logo"`
-- `ForgotPasswordPage.tsx:64` — `alt="Applytide Logo"`
+- `HeroSection.tsx:427` - `alt="Applytide"`
+- `Header.tsx:105` - `alt="Applytide"`
+- `Sidebar.tsx:83` - `alt="Applytide"`
+- `AuthCard.tsx:82` - `alt="Applytide Logo"`
+- `ResetPasswordPage.tsx:119` - `alt="Applytide Logo"`
+- `ForgotPasswordPage.tsx:64` - `alt="Applytide Logo"`
 
 ### 7c. Form inputs without labels or aria-label
 
@@ -161,10 +161,10 @@ Most form inputs use proper `<label>` elements or are wrapped in labeled contain
 
 | # | File | Line | Issue |
 |---|------|------|-------|
-| 1 | `pages/profile/components/ProfileSidebar.tsx` | 194 | `<input type="file">` for avatar upload — hidden but no aria-label |
-| 2 | `pages/profile/components/ProfileHeader.tsx` | 115 | `<input type="file">` for avatar — hidden, no aria-label |
-| 3 | `pages/pipeline/components/DocumentsManager.tsx` | 572 | `<input type="file">` for document upload — likely hidden |
-| 4 | `pages/reminders/components/TimeInput.tsx` | 57 | `<input>` for time — may rely on parent label |
+| 1 | `pages/profile/components/ProfileSidebar.tsx` | 194 | `<input type="file">` for avatar upload - hidden but no aria-label |
+| 2 | `pages/profile/components/ProfileHeader.tsx` | 115 | `<input type="file">` for avatar - hidden, no aria-label |
+| 3 | `pages/pipeline/components/DocumentsManager.tsx` | 572 | `<input type="file">` for document upload - likely hidden |
+| 4 | `pages/reminders/components/TimeInput.tsx` | 57 | `<input>` for time - may rely on parent label |
 
 **Note:** Hidden file inputs (triggered via button click) are low-severity since they're not keyboard-navigable by default, but adding `aria-label` is still best practice.
 
@@ -174,17 +174,17 @@ Most form inputs use proper `<label>` elements or are wrapped in labeled contain
 
 | Category | Status | Severity | Count |
 |----------|--------|----------|-------|
-| XSS via dangerouslySetInnerHTML | ✅ PASS | — | 0 issues |
-| Hardcoded secrets | ✅ PASS | — | 0 issues |
-| Error boundaries | ✅ PASS | — | 0 issues |
-| Unused imports | ✅ PASS | — | 0 issues |
+| XSS via dangerouslySetInnerHTML | ✅ PASS | - | 0 issues |
+| Hardcoded secrets | ✅ PASS | - | 0 issues |
+| Error boundaries | ✅ PASS | - | 0 issues |
+| Unused imports | ✅ PASS | - | 0 issues |
 | Missing loading states | 🟡 | LOW | 1 instance |
 | Uncaught promise rejections | 🟡 | MEDIUM | 1 confirmed, pattern risk in API layer |
 | Buttons without `type` | 🟠 | MEDIUM | ~283 instances |
-| Images without `alt` | ✅ PASS | — | 0 issues |
+| Images without `alt` | ✅ PASS | - | 0 issues |
 | Inputs without labels | 🟡 | LOW | ~4 instances |
 
 ### Priority Fixes
-1. **Button component default type** — Add `type="button"` as default prop in `components/ui/button.tsx` to prevent accidental form submissions across all 283+ usages.
-2. **GoogleCalendarButton.tsx line 23** — Add `.catch()` handler to prevent unhandled rejection.
-3. **File inputs** — Add `aria-label` to hidden file upload inputs for screen reader support.
+1. **Button component default type** - Add `type="button"` as default prop in `components/ui/button.tsx` to prevent accidental form submissions across all 283+ usages.
+2. **GoogleCalendarButton.tsx line 23** - Add `.catch()` handler to prevent unhandled rejection.
+3. **File inputs** - Add `aria-label` to hidden file upload inputs for screen reader support.

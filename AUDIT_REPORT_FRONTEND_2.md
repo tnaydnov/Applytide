@@ -1,12 +1,12 @@
-# Frontend Audit Report — New Issues
+# Frontend Audit Report - New Issues
 
 **Date:** 2026-02-21  
-**Scope:** `newfront/` — React/TypeScript frontend  
+**Scope:** `newfront/` - React/TypeScript frontend  
 **Excludes:** Previously fixed issues (dangerouslySetInnerHTML XSS, ErrorBoundary, React.lazy, window.open noopener, JSON.parse localStorage, raw fetch in DocumentPreviewModal, hardcoded API paths, timer leaks, font loading)
 
 ---
 
-## 1 — CRITICAL: Cache `forEach` + `delete` Mutates Map During Iteration
+## 1 - CRITICAL: Cache `forEach` + `delete` Mutates Map During Iteration
 
 **Severity:** CRITICAL  
 **File:** [lib/api/core.ts](newfront/lib/api/core.ts#L150-L154)
@@ -34,7 +34,7 @@ keysToDelete.forEach((key) => cache.delete(key));
 
 ---
 
-## 2 — CRITICAL: Unbounded In-Memory Cache Growth
+## 2 - CRITICAL: Unbounded In-Memory Cache Growth
 
 **Severity:** CRITICAL  
 **File:** [lib/api/core.ts](newfront/lib/api/core.ts#L29-L53)
@@ -62,13 +62,13 @@ function setCache(key: string, data: any): void {
 
 ---
 
-## 3 — HIGH: Duplicate Token Refresh Logic (Race Condition)
+## 3 - HIGH: Duplicate Token Refresh Logic (Race Condition)
 
 **Severity:** HIGH  
 **File:** [lib/api/core.ts](newfront/lib/api/core.ts#L156-L170) and [contexts/AuthContext.tsx](newfront/contexts/AuthContext.tsx#L96-L143)
 
 ```ts
-// core.ts — standalone refresh (no single-flight guard)
+// core.ts - standalone refresh (no single-flight guard)
 if (!interceptorActive && response.status === 401 ...) {
   const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, ...);
   if (refreshResponse.ok) {
@@ -77,11 +77,11 @@ if (!interceptorActive && response.status === 401 ...) {
 }
 ```
 
-**What's wrong:** There are **two independent 401-refresh paths**: the fetch interceptor in `AuthContext` (which has single-flight protection via `refreshInFlightRef`) and the fallback in `apiFetch` core.ts (which has **no** single-flight guard). When the interceptor is not active (SSR, tests, or during initialization), concurrent 401 responses will fire multiple simultaneous refresh requests — a race condition that can invalidate refresh tokens.
+**What's wrong:** There are **two independent 401-refresh paths**: the fetch interceptor in `AuthContext` (which has single-flight protection via `refreshInFlightRef`) and the fallback in `apiFetch` core.ts (which has **no** single-flight guard). When the interceptor is not active (SSR, tests, or during initialization), concurrent 401 responses will fire multiple simultaneous refresh requests - a race condition that can invalidate refresh tokens.
 
 **Fix:** Move the single-flight guard into `core.ts` or remove the duplicate refresh from `core.ts` entirely, since the interceptor handles it:
 ```ts
-// core.ts — remove the redundant refresh block or add single-flight:
+// core.ts - remove the redundant refresh block or add single-flight:
 let refreshPromise: Promise<Response> | null = null;
 
 // Inside apiFetch, when 401:
@@ -95,7 +95,7 @@ const refreshResponse = await refreshPromise;
 
 ---
 
-## 4 — HIGH: `LoginResponse.user` Typed as `any`
+## 4 - HIGH: `LoginResponse.user` Typed as `any`
 
 **Severity:** HIGH  
 **File:** [lib/api/core.ts](newfront/lib/api/core.ts#L192)
@@ -121,16 +121,16 @@ interface LoginResponse {
 
 ---
 
-## 5 — HIGH: Index Signatures `[key: string]: any` Defeat Type Safety
+## 5 - HIGH: Index Signatures `[key: string]: any` Defeat Type Safety
 
 **Severity:** HIGH  
 **Files:**
-- [features/applications/api.ts](newfront/features/applications/api.ts#L51) — `Application`
-- [features/applications/api.ts](newfront/features/applications/api.ts#L85) — `UpdateApplicationPayload`
-- [features/jobs/api.ts](newfront/features/jobs/api.ts#L28) — `Job`
-- [features/jobs/api.ts](newfront/features/jobs/api.ts#L41) — `JobPayload`
-- [features/dashboard/api.ts](newfront/features/dashboard/api.ts#L22) — `DashboardMetrics`
-- [features/dashboard/api.ts](newfront/features/dashboard/api.ts#L55) — `ApplicationCard`
+- [features/applications/api.ts](newfront/features/applications/api.ts#L51) - `Application`
+- [features/applications/api.ts](newfront/features/applications/api.ts#L85) - `UpdateApplicationPayload`
+- [features/jobs/api.ts](newfront/features/jobs/api.ts#L28) - `Job`
+- [features/jobs/api.ts](newfront/features/jobs/api.ts#L41) - `JobPayload`
+- [features/dashboard/api.ts](newfront/features/dashboard/api.ts#L22) - `DashboardMetrics`
+- [features/dashboard/api.ts](newfront/features/dashboard/api.ts#L55) - `ApplicationCard`
 
 ```ts
 export interface Application {
@@ -155,10 +155,10 @@ export interface Application {
 
 ---
 
-## 6 — HIGH: `useEffect` Async Calls Without Cancellation (State Updates After Unmount)
+## 6 - HIGH: `useEffect` Async Calls Without Cancellation (State Updates After Unmount)
 
 **Severity:** HIGH  
-**Files (representative set — same pattern throughout):**
+**Files (representative set - same pattern throughout):**
 - [pages/pipeline/components/NotesPanel.tsx](newfront/pages/pipeline/components/NotesPanel.tsx#L48-L64)
 - [pages/pipeline/components/RemindersPanel.tsx](newfront/pages/pipeline/components/RemindersPanel.tsx#L65-L100)
 - [pages/pipeline/components/ApplicationTimeline.tsx](newfront/pages/pipeline/components/ApplicationTimeline.tsx#L44-L104)
@@ -170,7 +170,7 @@ export interface Application {
 ```ts
 // Example from NotesPanel.tsx
 useEffect(() => {
-  loadNotes();          // async — no cancellation
+  loadNotes();          // async - no cancellation
 }, [applicationId]);    // no cleanup return
 ```
 
@@ -202,7 +202,7 @@ useEffect(() => {
 
 ---
 
-## 7 — HIGH: Raw `fetch()` in Auth Pages Bypasses API Infrastructure
+## 7 - HIGH: Raw `fetch()` in Auth Pages Bypasses API Infrastructure
 
 **Severity:** HIGH  
 **Files:**
@@ -221,7 +221,7 @@ const res = await fetch('/api/v1/auth/register', {
 ```
 
 **What's wrong:** These pages use raw `fetch()` instead of `apiFetch()`. While these are auth endpoints, bypassing `apiFetch` means:
-1. No structured `ApiError` thrown — error handling is ad-hoc `.json().catch(() => ({}))`.
+1. No structured `ApiError` thrown - error handling is ad-hoc `.json().catch(() => ({}))`.
 2. No caching side-effects (cache isn't cleared after registration).
 3. Inconsistent error response parsing across the app.
 
@@ -241,7 +241,7 @@ if (!res.ok) {
 
 ---
 
-## 8 — MEDIUM: `catch (e: any)` — Unsafe Error Type Assertion
+## 8 - MEDIUM: `catch (e: any)` - Unsafe Error Type Assertion
 
 **Severity:** MEDIUM  
 **File:** [pages/documents/components/DocumentPreviewModal.tsx](newfront/pages/documents/components/DocumentPreviewModal.tsx#L77) and [line 97](newfront/pages/documents/components/DocumentPreviewModal.tsx#L97)
@@ -266,7 +266,7 @@ if (!res.ok) {
 
 ---
 
-## 9 — MEDIUM: Profile API Methods Return `Promise<unknown>` — Lost Type Safety
+## 9 - MEDIUM: Profile API Methods Return `Promise<unknown>` - Lost Type Safety
 
 **Severity:** MEDIUM  
 **File:** [features/profile/api.ts](newfront/features/profile/api.ts#L174-L199)
@@ -295,7 +295,7 @@ async updateJobPreferences(data: Partial<JobPreferences>): Promise<JobPreference
 
 ---
 
-## 10 — MEDIUM: `Reminder.notification_schedule` Typed as `Record<string, any> | null`
+## 10 - MEDIUM: `Reminder.notification_schedule` Typed as `Record<string, any> | null`
 
 **Severity:** MEDIUM  
 **File:** [features/reminders/api.ts](newfront/features/reminders/api.ts#L36)
@@ -318,7 +318,7 @@ notification_schedule?: NotificationSchedule | null;
 
 ---
 
-## 11 — MEDIUM: `DocumentAnalysis.ai_detailed_analysis` Typed as `any`
+## 11 - MEDIUM: `DocumentAnalysis.ai_detailed_analysis` Typed as `any`
 
 **Severity:** MEDIUM  
 **File:** [features/documents/api.ts](newfront/features/documents/api.ts#L47)
@@ -327,7 +327,7 @@ notification_schedule?: NotificationSchedule | null;
 ai_detailed_analysis?: any;
 ```
 
-**What's wrong:** This field is used extensively in `normalizeAnalysis()` to access `.formatting`, `.keywords`, `.technical_skills`, `.soft_skills`, `.overall_suggestions` etc. — all without type checking.
+**What's wrong:** This field is used extensively in `normalizeAnalysis()` to access `.formatting`, `.keywords`, `.technical_skills`, `.soft_skills`, `.overall_suggestions` etc. - all without type checking.
 
 **Fix:**
 ```ts
@@ -351,7 +351,7 @@ ai_detailed_analysis?: AIDetailedAnalysis;
 
 ---
 
-## 12 — MEDIUM: `CacheEntry.data` Typed as `any`
+## 12 - MEDIUM: `CacheEntry.data` Typed as `any`
 
 **Severity:** MEDIUM  
 **File:** [lib/api/core.ts](newfront/lib/api/core.ts#L23-L26)
@@ -375,7 +375,7 @@ interface CacheEntry<T = unknown> {
 
 ---
 
-## 13 — MEDIUM: Admin `getSystemHealth` Swallows Errors and Returns Fabricated Data
+## 13 - MEDIUM: Admin `getSystemHealth` Swallows Errors and Returns Fabricated Data
 
 **Severity:** MEDIUM  
 **File:** [features/admin/api.ts](newfront/features/admin/api.ts#L208-L222)
@@ -403,11 +403,11 @@ getSystemHealth: async (): Promise<SystemHealth> => {
 ```ts
 redis: { status: 'unknown' as const, ... },
 ```
-And remove the `as SystemHealth` cast — fix the type instead.
+And remove the `as SystemHealth` cast - fix the type instead.
 
 ---
 
-## 14 — MEDIUM: `UsersPage` / `JobsPage` Fire API on Every Keystroke (No Debounce)
+## 14 - MEDIUM: `UsersPage` / `JobsPage` Fire API on Every Keystroke (No Debounce)
 
 **Severity:** MEDIUM  
 **Files:** 
@@ -436,7 +436,7 @@ Or use a `useDebouncedValue` hook.
 
 ---
 
-## 15 — MEDIUM: `window.confirm()` Used for Destructive Action in Admin
+## 15 - MEDIUM: `window.confirm()` Used for Destructive Action in Admin
 
 **Severity:** MEDIUM  
 **File:** [pages/admin/SessionsPage.tsx](newfront/pages/admin/SessionsPage.tsx#L38)
@@ -456,7 +456,7 @@ if (!confirm(t("Are you sure you want to terminate this session?", ...))) {
 
 ---
 
-## 16 — MEDIUM: `applications/api.ts` — Missing Error Handling on `.then(r => r.json())`
+## 16 - MEDIUM: `applications/api.ts` - Missing Error Handling on `.then(r => r.json())`
 
 **Severity:** MEDIUM  
 **File:** [features/applications/api.ts](newfront/features/applications/api.ts#L113-L146) (multiple methods)
@@ -490,7 +490,7 @@ createApplication: async (payload) => {
 
 ---
 
-## 17 — LOW: `Reminders.createReminder` Accepts `Record<string, any>` Instead of a Typed Payload
+## 17 - LOW: `Reminders.createReminder` Accepts `Record<string, any>` Instead of a Typed Payload
 
 **Severity:** LOW  
 **File:** [features/reminders/api.ts](newfront/features/reminders/api.ts#L93)
@@ -518,7 +518,7 @@ async createReminder(data: CreateReminderPayload): Promise<Reminder> {
 
 ---
 
-## 18 — LOW: `LanguageContext` Reads `localStorage` Synchronously in `useState` Initializer Without Try/Catch
+## 18 - LOW: `LanguageContext` Reads `localStorage` Synchronously in `useState` Initializer Without Try/Catch
 
 **Severity:** LOW  
 **File:** [contexts/LanguageContext.tsx](newfront/contexts/LanguageContext.tsx#L16)
@@ -530,7 +530,7 @@ const [language, setLanguageState] = useState<Language>(() => {
 });
 ```
 
-**What's wrong:** In environments where `localStorage` is unavailable (private browsing in some older browsers, SSR), this will throw. Also, `saved as Language` doesn't validate the value — a corrupted value like `"fr"` would be accepted.
+**What's wrong:** In environments where `localStorage` is unavailable (private browsing in some older browsers, SSR), this will throw. Also, `saved as Language` doesn't validate the value - a corrupted value like `"fr"` would be accepted.
 
 **Fix:**
 ```ts
@@ -545,7 +545,7 @@ const [language, setLanguageState] = useState<Language>(() => {
 
 ---
 
-## 19 — LOW: `WebSocket.onmessage` Silently Swallows JSON Parse Errors
+## 19 - LOW: `WebSocket.onmessage` Silently Swallows JSON Parse Errors
 
 **Severity:** LOW  
 **File:** [lib/api/websocket.ts](newfront/lib/api/websocket.ts#L97-L100)
@@ -575,7 +575,7 @@ ws.onmessage = (e) => {
 
 ---
 
-## 20 — LOW: Proactive Token Refresh Timer May Infinite-Loop
+## 20 - LOW: Proactive Token Refresh Timer May Infinite-Loop
 
 **Severity:** LOW  
 **File:** [contexts/AuthContext.tsx](newfront/contexts/AuthContext.tsx#L173-L185)
@@ -593,12 +593,12 @@ useEffect(() => {
 }, [tokenExpiry, user]);
 ```
 
-**What's wrong:** `silentRefresh` itself calls `setTokenExpiry`, which triggers this effect again, which schedules a new timer, which calls `silentRefresh` again — creating a potential infinite loop. If the server returns the same `expires_in` value, the effect re-fires with a `timeUntilRefresh` of 0, causing an immediate re-refresh.
+**What's wrong:** `silentRefresh` itself calls `setTokenExpiry`, which triggers this effect again, which schedules a new timer, which calls `silentRefresh` again - creating a potential infinite loop. If the server returns the same `expires_in` value, the effect re-fires with a `timeUntilRefresh` of 0, causing an immediate re-refresh.
 
 **Fix:** Add a guard to prevent scheduling if `timeUntilRefresh` is too small:
 ```ts
 const timeUntilRefresh = Math.max(0, refreshTime - now);
-if (timeUntilRefresh < 10_000) return; // Don't schedule if <10s away — already refreshing
+if (timeUntilRefresh < 10_000) return; // Don't schedule if <10s away - already refreshing
 ```
 
 ---

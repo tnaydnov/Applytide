@@ -587,7 +587,7 @@ function AddDocumentDialog({ open, onOpenChange, applicationId, onComplete, isRT
                     {isRTL ? 'לחץ לבחירת קובץ' : 'Click to select a file'}
                   </p>
                   <p className="text-xs text-[#6c757d]/60 dark:text-[#b6bac5]/60 mt-1">
-                    PDF, DOC, DOCX, TXT, RTF, PNG, JPG — max 10MB
+                    PDF, DOC, DOCX, TXT, RTF, PNG, JPG - max 10MB
                   </p>
                 </>
               )}

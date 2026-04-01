@@ -394,7 +394,7 @@ document.getElementById('openDirectLinkBtn')?.addEventListener('click', async ()
     const targetUrl = window.__iframeUrl;
 
     if (normalize(currentUrl) === normalize(targetUrl)) {
-      // We're already on the canonical page — just extract.
+      // We're already on the canonical page - just extract.
       showSection('processing');
       setProgress('flow:begin', 'Starting job extraction...');
       resetProgressBar();

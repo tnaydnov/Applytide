@@ -152,7 +152,7 @@ export function DashboardPage() {
   const interviewCount = metrics?.interviews || 0;
   const offerCount = metrics?.offers || 0;
 
-  // Recent activity — derived from real application cards
+  // Recent activity - derived from real application cards
   const recentActivity = applications.slice(0, 3).map((app, i) => {
     const statusIcon = app.status === 'Interview' ? Users
       : app.status === 'Offer' ? Trophy
@@ -182,7 +182,7 @@ export function DashboardPage() {
     };
   });
 
-  // Upcoming events — derived from applications with Interview status
+  // Upcoming events - derived from applications with Interview status
   const upcomingEvents = applications
     .filter((a) => a.status === 'Interview')
     .slice(0, 3)

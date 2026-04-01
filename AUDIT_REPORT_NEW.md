@@ -1,13 +1,13 @@
 # Backend Security & Architecture Audit Report (New Findings)
 
-**Scope:** `backend/app/` — routers, deps, infra, config, main  
+**Scope:** `backend/app/` - routers, deps, infra, config, main  
 **Date:** 2025  
 **Severity Scale:** CRITICAL → HIGH → MEDIUM → LOW → INFO  
 **Exclusions:** Error detail leaks (str(e) in HTTPException), `datetime.utcnow()`, pagination bounds, bare except in `exception_handlers.py`, auth on AI extract, Redis namespacing, WebSocket auth, sessions SECRET_KEY, FK/unique constraints, rate limiter hardening.
 
 ---
 
-## Finding 1 — HTML Injection in Feedback Email
+## Finding 1 - HTML Injection in Feedback Email
 
 | Field | Value |
 |-------|-------|
@@ -28,7 +28,7 @@ User-supplied `name`, `email`, and `message` are interpolated directly into an H
 ```
 
 **Impact:**  
-Stored XSS in email — phishing links, credential harvesting payloads, or scripts rendered in the admin's mail client.
+Stored XSS in email - phishing links, credential harvesting payloads, or scripts rendered in the admin's mail client.
 
 **Fix:**
 ```python
@@ -43,7 +43,7 @@ def _feedback_html(name: str, email: str, feedback_type: str, message: str, has_
 
 ---
 
-## Finding 2 — User Enumeration via Password Reset
+## Finding 2 - User Enumeration via Password Reset
 
 | Field | Value |
 |-------|-------|
@@ -76,7 +76,7 @@ if not user:
 
 ---
 
-## Finding 3 — Unsanitised Filename in Avatar URL (Path Traversal)
+## Finding 3 - Unsanitised Filename in Avatar URL (Path Traversal)
 
 | Field | Value |
 |-------|-------|
@@ -107,7 +107,7 @@ avatar_url = f"/avatars/{current_user.id}/{safe_name}"
 
 ---
 
-## Finding 4 — Feedback Endpoint Has No Authentication
+## Finding 4 - Feedback Endpoint Has No Authentication
 
 | Field | Value |
 |-------|-------|
@@ -132,7 +132,7 @@ Or, if anonymous feedback is intentional, add a tighter rate limiter + CAPTCHA v
 
 ---
 
-## Finding 5 — Untyped `dict` Payload (No Validation)
+## Finding 5 - Untyped `dict` Payload (No Validation)
 
 | Field | Value |
 |-------|-------|
@@ -142,7 +142,7 @@ Or, if anonymous feedback is intentional, add a tighter rate limiter + CAPTCHA v
 | **Category** | Input Validation |
 
 **Description:**  
-`attach_from_document` accepts `payload: dict` — a raw dictionary with no schema validation. Any JSON body is accepted; missing or malformed `document_id` / `document_type` keys will only fail deep inside the service layer with opaque errors.
+`attach_from_document` accepts `payload: dict` - a raw dictionary with no schema validation. Any JSON body is accepted; missing or malformed `document_id` / `document_type` keys will only fail deep inside the service layer with opaque errors.
 
 **Code:**
 ```python
@@ -174,7 +174,7 @@ def attach_from_document(
 
 ---
 
-## Finding 6 — Temp File Leak in Analytics Export
+## Finding 6 - Temp File Leak in Analytics Export
 
 | Field | Value |
 |-------|-------|
@@ -209,7 +209,7 @@ return FileResponse(
 
 ---
 
-## Finding 7 — Entire File Read Into Memory Before Size Check
+## Finding 7 - Entire File Read Into Memory Before Size Check
 
 | Field | Value |
 |-------|-------|
@@ -244,7 +244,7 @@ For production hardening, also set `client_max_body_size` at the reverse-proxy (
 
 ---
 
-## Finding 8 — Duplicate CryptContext in `disable_2fa`
+## Finding 8 - Duplicate CryptContext in `disable_2fa`
 
 | Field | Value |
 |-------|-------|
@@ -273,7 +273,7 @@ if not verify_password(body.password, current_user.password_hash):
 
 ---
 
-## Finding 9 — No Validation on Preference Key
+## Finding 9 - No Validation on Preference Key
 
 | Field | Value |
 |-------|-------|
@@ -306,7 +306,7 @@ def get_user_preference(
 
 ---
 
-## Finding 10 — `response_model=dict` on Dashboard Endpoints
+## Finding 10 - `response_model=dict` on Dashboard Endpoints
 
 | Field | Value |
 |-------|-------|
@@ -343,7 +343,7 @@ class DashboardMetrics(BaseModel):
 
 ---
 
-## Finding 11 — Dev CORS Allows All Methods & Headers
+## Finding 11 - Dev CORS Allows All Methods & Headers
 
 | Field | Value |
 |-------|-------|
@@ -364,7 +364,7 @@ allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 
 ---
 
-## Finding 12 — Fragile `.format()` SQL Construction in Fulltext Search
+## Finding 12 - Fragile `.format()` SQL Construction in Fulltext Search
 
 | Field | Value |
 |-------|-------|
@@ -403,7 +403,7 @@ params["stop_words"] = list(STOP_WORDS)
 
 ---
 
-## Finding 13 — LIKE Wildcard Injection in Admin Error Filter
+## Finding 13 - LIKE Wildcard Injection in Admin Error Filter
 
 | Field | Value |
 |-------|-------|
@@ -433,7 +433,7 @@ stmt = stmt.where(
 
 ---
 
-## Finding 14 — Deprecated `@app.on_event` Lifecycle Pattern
+## Finding 14 - Deprecated `@app.on_event` Lifecycle Pattern
 
 | Field | Value |
 |-------|-------|
@@ -468,12 +468,12 @@ app = FastAPI(lifespan=lifespan)
 | 2 | HIGH | User enumeration via password reset 404 | `auth/password.py:132` |
 | 3 | HIGH | Unsanitised filename in avatar URL | `auth/avatar.py:142` |
 | 4 | HIGH | No auth on feedback endpoint | `feedback.py:68` |
-| 5 | HIGH | Untyped `dict` payload — no validation | `applications/attachments.py:35` |
+| 5 | HIGH | Untyped `dict` payload - no validation | `applications/attachments.py:35` |
 | 6 | MEDIUM | Temp file leak in analytics export | `analytics.py:189,433` |
 | 7 | MEDIUM | Full file read into memory before size check | `documents/upload.py:173` |
 | 8 | MEDIUM | Duplicate CryptContext in `disable_2fa` | `auth/twofa.py:178` |
 | 9 | MEDIUM | No validation on preference key | `preferences.py` (all CRUD) |
-| 10 | MEDIUM | `response_model=dict` — no typed contract | `dashboard.py:40` |
+| 10 | MEDIUM | `response_model=dict` - no typed contract | `dashboard.py:40` |
 | 11 | LOW | Dev CORS allows all methods/headers | `main.py:108` |
 | 12 | LOW | Fragile `.format()` SQL (latent injection) | `fulltext.py:403` |
 | 13 | LOW | LIKE wildcard injection in admin filter | `admin/errors.py:122` |

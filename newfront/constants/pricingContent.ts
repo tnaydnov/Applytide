@@ -182,8 +182,8 @@ export const pricingPlans: PricingPlan[] = [
     },
     yearlyDiscount: { en: "2 months free", he: "חודשיים חינם" },
     description: {
-      en: "AI does the heavy lifting—you land the interviews",
-      he: "ה-AI עושה את העבודה הכבדה — ואתם מגיעים לראיונות",
+      en: "AI does the heavy lifting-you land the interviews",
+      he: "ה-AI עושה את העבודה הכבדה - ואתם מגיעים לראיונות",
     },
     features: [
       {
@@ -228,8 +228,8 @@ export const featuresContent = {
     he: "כל מה שצריך כדי להיות מסודר",
   },
   subtitle: {
-    en: "Track applications, manage interviews, and stay on top of your job search — all in one place",
-    he: "עקוב אחרי מועמדויות, נהל ראיונות, והישאר בעניינים — הכל במקום אחד",
+    en: "Track applications, manage interviews, and stay on top of your job search - all in one place",
+    he: "עקוב אחרי מועמדויות, נהל ראיונות, והישאר בעניינים - הכל במקום אחד",
   },
 };
 
@@ -621,8 +621,8 @@ export const faqs: FAQItem[] = [
       he: "מה ההבדל בין Pro ל-Premium?",
     },
     answer: {
-      en: "Pro unlocks unlimited AI (cover letters and resume analysis), advanced analytics, interview prep, and company insights. Premium adds the AI Smart Agent that finds jobs for you, auto-generates and optimizes resumes for each application, and auto-fills job forms—essentially doing the heavy lifting for you.",
-      he: "ה-Pro פותח AI ללא הגבלה (מכתבי כיסוי וניתוח קורות חיים), אנליטיקה מתקדמת, הכנה לראיונות ותובנות על חברות. ה-Premium מוסיף את סוכן ה-AI החכם שמוצא משרות בשבילך, מייצר ומייעל קורות חיים אוטומטית לכל מועמדות, וממלא טפסים אוטומטית—בעצם עושה את העבודה הכבדה בשבילך.",
+      en: "Pro unlocks unlimited AI (cover letters and resume analysis), advanced analytics, interview prep, and company insights. Premium adds the AI Smart Agent that finds jobs for you, auto-generates and optimizes resumes for each application, and auto-fills job forms-essentially doing the heavy lifting for you.",
+      he: "ה-Pro פותח AI ללא הגבלה (מכתבי כיסוי וניתוח קורות חיים), אנליטיקה מתקדמת, הכנה לראיונות ותובנות על חברות. ה-Premium מוסיף את סוכן ה-AI החכם שמוצא משרות בשבילך, מייצר ומייעל קורות חיים אוטומטית לכל מועמדות, וממלא טפסים אוטומטית-בעצם עושה את העבודה הכבדה בשבילך.",
     },
   },
   {

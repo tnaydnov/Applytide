@@ -12,7 +12,7 @@ from .base import Base
 from ..infra.security.encryption import EncryptedText
 
 # Always use JSONB on PostgreSQL. If you ever need SQLite fallback, detect
-# dialect at migration time or via a runtime flag — never import the engine
+# dialect at migration time or via a runtime flag - never import the engine
 # at module level (it forces a DB connection at import time).
 JSONList = JSONB
 

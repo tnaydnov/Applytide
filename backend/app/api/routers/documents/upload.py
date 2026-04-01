@@ -259,7 +259,7 @@ async def upload_document(
                 },
                 exc_info=True
             )
-            # MIME validation error is a security concern — reject rather than silently pass
+            # MIME validation error is a security concern - reject rather than silently pass
             raise HTTPException(
                 status_code=400,
                 detail="File content validation failed"

@@ -382,7 +382,7 @@ class RateLimiter:
 # Pre-configured Rate Limiters
 # ============================================================================
 
-# Login attempts: 5 per 5 minutes (fail-closed — auth critical)
+# Login attempts: 5 per 5 minutes (fail-closed - auth critical)
 login_limiter = RateLimiter(
     key_prefix="rate_limit:login",
     max_attempts=5,
@@ -406,7 +406,7 @@ password_reset_limiter = RateLimiter(
     fail_closed=True,
 )
 
-# Token refresh: 10 per 5 minutes (fail-open — availability matters more)
+# Token refresh: 10 per 5 minutes (fail-open - availability matters more)
 refresh_limiter = RateLimiter(
     key_prefix="rate_limit:refresh",
     max_attempts=10,
@@ -414,7 +414,7 @@ refresh_limiter = RateLimiter(
     fail_closed=False,
 )
 
-# Email sending: 3 per hour (fail-closed — prevents spam)
+# Email sending: 3 per hour (fail-closed - prevents spam)
 email_limiter = RateLimiter(
     key_prefix="rate_limit:email",
     max_attempts=3,
@@ -422,7 +422,7 @@ email_limiter = RateLimiter(
     fail_closed=True,
 )
 
-# 2FA OTP verification: 5 per 5 minutes (fail-closed — prevents brute-force)
+# 2FA OTP verification: 5 per 5 minutes (fail-closed - prevents brute-force)
 otp_limiter = RateLimiter(
     key_prefix="rate_limit:otp",
     max_attempts=5,
@@ -430,7 +430,7 @@ otp_limiter = RateLimiter(
     fail_closed=True,
 )
 
-# Feedback submission: 5 per 15 minutes per IP (fail-closed — prevents spam)
+# Feedback submission: 5 per 15 minutes per IP (fail-closed - prevents spam)
 feedback_limiter = RateLimiter(
     key_prefix="rate_limit:feedback",
     max_attempts=5,
@@ -438,7 +438,7 @@ feedback_limiter = RateLimiter(
     fail_closed=True,
 )
 
-# AI / LLM endpoints: 20 per hour per user (fail-closed — prevents cost overrun)
+# AI / LLM endpoints: 20 per hour per user (fail-closed - prevents cost overrun)
 ai_limiter = RateLimiter(
     key_prefix="rate_limit:ai",
     max_attempts=20,
@@ -446,7 +446,7 @@ ai_limiter = RateLimiter(
     fail_closed=True,
 )
 
-# Document analysis: 15 per hour per user (fail-closed — LLM cost control)
+# Document analysis: 15 per hour per user (fail-closed - LLM cost control)
 analysis_limiter = RateLimiter(
     key_prefix="rate_limit:analysis",
     max_attempts=15,

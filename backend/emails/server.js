@@ -28,7 +28,7 @@ const TEMPLATE_NAME_RE = /^[a-zA-Z0-9_-]+$/;
 
 function resolveTemplate(name) {
   if (!name || !TEMPLATE_NAME_RE.test(name)) {
-    return { error: 'Invalid template name — alphanumeric, hyphens, and underscores only' };
+    return { error: 'Invalid template name - alphanumeric, hyphens, and underscores only' };
   }
   const resolved = path.resolve(TEMPLATES_DIR, `${name}.jsx`);
   // Prevent path traversal

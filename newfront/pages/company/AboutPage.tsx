@@ -30,7 +30,7 @@ export function AboutPage() {
       },
       description: { 
         en: "Keep track of every job application, from initial submission to final decision, all in one organized dashboard.",
-        he: "עקוב אחר כל מועמדות—from הגשה ועד החלטה—בלוח בקרה מסודר אחד."
+        he: "עקוב אחר כל מועמדות-from הגשה ועד החלטה-בלוח בקרה מסודר אחד."
       },
       color: "#60a5fa",
     },
@@ -78,7 +78,7 @@ export function AboutPage() {
       },
       description: { 
         en: "Connect your Google Calendar to create reminders and never miss an interview or follow-up. All your job search events in one place.",
-        he: "חבר את היומן כדי ליצור תזכורות ולא לפספס ראיונות או מעקבים—כל האירועים במקום אחד."
+        he: "חבר את היומן כדי ליצור תזכורות ולא לפספס ראיונות או מעקבים-כל האירועים במקום אחד."
       },
       color: "#fb923c",
     },

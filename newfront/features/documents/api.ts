@@ -195,7 +195,7 @@ function normalizeAnalysis(raw: RawAnalysisResponse): DocumentAnalysis {
     if (Array.isArray(section.weaknesses) && section.weaknesses.length > 0) {
       parts.push(section.weaknesses.join('. '));
     }
-    if (parts.length > 0) return parts.join(' — ');
+    if (parts.length > 0) return parts.join(' - ');
     return score >= 80 ? fallbackGood : fallbackBad;
   };
 
@@ -514,7 +514,7 @@ export const documentsApi = {
 
   /**
    * Analyze document with AI (optional job context).
-   * Backend returns a different shape — we normalize it into our DocumentAnalysis.
+   * Backend returns a different shape - we normalize it into our DocumentAnalysis.
    */
   async analyzeDocument(documentId: number | string, jobId?: number | string): Promise<DocumentAnalysis> {
     const qs = jobId

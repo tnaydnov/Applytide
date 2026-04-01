@@ -6,14 +6,14 @@ Single-use, short-lived tickets for WebSocket authentication.
 Instead of passing long-lived JWTs via query parameters (which appear in
 server logs, Nginx access logs, and browser history), the frontend requests
 a random opaque ticket, stored in Redis with a 30-second TTL.  The WS
-handshake consumes (deletes) the ticket on first use —- replays are
+handshake consumes (deletes) the ticket on first use -- replays are
 impossible.
 
 Usage:
     # In the HTTP endpoint (sync)
     ticket = create_ws_ticket(user_id)
 
-    # In the WS handler (sync or async — just string + Redis GET/DEL)
+    # In the WS handler (sync or async - just string + Redis GET/DEL)
     user_id = consume_ws_ticket(ticket)
 """
 
@@ -30,7 +30,7 @@ from ...infra.logging import get_logger
 
 logger = get_logger(__name__)
 
-_WS_TICKET_TTL: int = 30  # seconds — must be used almost immediately
+_WS_TICKET_TTL: int = 30  # seconds - must be used almost immediately
 
 
 def _ticket_key(ticket: str) -> str:

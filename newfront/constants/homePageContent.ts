@@ -67,7 +67,7 @@ export const heroContent = {
   },
   subtitle: {
     en: "Track every application, ace every interview, and land your dream job with AI-powered insights.",
-    he: "עקבו אחרי כל המועמדויות, התכוננו נכון לראיונות, וקבלו את המשרה שאתם רוצים — עם תובנות מבוססות AI.",
+    he: "עקבו אחרי כל המועמדויות, התכוננו נכון לראיונות, וקבלו את המשרה שאתם רוצים - עם תובנות מבוססות AI.",
   },
   cta: {
     primary: {

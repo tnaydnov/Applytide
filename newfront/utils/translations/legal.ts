@@ -25,7 +25,7 @@ export const legalTranslations = {
         title: { en: "1. Acceptance of Terms", he: "1. קבלת התנאים" },
         content: { 
           en: "By accessing and using Applytide, you accept and agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use our service.", 
-          he: "בכניסה ל-Applytide ובשימוש בה, אתה מאשר כי קראת את תנאי השימוש וכי אתה מסכים להם. אם אינך מסכים לתנאים—אנא אל תשתמש בשירות." 
+          he: "בכניסה ל-Applytide ובשימוש בה, אתה מאשר כי קראת את תנאי השימוש וכי אתה מסכים להם. אם אינך מסכים לתנאים-אנא אל תשתמש בשירות." 
         }
       },
       services: {
@@ -148,7 +148,7 @@ export const legalTranslations = {
         title: { en: "Your Rights", he: "הזכויות שלך" },
         content: { 
           en: "You have the right to access, correct, or delete your personal information. You can also object to processing, request data portability, and withdraw consent at any time.", 
-          he: "זכאות לגישה, תיקון או מחיקה של מידע; התנגדות לעיבוד; בקשת ניידות מידע; ומשיכת הסכמה—בכפוף לדין." 
+          he: "זכאות לגישה, תיקון או מחיקה של מידע; התנגדות לעיבוד; בקשת ניידות מידע; ומשיכת הסכמה-בכפוף לדין." 
         }
       },
       cookies: {
@@ -252,7 +252,7 @@ export const legalTranslations = {
         title: { en: "Copyright Ownership", he: "בעלות בזכויות יוצרים" },
         content: { 
           en: "All content on Applytide, including text, graphics, logos, images, and software, is the property of Applytide and protected by international copyright laws. Unauthorized use is prohibited.", 
-          he: "כל התוכן ב-Applytide—טקסט, גרפיקה, לוגואים, תמונות ותוכנה—הוא רכוש Applytide ומוגן לפי דיני זכויות יוצרים. שימוש בלתי מורשה אסור." 
+          he: "כל התוכן ב-Applytide-טקסט, גרפיקה, לוגואים, תמונות ותוכנה-הוא רכוש Applytide ומוגן לפי דיני זכויות יוצרים. שימוש בלתי מורשה אסור." 
         }
       },
       trademarks: {

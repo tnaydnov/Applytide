@@ -193,7 +193,7 @@ def delete_user_account(
         )
         
         # Delete all child records first (order matters for foreign key constraints)
-        # All deletes run in a single transaction — any failure triggers
+        # All deletes run in a single transaction - any failure triggers
         # full rollback in the outer except block (atomicity guaranteed).
         
         deletion_stats: dict[str, int] = {}

@@ -367,7 +367,7 @@ export const profileApi = {
   },
 
   /**
-   * Revoke all sessions — uses POST /auth/logout_all
+   * Revoke all sessions - uses POST /auth/logout_all
    */
   async revokeAllSessions(): Promise<void> {
     const response = await apiFetch('/auth/logout_all', { method: 'POST' });
@@ -386,7 +386,7 @@ export const profileApi = {
   },
 
   /**
-   * Export all user data — uses GET /profile/export
+   * Export all user data - uses GET /profile/export
    */
   async exportData(): Promise<Blob> {
     const response = await apiFetch('/profile/export');
@@ -396,7 +396,7 @@ export const profileApi = {
   },
 
   /**
-   * Request account deletion — uses DELETE /profile/account
+   * Request account deletion - uses DELETE /profile/account
    */
   async requestAccountDeletion(password: string, reason?: string): Promise<void> {
     const response = await apiFetch('/profile/account', {

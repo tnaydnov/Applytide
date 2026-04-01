@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-20  
 **Auditor:** Senior Architect  
-**Scope:** Full-stack analysis — backend, frontend, infrastructure, security
+**Scope:** Full-stack analysis - backend, frontend, infrastructure, security
 
 ---
 
@@ -11,10 +11,10 @@
 The project has a solid foundation with good intent: hexagonal-style backend, feature-based frontend, Docker containerization, JWT auth with rotating refresh tokens. However, there are **critical issues** that must be resolved before this is truly production-ready.
 
 ### Severity Legend
-- 🔴 **CRITICAL** — Security risk, data integrity issue, or production blocker
-- 🟠 **HIGH** — Architectural violation, correctness issue, or significant tech debt
-- 🟡 **MEDIUM** — Best practice violation, inconsistency, or maintainability concern
-- 🟢 **LOW** — Nice-to-have improvements, minor cleanup
+- 🔴 **CRITICAL** - Security risk, data integrity issue, or production blocker
+- 🟠 **HIGH** - Architectural violation, correctness issue, or significant tech debt
+- 🟡 **MEDIUM** - Best practice violation, inconsistency, or maintainability concern
+- 🟢 **LOW** - Nice-to-have improvements, minor cleanup
 
 ---
 
@@ -22,27 +22,27 @@ The project has a solid foundation with good intent: hexagonal-style backend, fe
 
 ### 🔴 1.1 Sync/Async Mismatch (CRITICAL)
 
-**Problem:** `main.py` imports `AsyncSession` from `sqlalchemy.ext.asyncio` and uses `async def health_check()`, but `db/session.py` creates a **synchronous** engine via `create_engine()` and `sessionmaker()`. The `health_check` endpoint calls `await db.execute(text("SELECT 1"))` on a sync session — this will either fail or silently block the event loop.
+**Problem:** `main.py` imports `AsyncSession` from `sqlalchemy.ext.asyncio` and uses `async def health_check()`, but `db/session.py` creates a **synchronous** engine via `create_engine()` and `sessionmaker()`. The `health_check` endpoint calls `await db.execute(text("SELECT 1"))` on a sync session - this will either fail or silently block the event loop.
 
 **Files:** `backend/app/db/session.py`, `backend/app/main.py`
 
-**Fix:** Either go fully async (recommended for FastAPI) or remove the async pretense entirely. Currently the codebase is synchronous — stick with sync for now but fix `health_check` to not use `await` on sync sessions.
+**Fix:** Either go fully async (recommended for FastAPI) or remove the async pretense entirely. Currently the codebase is synchronous - stick with sync for now but fix `health_check` to not use `await` on sync sessions.
 
 ### 🟠 1.2 Domain Layer Has 84 Violations (HIGH)
 
 **Problem:** 27 out of ~30 domain files import directly from infrastructure, DB models, SQLAlchemy, or Pydantic. This completely undermines the hexagonal architecture pattern.
 
 **Worst offenders:**
-- `domain/documents/service/` (7 files) — imports SQLAlchemy Session, ORM models, file stores
-- `domain/admin/` (5 files) — imports SQLAlchemy, models, logging infra
-- `domain/reminders/service.py` — imports models, session, infra services, and even `config.settings`
+- `domain/documents/service/` (7 files) - imports SQLAlchemy Session, ORM models, file stores
+- `domain/admin/` (5 files) - imports SQLAlchemy, models, logging infra
+- `domain/reminders/service.py` - imports models, session, infra services, and even `config.settings`
 - `app.infra.logging.get_logger` imported in 22/27 violating files
 
 **Fix:** Domain services must depend on abstract ports/interfaces. Concrete implementations belong in `infra/`. Logging should use Python stdlib `logging.getLogger()` or a domain-defined protocol.
 
 ### 🟠 1.3 Engine Created at Module Import Time (HIGH)
 
-**Problem:** `db/session.py` creates the engine at import time: `engine = create_engine(settings.DATABASE_URL, ...)`. This means the DB connection is established when any module that transitively imports `models.py` is loaded — including during tests or when running CLI tools.
+**Problem:** `db/session.py` creates the engine at import time: `engine = create_engine(settings.DATABASE_URL, ...)`. This means the DB connection is established when any module that transitively imports `models.py` is loaded - including during tests or when running CLI tools.
 
 **File:** `backend/app/db/session.py`, `backend/app/db/models.py`
 
@@ -54,11 +54,11 @@ The project has a solid foundation with good intent: hexagonal-style backend, fe
 
 ### 🟡 1.5 No API Versioning
 
-**Problem:** All routes are under `/api/auth/`, `/api/jobs/`, etc. — no version prefix. Breaking changes will affect all clients simultaneously.
+**Problem:** All routes are under `/api/auth/`, `/api/jobs/`, etc. - no version prefix. Breaking changes will affect all clients simultaneously.
 
 **Fix:** Add `/api/v1/` prefix to all routers.
 
-**Status:** ✅ FIXED — All 15 routers now mounted under a centralized `v1 = APIRouter(prefix="/api/v1")` parent router in `main.py`. Frontend, Chrome extension, and Nginx configs all updated to `/api/v1/`.
+**Status:** ✅ FIXED - All 15 routers now mounted under a centralized `v1 = APIRouter(prefix="/api/v1")` parent router in `main.py`. Frontend, Chrome extension, and Nginx configs all updated to `/api/v1/`.
 
 ### 🟡 1.6 Settings Class Uses Class-Level `os.getenv()` (MEDIUM)
 
@@ -66,7 +66,7 @@ The project has a solid foundation with good intent: hexagonal-style backend, fe
 ```python
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "DEBUG" if ENVIRONMENT == "development" else "INFO")
 ```
-Here `ENVIRONMENT` is the *class attribute*, not `self.ENVIRONMENT`, so this works — but it's fragile and inconsistent with the `@property` approach used for other settings.
+Here `ENVIRONMENT` is the *class attribute*, not `self.ENVIRONMENT`, so this works - but it's fragile and inconsistent with the `@property` approach used for other settings.
 
 **Fix:** Use Pydantic `BaseSettings` for proper env var handling with validation.
 
@@ -77,20 +77,20 @@ Here `ENVIRONMENT` is the *class attribute*, not `self.ENVIRONMENT`, so this wor
 ### 🔴 2.1 Missing Foreign Key Constraints (CRITICAL)
 
 The following columns lack `ForeignKey()`:
-- `Job.user_id` — no FK to `users.id`, no `ON DELETE` behavior
-- `Job.company_id` — no FK to `companies.id`
-- `Resume.user_id` — no FK to `users.id`  
-- `Application.user_id` — no FK to `users.id`
-- `Application.job_id` — no FK to `jobs.id`
-- `Application.resume_id` — no FK to `resumes.id`
-- `Stage.application_id` — no FK to `applications.id`
-- `Note.application_id` — no FK to `applications.id`
-- `Note.user_id` — no FK to `users.id`
-- `MatchResult.user_id / resume_id / job_id` — no FKs
-- `ApplicationAttachment.application_id` — no FK
-- `RefreshToken.user_id` — no FK to `users.id`
-- `EmailAction.user_id` — no FK to `users.id`
-- `UserPreferences.user_id` — no FK to `users.id`
+- `Job.user_id` - no FK to `users.id`, no `ON DELETE` behavior
+- `Job.company_id` - no FK to `companies.id`
+- `Resume.user_id` - no FK to `users.id`  
+- `Application.user_id` - no FK to `users.id`
+- `Application.job_id` - no FK to `jobs.id`
+- `Application.resume_id` - no FK to `resumes.id`
+- `Stage.application_id` - no FK to `applications.id`
+- `Note.application_id` - no FK to `applications.id`
+- `Note.user_id` - no FK to `users.id`
+- `MatchResult.user_id / resume_id / job_id` - no FKs
+- `ApplicationAttachment.application_id` - no FK
+- `RefreshToken.user_id` - no FK to `users.id`
+- `EmailAction.user_id` - no FK to `users.id`
+- `UserPreferences.user_id` - no FK to `users.id`
 
 **Impact:** Orphaned records, broken referential integrity, potential data corruption.
 
@@ -100,9 +100,9 @@ Even the FKs that exist (Reminder, ReminderNote, OAuthToken, ApplicationLog, LLM
 
 ### 🟠 2.3 Missing Unique Constraints
 
-- `Application` — no unique `(user_id, job_id)` constraint to prevent duplicate applications
-- `UserPreferences` — no unique `(user_id, preference_key)` constraint
-- `MatchResult` — no unique `(resume_id, job_id)` to prevent duplicate matches
+- `Application` - no unique `(user_id, job_id)` constraint to prevent duplicate applications
+- `UserPreferences` - no unique `(user_id, preference_key)` constraint
+- `MatchResult` - no unique `(resume_id, job_id)` to prevent duplicate matches
 
 ### 🟡 2.4 `datetime.utcnow` Used in UserProfile
 
@@ -118,7 +118,7 @@ Even the FKs that exist (Reminder, ReminderNote, OAuthToken, ApplicationLog, LLM
 
 ### 🔴 3.1 TOTP Secret Stored in Plaintext (CRITICAL)
 
-`User.totp_secret` is stored as `String(64)` — the raw TOTP secret. If the database is compromised, an attacker can generate valid 2FA codes for all users.
+`User.totp_secret` is stored as `String(64)` - the raw TOTP secret. If the database is compromised, an attacker can generate valid 2FA codes for all users.
 
 **Fix:** Encrypt at rest using a server-side key (e.g., Fernet symmetric encryption).
 
@@ -132,7 +132,7 @@ except RedisError:
 ```
 If Redis goes down, ALL revoked tokens become valid again. This is a security vulnerability.
 
-**Fix:** Fail closed — reject the request when revocation status cannot be verified, or have a fallback check.
+**Fix:** Fail closed - reject the request when revocation status cannot be verified, or have a fallback check.
 
 ### 🟠 3.3 CSP Contains `unsafe-inline` and `unsafe-eval`
 
@@ -140,19 +140,19 @@ The production Nginx CSP header includes:
 ```
 script-src 'self' 'unsafe-inline' 'unsafe-eval'
 ```
-This significantly weakens XSS protection — `unsafe-eval` allows `eval()`, and `unsafe-inline` allows inline scripts.
+This significantly weakens XSS protection - `unsafe-eval` allows `eval()`, and `unsafe-inline` allows inline scripts.
 
 ### 🟠 3.4 No Password Strength Validation on Backend
 
 `passwords.py` has `MIN_PASSWORD_LENGTH = 8` but no complexity requirements. There's no password strength scoring (zxcvbn or similar).
 
-**Status:** ✅ FIXED — Centralized `_check_password_strength()` in `auth.py` schemas with 5 rules: 8+ chars, uppercase, lowercase, digit, special character. Applied to RegisterIn, PasswordResetIn, PasswordChangeIn.
+**Status:** ✅ FIXED - Centralized `_check_password_strength()` in `auth.py` schemas with 5 rules: 8+ chars, uppercase, lowercase, digit, special character. Applied to RegisterIn, PasswordResetIn, PasswordChangeIn.
 
 ### 🟠 3.5 OAuth Token Stored in Plaintext
 
-`OAuthToken.access_token` and `OAuthToken.refresh_token` are `Text` — stored unencrypted. These are valid Google API tokens.
+`OAuthToken.access_token` and `OAuthToken.refresh_token` are `Text` - stored unencrypted. These are valid Google API tokens.
 
-**Status:** ✅ FIXED — Created `EncryptedText` SQLAlchemy TypeDecorator (Fernet-based). Transparently encrypts on write, decrypts on read. `try_decrypt()` provides backward compatibility during migration. Data migration `20250616_encrypt_oauth_tokens.py` encrypts all existing rows.
+**Status:** ✅ FIXED - Created `EncryptedText` SQLAlchemy TypeDecorator (Fernet-based). Transparently encrypts on write, decrypts on read. `try_decrypt()` provides backward compatibility during migration. Data migration `20250616_encrypt_oauth_tokens.py` encrypts all existing rows.
 
 ### 🟡 3.6 User Email Logged in Auth Debug
 
@@ -170,7 +170,7 @@ Should default to `true` in production and be explicitly set to `false` only in 
 
 `docker-compose.yml` exposes `ports: ["8000:8000"]` for the backend. In production, only Nginx should be externally accessible.
 
-**Status:** Prod compose doesn't expose it — Good. But dev compose also exposes MailDev ports publicly.
+**Status:** Prod compose doesn't expose it - Good. But dev compose also exposes MailDev ports publicly.
 
 ### 🟠 4.2 No Resource Limits on Containers
 
@@ -253,7 +253,7 @@ Should be `true` for cleaner code.
 
 `App.tsx` dynamically creates a `<link>` tag in `useEffect`. Should be in `index.html` instead.
 
-**Status:** ✅ FIXED — Removed `useEffect` from `App.tsx`, added `<link>` preconnect + stylesheet in `index.html`.
+**Status:** ✅ FIXED - Removed `useEffect` from `App.tsx`, added `<link>` preconnect + stylesheet in `index.html`.
 
 ---
 
@@ -263,10 +263,10 @@ Should be `true` for cleaner code.
 
 **Problem:** `/auth/ws-ticket` returned a full JWT access token used as `?token=<jwt>` in WebSocket URLs. Full JWTs appear in server logs, Nginx access logs, and browser history. Token was reusable (not single-use) and had a 15-minute TTL.
 
-**Status:** ✅ FIXED — Replaced with opaque single-use tickets stored in Redis with 30s TTL:
-- New `infra/security/ws_tickets.py` — `create_ws_ticket()` stores `user_id` under random key; `consume_ws_ticket()` atomically GET+DELETE (pipeline).
-- Updated `ws.py` — `ws.accept()` moved AFTER auth validation; Origin header checked against CORS origins; ticket-based auth preferred, cookie fallback.
-- Frontend `websocket.ts` — WS URL updated to `/api/v1/ws/updates`.
+**Status:** ✅ FIXED - Replaced with opaque single-use tickets stored in Redis with 30s TTL:
+- New `infra/security/ws_tickets.py` - `create_ws_ticket()` stores `user_id` under random key; `consume_ws_ticket()` atomically GET+DELETE (pipeline).
+- Updated `ws.py` - `ws.accept()` moved AFTER auth validation; Origin header checked against CORS origins; ticket-based auth preferred, cookie fallback.
+- Frontend `websocket.ts` - WS URL updated to `/api/v1/ws/updates`.
 
 ---
 
@@ -286,58 +286,58 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 
 ### 🟠 8.1 Broad Permissions
 
-`manifest.json` likely requests `https://*/*` — should be restricted to known job sites + applytide.com.
+`manifest.json` likely requests `https://*/*` - should be restricted to known job sites + applytide.com.
 
 ---
 
 ## Priority Fix Order
 
-1. ✅ **Fix DB foreign keys and constraints** (data integrity, 2.1-2.3) — Added 14 FKs, 3 unique constraints, proper `ondelete` behavior
-2. ✅ **Fix TOTP encryption at rest** (security, 3.1) — Created Fernet encryption module, updated 2FA endpoints
-3. ✅ **Fix Redis fail-open policy** (security, 3.2) — Changed to fail-closed in `is_revoked()`
-4. ✅ **Fix sync/async mismatch** (correctness, 1.1) — Fixed health_check to sync, removed AsyncSession
-5. ✅ **Fix engine/models import-time side effects** (architecture, 1.3-1.4) — Lazy singleton engine, removed `from .session import engine` in models
-6. ✅ **Fix Settings class** (config, 1.6) — Rewritten with proper env-aware defaults, SECURE_COOKIES=True in prod
-7. ✅ **Fix Docker security** (ports, resource limits, health checks) — Added healthchecks, resource limits, read_only, no-new-privileges
-8. ✅ **Fix Nginx CSP and rate limiting** — Removed unsafe-inline/eval, added gzip, 3 rate-limit zones, TLS hardening
-9. ✅ **Fix frontend User type and tsconfig** — Removed `[key: string]: any`, exported typed User, enabled noUnusedLocals/Params
-10. ✅ **Begin domain layer cleanup** (1.2) — Created domain logging module, fixed 13 `app.infra.logging` violations
-11. ✅ **Alembic migration** — Created `20250615_fk_constraints` for all model changes
-12. ✅ **Redis client lazy init** — Rewritten with `_RedisProxy` for backward-compatible lazy connection
-13. ✅ **Email service path traversal** (security) — Fixed `server.js` to sanitize template paths
-14. ✅ **OAuth token encryption at rest** (security, 3.5) — `EncryptedText` TypeDecorator + data migration `20250616_encrypt_oauth_tokens.py`
-15. ✅ **Password strength validation** (security, 3.4) — Centralized `_check_password_strength()` with 5 rules
-16. ✅ **API versioning** (architecture, 1.5) — Centralized `/api/v1/` parent router, all 15 sub-routers, frontend + extension + Nginx updated
-17. ✅ **Rate limiter hardening** — `fail_closed` flag, separate `registration_limiter` (3/10min), `password_reset_limiter` (3/15min), auth limiters fail-closed
-18. ✅ **Font loading** — Moved Google Fonts from `App.tsx` useEffect to `index.html` preconnect + stylesheet
-19. ✅ **Redis key namespacing** — `redis_key()` utility with `applytide:` prefix, applied to tokens, rate_limiter, middleware
-20. ✅ **Frontend api/core.ts** — Added `ApiError` class, routed `login()`/`logout()` through `apiFetch`, exported from barrel
-21. ✅ **WebSocket auth security** — Single-use Redis tickets (30s TTL), Origin validation, accept-after-auth, `ws_tickets.py`
-22. ✅ **Reminders domain violation** — Extracted `IUserLookup`/`IResumeLookup` ports, implemented in `reminders_sqlalchemy.py`, injected via DI
-23. ✅ **sessions.py JWT decoding bug** (CRITICAL security) — `settings.SECRET_KEY`/`settings.ALGORITHM` don't exist; replaced with `decode_access()` using correct `JWT_SECRET`/`HS256`
-24. ✅ **Frontend hardcoded API paths** (CRITICAL) — Fixed `/api/` → `/api/v1/` in documents/api.ts, analytics/api.ts, applications/api.ts, DocumentPreviewModal.tsx; migrated raw `fetch()` to `apiFetch` for 401 refresh
-25. ✅ **XSS in DocumentPreviewModal** (CRITICAL security) — Installed DOMPurify, sanitize HTML before `dangerouslySetInnerHTML`
-26. ✅ **`datetime.utcnow()` deprecation** (MEDIUM, 24 instances) — Replaced with `datetime.now(timezone.utc)` across 10 backend files
-27. ✅ **Google Calendar gateway resource leak** (HIGH) — Added `aclose()` method, module-level singleton via `get_calendar_gateway()`, shutdown cleanup in `main.py`
-28. ✅ **Account deletion partial failure** (CRITICAL) — Removed 11 silent `try/except` blocks; any deletion step failure now propagates to outer handler for full rollback (atomicity)
-29. ✅ **Frontend timer memory leaks** (HIGH) — Fixed GoogleCallbackPage.tsx (track+clear timeouts), HeroSection.tsx (interval leak from setTimeout return), ResetPasswordPage.tsx (useRef+cleanup for redirect timer)
-30. ✅ **N+1 query in applications** (HIGH) — Refactored `list_with_stages_dict()` from 1+3N queries to 4 batch queries using IN clauses
+1. ✅ **Fix DB foreign keys and constraints** (data integrity, 2.1-2.3) - Added 14 FKs, 3 unique constraints, proper `ondelete` behavior
+2. ✅ **Fix TOTP encryption at rest** (security, 3.1) - Created Fernet encryption module, updated 2FA endpoints
+3. ✅ **Fix Redis fail-open policy** (security, 3.2) - Changed to fail-closed in `is_revoked()`
+4. ✅ **Fix sync/async mismatch** (correctness, 1.1) - Fixed health_check to sync, removed AsyncSession
+5. ✅ **Fix engine/models import-time side effects** (architecture, 1.3-1.4) - Lazy singleton engine, removed `from .session import engine` in models
+6. ✅ **Fix Settings class** (config, 1.6) - Rewritten with proper env-aware defaults, SECURE_COOKIES=True in prod
+7. ✅ **Fix Docker security** (ports, resource limits, health checks) - Added healthchecks, resource limits, read_only, no-new-privileges
+8. ✅ **Fix Nginx CSP and rate limiting** - Removed unsafe-inline/eval, added gzip, 3 rate-limit zones, TLS hardening
+9. ✅ **Fix frontend User type and tsconfig** - Removed `[key: string]: any`, exported typed User, enabled noUnusedLocals/Params
+10. ✅ **Begin domain layer cleanup** (1.2) - Created domain logging module, fixed 13 `app.infra.logging` violations
+11. ✅ **Alembic migration** - Created `20250615_fk_constraints` for all model changes
+12. ✅ **Redis client lazy init** - Rewritten with `_RedisProxy` for backward-compatible lazy connection
+13. ✅ **Email service path traversal** (security) - Fixed `server.js` to sanitize template paths
+14. ✅ **OAuth token encryption at rest** (security, 3.5) - `EncryptedText` TypeDecorator + data migration `20250616_encrypt_oauth_tokens.py`
+15. ✅ **Password strength validation** (security, 3.4) - Centralized `_check_password_strength()` with 5 rules
+16. ✅ **API versioning** (architecture, 1.5) - Centralized `/api/v1/` parent router, all 15 sub-routers, frontend + extension + Nginx updated
+17. ✅ **Rate limiter hardening** - `fail_closed` flag, separate `registration_limiter` (3/10min), `password_reset_limiter` (3/15min), auth limiters fail-closed
+18. ✅ **Font loading** - Moved Google Fonts from `App.tsx` useEffect to `index.html` preconnect + stylesheet
+19. ✅ **Redis key namespacing** - `redis_key()` utility with `applytide:` prefix, applied to tokens, rate_limiter, middleware
+20. ✅ **Frontend api/core.ts** - Added `ApiError` class, routed `login()`/`logout()` through `apiFetch`, exported from barrel
+21. ✅ **WebSocket auth security** - Single-use Redis tickets (30s TTL), Origin validation, accept-after-auth, `ws_tickets.py`
+22. ✅ **Reminders domain violation** - Extracted `IUserLookup`/`IResumeLookup` ports, implemented in `reminders_sqlalchemy.py`, injected via DI
+23. ✅ **sessions.py JWT decoding bug** (CRITICAL security) - `settings.SECRET_KEY`/`settings.ALGORITHM` don't exist; replaced with `decode_access()` using correct `JWT_SECRET`/`HS256`
+24. ✅ **Frontend hardcoded API paths** (CRITICAL) - Fixed `/api/` → `/api/v1/` in documents/api.ts, analytics/api.ts, applications/api.ts, DocumentPreviewModal.tsx; migrated raw `fetch()` to `apiFetch` for 401 refresh
+25. ✅ **XSS in DocumentPreviewModal** (CRITICAL security) - Installed DOMPurify, sanitize HTML before `dangerouslySetInnerHTML`
+26. ✅ **`datetime.utcnow()` deprecation** (MEDIUM, 24 instances) - Replaced with `datetime.now(timezone.utc)` across 10 backend files
+27. ✅ **Google Calendar gateway resource leak** (HIGH) - Added `aclose()` method, module-level singleton via `get_calendar_gateway()`, shutdown cleanup in `main.py`
+28. ✅ **Account deletion partial failure** (CRITICAL) - Removed 11 silent `try/except` blocks; any deletion step failure now propagates to outer handler for full rollback (atomicity)
+29. ✅ **Frontend timer memory leaks** (HIGH) - Fixed GoogleCallbackPage.tsx (track+clear timeouts), HeroSection.tsx (interval leak from setTimeout return), ResetPasswordPage.tsx (useRef+cleanup for redirect timer)
+30. ✅ **N+1 query in applications** (HIGH) - Refactored `list_with_stages_dict()` from 1+3N queries to 4 batch queries using IN clauses
 
 ---
 
 ## Remaining Tech Debt
 
-- **13 domain layer violations remaining** — admin services (4 files), documents services (7 files), oauth_service.py, and facade files still import `app.db.models` and SQLAlchemy directly. Requires larger refactor to extract proper repository interfaces. Low blast radius (internal tools and existing functionality).
-- **Global fetch interceptor** — `AuthContext.tsx` still monkey-patches `window.fetch`. The `apiFetch` wrapper handles 401 refresh, but the interceptor adds single-flight refresh and redirect-on-failure for raw `fetch()` calls. Consider removing the interceptor once all call sites use `apiFetch`.
-- **Email service** — No TypeScript, no health check endpoint, no strict API contract.
-- **Chrome extension permissions** — `manifest.json` may request overly broad host permissions.
-- **Docker resource tuning** — Resource limits are in place but should be tuned per-environment.
+- **13 domain layer violations remaining** - admin services (4 files), documents services (7 files), oauth_service.py, and facade files still import `app.db.models` and SQLAlchemy directly. Requires larger refactor to extract proper repository interfaces. Low blast radius (internal tools and existing functionality).
+- **Global fetch interceptor** - `AuthContext.tsx` still monkey-patches `window.fetch`. The `apiFetch` wrapper handles 401 refresh, but the interceptor adds single-flight refresh and redirect-on-failure for raw `fetch()` calls. Consider removing the interceptor once all call sites use `apiFetch`.
+- **Email service** - No TypeScript, no health check endpoint, no strict API contract.
+- **Chrome extension permissions** - `manifest.json` may request overly broad host permissions.
+- **Docker resource tuning** - Resource limits are in place but should be tuned per-environment.
 
 ---
 
 ## Files Modified
 
-### Session 1 — Initial Audit & Critical Fixes
+### Session 1 - Initial Audit & Critical Fixes
 
 | File | Changes |
 |------|---------|
@@ -347,11 +347,11 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `backend/app/config.py` | Rewritten with env-aware defaults, SECURE_COOKIES prod-default |
 | `backend/app/infra/cache/redis_client.py` | Rewritten with lazy _RedisProxy, no import-time connection |
 | `backend/app/infra/security/tokens.py` | Fail-closed on Redis error in `is_revoked()` |
-| `backend/app/infra/security/encryption.py` | **NEW** — Fernet encrypt/decrypt for secrets at rest |
+| `backend/app/infra/security/encryption.py` | **NEW** - Fernet encrypt/decrypt for secrets at rest |
 | `backend/app/api/routers/auth/twofa.py` | Encrypt TOTP secret on store, decrypt on verify |
-| `backend/app/domain/logging.py` | **NEW** — Domain-level logging facade |
+| `backend/app/domain/logging.py` | **NEW** - Domain-level logging facade |
 | `backend/app/domain/**` (13 files) | Switched `app.infra.logging` → `app.domain.logging` |
-| `backend/app/db/migrations/versions/20250615_fk_constraints.py` | **NEW** — Migration for FKs, UQs, column widening |
+| `backend/app/db/migrations/versions/20250615_fk_constraints.py` | **NEW** - Migration for FKs, UQs, column widening |
 | `docker-compose.yml` | Health checks, resource limits, service_healthy depends_on |
 | `docker-compose.prod.yml` | Health checks, limits, read_only, no-new-privileges, service_healthy |
 | `nginx/main.conf` | Gzip, 3 rate-limit zones (api/auth/static), tcp_nopush/nodelay |
@@ -360,25 +360,25 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `newfront/contexts/AuthContext.tsx` | Typed User interface (removed `[key: string]: any`), exported type |
 | `newfront/tsconfig.json` | Enabled `noUnusedLocals` and `noUnusedParameters` |
 
-### Session 2 — Email Service Security
+### Session 2 - Email Service Security
 
 | File | Changes |
 |------|---------|
 | `backend/emails/server.js` | Fixed path traversal vulnerability in template loading |
 
-### Session 3 — Security Hardening, Versioning, Architecture
+### Session 3 - Security Hardening, Versioning, Architecture
 
 | File | Changes |
 |------|---------|
 | `backend/app/infra/security/encryption.py` | Added `try_decrypt()`, `EncryptedText` TypeDecorator |
 | `backend/app/db/models.py` | `OAuthToken.access_token/refresh_token` → `EncryptedText` |
-| `backend/app/db/migrations/versions/20250616_encrypt_oauth_tokens.py` | **NEW** — Data migration to encrypt existing OAuth tokens |
+| `backend/app/db/migrations/versions/20250616_encrypt_oauth_tokens.py` | **NEW** - Data migration to encrypt existing OAuth tokens |
 | `backend/app/api/schemas/auth.py` | Centralized `_check_password_strength()`, added special char requirement |
 | `backend/app/main.py` | Centralized v1 parent router, fixed ENV used-before-defined bug |
 | `backend/app/api/routers/**` (15 files) | Removed `/api` prefix from all router declarations |
 | `backend/app/api/routers/auth/tokens.py` | WS ticket endpoint returns opaque Redis ticket instead of JWT |
 | `backend/app/api/routers/ws.py` | Single-use ticket auth, accept-after-auth, Origin validation |
-| `backend/app/infra/security/ws_tickets.py` | **NEW** — Redis-backed single-use WS ticket create/consume |
+| `backend/app/infra/security/ws_tickets.py` | **NEW** - Redis-backed single-use WS ticket create/consume |
 | `backend/app/infra/security/rate_limiter.py` | `fail_closed` flag, `registration_limiter`, `password_reset_limiter`, `redis_key()` |
 | `backend/app/api/routers/auth/registration.py` | Uses dedicated `registration_limiter` |
 | `backend/app/api/routers/auth/password.py` | Uses dedicated `password_reset_limiter` |
@@ -399,7 +399,7 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `nginx/default.dev.conf` | Auth regex and WS prefix updated to `/api/v1/` |
 | `nginx/conf.d/default.conf` | Auth regex and WS prefix updated to `/api/v1/` |
 
-### Session 4 — Deep Scan: Security, Performance, Correctness
+### Session 4 - Deep Scan: Security, Performance, Correctness
 
 | File | Changes |
 |------|---------|
@@ -429,11 +429,11 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `newfront/pages/auth/ResetPasswordPage.tsx` | Timer memory leak: useRef + useEffect cleanup for redirect timer |
 | `newfront/package.json` | Added `dompurify` + `@types/dompurify` dependencies |
 
-### Session 5 — Deep Scan Round 2: Auth, Error Leaks, XSS, Performance
+### Session 5 - Deep Scan Round 2: Auth, Error Leaks, XSS, Performance
 
 | File | Changes |
 |------|---------|
-| `backend/app/api/routers/ai.py` | **HIGH** Added `Depends(get_current_user)` auth to `POST /extract` — was completely unauthenticated, allowing anyone to invoke LLM endpoint (cost/abuse risk). Also fixed error detail leak (`str(e)` → generic message). |
+| `backend/app/api/routers/ai.py` | **HIGH** Added `Depends(get_current_user)` auth to `POST /extract` - was completely unauthenticated, allowing anyone to invoke LLM endpoint (cost/abuse risk). Also fixed error detail leak (`str(e)` → generic message). |
 | `backend/app/api/routers/profile/management.py` | Fixed 4 error detail leaks: validation error, request parsing, profile save, and data export no longer expose `str(e)` to clients |
 | `backend/app/api/routers/profile/deletion.py` | Fixed error detail leak: account deletion error no longer appends `str(e)` |
 | `backend/app/api/routers/analytics.py` | Fixed CSV export error detail leak (`str(e)` → generic message) |
@@ -445,47 +445,47 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `backend/app/api/routers/admin/users/data.py` | Added `Query(ge=1, le=200)` bounds on `limit` for 3 endpoints (applications, jobs, activity) |
 | `newfront/pages/documents/components/DocumentPreviewModal.tsx` | **CRITICAL** Replaced raw `fetch()` with `apiFetch()` for authenticated preview endpoint (401 refresh, token handling). Removed unused `useMemo` import. |
 | `newfront/components/legal/LegalSection.tsx` | Added DOMPurify sanitization to all 3 `dangerouslySetInnerHTML` usages (defense-in-depth) |
-| `newfront/components/shared/ErrorBoundary.tsx` | **NEW** — Class component catching render errors with recovery UI (try again / go home) |
-| `newfront/components/shared/PageLoader.tsx` | **NEW** — Suspense fallback spinner for lazy-loaded pages |
-| `newfront/App.tsx` | **Major refactor**: (1) Added `ErrorBoundary` wrapping all routes — prevents full app crash on render errors. (2) Added `React.lazy()` + `Suspense` for 23 page components — code splitting reduces initial bundle size significantly. Only HomePage, SignInPage, SignUpPage, GoogleCallbackPage remain eagerly loaded. |
+| `newfront/components/shared/ErrorBoundary.tsx` | **NEW** - Class component catching render errors with recovery UI (try again / go home) |
+| `newfront/components/shared/PageLoader.tsx` | **NEW** - Suspense fallback spinner for lazy-loaded pages |
+| `newfront/App.tsx` | **Major refactor**: (1) Added `ErrorBoundary` wrapping all routes - prevents full app crash on render errors. (2) Added `React.lazy()` + `Suspense` for 23 page components - code splitting reduces initial bundle size significantly. Only HomePage, SignInPage, SignUpPage, GoogleCallbackPage remain eagerly loaded. |
 | `newfront/pages/pipeline/components/DocumentsManager.tsx` | `window.open` → added `'noopener,noreferrer'` (tabnabbing prevention) |
-| `newfront/pages/jobs/components/JobCard.tsx` | `window.open` → added `'noopener,noreferrer'` (user-supplied URL — highest risk) |
+| `newfront/pages/jobs/components/JobCard.tsx` | `window.open` → added `'noopener,noreferrer'` (user-supplied URL - highest risk) |
 | `newfront/pages/HowItWorksPage.tsx` | `window.open` → added `'noopener,noreferrer'` |
 | `newfront/pages/jobs/components/ChromeExtensionBanner.tsx` | `window.open` → added `'noopener,noreferrer'` |
 | `newfront/pages/jobs/JobsPage.tsx` | 2× `window.open` → added `'noopener,noreferrer'` |
 | `newfront/components/help/JobsHelp.tsx` | `window.open` → added `'noopener,noreferrer'` |
-| `newfront/components/onboarding/ContextualHelp.tsx` | 2× `JSON.parse(localStorage)` wrapped in try-catch — corrupted data no longer crashes component tree |
+| `newfront/components/onboarding/ContextualHelp.tsx` | 2× `JSON.parse(localStorage)` wrapped in try-catch - corrupted data no longer crashes component tree |
 
-### Session 6 — Deep Scan Round 3: Injection, Enumeration, Cache Safety, Lifespan
+### Session 6 - Deep Scan Round 3: Injection, Enumeration, Cache Safety, Lifespan
 
 | File | Changes |
 |------|---------|
-| `backend/app/api/routers/feedback.py` | **CRITICAL** HTML injection in `_feedback_html()` — user-supplied `name`, `email`, `message`, `feedback_type` were interpolated into HTML f-strings without escaping. Added `import html` and wrapped all user content with `html.escape()`. |
-| `backend/app/api/routers/auth/password.py` | **HIGH** User enumeration via password reset — returned HTTP 404 with "This email address is not registered" when email not found. Changed to return same success message regardless of whether the email exists in the system. |
-| `backend/app/api/routers/auth/avatar.py` | **HIGH** Unsanitized filename — `file.filename` was used directly in `avatar_url` allowing path traversal. Added `os.path.basename()` + `re.sub(r'[^\w.\-]', '_', ...)` sanitization + UUID fallback. Added missing `import os`, `import re`, `import uuid` at module top. |
+| `backend/app/api/routers/feedback.py` | **CRITICAL** HTML injection in `_feedback_html()` - user-supplied `name`, `email`, `message`, `feedback_type` were interpolated into HTML f-strings without escaping. Added `import html` and wrapped all user content with `html.escape()`. |
+| `backend/app/api/routers/auth/password.py` | **HIGH** User enumeration via password reset - returned HTTP 404 with "This email address is not registered" when email not found. Changed to return same success message regardless of whether the email exists in the system. |
+| `backend/app/api/routers/auth/avatar.py` | **HIGH** Unsanitized filename - `file.filename` was used directly in `avatar_url` allowing path traversal. Added `os.path.basename()` + `re.sub(r'[^\w.\-]', '_', ...)` sanitization + UUID fallback. Added missing `import os`, `import re`, `import uuid` at module top. |
 | `backend/app/api/routers/auth/twofa.py` | **MEDIUM** Duplicate `CryptContext` created inside `disable_2fa()` on every call. Replaced with canonical `from ....infra.security.password import verify_password`. |
 | `backend/app/api/schemas/preferences.py` | **MEDIUM** Unvalidated `preference_key: str` accepted arbitrary keys. Added `ALLOWED_PREFERENCE_KEYS` whitelist, `Field(min_length=1, max_length=64, pattern=...)`, and `@field_validator('preference_key')` that rejects unknown keys. |
-| `backend/app/api/routers/analytics.py` | **MEDIUM** Temp file leak — `NamedTemporaryFile(delete=False)` never cleaned up after `FileResponse`. Added `import os`, `BackgroundTask` import, `_cleanup_temp_file()` helper, and `background=BackgroundTask(...)` on both CSV and text fallback `FileResponse` calls. |
-| `backend/app/infra/search/fulltext.py` | **LOW** LIKE wildcard injection — `%` and `_` metacharacters in user input not escaped in ILIKE params. Added `_escape_like()` helper and applied it to all 5 ILIKE parameter constructions (search, count, suggestions). |
-| `backend/app/api/routers/admin/errors.py` | **LOW** LIKE wildcard injection — `endpoint.ilike(f"%{endpoint}%")` passed raw user input. Added inline `%`/`_` escaping. |
-| `backend/app/infra/repositories/jobs_sqlalchemy.py` | **LOW** LIKE wildcard injection — `location` and `company` filter params passed raw to ILIKE. Added inline escaping for both base query and count query (4 locations). |
-| `backend/app/infra/repositories/applications_sqlalchemy.py` | **LOW** LIKE wildcard injection — search term `q` passed raw to ILIKE. Added inline escaping for both query and count query (2 locations). |
-| `backend/app/domain/admin/user_service.py` | **LOW** LIKE wildcard injection — admin user search term passed raw to ILIKE. Added inline escaping. |
-| `newfront/lib/api/core.ts` | **CRITICAL** Unbounded cache growth — `Map` had no size limit. Added `MAX_CACHE_SIZE = 100` with LRU-style eviction. Typed `CacheEntry.data` from `any` to `unknown`. Added single-flight guard for token refresh (concurrent 401s no longer spawn duplicate refresh requests). Typed `LoginResponse.user` from `any` to proper `LoginUserResponse` interface. |
-| `newfront/pages/auth/SignUpPage.tsx` | **HIGH** Raw `fetch('/api/v1/auth/register', ...)` replaced with `apiFetch('/auth/register', ...)` — consistent headers, credentials, and future middleware. |
+| `backend/app/api/routers/analytics.py` | **MEDIUM** Temp file leak - `NamedTemporaryFile(delete=False)` never cleaned up after `FileResponse`. Added `import os`, `BackgroundTask` import, `_cleanup_temp_file()` helper, and `background=BackgroundTask(...)` on both CSV and text fallback `FileResponse` calls. |
+| `backend/app/infra/search/fulltext.py` | **LOW** LIKE wildcard injection - `%` and `_` metacharacters in user input not escaped in ILIKE params. Added `_escape_like()` helper and applied it to all 5 ILIKE parameter constructions (search, count, suggestions). |
+| `backend/app/api/routers/admin/errors.py` | **LOW** LIKE wildcard injection - `endpoint.ilike(f"%{endpoint}%")` passed raw user input. Added inline `%`/`_` escaping. |
+| `backend/app/infra/repositories/jobs_sqlalchemy.py` | **LOW** LIKE wildcard injection - `location` and `company` filter params passed raw to ILIKE. Added inline escaping for both base query and count query (4 locations). |
+| `backend/app/infra/repositories/applications_sqlalchemy.py` | **LOW** LIKE wildcard injection - search term `q` passed raw to ILIKE. Added inline escaping for both query and count query (2 locations). |
+| `backend/app/domain/admin/user_service.py` | **LOW** LIKE wildcard injection - admin user search term passed raw to ILIKE. Added inline escaping. |
+| `newfront/lib/api/core.ts` | **CRITICAL** Unbounded cache growth - `Map` had no size limit. Added `MAX_CACHE_SIZE = 100` with LRU-style eviction. Typed `CacheEntry.data` from `any` to `unknown`. Added single-flight guard for token refresh (concurrent 401s no longer spawn duplicate refresh requests). Typed `LoginResponse.user` from `any` to proper `LoginUserResponse` interface. |
+| `newfront/pages/auth/SignUpPage.tsx` | **HIGH** Raw `fetch('/api/v1/auth/register', ...)` replaced with `apiFetch('/auth/register', ...)` - consistent headers, credentials, and future middleware. |
 | `newfront/pages/auth/ForgotPasswordPage.tsx` | **HIGH** Raw `fetch('/api/v1/auth/password_reset_request', ...)` replaced with `apiFetch('/auth/password_reset_request', ...)`. |
 | `newfront/pages/auth/ResetPasswordPage.tsx` | **HIGH** Raw `fetch('/api/v1/auth/password_reset', ...)` replaced with `apiFetch('/auth/password_reset', ...)`. |
 | `backend/app/main.py` | **INFO** Deprecated `@app.on_event("startup")` / `@app.on_event("shutdown")` migrated to modern `lifespan` async context manager pattern. Added `from contextlib import asynccontextmanager`. Removed 2 deprecated event handlers. |
 
 ---
 
-## Session 7 — Deep Scan & Remediation (Round 4)
+## Session 7 - Deep Scan & Remediation (Round 4)
 
 ### Fixes Applied
 
 | File | Severity & Fix |
 |------|---------------|
-| `backend/app/api/routers/auth/avatar.py` | **HIGH** Missing top-level `import os`, `import re`, `import uuid` — code used `os.path.basename()`, regex, and `uuid.uuid4()` without imports. Added imports, removed inline `import re`. |
+| `backend/app/api/routers/auth/avatar.py` | **HIGH** Missing top-level `import os`, `import re`, `import uuid` - code used `os.path.basename()`, regex, and `uuid.uuid4()` without imports. Added imports, removed inline `import re`. |
 | `newfront/contexts/AuthContext.tsx` | **CRITICAL** Removed 60-line global `window.fetch` interceptor that duplicated `apiFetch`'s 401 refresh logic. Two parallel refresh flows with different retry logic created race conditions. Removed `useRef`, `isPublicResource` imports. Fixed `silentRefresh()` to use plain `fetch`. Wrapped `localStorage` in try/catch for Safari private mode. Removed debug `console.log`. |
 | `newfront/lib/api/core.ts` | **HIGH** Removed `interceptorActive` flag and guard (no longer needed). Replaced `as any` Content-Type cast with properly typed `Record<string, string>`. |
 | `backend/app/api/schemas/applications.py` | **HIGH** Added `min_length`/`max_length` constraints to all string fields: `status` (1-100), `source` (500), `StageCreate.name` (200), `outcome` (200), `notes` (10000), `NoteCreate.body` (1-50000). |
@@ -495,13 +495,13 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `backend/app/domain/auth/oauth_service.py` | **HIGH** Fixed bare `except: pass` → `except Exception: pass`. |
 | `backend/app/api/routers/reminders/google.py` | **HIGH** Fixed 3 `detail=str(e)` error detail leaks → generic messages. |
 | `newfront/pages/analytics/AnalyticsPage.tsx` | **HIGH** Removed duplicate `AnalyticsData` interface with 8 `any` fields. Now imports properly typed version from `features/analytics/api.ts`. |
-| `newfront/pages/admin/UsersPage.tsx` | **HIGH** Added 300ms search debounce — no longer fires API on every keystroke. |
+| `newfront/pages/admin/UsersPage.tsx` | **HIGH** Added 300ms search debounce - no longer fires API on every keystroke. |
 | `newfront/lib/storage.ts` | **NEW** Safe localStorage wrapper: `safeGetItem`, `safeSetItem`, `safeRemoveItem`, `safeGetJSON`, `safeSetJSON`. |
 | `newfront/utils/onboarding.ts` | **MEDIUM** Migrated to safe localStorage wrapper. Removed debug console.log. |
 | `newfront/contexts/LanguageContext.tsx` | **MEDIUM** Migrated to safe localStorage wrapper. |
 | `newfront/layouts/AuthLayout.tsx` | **MEDIUM** Migrated to safe localStorage wrapper. |
 | `newfront/components/onboarding/ContextualHelp.tsx` | **MEDIUM** Migrated to `safeGetJSON`/`safeSetJSON`. |
-| `newfront/pages/reminders/components/*.tsx` | **MEDIUM** Removed 4 `(reminder as any).event_type` casts — type already has field. |
+| `newfront/pages/reminders/components/*.tsx` | **MEDIUM** Removed 4 `(reminder as any).event_type` casts - type already has field. |
 | `newfront/pages/pipeline/components/NotesPanel.tsx` | **LOW** Removed unnecessary `note.id as any`. |
 | `newfront/pages/documents/components/CoverLetterGeneratorModal.tsx` | **LOW** Removed `(result as any)?.cover_letter` fallback. |
 | `newfront/features/applications/api.ts` | **HIGH** Added `is_archived?: boolean` to Application. Removed `[key: string]: any` index signature. |
@@ -521,13 +521,13 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 |----------|-------|-------|
 | Domain layer violations | 35 files | Admin + documents + analytics services import SQLAlchemy/models directly in `domain/`. Major refactor needed. |
 | console.error in components | ~48 | Non-core component files. Core files migrated to `logger`. |
-| `detail=str(e)` in bans.py | 3 | Admin-only endpoints with domain exceptions — lower risk. |
+| `detail=str(e)` in bans.py | 3 | Admin-only endpoints with domain exceptions - lower risk. |
 | `__import__` in security_logging.py | 1 | Error handler edge case. |
 | WebSocket `connectWS` unused | 1 | Exported and typed but not yet integrated into any component. |
 
 ---
 
-## Session 8 (continued) — Input Validation & Type Hardening
+## Session 8 (continued) - Input Validation & Type Hardening
 
 **Additional fixes:** 12  
 **Cumulative total:** 128+
@@ -539,7 +539,7 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | `backend/app/api/routers/profile/deletion.py` | **HIGH** Added `DeleteAccountRequest` Pydantic schema (`password` max 500, `confirmation` max 10). Replaced raw `request.json()` + `body.get()` with validated model. |
 | `backend/app/api/routers/profile/management.py` | **HIGH** Replaced manual `request.body()` → `json.loads()` → `ProfileRequest(**raw_data)` with native FastAPI body injection (`profile_data: ProfileRequest`). Removed unused `Request`, `json`, `ValidationError` imports. |
 
-### Type Safety — Remaining `any` Elimination
+### Type Safety - Remaining `any` Elimination
 
 | File | Severity | Description |
 |------|----------|-------------|
@@ -564,13 +564,13 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 | Domain layer violations | 35 files | Admin + documents + analytics services import SQLAlchemy/models in `domain/`. Major architectural refactor. |
 | console.error in components | ~48 | Non-core component files still use raw console. Core files migrated. |
 | `detail=str(e)` in bans.py | 3 | Admin-only endpoints with custom domain exceptions. |
-| `__import__` in security_logging.py | 1 | Error handler edge case — acceptable. |
+| `__import__` in security_logging.py | 1 | Error handler edge case - acceptable. |
 | useEffect without cancellation | ~18 | Three highest-traffic pages now have cancellation. |
-| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` — kept for API flexibility. |
+| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` - kept for API flexibility. |
 
 ---
 
-## Session 9 — Complete Console Migration, Type Safety, & Code Deduplication
+## Session 9 - Complete Console Migration, Type Safety, & Code Deduplication
 
 **Total fixes this session:** ~65  
 **Cumulative total:** 195+
@@ -597,7 +597,7 @@ Email service has no `/health` endpoint for Docker healthcheck monitoring.
 
 | File | Severity | Description |
 |------|----------|-------------|
-| `newfront/pages/reminders/components/ImportGoogleEventModal.tsx` | **HIGH** Fixed payload construction — was sending Google event fields (`summary`, `start.dateTime`) instead of backend schema fields (`title`, `due_date`). Added `event_type`, `timezone_str`, `user_timezone`. Typed with `CreateReminderPayload`. |
+| `newfront/pages/reminders/components/ImportGoogleEventModal.tsx` | **HIGH** Fixed payload construction - was sending Google event fields (`summary`, `start.dateTime`) instead of backend schema fields (`title`, `due_date`). Added `event_type`, `timezone_str`, `user_timezone`. Typed with `CreateReminderPayload`. |
 
 ### Console.error → Logger Migration (29 files)
 
@@ -637,7 +637,7 @@ All remaining `console.error`/`console.warn` calls across the entire frontend so
 
 **Result:** Zero raw `console.*` calls remain in frontend source files (only in `logger.ts` definitions and `dist/` build output).
 
-### Type Safety — `any` Elimination (17 fixes)
+### Type Safety - `any` Elimination (17 fixes)
 
 | File | Severity | Description |
 |------|----------|-------------|
@@ -656,13 +656,13 @@ All remaining `console.error`/`console.warn` calls across the entire frontend so
 
 **Result:** Zero `any` types remain in frontend pages and components.
 
-### Code Deduplication — Avatar Upload Hook
+### Code Deduplication - Avatar Upload Hook
 
 | File | Severity | Description |
 |------|----------|-------------|
 | `features/profile/hooks.ts` | **NEW** Created `useAvatarUpload` hook (upload/delete state, validation, API calls, toasts) and `getProfileInitials` utility. |
 | `pages/profile/components/ProfileSidebar.tsx` | **MEDIUM** Replaced ~50 lines of inline avatar logic with `useAvatarUpload` hook + `getProfileInitials`. Removed unused imports (`useState`, `useRef`, `profileApi`, `toast`). |
-| `pages/profile/components/ProfileHeader.tsx` | **MEDIUM** Same refactor — replaced ~50 lines with hook. Removed unused imports. |
+| `pages/profile/components/ProfileHeader.tsx` | **MEDIUM** Same refactor - replaced ~50 lines with hook. Removed unused imports. |
 
 ### Updated Remaining Debt
 
@@ -672,14 +672,14 @@ All remaining `console.error`/`console.warn` calls across the entire frontend so
 | `detail=str(e)` remaining | 0 | All fixed. |
 | console.error remaining | 0 | All migrated to `logger`. |
 | `any` types remaining | 0 | All eliminated from pages/components. |
-| `__import__` in security_logging.py | 1 | Error handler edge case — acceptable. |
+| `__import__` in security_logging.py | 1 | Error handler edge case - acceptable. |
 | useEffect without cancellation | ~15 | Five highest-traffic pages have cancellation. |
-| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` — kept for API flexibility. |
-| Ad-hoc pagination (admin) | 3 routers | `activity.py`, `sessions.py`, `errors.py` — working correctly, use custom DTOs. Low priority. |
+| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` - kept for API flexibility. |
+| Ad-hoc pagination (admin) | 3 routers | `activity.py`, `sessions.py`, `errors.py` - working correctly, use custom DTOs. Low priority. |
 
 ---
 
-## Session 10 — Swallowed Exceptions, Type Safety, & Final Validation Scan
+## Session 10 - Swallowed Exceptions, Type Safety, & Final Validation Scan
 
 **Total fixes this session:** ~20  
 **Cumulative total:** ~280
@@ -705,15 +705,15 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 
 | File | Description |
 |------|-------------|
-| `api/routers/admin/errors.py` | Removed duplicate `except Exception` block (17 lines) in `get_error_detail()` — dead code that could never execute after the first handler. |
+| `api/routers/admin/errors.py` | Removed duplicate `except Exception` block (17 lines) in `get_error_detail()` - dead code that could never execute after the first handler. |
 
-### Type Safety — LegalSection.tsx
+### Type Safety - LegalSection.tsx
 
 | File | Fix |
 |------|-----|
 | `components/legal/LegalSection.tsx` | Replaced `item as string` cast with proper type predicate: `content.every((item): item is string => ...)`. TypeScript now narrows array type correctly, eliminating the need for the assertion. |
 
-### Comprehensive Validation Scan — All Clear
+### Comprehensive Validation Scan - All Clear
 
 | Pattern Scanned | Result |
 |-----------------|--------|
@@ -731,43 +731,43 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 | SQL injection (`f"...SELECT..."`) | **0 found** |
 | `os.system()` / `subprocess.call()` | **0 found** |
 | `TODO` / `FIXME` / `HACK` comments | **0 found** |
-| `document.getElementById/querySelector` | **13 found** — all legitimate (React root mount, annotation overlays, file input trigger) |
-| `addEventListener` without cleanup | **0 found** (13 add, 13 remove — balanced) |
+| `document.getElementById/querySelector` | **13 found** - all legitimate (React root mount, annotation overlays, file input trigger) |
+| `addEventListener` without cleanup | **0 found** (13 add, 13 remove - balanced) |
 | `setInterval` without cleanup | **0 found** (all properly cleaned up in useEffect returns) |
 | `dangerouslySetInnerHTML` without DOMPurify | **0 found** (4 uses, all sanitized) |
 | `open()` without context manager | **0 found** |
-| Empty catch blocks (frontend) | **1 found** — `websocket.ts:166` for `socket?.close()` (intentional, acceptable) |
-| Inline hardcoded hex colors | **~237 occurrences** — design system concern, low priority |
+| Empty catch blocks (frontend) | **1 found** - `websocket.ts:166` for `socket?.close()` (intentional, acceptable) |
+| Inline hardcoded hex colors | **~237 occurrences** - design system concern, low priority |
 
 ### Updated Remaining Debt
 
 | Category | Count | Notes |
 |----------|-------|-------|
 | Domain layer violations | 35 files | Admin + documents + analytics services import SQLAlchemy/models in `domain/`. Major architectural refactor. |
-| Inline hex colors | ~237 | Design system migration — cosmetic, low priority. |
+| Inline hex colors | ~237 | Design system migration - cosmetic, low priority. |
 | useEffect without cancellation | ~15 | Five highest-traffic pages have cancellation. Rest are low-traffic admin/legal pages. |
-| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` — kept for API flexibility. |
+| `[key: string]: unknown` index sigs | 3 interfaces | `Job`, `JobPayload`, `UpdateApplicationPayload` - kept for API flexibility. |
 | Ad-hoc pagination (admin) | 3 routers | Working correctly with custom DTOs. Low priority. |
-| Large files (>700 lines) | ~15 | Annotation components, help content, modals. Structural concern — function correctly. |
-| `__import__` in security_logging.py | 1 | Error handler edge case — acceptable. |
+| Large files (>700 lines) | ~15 | Annotation components, help content, modals. Structural concern - function correctly. |
+| `__import__` in security_logging.py | 1 | Error handler edge case - acceptable. |
 | Missing return type annotations | ~150 | Backend route handlers lack `->` return type. Cosmetic, no runtime impact. |
-| Disabled worker features | 3 | Interview/follow-up/email reminders disabled — missing `reminder_sent_at` and `follow_up_sent_at` DB fields. |
+| Disabled worker features | 3 | Interview/follow-up/email reminders disabled - missing `reminder_sent_at` and `follow_up_sent_at` DB fields. |
 
 ---
 
-## Session 11 — DRY Violations, N+1 Queries, Field-Name Bugs, Hook Extraction
+## Session 11 - DRY Violations, N+1 Queries, Field-Name Bugs, Hook Extraction
 
 ### Backend: Centralized `get_admin_service` Dependency (6 files)
 
 **Problem:** `get_admin_service()` factory was duplicated 4× across admin routers + 1× inline in security.py.
 
 **Fix:** Extracted to `backend/app/api/deps/admin.py` as a shared `Depends()` factory. Updated:
-- `admin/dashboard.py` — removed local def + unused imports
-- `admin/llm_usage.py` — removed local def + unused imports
-- `admin/users/data.py` — removed local def + unused imports
-- `admin/users/management.py` — removed local def
-- `admin/security.py` — replaced inline `AdminService(db)` with `Depends(get_admin_service)`
-- `deps/__init__.py` — added re-export
+- `admin/dashboard.py` - removed local def + unused imports
+- `admin/llm_usage.py` - removed local def + unused imports
+- `admin/users/data.py` - removed local def + unused imports
+- `admin/users/management.py` - removed local def
+- `admin/security.py` - replaced inline `AdminService(db)` with `Depends(get_admin_service)`
+- `deps/__init__.py` - added re-export
 
 ### Backend: Deduplicated `_paginate` Utility (3 files)
 
@@ -777,7 +777,7 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 
 ### Backend: Fixed N+1 Query in Profile Export (profile/management.py)
 
-**Problem:** Export endpoint queried all reminders, then looped each to query its notes individually — O(N) database queries.
+**Problem:** Export endpoint queried all reminders, then looped each to query its notes individually - O(N) database queries.
 
 **Fix:** Bulk-query all notes via `ReminderNote.reminder_id.in_(reminder_ids)`, group by reminder ID, then look up from map.
 
@@ -789,7 +789,7 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 
 ### Backend: Fixed N+1 Query in Job Cascade Deletion (jobs_sqlalchemy.py)
 
-**Problem:** `delete_for_user_cascade()` looped each application and ran 3 DELETE queries per app (attachments, stages, notes) — O(3N) queries.
+**Problem:** `delete_for_user_cascade()` looped each application and ran 3 DELETE queries per app (attachments, stages, notes) - O(3N) queries.
 
 **Fix:** Collect all application IDs upfront, then run 3 bulk `DELETE ... WHERE application_id IN (...)` queries. Reduced from 3N+1 to 4 constant queries.
 
@@ -831,17 +831,17 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 
 ---
 
-## Session 12 — Security Audit, Transaction Safety, Race Condition Fixes
+## Session 12 - Security Audit, Transaction Safety, Race Condition Fixes
 
-### Security: Auth Bypass Fix — `store_google_agreements`
+### Security: Auth Bypass Fix - `store_google_agreements`
 - **File:** `backend/app/api/routers/auth/oauth.py`
-- **Bug:** Endpoint manually decoded JWT from cookies, bypassing standard `get_current_user` dependency — skipped token blacklist check, duplicated auth logic
+- **Bug:** Endpoint manually decoded JWT from cookies, bypassing standard `get_current_user` dependency - skipped token blacklist check, duplicated auth logic
 - **Fix:** Replaced ~30 lines of manual auth code with `Depends(get_current_user)`
-- **Severity:** HIGH — bypassed production auth pipeline
+- **Severity:** HIGH - bypassed production auth pipeline
 
-### Security: Transaction Rollback Fix — `get_db()` / `get_db_session()`
+### Security: Transaction Rollback Fix - `get_db()` / `get_db_session()`
 - **File:** `backend/app/db/session.py`
-- **Bug:** Both database dependency functions only called `db.close()` without `db.rollback()` on exceptions — failed commits leaked broken transaction state to the connection pool
+- **Bug:** Both database dependency functions only called `db.close()` without `db.rollback()` on exceptions - failed commits leaked broken transaction state to the connection pool
 - **Fix:** Added `except Exception: db.rollback(); raise` before `finally: db.close()`
 - **Impact:** Protects all 35+ unprotected `db.commit()` calls across the codebase at the dependency layer
 
@@ -852,21 +852,21 @@ Replaced all `except Exception: pass` blocks with proper logging to prevent sile
 
 ### Race Condition: JobsPage Stale Data
 - **File:** `newfront/pages/jobs/JobsPage.tsx`
-- **Bug:** `cancelled` flag in useEffect was checked in empty `.then()` callback AFTER `loadJobs()` had already dispatched state updates — stale data on rapid filter/page changes (7 dependencies)
+- **Bug:** `cancelled` flag in useEffect was checked in empty `.then()` callback AFTER `loadJobs()` had already dispatched state updates - stale data on rapid filter/page changes (7 dependencies)
 - **Fix:** Added `isCancelled?: () => boolean` callback parameter to `loadJobs()`. Cancellation checks placed before `setJobs`, `setTotalJobs`, `setTotalPages`, and in error/finally handlers. Imperative callers unaffected (parameter is optional).
-- **Severity:** HIGH — user-facing page with 7 filter/sort dimensions
+- **Severity:** HIGH - user-facing page with 7 filter/sort dimensions
 
 ### Race Condition: AnalyticsPage Missing Dependencies + Double Fetch
 - **File:** `newfront/pages/analytics/AnalyticsPage.tsx`
 - **Bugs (3):**
-  1. `isDemoMode` read inside first useEffect but missing from deps `[user, timeRange]` — exiting demo mode with pre-existing timeRange left stale demo data
-  2. `timeRange` missing from second useEffect deps `[isDemoMode]` — changing timeRange in demo mode had no effect
-  3. `handleDemoMode` manually loaded demo data AND triggered the useEffect — double fetch
+  1. `isDemoMode` read inside first useEffect but missing from deps `[user, timeRange]` - exiting demo mode with pre-existing timeRange left stale demo data
+  2. `timeRange` missing from second useEffect deps `[isDemoMode]` - changing timeRange in demo mode had no effect
+  3. `handleDemoMode` manually loaded demo data AND triggered the useEffect - double fetch
 - **Fix:** Merged two effects into single `[user, timeRange, isDemoMode]` effect with inline async + cancellation. Simplified `handleDemoMode` to just set flag + toast.
 
 ### Missing Dependency: CreateReminderModal
 - **File:** `newfront/pages/reminders/components/CreateReminderModal.tsx`
-- **Bug:** `preselectedApplication` read inside useEffect but missing from deps `[isOpen]` — if parent changed pre-selected app while modal was open, form data wouldn't update
+- **Bug:** `preselectedApplication` read inside useEffect but missing from deps `[isOpen]` - if parent changed pre-selected app while modal was open, form data wouldn't update
 - **Fix:** Added `preselectedApplication` to dependency array: `[isOpen, preselectedApplication]`
 
 ### Async Cancellation: 6 Pages
@@ -881,9 +881,9 @@ Added proper cleanup patterns (cancelled flag + return cleanup) to prevent state
 | `newfront/pages/admin/LLMUsagePage.tsx` | `loadData` | No |
 | `newfront/pages/admin/UsersPage.tsx` | `loadUsers` | Yes (`handleUnban`) |
 
-Pattern used: `isCancelled?: () => boolean` optional parameter — useEffect passes `() => cancelled`, imperative calls omit it (safely falls through).
+Pattern used: `isCancelled?: () => boolean` optional parameter - useEffect passes `() => cancelled`, imperative calls omit it (safely falls through).
 
-### Security Scans — All Clean
+### Security Scans - All Clean
 | Scan | Result |
 |------|--------|
 | SQL injection (f-strings in `.execute()`) | 0 |
@@ -901,7 +901,7 @@ Pattern used: `isCancelled?: () => boolean` optional parameter — useEffect pas
 ### Unprotected Endpoint Audit
 Scanned all 14 endpoints without `Depends(get_current_user)`:
 - **12 legitimate public endpoints:** login, register, OAuth flows, password reset, email verification, refresh_token, logout, list_templates, submit_feedback, log_frontend_error
-- **1 fixed:** `store_google_agreements` (auth bypass — see above)
+- **1 fixed:** `store_google_agreements` (auth bypass - see above)
 
 ### Remaining Architectural Debt (Not Bugs)
 - 47 direct `db.query()` calls in routers (should go through services/repos)
@@ -996,7 +996,7 @@ Comprehensive scan of all API endpoints for input validation vulnerabilities.
 - `any` type usage: **0 instances** (clean)
 - Type assertions (`as Record`, `as unknown`, `@ts-ignore`): **14 instances**, all reasonable `as Record<string, X>` for dynamically-keyed objects
 
-### LOW Severity (not fixed — acceptable risk)
+### LOW Severity (not fixed - acceptable risk)
 - URL profile fields (`website`, `linkedin_url`, `github_url`) accept any string (not `HttpUrl`)
 - Some endpoints use `response_model=dict` instead of typed schemas
 - OAuth error parameter not URL-encoded in redirect
@@ -1043,12 +1043,12 @@ Files: `button.tsx`, `GoogleCalendarButton.tsx`, `ProfileSidebar.tsx`, `ProfileH
 
 ### Security: OAuth CSRF Protection (HIGH)
 
-**Problem:** OAuth state parameter was generated but never stored/validated — had `TODO: implement` comment in code.
+**Problem:** OAuth state parameter was generated but never stored/validated - had `TODO: implement` comment in code.
 
 **Fix (Redis-backed single-use token):**
 - `oauth.py`: Added `_OAUTH_STATE_TTL = 300`, `_state_key()`, `_store_oauth_state()`, `_consume_oauth_state()`
 - `login_google`: Now stores state in Redis with 5-min TTL
-- `callback_google`: Validates + consumes state atomically (pipeline GET+DELETE) — redirects to `?error=invalid_state` on failure
+- `callback_google`: Validates + consumes state atomically (pipeline GET+DELETE) - redirects to `?error=invalid_state` on failure
 - Imports: `RedisError`, `get_redis`, `redis_key` from infra
 
 ### Security: Rate Limiting Gaps (2 fixes)
@@ -1264,7 +1264,7 @@ All help components (`DashboardHelp`, `DocumentsHelp`, `PipelineHelp`, `Reminder
 
 ---
 
-## Session 14b — Continuation Fixes
+## Session 14b - Continuation Fixes
 
 ### Annotation RAF Stale Closures (5 files)
 
@@ -1317,14 +1317,14 @@ Added `response_model` to all HIGH-priority auth endpoints for OpenAPI contract 
 
 **Confirmed clean:** 0 `eval()`/`exec()`, 0 SQL injection, 0 hardcoded secrets.
 
-### TypeScript Type Safety (documents/api.ts — 37 errors fixed)
+### TypeScript Type Safety (documents/api.ts - 37 errors fixed)
 
 Root cause: `normalizeAnalysis()` and `normalizeDocument()` used untyped `Record<string, unknown>` for raw backend data. All property accesses produced `{}` type.
 
 **Fix:** Defined proper interfaces for raw backend shapes:
-- `RawAtsScore` — ATS scoring fields (`formatting_score`, `keyword_score`, etc.)
-- `RawAiSection` — Per-section AI analysis (`strengths`, `weaknesses`, `improvements`, etc.)
-- `RawAnalysisResponse` — Full backend response with all sub-objects
+- `RawAtsScore` - ATS scoring fields (`formatting_score`, `keyword_score`, etc.)
+- `RawAiSection` - Per-section AI analysis (`strengths`, `weaknesses`, `improvements`, etc.)
+- `RawAnalysisResponse` - Full backend response with all sub-objects
 
 Additional fixes:
 - Removed unused `API_BASE` import
@@ -1363,7 +1363,7 @@ Additional fixes:
 
 ### Compilation-Breaking Missing Interface Declarations (6 files)
 
-Full `npx tsc --noEmit` revealed 6 component files where the `interface XxxProps {` line was entirely missing — the property definitions existed but the interface keyword and name were deleted:
+Full `npx tsc --noEmit` revealed 6 component files where the `interface XxxProps {` line was entirely missing - the property definitions existed but the interface keyword and name were deleted:
 
 | File | Missing Declaration |
 |------|-------------------|
@@ -1378,14 +1378,14 @@ Full `npx tsc --noEmit` revealed 6 component files where the `interface XxxProps
 
 `pages/pipeline/components/ExportApplications.tsx` had a broken function boundary:
 - `exportToCSV`'s `catch` block was missing its closing `}`, error toast, and `finally` block
-- The `exportToJSON` function declaration (`const exportToJSON = async () => {`) was missing — its body was inside `exportToCSV`'s catch block
+- The `exportToJSON` function declaration (`const exportToJSON = async () => {`) was missing - its body was inside `exportToCSV`'s catch block
 - Fixed property name mismatches: `applied_at` → `applied_date`, removed non-existent properties (`cover_letter_id`)
 
 ### Application Interface Extension
 
 Backend `Application` model has fields not in frontend `Application` interface:
 - Added 4 optional fields: `location?`, `source?`, `source_url?`, `resume_id?`
-- Removed all `cover_letter_id` references (doesn't exist in backend) — 4 files fixed
+- Removed all `cover_letter_id` references (doesn't exist in backend) - 4 files fixed
 - Fixed `applied_at` → `applied_date` across 6 files (ApplicationDrawer, KanbanCard, PipelineAnalytics, PipelinePage, ExportApplications, CardsView)
 
 ### Auth & API Type Fixes
@@ -1422,7 +1422,7 @@ Backend `Application` model has fields not in frontend `Application` interface:
 
 ### alert-dialog.tsx Ref Bug Fix
 
-`AlertDialogOverlay` used `React.forwardRef` but never passed `ref` to the underlying `AlertDialogPrimitive.Overlay` — added `ref={ref}`.
+`AlertDialogOverlay` used `React.forwardRef` but never passed `ref` to the underlying `AlertDialogPrimitive.Overlay` - added `ref={ref}`.
 
 ### Security: Attachment Upload Content Validation
 
@@ -1467,7 +1467,7 @@ Backend `Application` model has fields not in frontend `Application` interface:
 
 ```
 $ npx tsc --noEmit
-(zero output — clean compilation)
+(zero output - clean compilation)
 ```
 
 **Before Session 14c:** 178 TypeScript errors  
@@ -1512,7 +1512,7 @@ rate limiting, token cleanup, LLM cost controls, and API contract hardening.
 - Added to `config.py` for discoverability
 - `_record_llm_cost()` atomically accumulates cost after each LLM call via `INCRBYFLOAT`
 - Redis key auto-expires after 25 hours (no stale data buildup)
-- All AI endpoints check budget before processing — returns `503 Service Unavailable` when exceeded
+- All AI endpoints check budget before processing - returns `503 Service Unavailable` when exceeded
 - Fail-open on Redis error (availability over budget enforcement)
 
 #### 3. Scheduled Token Cleanup Jobs (HIGH → Fixed)
@@ -1529,8 +1529,8 @@ rate limiting, token cleanup, LLM cost controls, and API contract hardening.
 #### 4. Raw ORM Return Fix
 - `PUT /api/profile/` now has `response_model=UserProfileResponse`
 - Created `UserProfileResponse` Pydantic schema in `common.py` with `from_attributes=True`
-- Admin `GET /api/admin/users/{id}` already returns `UserDetailDTO` (Pydantic model) — no fix needed
-- WebSocket `_authenticate_ticket` returns to internal code, not HTTP clients — no fix needed
+- Admin `GET /api/admin/users/{id}` already returns `UserDetailDTO` (Pydantic model) - no fix needed
+- WebSocket `_authenticate_ticket` returns to internal code, not HTTP clients - no fix needed
 
 ### Files Created
 | File | Purpose |

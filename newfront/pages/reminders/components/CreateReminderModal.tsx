@@ -376,7 +376,7 @@ export function CreateReminderModal({
                         ) : (
                           applications.map((app) => (
                             <SelectItem key={app.id} value={app.id.toString()}>
-                              {app.job_title}{app.company_name ? ` — ${app.company_name}` : ''}
+                              {app.job_title}{app.company_name ? ` - ${app.company_name}` : ''}
                             </SelectItem>
                           ))
                         )}

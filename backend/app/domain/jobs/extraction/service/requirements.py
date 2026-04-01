@@ -48,7 +48,7 @@ _STOP_HEADER_RE = re.compile(
     re.I
 )
 
-_BULLET_RE = re.compile(r"^\s*(?:[-–—•·\*]|\d{1,2}[.)])\s*(.+)$")
+_BULLET_RE = re.compile(r"^\s*(?:[-–-•·\*]|\d{1,2}[.)])\s*(.+)$")
 
 _TECH_TOKEN = re.compile(
     r"\b(aws|gcp|azure|kubernetes|docker|python|java|go|rust|node\.?js|react|redis|"

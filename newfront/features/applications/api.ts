@@ -136,7 +136,7 @@ export const applicationsApi = {
 
   /**
    * Get applications with stages (for pipeline)
-   * Backend returns nested { job: { title, company_name, ... } } — flatten for frontend
+   * Backend returns nested { job: { title, company_name, ... } } - flatten for frontend
    */
   getApplicationsWithStages: (showArchived: boolean = false): Promise<Application[]> => {
     interface RawAppItem {

@@ -6,8 +6,8 @@ while still allowing the application to decrypt them when needed.
 
 The encryption key is loaded from ``settings.ENCRYPTION_KEY``.  In
 production this **must** be a URL-safe base64-encoded 32-byte key
-(``Fernet.generate_key()``).  In development a deterministic — but
-obviously insecure — fallback is used.
+(``Fernet.generate_key()``).  In development a deterministic - but
+obviously insecure - fallback is used.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def _derive_key() -> bytes:
             "(use: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")"
         )
 
-    # Dev fallback — deterministic but obviously insecure
+    # Dev fallback - deterministic but obviously insecure
     seed = (settings.JWT_SECRET or "dev-key").encode()
     return base64.urlsafe_b64encode(seed.ljust(32, b"\x00")[:32])
 
@@ -65,7 +65,7 @@ def decrypt(ciphertext: str) -> str:
     try:
         return _fernet().decrypt(ciphertext.encode()).decode()
     except InvalidToken as exc:
-        raise ValueError("Failed to decrypt — invalid key or corrupted data") from exc
+        raise ValueError("Failed to decrypt - invalid key or corrupted data") from exc
 
 
 def try_decrypt(ciphertext: str) -> str:

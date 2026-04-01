@@ -1,5 +1,5 @@
 /**
- * PageLoader — Suspense fallback shown while lazy-loaded pages are being fetched.
+ * PageLoader - Suspense fallback shown while lazy-loaded pages are being fetched.
  */
 
 import { Loader2 } from 'lucide-react';

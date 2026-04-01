@@ -64,8 +64,8 @@ const improvedCopy = {
     he: "למחפשי עבודה רציניים שרוצים כוח AI בלתי מוגבל"
   },
   premium: {
-    en: "AI does the heavy lifting—you land the interviews",
-    he: "ה-AI עושה את העבודה הקשה—אתם מקבלים את הראיונות"
+    en: "AI does the heavy lifting-you land the interviews",
+    he: "ה-AI עושה את העבודה הקשה-אתם מקבלים את הראיונות"
   }
 } as const;
 

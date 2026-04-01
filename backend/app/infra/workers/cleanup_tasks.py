@@ -1,7 +1,7 @@
 """
 Scheduled Cleanup Tasks
 
-Background jobs for database hygiene — runs via APScheduler.
+Background jobs for database hygiene - runs via APScheduler.
 
 Tasks:
     - purge_expired_email_actions: Removes expired/used EmailAction tokens

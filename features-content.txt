@@ -1,4 +1,4 @@
-﻿
+
 --- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\features\admin\api.js ---
 /**
  * Admin API Client
@@ -2046,7 +2046,7 @@ export function deltaPercent(value, { digits = 0, locale = "en-US" } = {}) {
 
   const n = Number(value);
   const sign = n === 0 ? 0 : n > 0 ? 1 : -1;
-  const arrow = sign > 0 ? "ג†—" : sign < 0 ? "ג†˜" : "ג†’";
+  const arrow = sign > 0 ? "ג†-" : sign < 0 ? "ג†˜" : "ג†’";
   const className = sign > 0 ? "text-green-400" : sign < 0 ? "text-red-400" : "text-slate-400";
   const abs = Math.abs(n);
   const absText = formatPercent(abs, { digits, locale });
@@ -4336,7 +4336,7 @@ export default function DocumentCard({
                     className="flex flex-col items-center justify-center py-2 h-auto text-red-400 hover:text-red-300 hover:bg-red-900/20"
                     title="Delete document"
                 >
-                    <span className="text-lg mb-1">נ—‘ן¸</span>
+                    <span className="text-lg mb-1">נ-‘ן¸</span>
                     <span className="text-xs">Delete</span>
                 </Button>
             </div>
@@ -7416,7 +7416,7 @@ export default function JobCard({
                 rel="noopener noreferrer"
                 className="text-sm text-gray-400 hover:text-indigo-400 inline-flex items-center"
               >
-                <span className="mr-1">נ”—</span> View Original
+                <span className="mr-1">נ”-</span> View Original
               </a>
               <button
                 onClick={() => {
@@ -7460,7 +7460,7 @@ export default function JobCard({
             className="text-red-400 hover:text-red-300 hover:bg-red-900/20 border-red-800/50"
             type="button"
           >
-            <span className="mr-1">נ—‘ן¸</span> Delete
+            <span className="mr-1">נ-‘ן¸</span> Delete
           </Button>
         </div>
       </div>
@@ -11323,7 +11323,7 @@ export default function JobDetailModal({ application, onClose }) {
             {/* Source URL */}
             {job?.source_url && (
               <div>
-                <h4 className="field-label">נ”— Source URL</h4>
+                <h4 className="field-label">נ”- Source URL</h4>
                 <a
                   href={job.source_url}
                   target="_blank"

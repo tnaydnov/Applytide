@@ -34,7 +34,7 @@ REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
 REDIS_RETRY_ON_TIMEOUT: bool = True
 REDIS_HEALTH_CHECK_INTERVAL: int = 30
 
-# Key namespace — prevents collisions when sharing a Redis instance
+# Key namespace - prevents collisions when sharing a Redis instance
 REDIS_NAMESPACE: str = "applytide"
 
 
@@ -97,7 +97,7 @@ def check_redis_health() -> bool:
     """
     Send PING to Redis and return ``True`` if it responds.
 
-    All errors are caught and logged to stderr — never raises.
+    All errors are caught and logged to stderr - never raises.
     """
     try:
         return bool(get_redis().ping())

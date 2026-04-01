@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Enterprise-grade job application tracking platform</strong><br/>
-  Organize your job search, track applications, and land your next role — powered by AI.
+  Organize your job search, track applications, and land your next role - powered by AI.
 </p>
 
 <p align="center">
@@ -26,62 +26,62 @@
 
 ## Overview
 
-Applytide is a full-stack job application management platform that helps users organize their entire job search lifecycle — from discovering and saving job postings to tracking application status, managing documents, and preparing for interviews.
+Applytide is a full-stack job application management platform that helps users organize their entire job search lifecycle - from discovering and saving job postings to tracking application status, managing documents, and preparing for interviews.
 
-The platform combines a modern React SPA with a robust Python API backend, AI-powered document analysis, a browser extension for one-click job capture, and a dedicated email microservice — all orchestrated with Docker Compose.
+The platform combines a modern React SPA with a robust Python API backend, AI-powered document analysis, a browser extension for one-click job capture, and a dedicated email microservice - all orchestrated with Docker Compose.
 
 ---
 
 ## Features
 
 ### Application Pipeline
-- **Kanban Board** — Drag-and-drop application tracking across customizable stages (Wishlist → Applied → Interview → Offer → Accepted / Rejected)
-- **Smart Job Extraction** — Paste any job URL and the AI extracts title, company, location, salary, requirements, and description automatically
-- **Notes & Attachments** — Attach files and keep per-application notes
+- **Kanban Board** - Drag-and-drop application tracking across customizable stages (Wishlist → Applied → Interview → Offer → Accepted / Rejected)
+- **Smart Job Extraction** - Paste any job URL and the AI extracts title, company, location, salary, requirements, and description automatically
+- **Notes & Attachments** - Attach files and keep per-application notes
 
 ### Documents
-- **Resume Management** — Upload, organize, and manage multiple resume versions
-- **AI Resume Analysis** — Get instant feedback on your resume with actionable improvement suggestions
-- **Cover Letter Generator** — AI-generated cover letters tailored to specific job descriptions
-- **Document Preview** — In-app PDF preview and download
+- **Resume Management** - Upload, organize, and manage multiple resume versions
+- **AI Resume Analysis** - Get instant feedback on your resume with actionable improvement suggestions
+- **Cover Letter Generator** - AI-generated cover letters tailored to specific job descriptions
+- **Document Preview** - In-app PDF preview and download
 
 ### Analytics & Insights
-- **Dashboard** — At-a-glance metrics: total applications, response rate, interview rate, offers
-- **Charts & Trends** — Visual timeline of application activity, stage distribution, and weekly trends
-- **Application Insights** — AI-powered analysis of your job search patterns
+- **Dashboard** - At-a-glance metrics: total applications, response rate, interview rate, offers
+- **Charts & Trends** - Visual timeline of application activity, stage distribution, and weekly trends
+- **Application Insights** - AI-powered analysis of your job search patterns
 
 ### Job Search
-- **Job Board Integration** — Search and browse jobs directly within the platform
-- **Saved Jobs** — Save interesting positions for later review
-- **Quick Apply** — Move saved jobs into your application pipeline with one click
+- **Job Board Integration** - Search and browse jobs directly within the platform
+- **Saved Jobs** - Save interesting positions for later review
+- **Quick Apply** - Move saved jobs into your application pipeline with one click
 
 ### Chrome Extension
-- **One-Click Capture** — Extract job postings from any website with a single click
-- **Smart Parsing** — 3-stage extraction pipeline: JSON-LD structured data → DOM parsing → LLM fallback
-- **Readability.js** — Mozilla's content extraction library for clean article parsing
+- **One-Click Capture** - Extract job postings from any website with a single click
+- **Smart Parsing** - 3-stage extraction pipeline: JSON-LD structured data → DOM parsing → LLM fallback
+- **Readability.js** - Mozilla's content extraction library for clean article parsing
 
 ### Reminders & Notifications
-- **Custom Reminders** — Set follow-up reminders for applications
-- **Email Notifications** — Receive beautiful HTML email reminders
-- **Google Calendar Sync** — Sync interview dates and reminders to your calendar
+- **Custom Reminders** - Set follow-up reminders for applications
+- **Email Notifications** - Receive beautiful HTML email reminders
+- **Google Calendar Sync** - Sync interview dates and reminders to your calendar
 
 ### Security & Auth
-- **JWT Authentication** — Secure HttpOnly cookie-based sessions
-- **Google OAuth 2.0** — One-click Google sign-in
-- **Two-Factor Authentication** — TOTP-based 2FA with QR code setup
-- **Session Management** — View and revoke active sessions
-- **Ban System** — Admin-controlled account suspension with configurable ban types
+- **JWT Authentication** - Secure HttpOnly cookie-based sessions
+- **Google OAuth 2.0** - One-click Google sign-in
+- **Two-Factor Authentication** - TOTP-based 2FA with QR code setup
+- **Session Management** - View and revoke active sessions
+- **Ban System** - Admin-controlled account suspension with configurable ban types
 
 ### Admin Panel
-- **User Management** — View, search, and manage all registered users
-- **System Monitoring** — Real-time system stats, error logs, and health checks
-- **LLM Usage Tracking** — Monitor AI API calls, token usage, and costs per user
-- **Security Dashboard** — Session overview, rate limit monitoring, and security events
+- **User Management** - View, search, and manage all registered users
+- **System Monitoring** - Real-time system stats, error logs, and health checks
+- **LLM Usage Tracking** - Monitor AI API calls, token usage, and costs per user
+- **Security Dashboard** - Session overview, rate limit monitoring, and security events
 
 ### Internationalization
-- **Bilingual** — Full English and Hebrew support
-- **RTL Layout** — Complete right-to-left layout support for Hebrew
-- **Dynamic Switching** — Change language on-the-fly with context-aware translations
+- **Bilingual** - Full English and Hebrew support
+- **RTL Layout** - Complete right-to-left layout support for Hebrew
+- **Dynamic Switching** - Change language on-the-fly with context-aware translations
 
 ---
 
@@ -348,9 +348,9 @@ All entities use **UUIDs** as primary keys. Timestamps are stored in **UTC**. Fl
 The Applytide Chrome Extension enables one-click job capture from any website.
 
 **3-Stage Extraction Pipeline:**
-1. **JSON-LD** — Checks for structured `JobPosting` schema data
-2. **DOM Parsing** — Extracts from page structure (headings, meta tags, known selectors)
-3. **LLM Fallback** — Sends page content to OpenAI for intelligent extraction
+1. **JSON-LD** - Checks for structured `JobPosting` schema data
+2. **DOM Parsing** - Extracts from page structure (headings, meta tags, known selectors)
+3. **LLM Fallback** - Sends page content to OpenAI for intelligent extraction
 
 Install from the `chrome-extension/` directory by loading it as an unpacked extension in Chrome Dev Mode.
 
@@ -434,17 +434,17 @@ See [scripts/BACKUP_README.md](scripts/BACKUP_README.md) for more details.
 
 ## Security
 
-- **Authentication** — JWT tokens in HttpOnly cookies (not localStorage)
-- **Password hashing** — bcrypt with salt rounds
-- **Two-Factor Auth** — TOTP with RFC 6238 compliance
-- **Rate Limiting** — Global (1000 req/hr) + per-endpoint limits on AI routes
-- **CORS** — Restricted origins in production
-- **Security Headers** — CSP, HSTS, X-Frame-Options, X-Content-Type-Options
-- **Input Validation** — Pydantic v2 schemas on all endpoints
-- **SQL Injection** — SQLAlchemy parameterized queries
-- **LLM Budget Controls** — Daily spending cap with Redis-backed tracking
-- **Session Management** — Trackable sessions with remote revocation
-- **Ban System** — Configurable account suspension (temporary/permanent)
+- **Authentication** - JWT tokens in HttpOnly cookies (not localStorage)
+- **Password hashing** - bcrypt with salt rounds
+- **Two-Factor Auth** - TOTP with RFC 6238 compliance
+- **Rate Limiting** - Global (1000 req/hr) + per-endpoint limits on AI routes
+- **CORS** - Restricted origins in production
+- **Security Headers** - CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- **Input Validation** - Pydantic v2 schemas on all endpoints
+- **SQL Injection** - SQLAlchemy parameterized queries
+- **LLM Budget Controls** - Daily spending cap with Redis-backed tracking
+- **Session Management** - Trackable sessions with remote revocation
+- **Ban System** - Configurable account suspension (temporary/permanent)
 
 ---
 

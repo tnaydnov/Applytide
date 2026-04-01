@@ -41,7 +41,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 event_logger = BusinessEventLogger()
 
-# OAuth state CSRF protection — 5-minute TTL
+# OAuth state CSRF protection - 5-minute TTL
 _OAUTH_STATE_TTL: int = 300
 
 

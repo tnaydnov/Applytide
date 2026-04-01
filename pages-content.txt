@@ -1,4 +1,4 @@
-﻿
+
 --- START FILE: C:\Users\PC\OneDrive\Desktop\Applytide\frontend\pages\about.js ---
 import PageContainer from "../components/layout/PageContainer";
 import PageHeader from "../components/layout/PageHeader";
@@ -4248,7 +4248,7 @@ function StatCard({ label, value }) {
 function EmptyState() {
   return (
     <div className="text-center text-white/70 py-20">
-      <div className="text-3xl mb-2">נ—‚ן¸</div>
+      <div className="text-3xl mb-2">נ-‚ן¸</div>
       <p className="font-medium">No applications yet</p>
       <p className="text-sm text-white/50">Start applying and theyג€™ll show up here.</p>
     </div>
@@ -8166,7 +8166,7 @@ export default function UsersListPage() {
                         <div>
                           <div className="text-sm font-medium text-white">{user.email}</div>
                           <div className="text-sm text-slate-400 flex items-center gap-2">
-                            {user.is_oauth_user && <span className="text-xs">נ”— OAuth</span>}
+                            {user.is_oauth_user && <span className="text-xs">נ”- OAuth</span>}
                             {user.email_verified_at && <span className="text-xs">ג“ Verified</span>}
                           </div>
                         </div>
@@ -8532,7 +8532,7 @@ export default function UserDetailPage() {
             )}
             {user.is_oauth_user && (
               <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-900/30 text-blue-300 border border-blue-600">
-                נ”— OAuth
+                נ”- OAuth
               </span>
             )}
             {userBans.some(b => b.is_active) && (

@@ -1,4 +1,4 @@
-# Applytide — Full Technical Architecture & Stack Summary
+# Applytide - Full Technical Architecture & Stack Summary
 
 ## 1. High-Level Architecture
 
@@ -9,7 +9,7 @@
 | `applytide_nginx` | Reverse proxy, TLS termination, rate limiting | 80 / 443 |
 | `applytide_api` | REST API + WebSocket server | 8000 (internal) |
 | `applytide_web` | Static frontend (Vite/React SPA) | 3000 (internal) |
-| `applytide_worker` | Background job runner (reminders, emails) | — |
+| `applytide_worker` | Background job runner (reminders, emails) | - |
 | `applytide_email_service` | Email HTML rendering micro-service | 3001 (internal) |
 | `applytide_pg` | Primary relational database | 5432 (internal) |
 | `applytide_redis` | Cache, rate-limit counters, session state | 6379 (internal) |
@@ -32,7 +32,7 @@ All containers communicate over a single Docker bridge network (`applytide_netwo
 | **Migrations** | Alembic |
 | **Validation** | Pydantic v2 (ships with FastAPI) |
 
-### Backend Architecture — Layered / Hexagonal
+### Backend Architecture - Layered / Hexagonal
 
 ```
 app/
@@ -133,13 +133,13 @@ app/
 
 ---
 
-## 3. Database — PostgreSQL 16 (Alpine)
+## 3. Database - PostgreSQL 16 (Alpine)
 
 ### ORM Models (20 total)
 
 | Model | Purpose |
 |---|---|
-| `User` | Account (email, name, avatar, subscription, OAuth, 2FA, preferences) — 46 columns |
+| `User` | Account (email, name, avatar, subscription, OAuth, 2FA, preferences) - 46 columns |
 | `UserProfile` | Career preferences (target roles, industries, skills, experience) |
 | `OAuthToken` | Google OAuth tokens (access, refresh, scopes, expiry) |
 | `Company` | Company records (name, logo, location, industry, size) |
@@ -198,9 +198,9 @@ app/
 
 ### Job Extraction Pipeline (3-stage)
 
-1. **JSON-LD / Schema.org** — `extruct` >= 0.16.0 parses structured data from HTML
-2. **DOM parsing** — BeautifulSoup4 + lxml + readability-lxml for main content extraction
-3. **LLM fallback** — OpenAI for intelligent field inference when structured data is insufficient
+1. **JSON-LD / Schema.org** - `extruct` >= 0.16.0 parses structured data from HTML
+2. **DOM parsing** - BeautifulSoup4 + lxml + readability-lxml for main content extraction
+3. **LLM fallback** - OpenAI for intelligent field inference when structured data is insufficient
 
 ### Document Processing
 
@@ -216,8 +216,8 @@ app/
 
 ## 6. Background Workers
 
-- **APScheduler** >= 3.10.0 — in-process scheduler (BackgroundScheduler) in the API container
-- **Worker container** (`applytide_worker`) — runs `reminders_runner.py` for reminder email processing
+- **APScheduler** >= 3.10.0 - in-process scheduler (BackgroundScheduler) in the API container
+- **Worker container** (`applytide_worker`) - runs `reminders_runner.py` for reminder email processing
 - Worker uses **Playwright** >= 1.40.0 (Chromium) and **WeasyPrint** >= 60.1 for PDF rendering
 
 ---
@@ -242,11 +242,11 @@ app/
 
 ## 9. Logging
 
-- **Structured logging** — JSON format in production, pretty-print in development
-- **Multi-handler** — Console, rotating file (100 MB max / 30 backups), optional database logging
+- **Structured logging** - JSON format in production, pretty-print in development
+- **Multi-handler** - Console, rotating file (100 MB max / 30 backups), optional database logging
 - **Request correlation IDs** for distributed tracing
 - **Security audit logging** to separate file
-- **Slow request warnings** — threshold configurable (default 1 s)
+- **Slow request warnings** - threshold configurable (default 1 s)
 
 ---
 
@@ -277,7 +277,7 @@ app/
 | **Command palette** | cmdk ^1.1.1 |
 | **Utility** | clsx ^2.1.1, tailwind-merge ^2.6.0, class-variance-authority ^0.7.1 |
 
-### UI Component Library — shadcn/ui (Radix UI primitives)
+### UI Component Library - shadcn/ui (Radix UI primitives)
 
 48 component files in `components/ui/`, all built on Radix UI:
 
@@ -372,13 +372,13 @@ newfront/
 
 ### i18n
 
-- **Bilingual** — English (LTR) and Hebrew (RTL)
+- **Bilingual** - English (LTR) and Hebrew (RTL)
 - Language switching via `LanguageContext`
 - RTL support via CSS custom variant: `@custom-variant rtl (:root[dir="rtl"] &)`
 
 ### Theming
 
-- **Dark mode** — class-based toggling (`.dark` on root)
+- **Dark mode** - class-based toggling (`.dark` on root)
 - CSS custom properties for all design tokens in both light/dark
 - Brand colors: `#9F5F80` (primary/accent), `#383e4e` (dark), `#b6bac5` (muted)
 
@@ -412,7 +412,7 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 
 ---
 
-## 14. Reverse Proxy — Nginx
+## 14. Reverse Proxy - Nginx
 
 | Item | Version |
 |---|---|
@@ -436,7 +436,7 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 | **Image tagging** | `${IMAGE_TAG}` variable |
 | **Backups** | Shell scripts (`backup.sh`, `restore.sh`, `setup-backup-cron.sh`, `check-backup-status.sh`) |
 | **Logging** | JSON file driver, 10 MB max, 3 file rotation (all containers) |
-| **Health check** | `GET /health` — verifies Postgres + Redis connectivity |
+| **Health check** | `GET /health` - verifies Postgres + Redis connectivity |
 | **Dev SMTP** | MailDev (web UI on port 1080, SMTP on 1025) |
 | **Deployment scripts** | `verify-deployment.sh`, `restart-nginx.sh`, `DEPLOYMENT_CHECKLIST.md` |
 
@@ -446,12 +446,12 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 
 - **REST** with resource-based URLs under `/api/`
 - **WebSocket** at `/api/ws/`
-- **Auth** — Cookie-based JWT (HttpOnly, SameSite=Lax)
-- **Content-Type** — JSON (`application/json`), multipart for file uploads
-- **Error format** — FastAPI default (`{"detail": "..."}`) with HTTP status codes
-- **Rate limiting** — Global (1000 req/hr) + per-endpoint (SlowAPI)
-- **CORS** — Restricted origins in production, permissive in development
-- **ID format** — UUIDs for all entities
+- **Auth** - Cookie-based JWT (HttpOnly, SameSite=Lax)
+- **Content-Type** - JSON (`application/json`), multipart for file uploads
+- **Error format** - FastAPI default (`{"detail": "..."}`) with HTTP status codes
+- **Rate limiting** - Global (1000 req/hr) + per-endpoint (SlowAPI)
+- **CORS** - Restricted origins in production, permissive in development
+- **ID format** - UUIDs for all entities
 
 ### API Routers (14 total)
 
@@ -476,12 +476,12 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 
 ## 17. Middleware Stack (order matters)
 
-1. **ProxyHeadersMiddleware** — trusts `X-Forwarded-*` from Nginx (outermost)
-2. **SecurityHeadersMiddleware** — CSP, HSTS, X-Frame-Options, etc.
-3. **TrustedHostMiddleware** — restricts allowed `Host` headers
-4. **CORSMiddleware** — cross-origin request handling
-5. **GlobalRateLimitMiddleware** — Redis-backed global rate limiting (1000 req/hr)
-6. **LoggingMiddleware** — request/response logging, correlation IDs, slow request warnings
+1. **ProxyHeadersMiddleware** - trusts `X-Forwarded-*` from Nginx (outermost)
+2. **SecurityHeadersMiddleware** - CSP, HSTS, X-Frame-Options, etc.
+3. **TrustedHostMiddleware** - restricts allowed `Host` headers
+4. **CORSMiddleware** - cross-origin request handling
+5. **GlobalRateLimitMiddleware** - Redis-backed global rate limiting (1000 req/hr)
+6. **LoggingMiddleware** - request/response logging, correlation IDs, slow request warnings
 
 ---
 
@@ -492,7 +492,7 @@ Extracts job postings from any website and saves them to the user's Applytide ac
 | SPA vs SSR | Migrating from Next.js SSR → Vite SPA (TypeScript) |
 | State management | React Context (no Redux) |
 | Styling approach | Tailwind CSS (v3 legacy, v4 new) + shadcn/ui components |
-| API communication | Custom `apiFetch` wrapper (auto-refresh, caching) — no Axios in new frontend |
+| API communication | Custom `apiFetch` wrapper (auto-refresh, caching) - no Axios in new frontend |
 | Database | PostgreSQL (relational, JSONB for flexible fields) |
 | Caching layer | Redis (server) + in-memory Map (client) |
 | Auth strategy | HttpOnly JWT cookies (not localStorage) |
