@@ -6,6 +6,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
 import { apiFetch } from "../../lib/api";
 import { logger } from "../../lib/logger";
+import { formatResponseError, formatAuthError } from "../../lib/authErrors";
+import { isValidEmail } from "../../utils/validators";
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -25,27 +27,47 @@ export function SignUpPage() {
     hasUppercase: /[A-Z]/.test(password),
     hasLowercase: /[a-z]/.test(password),
     hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{}|;':",./<>?`~\\]/.test(password),
   };
 
   const allPasswordRequirementsMet =
     passwordValidation.minLength &&
     passwordValidation.hasUppercase &&
     passwordValidation.hasLowercase &&
-    passwordValidation.hasNumber;
+    passwordValidation.hasNumber &&
+    passwordValidation.hasSpecial;
 
   const showSignUpWarning = !agreeToTerms || !allPasswordRequirementsMet;
 
   const handleSignUp = async () => {
-    if (!fullName || !email || !password) {
-      toast.error("Please fill in all fields");
+    if (!fullName.trim()) {
+      toast.error("Please enter your full name.");
+      return;
+    }
+    if (!email.trim()) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      toast.error("Please enter a password.");
       return;
     }
     if (!allPasswordRequirementsMet) {
-      toast.error("Password does not meet requirements");
+      const missing: string[] = [];
+      if (!passwordValidation.minLength) missing.push("at least 8 characters");
+      if (!passwordValidation.hasUppercase) missing.push("an uppercase letter");
+      if (!passwordValidation.hasLowercase) missing.push("a lowercase letter");
+      if (!passwordValidation.hasNumber) missing.push("a number");
+      if (!passwordValidation.hasSpecial) missing.push("a special character");
+      toast.error(`Password needs ${missing.join(", ")}.`);
       return;
     }
     if (!agreeToTerms) {
-      toast.error("Please agree to the terms and conditions");
+      toast.error("Please agree to the Terms of Service and Privacy Policy.");
       return;
     }
 
@@ -60,7 +82,7 @@ export function SignUpPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
+          email: email.trim(),
           password,
           full_name: fullName.trim(),
           first_name: firstName,
@@ -73,18 +95,21 @@ export function SignUpPage() {
       });
 
       if (res.ok) {
-        // Registration sets cookies, check auth to load user
         await checkAuthStatus();
         toast.success("Account created successfully!");
         navigate("/dashboard");
       } else {
-        const data = await res.json().catch(() => ({}));
-        const msg = data.detail || data.message || "Registration failed";
-        toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        const formatted = await formatResponseError(res, "Registration failed. Please try again.");
+        logger.warn("Registration failed", { status: formatted.status, message: formatted.message });
+        toast.error(formatted.message, {
+          description: formatted.details?.slice(1).join(" \u2022 "),
+          duration: 6000,
+        });
       }
     } catch (error) {
       logger.error("Registration error:", error);
-      toast.error("Registration failed. Please try again.");
+      const formatted = formatAuthError(error, "Registration failed. Please try again.");
+      toast.error(formatted.message);
     } finally {
       setIsLoading(false);
     }

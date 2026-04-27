@@ -173,7 +173,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (err) {
       setError((err as Error).message || 'Login failed');
-      return false;
+      // Re-throw so callers (e.g. SignInPage) can format the error for the user
+      throw err;
     } finally {
       setLoading(false);
     }

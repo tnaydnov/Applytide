@@ -14,7 +14,7 @@ export interface PasswordStrength {
   hasUppercase: boolean;
   hasLowercase: boolean;
   hasNumber: boolean;
-  hasSpecialChar?: boolean;
+  hasSpecial: boolean;
 }
 
 export function validatePassword(password: string): PasswordStrength {
@@ -23,7 +23,7 @@ export function validatePassword(password: string): PasswordStrength {
     hasUppercase: /[A-Z]/.test(password),
     hasLowercase: /[a-z]/.test(password),
     hasNumber: /[0-9]/.test(password),
-    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{}|;':",./<>?`~\\]/.test(password),
   };
 }
 
@@ -33,7 +33,8 @@ export function isPasswordStrong(password: string): boolean {
     validation.minLength &&
     validation.hasUppercase &&
     validation.hasLowercase &&
-    validation.hasNumber
+    validation.hasNumber &&
+    validation.hasSpecial
   );
 }
 

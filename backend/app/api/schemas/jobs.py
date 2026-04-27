@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 import uuid
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
 class JobCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)

@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # OS deps for Playwright and WeasyPrint
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget gnupg ca-certificates netcat-traditional \
+    wget gnupg ca-certificates netcat-traditional gosu \
     build-essential python3-dev python3-setuptools python3-wheel python3-cffi libffi-dev \
     libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 shared-mime-info \
     fonts-liberation fonts-dejavu fonts-noto fonts-noto-cjk \
@@ -28,12 +28,12 @@ COPY app ./app
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
-RUN mkdir -p /app/app/uploads && chown -R appuser:appgroup /app/app/uploads
+RUN mkdir -p /app/uploads/documents /app/uploads/app_attachments \
+    && chown -R appuser:appgroup /app/uploads
 
 ENV PYTHONUNBUFFERED=1
 # Worker doesn't expose a port
 
-USER appuser
-
+# NOTE: Entrypoint runs as root to chown mounted volumes, then drops to appuser via gosu.
 ENTRYPOINT ["/entrypoint.sh"]
 # The actual command is set in compose: python -m app.infra.workers.reminders_runner

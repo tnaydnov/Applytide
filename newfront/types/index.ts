@@ -41,4 +41,5 @@ export interface PasswordValidation {
   hasUppercase: boolean;
   hasLowercase: boolean;
   hasNumber: boolean;
+  hasSpecial: boolean;
 }

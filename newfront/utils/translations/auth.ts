@@ -114,6 +114,7 @@ export const authTranslations = {
     hasUppercase: { en: "One uppercase letter", he: "אות גדולה אחת" },
     hasLowercase: { en: "One lowercase letter", he: "אות קטנה אחת" },
     hasNumber: { en: "One number", he: "ספרה אחת" },
+    hasSpecial: { en: "One special character (!@#$%^&*…)", he: "תו מיוחד אחד (!@#$%^&*…)" },
   },
   
   // Errors

@@ -5,6 +5,8 @@ import { useCardTilt } from "../../hooks/useCardTilt";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "sonner";
 import { logger } from "../../lib/logger";
+import { formatAuthError } from "../../lib/authErrors";
+import { isValidEmail } from "../../utils/validators";
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -22,26 +24,39 @@ export function SignInPage() {
     hasUppercase: false,
     hasLowercase: false,
     hasNumber: false,
+    hasSpecial: false,
   };
   
   const handleSignIn = async () => {
-    if (!email || !password) {
-      toast.error("Please enter email and password");
+    if (!email.trim()) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      toast.error("Please enter your password.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const success = await login(email, password, rememberMe);
+      const success = await login(email.trim(), password, rememberMe);
       if (success) {
         toast.success("Welcome back!");
         navigate("/dashboard");
       } else {
-        toast.error("Invalid email or password");
+        toast.error("Invalid email or password.");
       }
     } catch (error) {
       logger.error("Login error:", error);
-      toast.error("Login failed. Please try again.");
+      const formatted = formatAuthError(error, "Login failed. Please try again.");
+      toast.error(formatted.message, {
+        description: formatted.details?.slice(1).join(" \u2022 "),
+        duration: 6000,
+      });
     } finally {
       setIsLoading(false);
     }

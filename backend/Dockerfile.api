@@ -2,10 +2,13 @@ FROM python:3.11-slim
 
 # Basic OS deps (keep light)
 # libmagic1: Required for python-magic (file type detection)
+# gosu: Drop privileges from root to appuser in entrypoint after fixing
+#       volume ownership.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-traditional \
     build-essential \
     libmagic1 \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -24,13 +27,14 @@ COPY app ./app
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
-# Ensure uploads dir is writable by appuser
-RUN mkdir -p /app/app/uploads && chown -R appuser:appgroup /app/app/uploads
+# Pre-create uploads dirs (real mount points are /app/uploads/{documents,app_attachments})
+RUN mkdir -p /app/uploads/documents /app/uploads/app_attachments \
+    && chown -R appuser:appgroup /app/uploads
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
-USER appuser
-
+# NOTE: Entrypoint starts as root to chown the mounted volumes, then
+# drops to appuser via gosu before exec'ing the app.
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "300"]

@@ -47,7 +47,8 @@ from ..logging import get_logger
 logger = get_logger(__name__)
 
 # Configuration constants
-ATTACH_UPLOAD_DIR = Path("app/uploads/app_attachments")
+# Absolute path so it always resolves to the docker volume mount, regardless of CWD.
+ATTACH_UPLOAD_DIR = Path("/app/uploads/app_attachments")
 DEFAULT_MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 MIN_FREE_SPACE_BYTES = 100 * 1024 * 1024  # 100MB minimum free space
 CHUNK_SIZE = 1024 * 1024  # 1MB chunks for streaming uploads

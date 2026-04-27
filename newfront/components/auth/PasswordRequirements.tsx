@@ -16,6 +16,7 @@ export function PasswordRequirements({ validation }: PasswordRequirementsProps) 
     { key: "hasUppercase", label: authTranslations.passwordRequirements.hasUppercase[language], met: validation.hasUppercase },
     { key: "hasLowercase", label: authTranslations.passwordRequirements.hasLowercase[language], met: validation.hasLowercase },
     { key: "hasNumber", label: authTranslations.passwordRequirements.hasNumber[language], met: validation.hasNumber },
+    { key: "hasSpecial", label: authTranslations.passwordRequirements.hasSpecial[language], met: validation.hasSpecial },
   ];
 
   return (
